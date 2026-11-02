@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "sidkick": {
+      "type": "stdio",
+      "command": "${PLUGIN_ROOT}/civ7/.venv/Scripts/python.exe",
+      "args": ["-m", "sidkick.server", "--transport", "stdio"],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}
+

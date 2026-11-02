@@ -1,0 +1,23 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sidkick",
+  "version": "0.1.0",
+  "description": "Read-only, on-demand Civilization VII data for strategy conversations.",
+  "author": {
+    "name": "Sasa"
+  },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Sidkick",
+        "shortDescription": "Live Civ VII strategy data",
+        "longDescription": "Read the loaded player's current Civilization VII position on demand for strategy advice.",
+        "developerName": "Sasa",
+        "category": "Entertainment",
+        "capabilities": ["Tools"],
+        "defaultPrompt": "Read my current Civilization VII position and help me plan this turn."
+      }
+    }
+  }
+}
+

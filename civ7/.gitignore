@@ -1,0 +1,5 @@
+.venv/
+FiretunerTerminal/
+__pycache__/
+player.json
+save-*.json

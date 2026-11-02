@@ -1,0 +1,10 @@
+.codex/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+civ7/.venv/
+civ7/FiretunerTerminal/
+civ7/player.json
+civ7/save-*.json
+

@@ -1,0 +1,2 @@
+"""Sidkick MCP service."""
+
