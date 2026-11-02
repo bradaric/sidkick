@@ -9,7 +9,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "tunnel-client connect failed with exit code $LASTEXITCODE"
 }
 
-& $client --json runtimes status sidkick
+& $client runtimes status sidkick --json
 if ($LASTEXITCODE -ne 0) {
     throw "tunnel-client status failed with exit code $LASTEXITCODE"
 }

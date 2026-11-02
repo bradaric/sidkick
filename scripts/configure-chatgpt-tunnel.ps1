@@ -43,20 +43,16 @@ if ($ReplaceKey -or -not (Test-Path -LiteralPath $keyPath)) {
         Remove-Variable plainKey -ErrorAction SilentlyContinue
     }
 
-    $identity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $account = [Security.Principal.NTAccount]::new($identity)
-    $acl = [Security.AccessControl.FileSecurity]::new()
-    $acl.SetOwner($account)
-    $acl.SetAccessRuleProtection($true, $false)
-    $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new(
-        $account,
-        [Security.AccessControl.FileSystemRights]::FullControl,
-        [Security.AccessControl.AccessControlType]::Allow
-    ))
-    Set-Acl -LiteralPath $keyPath -AclObject $acl
 }
 
-$mcpCommand = "`"$python`" -m sidkick.server --transport stdio"
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+& icacls.exe $keyPath /inheritance:r /grant:r "${identity}:(F)" | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "Restricting the runtime key file failed with exit code $LASTEXITCODE"
+}
+
+$pythonCommandPath = $python.Replace('\', '/')
+$mcpCommand = "`"$pythonCommandPath`" -m sidkick.server --transport stdio"
 $keyReference = "file:$keyPath"
 
 & $client runtimes connect `
@@ -73,7 +69,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "tunnel-client connect failed with exit code $LASTEXITCODE"
 }
 
-& $client --json runtimes status sidkick
+& $client runtimes status sidkick --json
 if ($LASTEXITCODE -ne 0) {
     throw "tunnel-client status failed with exit code $LASTEXITCODE"
 }
