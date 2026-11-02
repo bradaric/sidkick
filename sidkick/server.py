@@ -6,14 +6,24 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from civ7.player import snapshot
+from civ7.queries import (
+    empire,
+    explored_map,
+    known_world,
+    research_and_government,
+    resources_and_trade,
+    settlements,
+    units,
+)
 
 
 def create_server() -> MCPServer:
     server = MCPServer(
         "Sidkick",
         instructions=(
-            "Read-only game snapshots for strategy advice. Call the Civilization VII "
-            "snapshot only when current game data is needed."
+            "Read-only, local-player Civilization VII data for strategy advice. Use "
+            "focused tools for the needed domain. The explored-map tool is large and "
+            "contains only tiles already revealed to the local player."
         ),
     )
     server.tool(
@@ -32,6 +42,80 @@ def create_server() -> MCPServer:
         ),
         structured_output=True,
     )(snapshot)
+
+    read_only = ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+    server.tool(
+        name="get_civ7_empire",
+        title="Get Civ VII empire totals",
+        description="Get the local player's treasury, net yields, and settlement limit.",
+        annotations=read_only,
+        structured_output=True,
+    )(empire)
+    server.tool(
+        name="get_civ7_settlements",
+        title="Get Civ VII settlement details",
+        description=(
+            "Get the local player's cities and towns, focuses, growth, specialists, "
+            "buildings, districts, Great Work slots, yields, and production queues."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(settlements)
+    server.tool(
+        name="get_civ7_research_and_government",
+        title="Get Civ VII research and government",
+        description=(
+            "Get active and available technologies and civics with costs and unlocks, "
+            "plus government, policies, traditions, crisis cards, and attribute points."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(research_and_government)
+    server.tool(
+        name="get_civ7_resources_and_trade",
+        title="Get Civ VII resources and trade",
+        description=(
+            "Get the local player's resources, settlement assignments and free slots, "
+            "trade-network state, and active or available known routes."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(resources_and_trade)
+    server.tool(
+        name="get_civ7_units",
+        title="Get Civ VII units",
+        description=(
+            "Get only the local player's units, locations, health, movement, experience, "
+            "promotions, and commander packing state."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(units)
+    server.tool(
+        name="get_civ7_known_world",
+        title="Get Civ VII known world",
+        description=(
+            "Get only met leaders, city-states and independents, plus an aggregate of "
+            "terrain, features, and resources already revealed to the local player."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(known_world)
+    server.tool(
+        name="get_civ7_explored_map",
+        title="Get Civ VII explored map",
+        description=(
+            "Get detailed terrain, features, resources, water, rivers, and yields for "
+            "tiles already revealed to the local player. This response can be large."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(explored_map)
     return server
 
 

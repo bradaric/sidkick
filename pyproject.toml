@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sidkick"
-version = "0.1.0"
+version = "0.2.0"
 description = "Read-only game data for AI strategy conversations"
 requires-python = ">=3.10"
 dependencies = ["mcp[cli]>=2,<3"]
@@ -14,4 +14,7 @@ sidkick-server = "sidkick.server:main"
 
 [tool.setuptools.packages.find]
 include = ["sidkick*", "civ7*"]
+
+[tool.setuptools.package-data]
+civ7 = ["*.js"]
 
