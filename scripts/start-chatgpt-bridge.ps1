@@ -22,7 +22,7 @@ if (-not $tunnelMatch.Success -or -not $keyMatch.Success) {
 $tunnelId = $tunnelMatch.Groups[1].Value
 $keyReference = $keyMatch.Groups[1].Value
 
-& $client runtimes connect `
+$connectOutput = & $client runtimes connect `
     --alias sidkick `
     --profile sidkick `
     --profile-dir $profileDir `
@@ -33,8 +33,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "tunnel-client connect failed with exit code $LASTEXITCODE"
 }
 
-& $client runtimes status sidkick --json
+$statusJson = & $client runtimes status sidkick --json
 if ($LASTEXITCODE -ne 0) {
     throw "tunnel-client status failed with exit code $LASTEXITCODE"
 }
+$status = $statusJson | ConvertFrom-Json
+if (-not $status.healthy -or -not $status.ready -or -not $status.process_running) {
+    throw 'Sidkick started but did not reach a healthy, ready state.'
+}
+
+Write-Host 'Sidkick is running and ready.'
 

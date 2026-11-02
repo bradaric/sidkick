@@ -40,3 +40,5 @@ The script prompts securely for the runtime key, saves it in the ignored `.sidki
 .\scripts\stop-chatgpt-bridge.ps1
 ```
 
+For double-click use, run `start-sidkick.bat` or `stop-sidkick.bat` from the repository root. Automatic startup is controlled by `enable-start-with-windows.bat` and `disable-start-with-windows.bat`; `start-with-windows-status.bat` reports the current setting. This uses the current user's Windows Startup folder and does not require administrator rights.
+
