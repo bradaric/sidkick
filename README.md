@@ -25,3 +25,18 @@ The game adapter connects only to `127.0.0.1:4318`. It reads the local player's 
 
 The MCP endpoint is `http://127.0.0.1:8765/mcp`. It queries Civ VII only when a client calls `get_civ7_player_snapshot`.
 
+## Private ChatGPT connection
+
+Sidkick uses OpenAI Secure MCP Tunnel in supervised stdio mode. Create a tunnel in Platform tunnel settings and a restricted runtime API key with Tunnels Read + Use. Then run:
+
+```powershell
+.\scripts\configure-chatgpt-tunnel.ps1 -TunnelId tunnel_0123456789abcdef0123456789abcdef
+```
+
+The script prompts securely for the runtime key, saves it in the ignored `.sidkick/` directory with access limited to the current Windows account, starts the managed runtime, and prints its health status. Future sessions use:
+
+```powershell
+.\scripts\start-chatgpt-bridge.ps1
+.\scripts\stop-chatgpt-bridge.ps1
+```
+
