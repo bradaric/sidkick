@@ -27,7 +27,7 @@ def create_server(host: str = "127.0.0.1", port: int = 8765) -> FastMCP:
         description=(
             "Read the loaded local player's current Civilization VII strategy data. "
             "Returns only that player's identity, turn, Age, settlements, yields, "
-            "research, and production queues."
+            "research, production queues, Triumph progress, and Dedication choices."
         ),
         annotations=ToolAnnotations(
             readOnlyHint=True,

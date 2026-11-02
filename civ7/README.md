@@ -6,7 +6,7 @@ From the Sidkick root, with the game running and your save loaded:
 .\civ7\.venv\Scripts\python.exe .\civ7\player.py
 ```
 
-For your two Catherine Exploration saves, the exporter writes `civ7/save-1-maya.json` or `civ7/save-2-chola.json` according to the loaded civilization. Upload the matching file to your strategy chat. The adapter reads one local-player snapshot through FireTuner on 127.0.0.1:4318. Its legacy stdio MCP entry point is the same command with `--mcp`.
+For your two Catherine Exploration saves, the exporter writes `civ7/save-1-maya.json` or `civ7/save-2-chola.json` according to the loaded civilization. Upload the matching file to your strategy chat. The adapter reads one local-player snapshot—including Test of Time Triumph progress and Dedication choices—through FireTuner on 127.0.0.1:4318. Its legacy stdio MCP entry point is the same command with `--mcp`.
 
 The repository-level standalone service exposes the same on-demand snapshot over local HTTP:
 

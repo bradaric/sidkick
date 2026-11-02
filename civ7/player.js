@@ -19,11 +19,49 @@
       default: throw Error("Unsupported production kind " + q.kind);
     }
   }
+  function triumphs() {
+    const legacies = player.Legacies;
+    if (!legacies) return [];
+    return [...GameInfo.Legacies]
+      .filter(def => legacies.isValidLegacy(def.LegacyType))
+      .map(def => {
+        const state = legacies.getProgress(def.LegacyType);
+        return {
+          id: def.LegacyType,
+          name: name(def.Name),
+          requirements: name(def.TriggerDescription),
+          reward: name(def.Description),
+          major: Boolean(def.MajorLegacy),
+          firstPlayerOnly: Boolean(def.FirstPlayerOnly),
+          complete: Boolean(legacies.isTriggered(def.LegacyType)),
+          progress: (state?.progress ?? []).map(value => ({
+            current: value.current,
+            total: value.total
+          }))
+        };
+      });
+  }
+  function dedications() {
+    const advancedStart = player.AdvancedStart;
+    if (!advancedStart) return null;
+    const card = info => ({
+      id: info.id,
+      name: name(info.name),
+      description: name(info.description)
+    });
+    return {
+      selectionComplete: Boolean(advancedStart.getPlacementComplete()),
+      slotCount: 3,
+      selected: advancedStart.getCards().map(value => card(value.info)),
+      choices: advancedStart.getAvailableCards().map(card)
+    };
+  }
   return {
     civilization: name(player.civilizationFullName),
     leader: name(GameInfo.Leaders.lookup(player.leaderType).Name),
     turn: Game.turn, age: name(GameInfo.Ages.lookup(Game.age).Name),
     technology: research(player.Techs), civic: research(player.Culture),
+    triumphs: triumphs(), dedications: dedications(),
     settlements: player.Cities.getCities().map(city => ({
       name: name(city.name), population: city.population,
       netYields: Object.fromEntries([...GameInfo.Yields].map(y =>

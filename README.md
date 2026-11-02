@@ -9,7 +9,7 @@ Civilization VII is the first adapter.
 - Local MCP serves the same snapshot tool to Codex over stdio.
 - Standalone MCP serves the tool over local HTTP for a future ChatGPT Secure MCP Tunnel connection.
 
-The game adapter connects only to `127.0.0.1:4318`. It reads the local player's civilization, leader, turn, Age, settlements, yields, research, and production queues. It does not poll between tool calls.
+The game adapter connects only to `127.0.0.1:4318`. It reads the local player's civilization, leader, turn, Age, settlements, yields, research, production queues, Triumph progress, and Dedication state. It does not poll between tool calls.
 
 ## One-shot export
 
