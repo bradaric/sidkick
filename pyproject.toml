@@ -7,7 +7,7 @@ name = "sidkick"
 version = "0.1.0"
 description = "Read-only game data for AI strategy conversations"
 requires-python = ">=3.10"
-dependencies = ["mcp[cli]>=1,<2"]
+dependencies = ["mcp[cli]>=2,<3"]
 
 [project.scripts]
 sidkick-server = "sidkick.server:main"

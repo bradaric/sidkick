@@ -51,8 +51,8 @@ if __name__ == "__main__":
     parser.add_argument("--mcp", action="store_true")
     args = parser.parse_args()
     if args.mcp:
-        from mcp.server.fastmcp import FastMCP
-        server = FastMCP("Sidkick Civ VII")
+        from mcp.server.mcpserver import MCPServer
+        server = MCPServer("Sidkick Civ VII")
         server.tool()(snapshot)
         server.run(transport="stdio")
     else:

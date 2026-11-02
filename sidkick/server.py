@@ -2,24 +2,19 @@
 
 import argparse
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from civ7.player import snapshot
 
 
-def create_server(host: str = "127.0.0.1", port: int = 8765) -> FastMCP:
-    server = FastMCP(
+def create_server() -> MCPServer:
+    server = MCPServer(
         "Sidkick",
         instructions=(
             "Read-only game snapshots for strategy advice. Call the Civilization VII "
             "snapshot only when current game data is needed."
         ),
-        host=host,
-        port=port,
-        streamable_http_path="/mcp",
-        json_response=True,
-        stateless_http=True,
     )
     server.tool(
         name="get_civ7_player_snapshot",
@@ -51,7 +46,18 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
 
-    create_server(args.host, args.port).run(transport=args.transport)
+    server = create_server()
+    if args.transport == "stdio":
+        server.run(transport="stdio")
+    else:
+        server.run(
+            transport="streamable-http",
+            host=args.host,
+            port=args.port,
+            streamable_http_path="/mcp",
+            json_response=True,
+            stateless_http=True,
+        )
 
 
 if __name__ == "__main__":
