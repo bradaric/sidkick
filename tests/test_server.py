@@ -1,10 +1,16 @@
 import unittest
 
 from civ7.connection import run_script
-from sidkick.server import create_server
+from sidkick.server import create_server, server_icon
 
 
 class ServerTests(unittest.TestCase):
+    def test_advertises_embedded_png_icon(self) -> None:
+        icon = server_icon()
+        self.assertEqual(icon.mime_type, "image/png")
+        self.assertEqual(icon.sizes, ["256x256"])
+        self.assertTrue(icon.src.startswith("data:image/png;base64,"))
+
     def test_registers_focused_read_only_tools(self) -> None:
         server = create_server()
         tools = {tool.name: tool for tool in server._tool_manager.list_tools()}

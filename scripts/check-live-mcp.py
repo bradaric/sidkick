@@ -20,6 +20,8 @@ async def main() -> None:
     async with stdio_client(parameters) as (read, write):
         async with ClientSession(read, write) as session:
             initialized = await session.initialize()
+            if not initialized.server_info.icons:
+                raise RuntimeError("Sidkick did not advertise its icon")
             tools = await session.list_tools()
             for tool in tools.tools:
                 result = await session.call_tool(tool.name, {})

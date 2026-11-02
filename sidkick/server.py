@@ -1,9 +1,11 @@
 """On-demand MCP service for Sidkick game adapters."""
 
 import argparse
+from base64 import b64encode
+from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
-from mcp.types import ToolAnnotations
+from mcp.types import Icon, ToolAnnotations
 
 from civ7.player import snapshot
 from civ7.queries import (
@@ -17,9 +19,24 @@ from civ7.queries import (
 )
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def server_icon() -> Icon:
+    data = b64encode((ROOT / "assets" / "sidkick-icon-256.png").read_bytes()).decode("ascii")
+    return Icon(
+        src=f"data:image/png;base64,{data}",
+        mimeType="image/png",
+        sizes=["256x256"],
+    )
+
+
 def create_server() -> MCPServer:
     server = MCPServer(
         "Sidkick",
+        title="Sidkick",
+        description="Live, read-only game data for strategy advice.",
+        icons=[server_icon()],
         instructions=(
             "Read-only, local-player Civilization VII data for strategy advice. Use "
             "focused tools for the needed domain. The explored-map tool is large and "
