@@ -24,20 +24,14 @@ ROOT = Path(__file__).resolve().parent
 
 
 async def snapshot() -> dict[str, Any]:
-    """Read the current local player's strategy snapshot."""
-    return await run_script("player.js")
-
-
-async def full_snapshot() -> dict[str, Any]:
-    """Read every Sidkick domain for a portable JSON export."""
-    core = await snapshot()
+    """Read a complete strategy snapshot without the large per-tile map."""
+    core = await run_script("player.js")
     empire_data = await empire()
     settlement_data = await settlements()
     research_data = await research_and_government()
     commerce_data = await resources_and_trade()
     unit_data = await units()
     world_data = await known_world()
-    map_data = await explored_map()
     return {
         **core,
         "empire": empire_data,
@@ -47,6 +41,15 @@ async def full_snapshot() -> dict[str, Any]:
         "resourcesAndTrade": commerce_data,
         "units": unit_data["units"],
         "knownWorld": world_data,
+    }
+
+
+async def full_snapshot() -> dict[str, Any]:
+    """Read every Sidkick domain for a portable JSON export."""
+    strategy = await snapshot()
+    map_data = await explored_map()
+    return {
+        **strategy,
         "exploredMap": map_data,
     }
 

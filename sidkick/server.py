@@ -30,9 +30,10 @@ def create_server() -> MCPServer:
         name="get_civ7_player_snapshot",
         title="Get Civ VII player snapshot",
         description=(
-            "Read the loaded local player's current Civilization VII strategy data. "
-            "Returns only that player's identity, turn, Age, settlements, yields, "
-            "research, production queues, Triumph progress, and Dedication choices."
+            "Read the loaded local player's complete Civilization VII strategy snapshot, "
+            "including empire totals, settlements, research and government, Triumphs and "
+            "Dedications, resources and trade, units, and known-world summary. Excludes "
+            "the large per-tile explored map, which has a separate tool."
         ),
         annotations=ToolAnnotations(
             readOnlyHint=True,
