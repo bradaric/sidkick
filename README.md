@@ -22,7 +22,9 @@ The game adapter connects only to `127.0.0.1:4318`. It reads the local player's 
 .\civ7\.venv\Scripts\python.exe -m sidkick.server
 ```
 
-The MCP endpoint is `http://127.0.0.1:8765/mcp`. It queries Civ VII only when a client calls a tool. Use the focused empire, decisions, settlement, research/government, resources/trade, units, diplomacy, visible-threats, turn-context, victory-progress, or known-world tools for normal advice. The separate explored-map tool can return a much larger response.
+The MCP endpoint is `http://127.0.0.1:8765/mcp`. It queries Civ VII only when a client calls a tool. Use the focused empire, decisions, settlement, growth, research/government, resources/trade, units, diplomacy, visible-threats, turn-context, victory-progress, or known-world tools for normal advice. The separate explored-map tool can return a much larger response.
+
+`get_civ7_growth` returns growth progress, legal rural expansion options, separate improvement placement previews, and specialist placements (including empty, blocked, or full slots). Legal growth choices require population ready to place; improvement previews are not promises of legal expansion. Yield changes are per turn, positive maintenance changes are extra costs, and net changes subtract maintenance. Missing improvement previews return `null`, not zero benefit. Hidden tiles are excluded. Growth data is also included in snapshots and exports.
 
 ## ChatGPT architecture
 

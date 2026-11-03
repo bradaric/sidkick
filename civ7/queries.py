@@ -17,6 +17,10 @@ async def settlements() -> dict[str, Any]:
     return await run_script("settlements.js")
 
 
+async def growth() -> dict[str, Any]:
+    return await run_script("growth.js")
+
+
 async def research_and_government() -> dict[str, Any]:
     return await run_script("research.js")
 

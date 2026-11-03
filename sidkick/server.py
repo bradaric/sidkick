@@ -13,6 +13,7 @@ from civ7.queries import (
     diplomacy,
     empire,
     explored_map,
+    growth,
     known_world,
     research_and_government,
     resources_and_trade,
@@ -55,8 +56,8 @@ def create_server() -> MCPServer:
         title="Get Civ VII player snapshot",
         description=(
             "Read the loaded local player's complete Civilization VII strategy snapshot, "
-            "including empire totals, settlements, research and government, Triumphs and "
-            "Dedications, resources and trade, units, victory progress, and known-world "
+            "including empire totals, settlements, growth choices, research and government, "
+            "Triumphs and Dedications, resources and trade, units, victory progress, and known-world "
             "summary, plus available decisions, diplomacy, visible threats, and turn "
             "context. Excludes "
             "the large per-tile explored map, which has a separate tool."
@@ -103,6 +104,19 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(settlements)
+    server.tool(
+        name="get_civ7_growth",
+        title="Get Civ VII growth choices",
+        description=(
+            "Get local settlement growth progress, legal expansion choices, separate "
+            "improvement placement previews, and specialist slots with yield bonuses, "
+            "maintenance changes, and net yield changes per turn. Positive maintenance "
+            "changes are costs. Previews are not legal growth choices; options may be "
+            "empty until population is ready to place. Hidden tiles are excluded."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(growth)
     server.tool(
         name="get_civ7_research_and_government",
         title="Get Civ VII research and government",
