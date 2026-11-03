@@ -9,13 +9,17 @@ from mcp.types import Icon, ToolAnnotations
 
 from civ7.player import snapshot
 from civ7.queries import (
+    available_decisions,
+    diplomacy,
     empire,
     explored_map,
     known_world,
     research_and_government,
     resources_and_trade,
     settlements,
+    turn_context,
     units,
+    visible_threats,
     victory_progress,
 )
 
@@ -42,7 +46,8 @@ def create_server() -> MCPServer:
             "Read-only, local-player Civilization VII data for strategy advice. Use "
             "focused tools for the needed domain. The explored-map tool is large and "
             "contains only tiles already revealed to the local player. Known-world and "
-            "victory tools omit unmet players."
+            "victory tools omit unmet players. Diplomacy omits unmet players, and visible "
+            "threats are discovered only on tiles visible this turn."
         ),
     )
     server.tool(
@@ -52,7 +57,8 @@ def create_server() -> MCPServer:
             "Read the loaded local player's complete Civilization VII strategy snapshot, "
             "including empire totals, settlements, research and government, Triumphs and "
             "Dedications, resources and trade, units, victory progress, and known-world "
-            "summary. Excludes "
+            "summary, plus available decisions, diplomacy, visible threats, and turn "
+            "context. Excludes "
             "the large per-tile explored map, which has a separate tool."
         ),
         annotations=ToolAnnotations(
@@ -77,6 +83,16 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(empire)
+    server.tool(
+        name="get_civ7_available_decisions",
+        title="Get Civ VII available decisions",
+        description=(
+            "Get currently available settlement production and purchase choices, costs, "
+            "turns, town conversions, and visible unit upgrades."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(available_decisions)
     server.tool(
         name="get_civ7_settlements",
         title="Get Civ VII settlement details",
@@ -137,6 +153,36 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(victory_progress)
+    server.tool(
+        name="get_civ7_diplomacy",
+        title="Get Civ VII diplomacy",
+        description=(
+            "Get relationships, modifiers, deals, ongoing projects, and available "
+            "diplomatic actions involving met major players only."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(diplomacy)
+    server.tool(
+        name="get_civ7_visible_threats",
+        title="Get Civ VII visible threats",
+        description=(
+            "Get enemy units belonging to met players only when those units are on tiles "
+            "currently visible to the local player."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(visible_threats)
+    server.tool(
+        name="get_civ7_turn_context",
+        title="Get Civ VII turn context",
+        description=(
+            "Get active quests, crisis timing, notifications, deadlines, and Age progress "
+            "for the local player."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(turn_context)
     server.tool(
         name="get_civ7_explored_map",
         title="Get Civ VII explored map",

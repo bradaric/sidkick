@@ -8,7 +8,7 @@ Civilization VII is the first adapter.
 - One-shot export writes the loaded Catherine save to its own JSON file.
 - Local and tunneled MCP serve focused Civ VII tools on demand.
 
-The game adapter connects only to `127.0.0.1:4318`. It reads the local player's empire, settlements, research and government, resources and trade, units, Test of Time victory progress, and known world. Map queries discard hidden tiles, and diplomacy and victory queries discard unmet players. It does not poll between tool calls or change game state.
+The game adapter connects only to `127.0.0.1:4318`. It reads the local player's empire, decisions, settlements, research and government, resources and trade, units, diplomacy, visible threats, turn context, Test of Time victory progress, and known world. Map queries discard hidden tiles, diplomacy and victory queries discard unmet players, and threat queries scan only tiles visible this turn. It does not poll between tool calls or change game state.
 
 ## One-shot export
 
@@ -22,7 +22,7 @@ The game adapter connects only to `127.0.0.1:4318`. It reads the local player's 
 .\civ7\.venv\Scripts\python.exe -m sidkick.server
 ```
 
-The MCP endpoint is `http://127.0.0.1:8765/mcp`. It queries Civ VII only when a client calls a tool. Use the focused empire, settlement, research/government, resources/trade, units, victory-progress, or known-world tools for normal advice. The separate explored-map tool can return a much larger response.
+The MCP endpoint is `http://127.0.0.1:8765/mcp`. It queries Civ VII only when a client calls a tool. Use the focused empire, decisions, settlement, research/government, resources/trade, units, diplomacy, visible-threats, turn-context, victory-progress, or known-world tools for normal advice. The separate explored-map tool can return a much larger response.
 
 ## Private ChatGPT connection
 

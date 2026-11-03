@@ -6,6 +6,7 @@ $client = Join-Path $repoRoot 'tools\tunnel-client\bin\tunnel-client.exe'
 $python = Join-Path $repoRoot 'civ7\.venv\Scripts\python.exe'
 $profileDir = Join-Path $repoRoot '.sidkick\profiles'
 $profilePath = Join-Path $profileDir 'sidkick.yaml'
+$keyPath = Join-Path $repoRoot '.sidkick\tunnel-runtime-key.txt'
 $pythonCommandPath = $python.Replace('\', '/')
 $mcpCommand = "`"$pythonCommandPath`" -m sidkick.server --transport stdio"
 
@@ -15,12 +16,14 @@ if (-not (Test-Path -LiteralPath $profilePath)) {
 
 $profileText = Get-Content -Raw -LiteralPath $profilePath
 $tunnelMatch = [regex]::Match($profileText, '(?m)^\s*"?tunnel_id"?\s*:\s*"([^"]+)"')
-$keyMatch = [regex]::Match($profileText, '(?m)^\s*"?api_key"?\s*:\s*"([^"]+)"')
-if (-not $tunnelMatch.Success -or -not $keyMatch.Success) {
-    throw 'The Sidkick tunnel profile is missing its tunnel ID or runtime-key reference.'
+if (-not $tunnelMatch.Success) {
+    throw 'The Sidkick tunnel profile is missing its tunnel ID.'
+}
+if (-not (Test-Path -LiteralPath $keyPath)) {
+    throw 'The Sidkick tunnel runtime key file is missing. Run configure-chatgpt-tunnel.ps1.'
 }
 $tunnelId = $tunnelMatch.Groups[1].Value
-$keyReference = $keyMatch.Groups[1].Value
+$keyReference = "file:$keyPath"
 
 $connectOutput = & $client runtimes connect `
     --alias sidkick `

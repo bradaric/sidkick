@@ -1,6 +1,7 @@
 """Local, read-only FireTuner connection helpers for Civ VII."""
 
 import asyncio
+from contextlib import suppress
 import json
 from pathlib import Path
 import sys
@@ -42,4 +43,5 @@ async def run_script(script_name: str) -> dict[str, Any]:
                     return result
         finally:
             writer.close()
-            await writer.wait_closed()
+            with suppress(ConnectionError, OSError):
+                await writer.wait_closed()

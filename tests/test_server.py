@@ -19,12 +19,16 @@ class ServerTests(unittest.TestCase):
             {
                 "get_civ7_player_snapshot",
                 "get_civ7_empire",
+                "get_civ7_available_decisions",
                 "get_civ7_settlements",
                 "get_civ7_research_and_government",
                 "get_civ7_resources_and_trade",
                 "get_civ7_units",
                 "get_civ7_known_world",
                 "get_civ7_victory_progress",
+                "get_civ7_diplomacy",
+                "get_civ7_visible_threats",
+                "get_civ7_turn_context",
                 "get_civ7_explored_map",
             },
         )

@@ -12,6 +12,7 @@
     turn: Game.turn,
     units: player.Units.getUnits().map(unit => {
       const def = GameInfo.Units.lookup(unit.type);
+      const stats = def ? GameInfo.Unit_Stats.lookup(def.UnitType) : null;
       const experience = unit.Experience;
       const packedBy = commanders.find(entry => entry.packedIds.some(unitId =>
         unitId.owner === unit.id.owner && unitId.id === unit.id.id && unitId.type === unit.id.type));
@@ -47,6 +48,14 @@
         packedInCommander: packedBy ? name(packedBy.commander.name) : null,
         reinforcingCommander: reinforcementArmy === -1 ? null : reinforcementArmy,
         commander: Boolean(unit.isCommanderUnit),
+        combat: stats ? {
+          melee: stats.Combat,
+          ranged: stats.RangedCombat,
+          bombard: stats.Bombard,
+          range: stats.Range,
+          baseMoves: def.BaseMoves,
+          buildCharges: def.BuildCharges
+        } : null,
         health: unit.Health ? {
           current: unit.Health.maxDamage - unit.Health.damage,
           maximum: unit.Health.maxDamage,

@@ -11,13 +11,17 @@ if __package__ in (None, ""):
 
 from civ7.connection import run_script
 from civ7.queries import (
+    available_decisions,
+    diplomacy,
     empire,
     explored_map,
     known_world,
     research_and_government,
     resources_and_trade,
     settlements,
+    turn_context,
     units,
+    visible_threats,
     victory_progress,
 )
 
@@ -34,6 +38,10 @@ async def snapshot() -> dict[str, Any]:
     unit_data = await units()
     world_data = await known_world()
     victory_data = await victory_progress()
+    decision_data = await available_decisions()
+    diplomacy_data = await diplomacy()
+    threat_data = await visible_threats()
+    context_data = await turn_context()
     return {
         **core,
         "empire": empire_data,
@@ -44,6 +52,10 @@ async def snapshot() -> dict[str, Any]:
         "units": unit_data["units"],
         "knownWorld": world_data,
         "victoryProgress": victory_data,
+        "availableDecisions": decision_data,
+        "diplomacy": diplomacy_data,
+        "visibleThreats": threat_data,
+        "turnContext": context_data,
     }
 
 
