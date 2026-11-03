@@ -6,34 +6,67 @@ import sys
 from tempfile import NamedTemporaryFile
 from typing import Any
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from civ7.connection import run_script
+from civ7.queries import (
+    available_decisions,
+    diplomacy,
+    empire,
+    explored_map,
+    known_world,
+    research_and_government,
+    resources_and_trade,
+    settlements,
+    turn_context,
+    units,
+    visible_threats,
+    victory_progress,
+)
+
 ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT / "FiretunerTerminal"))
-from civ7_terminal.connection import _wrap_js
-from civ7_terminal.protocol import decode_header, encode_command
 
 
 async def snapshot() -> dict[str, Any]:
-    """Read the current local player's strategy snapshot."""
-    marker = "SIDKICK_RESULT:"
-    async with asyncio.timeout(12):
-        reader, writer = await asyncio.open_connection("127.0.0.1", 4318)
-        try:
-            script = (ROOT / "player.js").read_text(encoding="utf-8")
-            writer.write(encode_command(_wrap_js(script, marker)))
-            await writer.drain()
-            while True:
-                length, _ = decode_header(await reader.readexactly(8))
-                if length > 8_000_000:
-                    raise ValueError("Oversized FireTuner response")
-                frame = await reader.readexactly(length)
-                if frame.startswith(marker.encode()):
-                    body = frame[len(marker):].rstrip(b"\0").decode()
-                    if not body.startswith("{"):
-                        raise RuntimeError(body)
-                    return json.loads(body)
-        finally:
-            writer.close()
-            await writer.wait_closed()
+    """Read a complete strategy snapshot without the large per-tile map."""
+    core = await run_script("player.js")
+    empire_data = await empire()
+    settlement_data = await settlements()
+    research_data = await research_and_government()
+    commerce_data = await resources_and_trade()
+    unit_data = await units()
+    world_data = await known_world()
+    victory_data = await victory_progress()
+    decision_data = await available_decisions()
+    diplomacy_data = await diplomacy()
+    threat_data = await visible_threats()
+    context_data = await turn_context()
+    return {
+        **core,
+        "empire": empire_data,
+        "settlements": settlement_data["settlements"],
+        "archivedGreatWorks": settlement_data["archivedGreatWorks"],
+        "researchAndGovernment": research_data,
+        "resourcesAndTrade": commerce_data,
+        "units": unit_data["units"],
+        "knownWorld": world_data,
+        "victoryProgress": victory_data,
+        "availableDecisions": decision_data,
+        "diplomacy": diplomacy_data,
+        "visibleThreats": threat_data,
+        "turnContext": context_data,
+    }
+
+
+async def full_snapshot() -> dict[str, Any]:
+    """Read every Sidkick domain for a portable JSON export."""
+    strategy = await snapshot()
+    map_data = await explored_map()
+    return {
+        **strategy,
+        "exploredMap": map_data,
+    }
 
 
 def export_path(data: dict[str, Any]) -> Path:
@@ -51,12 +84,11 @@ if __name__ == "__main__":
     parser.add_argument("--mcp", action="store_true")
     args = parser.parse_args()
     if args.mcp:
-        from mcp.server.fastmcp import FastMCP
-        server = FastMCP("Sidkick Civ VII")
-        server.tool()(snapshot)
+        from sidkick.server import create_server
+        server = create_server()
         server.run(transport="stdio")
     else:
-        data = asyncio.run(snapshot())
+        data = asyncio.run(full_snapshot())
         path = export_path(data)
         with NamedTemporaryFile(dir=ROOT, mode="w", encoding="utf-8", delete=False) as tmp:
             json.dump(data, tmp, indent=2, ensure_ascii=False)

@@ -1,2 +1,2 @@
 -r FiretunerTerminal/requirements.txt
-mcp[cli]>=1,<2
+mcp[cli]>=2,<3

@@ -8,3 +8,7 @@ civ7/FiretunerTerminal/
 civ7/player.json
 civ7/save-*.json
 
+tools/tunnel-client/
+.sidkick/
+
+
