@@ -29,5 +29,9 @@ async def known_world() -> dict[str, Any]:
     return await run_script("known_world.js")
 
 
+async def victory_progress() -> dict[str, Any]:
+    return await run_script("victory.js")
+
+
 async def explored_map() -> dict[str, Any]:
     return await run_script("map.js")

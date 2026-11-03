@@ -24,6 +24,7 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_resources_and_trade",
                 "get_civ7_units",
                 "get_civ7_known_world",
+                "get_civ7_victory_progress",
                 "get_civ7_explored_map",
             },
         )

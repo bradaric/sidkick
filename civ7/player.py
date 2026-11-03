@@ -18,6 +18,7 @@ from civ7.queries import (
     resources_and_trade,
     settlements,
     units,
+    victory_progress,
 )
 
 ROOT = Path(__file__).resolve().parent
@@ -32,6 +33,7 @@ async def snapshot() -> dict[str, Any]:
     commerce_data = await resources_and_trade()
     unit_data = await units()
     world_data = await known_world()
+    victory_data = await victory_progress()
     return {
         **core,
         "empire": empire_data,
@@ -41,6 +43,7 @@ async def snapshot() -> dict[str, Any]:
         "resourcesAndTrade": commerce_data,
         "units": unit_data["units"],
         "knownWorld": world_data,
+        "victoryProgress": victory_data,
     }
 
 

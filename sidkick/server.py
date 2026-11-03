@@ -16,6 +16,7 @@ from civ7.queries import (
     resources_and_trade,
     settlements,
     units,
+    victory_progress,
 )
 
 
@@ -40,7 +41,8 @@ def create_server() -> MCPServer:
         instructions=(
             "Read-only, local-player Civilization VII data for strategy advice. Use "
             "focused tools for the needed domain. The explored-map tool is large and "
-            "contains only tiles already revealed to the local player."
+            "contains only tiles already revealed to the local player. Known-world and "
+            "victory tools omit unmet players."
         ),
     )
     server.tool(
@@ -49,7 +51,8 @@ def create_server() -> MCPServer:
         description=(
             "Read the loaded local player's complete Civilization VII strategy snapshot, "
             "including empire totals, settlements, research and government, Triumphs and "
-            "Dedications, resources and trade, units, and known-world summary. Excludes "
+            "Dedications, resources and trade, units, victory progress, and known-world "
+            "summary. Excludes "
             "the large per-tile explored map, which has a separate tool."
         ),
         annotations=ToolAnnotations(
@@ -124,6 +127,16 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(known_world)
+    server.tool(
+        name="get_civ7_victory_progress",
+        title="Get Civ VII victory progress",
+        description=(
+            "Get Test of Time victory conditions, thresholds, countdowns, prerequisites, "
+            "and progress for the local player and met major players only."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(victory_progress)
     server.tool(
         name="get_civ7_explored_map",
         title="Get Civ VII explored map",
