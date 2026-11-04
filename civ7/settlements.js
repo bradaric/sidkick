@@ -5,6 +5,35 @@
   const player = Players.get(id);
   const name = key => key ? Locale.compose(key) : null;
 
+  function yieldBreakdown(city) {
+    const summary = node => node ? {
+      name: name(node.description), value: node.value,
+      baseValue: node.base?.value ?? null, modifierValue: node.modifier?.value ?? null
+    } : null;
+    const sources = ["BUILDING_YIELDS", "IMPROVEMENT_YIELDS", "YIELD_FROM_RESOURCES", "YIELD_FROM_TRADE",
+      "YIELD_FROM_DEMAND_FOR_TRADE", "YIELD_FROM_PROJECTS", "YIELD_FROM_GREAT_WORKS", "YIELD_FROM_CONNECTED_TOWNS",
+      "YIELD_FROM_SURPLUS_HAPPINESS", "PRODUCTION_CONVERSION_PROJECT", "CITY_EFFECTS_YIELDS", "ACTIVE_CIV_TRADITIONS"];
+    const maintenance = ["BUILDING_MAINTENANCE", "HAPPINESS_UPKEEP", "MAINTENANCE_FROM_WORKERS"];
+    return Object.fromEntries([...GameInfo.Yields].map(def => {
+      const source = (key, path) => CityYieldNodes[key] == null ? null
+        : city.Yields.getYieldsForNode(def.$index, [...path, CityYieldNodes[key]], true);
+      const modifiers = source("INCOME_MODIFIERS", [CityYieldNodes.INCOME]);
+      const income = summary(city.Yields.getYieldSummaryForNode(def.$index, [CityYieldNodes.INCOME]));
+      const incomeSources = Object.fromEntries(sources.map(key => [key, summary(source(key, [CityYieldNodes.INCOME]))]));
+      return [def.YieldType, {
+        income,
+        deductions: summary(city.Yields.getYieldSummaryForNode(def.$index, [CityYieldNodes.MINUS_DEDUCTIONS])),
+        sources: incomeSources,
+        otherBaseIncome: income?.baseValue == null ? null
+          : income.baseValue - Object.values(incomeSources).reduce((sum, item) => sum + (item?.value ?? 0), 0),
+        incomeModifiers: modifiers ? {unit: "percent", value: modifiers.value,
+          sources: (modifiers.base?.steps ?? []).map(step => ({name: name(step.description), value: step.value}))} : null,
+        maintenance: Object.fromEntries(maintenance.map(key => [key,
+          summary(source(key, [CityYieldNodes.MINUS_DEDUCTIONS, CityYieldNodes.DEDUCTIONS]))]))
+      }];
+    }));
+  }
+
   function productionName(item) {
     switch (item.kind) {
       case ProductionKind.CONSTRUCTIBLE:
@@ -126,6 +155,7 @@
         def.YieldType,
         city.Yields.getNetYield(def.$hash)
       ])),
+      yieldBreakdown: yieldBreakdown(city),
       productionQueue: city.BuildQueue.getQueue().map(item => {
         const def = productionName(item);
         const type = def?.ConstructibleType ?? def?.UnitType ?? def?.ProjectType ?? null;

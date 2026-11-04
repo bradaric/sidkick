@@ -103,7 +103,9 @@ def create_server() -> MCPServer:
         title="Get Civ VII settlement details",
         description=(
             "Get the local player's cities and towns, focuses, growth, specialists, "
-            "buildings, districts, Great Work slots, yields, and production queues."
+            "buildings, districts, Great Work slots, yields, and production queues. "
+            "Includes engine-reported yield-source summaries, income modifiers in percent, "
+            "maintenance and unattributed base income; missing sources are null, not zero."
         ),
         annotations=read_only,
         structured_output=True,
@@ -143,7 +145,11 @@ def create_server() -> MCPServer:
         description=(
             "Get active and available technologies and civics with costs and unlocks, "
             "plus government, policies, traditions, crisis cards, and leader attribute "
-            "points, purchased/available perks, effects, prerequisites, base costs and wildcard funding."
+            "points, purchased/available perks, effects, prerequisites, base costs and wildcard funding. "
+            "Cards include audited base-science estimates for Pet Kot, Milpa I and Tequitl, "
+            "with qualifying counts/evidence. Other impacts are explicitly unknown. "
+            "Estimates exclude multipliers, cross-yield conversions and non-science effects; "
+            "they are not simulated policy-swap totals."
         ),
         annotations=read_only,
         structured_output=True,
