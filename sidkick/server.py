@@ -10,6 +10,7 @@ from mcp.types import Icon, ToolAnnotations
 from civ7.player import snapshot
 from civ7.queries import (
     available_decisions,
+    building_placements,
     diplomacy,
     empire,
     explored_map,
@@ -60,7 +61,8 @@ def create_server() -> MCPServer:
             "Triumphs and Dedications, resources and trade, units, victory progress, and known-world "
             "summary, plus available decisions, diplomacy, visible threats, and turn "
             "context. Excludes "
-            "the large per-tile explored map, which has a separate tool."
+            "the large per-tile explored map and targeted building-placement queries, "
+            "which have separate tools."
         ),
         annotations=ToolAnnotations(
             readOnlyHint=True,
@@ -117,6 +119,22 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(growth)
+    server.tool(
+        name="get_civ7_building_placements",
+        title="Get Civ VII building placement choices",
+        description=(
+            "Get legal building/wonder placement tiles for one owned settlement. "
+            "Required settlement is an exact displayed name (case-insensitive); optional "
+            "constructible is an exact type ID or displayed name. Includes production/"
+            "purchase availability, costs, turns, actual placement yield changes, bonus "
+            "breakdowns, upkeep changes and overbuilding losses. Positive maintenance "
+            "changes are costs. Tile validity does not imply purchase affordability. "
+            "Yield totals include engine-reported effects on other settlements. Hidden "
+            "tiles are excluded. Read-only: does not place, queue, or purchase anything."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(building_placements)
     server.tool(
         name="get_civ7_research_and_government",
         title="Get Civ VII research and government",

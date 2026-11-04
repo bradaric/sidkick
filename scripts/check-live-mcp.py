@@ -24,7 +24,16 @@ async def main() -> None:
                 raise RuntimeError("Sidkick did not advertise its icon")
             tools = await session.list_tools()
             for tool in tools.tools:
-                result = await session.call_tool(tool.name, {})
+                arguments = {}
+                if tool.name == "get_civ7_building_placements":
+                    details = await session.call_tool("get_civ7_settlements", {})
+                    if details.is_error:
+                        raise RuntimeError("Could not read settlements for placement query")
+                    settlements = (details.structured_content or {}).get("settlements", [])
+                    if not settlements:
+                        raise RuntimeError("A settlement is required to check building placements")
+                    arguments = {"settlement": settlements[0]["name"]}
+                result = await session.call_tool(tool.name, arguments)
                 if result.is_error:
                     raise RuntimeError(f"{tool.name} returned an MCP error")
             print(

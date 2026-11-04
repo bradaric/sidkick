@@ -15,17 +15,24 @@ from civ7_terminal.connection import _wrap_js
 from civ7_terminal.protocol import decode_header, encode_command
 
 
-async def run_script(script_name: str) -> dict[str, Any]:
-    """Execute one bundled read-only query and return its JSON object."""
+async def run_script(
+    script_name: str, arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Execute a bundled read-only query, optionally binding JSON queryArguments."""
     script_path = (ROOT / script_name).resolve()
     if script_path.parent != ROOT or script_path.suffix != ".js":
         raise ValueError("Civ VII queries must be bundled JavaScript files")
+
+    script = script_path.read_text(encoding="utf-8")
+    if arguments is not None:
+        # Parse data rather than interpolating selectors as executable JavaScript.
+        encoded = json.dumps(json.dumps(arguments, allow_nan=False))
+        script = f"((queryArguments) => {{ return {script}\n}})(JSON.parse({encoded}))"
 
     marker = "SIDKICK_RESULT:"
     async with asyncio.timeout(12):
         reader, writer = await asyncio.open_connection("127.0.0.1", 4318)
         try:
-            script = script_path.read_text(encoding="utf-8")
             writer.write(encode_command(_wrap_js(script, marker)))
             await writer.drain()
             while True:

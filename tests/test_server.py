@@ -26,6 +26,7 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_available_decisions",
                 "get_civ7_settlements",
                 "get_civ7_growth",
+                "get_civ7_building_placements",
                 "get_civ7_research_and_government",
                 "get_civ7_resources_and_trade",
                 "get_civ7_units",

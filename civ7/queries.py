@@ -21,6 +21,22 @@ async def growth() -> dict[str, Any]:
     return await run_script("growth.js")
 
 
+async def building_placements(
+    settlement: str, constructible: str | None = None,
+) -> dict[str, Any]:
+    """Read placements for one owned settlement, optionally one building or wonder."""
+    settlement = settlement.strip()
+    if not settlement:
+        raise ValueError("A settlement name is required")
+    if constructible is not None:
+        constructible = constructible.strip()
+        if not constructible:
+            raise ValueError("The constructible filter must not be blank")
+    return await run_script("building_placements.js", {
+        "settlement": settlement, "constructible": constructible,
+    })
+
+
 async def research_and_government() -> dict[str, Any]:
     return await run_script("research.js")
 
