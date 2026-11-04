@@ -117,6 +117,10 @@ Settlers include the engine's current-location and adjacent-plot founding checks
 
 The existing units tool now includes unowned `experience.promotionChoices`, including commendations, descriptions, discipline, and prerequisite ownership. Choices are deduplicated across prerequisite rows. `availableNow` requires both the picker's `canPromote`/`canEarnPromotion` checks and the native `PROMOTE` operation check. Prerequisite AND/OR semantics are left to the engine (`prerequisiteMode: null`), not guessed from the links. These tools never spend promotion points, select units, declare war, simulate asynchronously or issue attacks.
 
+### Coverage audit
+
+See [the coverage audit](docs/civ7-coverage-audit.md) for delivered boundaries, event/crisis/transition/later-Age gaps, source evidence and verification limits. All six agreed increments are accounted for there; this is not a claim that every Civilization VII mechanic is implemented or live-tested.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:
