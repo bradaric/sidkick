@@ -23,6 +23,8 @@ These boundaries are also described in the [README](../README.md). There are 19 
 
 ## Events and quests
 
+**Post-audit update:** turn context now adds pending local event choices using native pending IDs and UI queue heads, picker-equivalent requisite filtering, injected text, definition costs, affordability and read-only operation eligibility. Static/variable-link and blocked/acknowledgement cases are fixture-tested. Live verification at turn 113 exercised an empty pending queue; positive pending-choice cases have not yet been live-verified. Trial-specific choices and final runtime cost quotes remain unknown. The following original gap inventory is retained as historical context.
+
 **Covered:** [turn_context.js](../civ7/turn_context.js) returns active quests, progress/goal, deadlines and local notification summaries, severity and turn-blocking flags. Notification coordinates are filtered against revealed tiles.
 
 **Not covered:** pending event choices, choice-specific costs, requisite links, affordability/eligibility and injected reward text. A quest summary is not a complete event-option inventory, and a notification alone does not establish that a choice is actionable.
@@ -32,6 +34,8 @@ These boundaries are also described in the [README](../README.md). There are 19 
 **Verification limit:** no pending narrative-choice fixture or live choice save was added in this increment. These are source-identified gaps, not a certified implementation.
 
 ## Crises
+
+**Post-audit update:** turn context now uses the engine's stage count for index `0` and returns owned-settlement infection/plague-duration, damaged-constructible and happiness/unrest evidence. At turn 113, stage 1 and plague effects in Copan and Uxmal were live-verified. Damage attribution, numerical crisis yield penalties and nonzero crisis-index enumeration remain gaps. The following describes the original audit baseline.
 
 **Covered:** current crisis index `0`, stage, stage thresholds, reported minimum/maximum stage duration, active/available crisis cards, and ordinary settlement happiness/unrest data. Live turn 110 reported an active Exploration crisis at stage 0, with one active quest and no local notifications.
 
@@ -73,7 +77,7 @@ The commerce source for the first two rows is `base-standard/ui-next/screens/com
 
 ## Verification limits
 
-- Latest implementation verification: **54 Node tests and 36 Python tests passed**. `scripts/check-live-mcp.py` discovered and called all **19 tools** successfully using a temporary stdio child, not a restart of the user's persistent MCP connection.
+- Original six-increment baseline verification: **54 Node tests and 36 Python tests passed**. `scripts/check-live-mcp.py` discovered and called all **19 tools** successfully using a temporary stdio child, not a restart of the user's persistent MCP connection.
 - Live town/commerce checks returned 9 towns, 40 resources, 440 resource-destination checks and 5 current routes. An explicit Scout destination path and a blocked current-location Settler founding check were read successfully.
 - The units query returned 63 unowned promotion/commendation choices at turn 110. Positive and blocked picker/native eligibility combinations are fixture-tested; no points were spent.
 - The live save had **zero visible enemy units**. The combat tool's no-hostile-target path was live-tested; positive hostile-unit/district eligibility, invisibility, neutral/unmet owners and packed-attacker cases are fixture-tested, not live-certified combat scenarios.

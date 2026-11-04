@@ -288,7 +288,12 @@ def create_server() -> MCPServer:
         title="Get Civ VII turn context",
         description=(
             "Get active quests, crisis timing, notifications, deadlines, and Age progress "
-            "for the local player."
+            "for the local player. Includes pending local narrative/crisis response choices, "
+            "injected rewards/actions, base costs, affordability and read-only eligibility. "
+            "Trial-specific choices and runtime cost quotes are unknown. Owned crisis settlement "
+            "evidence includes infection, revealed plague durations, damage and happiness/unrest; "
+            "damage cause and numerical crisis yield penalties are not inferred. Never triggers "
+            "events, selects responses or changes turn/UI state."
         ),
         annotations=read_only,
         structured_output=True,

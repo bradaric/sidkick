@@ -121,6 +121,12 @@ The existing units tool now includes unowned `experience.promotionChoices`, incl
 
 See [the coverage audit](docs/civ7-coverage-audit.md) for delivered boundaries, event/crisis/transition/later-Age gaps, source evidence and verification limits. All six agreed increments are accounted for there; this is not a claim that every Civilization VII mechanic is implemented or live-tested.
 
+### Crisis and pending narrative responses
+
+`get_civ7_turn_context` now includes `pendingEvents`: deduplicated local pending stories and the UI queue heads, with injected option/action/reward text. Static and variable links follow the picker's requisite checks. `availableNow` requires both the native direction-choice check and affordability. `baseCost` is a definition amount/yield, not a final game-speed-adjusted quote; `quotedCost` remains `null`. An event with no eligible links returns the picker's acknowledgement choice (`CLOSE`). Trial-specific choices remain `null`, with an explicit unsupported reason. Empty pending data does not mean that no future crisis response will appear.
+
+Crisis stages are enumerated using the engine's stage count for crisis index `0`. `crisis.settlements` includes owned-settlement infection flags, revealed plague effects and positive remaining durations, damaged constructibles and happiness/unrest evidence. Private effects belonging to another owner and hidden plot locations are excluded. Plague `definitionBaseDamage` is not a damage forecast; damage attribution and numerical crisis yield penalties remain unknown. These queries neither open/close popups nor choose responses, trigger events, modify policies or advance turns.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:
