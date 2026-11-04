@@ -92,7 +92,12 @@ def create_server() -> MCPServer:
     server.tool(
         name="get_civ7_empire",
         title="Get Civ VII empire totals",
-        description="Get the local player's treasury, net yields, and settlement limit.",
+        description=(
+            "Get the local player's treasury, net yields and settlement limit, plus current "
+            "leader/persona and civilization ability/unique-item definitions. Identity-linked "
+            "trait modifiers include requirement-set evidence, not evaluated activation or "
+            "numerical yield contributions. Old-Age/other-persona abilities are not assumed active."
+        ),
         annotations=read_only,
         structured_output=True,
     )(empire)

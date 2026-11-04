@@ -100,6 +100,10 @@ Choices exclude already-selected beliefs/pantheons and retain engine failure rea
 
 `basePointCost` and `funding` describe the definition's base cost and how many wildcard points would cover a branch-point shortfall. They are not an actual price quote for repeat purchases. `availableNow` uses the engine's read-only purchase check and node/legend state; sufficient funding alone does not unlock a perk. This tool never spends points.
 
+### Local leader and civilization context
+
+`get_civ7_empire.identity` consolidates the local current leader/persona and civilization, their public ability/unique-item definitions and linked traits/modifier descriptions. Configuration items are matched by exact identity and current Age (or Age-independent definitions), not by persona prefixes or arbitrary old-Age fallbacks. Modifier owner/subject requirement-set IDs are evidence, not evaluated conditions; `appliedYieldContribution` remains `null`. Previous civilization identity is reported separately and does not imply carried-over abilities. Unique-item definitions are not proof of current build/train eligibility; use the focused decisions/research tools for native checks. Missing catalogs stay unknown. This is source/fixture-tested while the game is closed, not a certification of every persona/DLC/mod.
+
 ### Yield breakdowns and bounded policy estimates
 
 `get_civ7_settlements` includes `yieldBreakdown` for each yield: the engine's income and signed deductions, building/improvement/resource/trade and other source summaries, maintenance, and named income modifiers with an explicit `percent` unit. `value` is the engine-reported source total; `baseValue` and `modifierValue` are native calculation components, not extra yields to add to it. Sources are not guaranteed to explain all income: `otherBaseIncome` is the residual between reported base income and the returned source totals, not an attribution to a specific effect. Missing sources remain `null`. Use `netYields` for actual settlement totals; neither source values nor modifiers should be summed indiscriminately.
