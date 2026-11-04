@@ -111,6 +111,12 @@ Trade comparisons retain blocked candidates with native status reasons and the c
 
 Settlers include the engine's current-location and adjacent-plot founding checks. A destination also includes fresh water, terrain/features, current tile yields, resources already revealed within three hexes, and distances to owned settlements. These are **site-comparison evidence**, not a founding-site simulator: arbitrary `legalToFoundAfterMoving` and `newSettlementYields` remain `null`. Current/adjacent founding eligibility is not extended to distant tiles. The tool does not use AI settlement recommendations that could incorporate hidden-world information, and never selects, moves or founds anything. This targeted query is excluded from snapshots/exports.
 
+### Combat evidence and promotion choices
+
+`get_civ7_combat_options` requires an owned unit's numeric `instanceId` as `unit_id`, plus target `x` and `y`. The target tile must be **currently visible**, not merely explored. Only visible hostile defenders belonging to met players are exposed. It returns native melee/ranged/naval/air operation checks, failure reasons, observable health, and non-contextual native unit strength. These strengths are **not** a complete battle calculation. District strength is unknown. `expectedDamageToAttacker`, `expectedDamageToDefender` and `outcome` remain `null`: the UI's asynchronous `simulateAttackAsync` request is not invoked. No visible hostile defender means no offered attack options, not a fabricated combat forecast. Combat queries are targeted and excluded from snapshots/exports.
+
+The existing units tool now includes unowned `experience.promotionChoices`, including commendations, descriptions, discipline, and prerequisite ownership. Choices are deduplicated across prerequisite rows. `availableNow` requires both the picker's `canPromote`/`canEarnPromotion` checks and the native `PROMOTE` operation check. Prerequisite AND/OR semantics are left to the engine (`prerequisiteMode: null`), not guessed from the links. These tools never spend promotion points, select units, declare war, simulate asynchronously or issue attacks.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:

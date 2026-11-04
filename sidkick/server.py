@@ -12,6 +12,7 @@ from civ7.queries import (
     available_decisions,
     building_placements,
     city_states,
+    combat_options,
     diplomacy,
     empire,
     explored_map,
@@ -64,7 +65,7 @@ def create_server() -> MCPServer:
             "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context. Excludes "
-            "the large per-tile explored map and targeted building-placement/movement queries, "
+            "the large per-tile explored map and targeted building-placement/movement/combat queries, "
             "which have separate tools."
         ),
         annotations=ToolAnnotations(
@@ -189,7 +190,9 @@ def create_server() -> MCPServer:
         title="Get Civ VII units",
         description=(
             "Get only the local player's units, locations, health, movement, experience, "
-            "promotions, commander packing state, and stable instanceId values for targeted queries."
+            "promotions, commander packing state, and stable instanceId values for targeted queries. "
+            "Includes unowned promotion/commendation choices, effects, prerequisite ownership, "
+            "picker eligibility and native operation checks; prerequisite logic is not inferred."
         ),
         annotations=read_only,
         structured_output=True,
@@ -209,6 +212,20 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(movement_and_founding)
+    server.tool(
+        name="get_civ7_combat_options",
+        title="Get Civ VII combat eligibility and evidence",
+        description=(
+            "Read one owned unit by integer instanceId and a target x/y. Target tiles must "
+            "be currently visible; only visible hostile defenders belonging to met players "
+            "are exposed. Returns read-only melee/ranged/naval/air attack checks and observable "
+            "health/non-contextual strength. Damage predictions, contextual modifiers and outcomes "
+            "are unknown, not simulated. Never attacks, declares war, selects units or invokes "
+            "asynchronous simulation requests."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(combat_options)
     server.tool(
         name="get_civ7_known_world",
         title="Get Civ VII known world",

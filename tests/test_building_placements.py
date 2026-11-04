@@ -122,6 +122,7 @@ class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
         session.list_tools.return_value = SimpleNamespace(tools=[
             SimpleNamespace(name="get_civ7_building_placements"),
             SimpleNamespace(name="get_civ7_movement_and_founding"),
+            SimpleNamespace(name="get_civ7_combat_options"),
             SimpleNamespace(name="get_civ7_empire"),
         ])
 
@@ -130,8 +131,10 @@ class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(arguments, {"settlement": "City"})
             if name == "get_civ7_movement_and_founding":
                 self.assertEqual(arguments, {"unit_id": 7})
+            if name == "get_civ7_combat_options":
+                self.assertEqual(arguments, {"unit_id": 7, "x": 1, "y": 2})
             return SimpleNamespace(is_error=False, structured_content={
-                "settlements": [{"name": "City"}], "units": [{"instanceId": 7}],
+                "settlements": [{"name": "City"}], "units": [{"instanceId": 7, "location": {"x": 1, "y": 2}}],
             })
 
         session.call_tool.side_effect = call_tool

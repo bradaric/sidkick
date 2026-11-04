@@ -66,6 +66,13 @@ async def movement_and_founding(
     return await run_script("movement.js", {"unit_id": unit_id, "x": x, "y": y})
 
 
+async def combat_options(unit_id: int, x: int, y: int) -> dict[str, Any]:
+    """Read attack eligibility against a currently visible hostile target."""
+    if any(type(value) is not int or value < 0 for value in (unit_id, x, y)):
+        raise ValueError("Unit instance ID and coordinates must be nonnegative integers")
+    return await run_script("combat.js", {"unit_id": unit_id, "x": x, "y": y})
+
+
 async def known_world() -> dict[str, Any]:
     return await run_script("known_world.js")
 

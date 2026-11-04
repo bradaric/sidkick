@@ -33,14 +33,19 @@ async def main() -> None:
                     if not settlements:
                         raise RuntimeError("A settlement is required to check building placements")
                     arguments = {"settlement": settlements[0]["name"]}
-                if tool.name == "get_civ7_movement_and_founding":
+                if tool.name in {"get_civ7_movement_and_founding", "get_civ7_combat_options"}:
                     details = await session.call_tool("get_civ7_units", {})
                     if details.is_error:
-                        raise RuntimeError("Could not read units for movement query")
+                        raise RuntimeError("Could not read units for targeted unit query")
                     units = (details.structured_content or {}).get("units", [])
                     if not units:
-                        raise RuntimeError("An owned unit is required to check movement")
+                        raise RuntimeError("An owned unit is required for targeted unit queries")
                     arguments = {"unit_id": units[0]["instanceId"]}
+                    if tool.name == "get_civ7_combat_options":
+                        deployed = next((unit for unit in units if unit.get("location")), None)
+                        if deployed is None:
+                            raise RuntimeError("A deployed owned unit is required to check combat evidence")
+                        arguments = {"unit_id": deployed["instanceId"], **deployed["location"]}
                 result = await session.call_tool(tool.name, arguments)
                 if result.is_error:
                     raise RuntimeError(f"{tool.name} returned an MCP error")
