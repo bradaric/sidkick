@@ -97,5 +97,9 @@ async def turn_context() -> dict[str, Any]:
     return await run_script("turn_context.js")
 
 
+async def age_transition() -> dict[str, Any]:
+    return await run_script("age_transition.js")
+
+
 async def explored_map() -> dict[str, Any]:
     return await run_script("map.js")

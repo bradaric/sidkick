@@ -11,6 +11,7 @@ if __package__ in (None, ""):
 
 from civ7.connection import run_script
 from civ7.queries import (
+    age_transition,
     available_decisions,
     city_states,
     diplomacy,
@@ -48,6 +49,7 @@ async def snapshot() -> dict[str, Any]:
     city_state_data = await city_states()
     threat_data = await visible_threats()
     context_data = await turn_context()
+    transition_data = await age_transition()
     return {
         **core,
         "empire": empire_data,
@@ -65,6 +67,7 @@ async def snapshot() -> dict[str, Any]:
         "cityStates": city_state_data,
         "visibleThreats": threat_data,
         "turnContext": context_data,
+        "ageTransition": transition_data,
     }
 
 

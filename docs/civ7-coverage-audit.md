@@ -19,7 +19,7 @@ Game-source paths below are relative to the installation's `Base/modules/` direc
 | 5. Combat/promotions | `7d8a625` | Visible hostile target evidence, attack-operation checks and promotion/commendation choices with native eligibility. Damage, contextual battle modifiers and outcomes remain unknown. |
 | 6. Coverage audit | This document | Records the remaining gaps and verification limits without expanding into another implementation project. |
 
-These boundaries are also described in the [README](../README.md). There are 19 registered read-only MCP tools; the two targeted unit queries are not added to snapshots/exports.
+These boundaries are also described in the [README](../README.md). With the post-audit transition addition, there are 20 registered read-only MCP tools; the two targeted unit queries are not added to snapshots/exports.
 
 ## Events and quests
 
@@ -46,6 +46,8 @@ These boundaries are also described in the [README](../README.md). There are 19 
 **Verification limit:** the live timing read does not test other crises, later stages, or response outcomes.
 
 ## Age transitions
+
+**Post-audit update:** `get_civ7_age_transition` now combines the next-Age transition-specific civilization selector with local native unlock progress, including requirement states/current/total. It distinguishes current and transition Memento setup slots without querying online profile metadata. Native current-deck costs/limits and ADD checks are exposed with an explicit deck Age; future Dedication choices are not fabricated. ORIGINAL/KEEP_MORE gold/Influence caps are source-inspected, game-speed-adjusted estimates, not final-state predictions. The tool is included in snapshots. At turn 113, Modern candidates, unlock requirements, the completed Exploration deck, two transition Memento slots and KEEP_MORE cap estimates were live-read; no Age transition or profile/equip operation was performed. The original inventory below is retained as historical context; profile unlock/equip permission, future deck generation and final carry-over outcomes remain unverified.
 
 **Covered:** [player.js](../civ7/player.js) returns valid Triumph definitions, progress, completion and reward descriptions, plus selected/available Dedication card summaries and placement-complete status. [victory.js](../civ7/victory.js) returns Test of Time scores and countdown prerequisites for the local player and met major players. Age progress/countdown fields appear in turn context.
 
@@ -88,6 +90,8 @@ The commerce source for the first two rows is `base-standard/ui-next/screens/com
 ## Remaining technical gaps
 
 These are retained limitations, not additional changes included in the six increments:
+
+The later crisis/transition additions above address part of this baseline; the documented unknowns and original scenario limits still apply.
 
 - **Snapshot consistency and failure isolation:** [player.py](../civ7/player.py) gathers domains sequentially without enforcing a single turn; one exception still aborts the whole snapshot.
 - **Export generality:** one-shot export paths currently recognize Catherine's Exploration Maya/Chola saves only. Targeted placement, movement and combat queries are deliberately excluded from the export.

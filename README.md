@@ -127,6 +127,16 @@ See [the coverage audit](docs/civ7-coverage-audit.md) for delivered boundaries, 
 
 Crisis stages are enumerated using the engine's stage count for crisis index `0`. `crisis.settlements` includes owned-settlement infection flags, revealed plague effects and positive remaining durations, damaged constructibles and happiness/unrest evidence. Private effects belonging to another owner and hidden plot locations are excluded. Plague `definitionBaseDamage` is not a damage forecast; damage attribution and numerical crisis yield penalties remain unknown. These queries neither open/close popups nor choose responses, trigger events, modify policies or advance turns.
 
+### Age-transition planning
+
+`get_civ7_age_transition` reads the configured next Age and **`AgeTransitionPlayerCivilization`**, not the normal civilization setup selector. Candidate `setupValid` is combined with local `Game.Unlocks` progress to report `unlocked` and `eligibleByChecks`. Each unlock path includes requirement descriptions, native states, current/total progress and gameplay-versus-leader/history flags. Links are not assumed to be AND prerequisites, and a selector-valid civilization is not assumed to be unlocked. The configured unlock-bypass flag is explicit; missing unlock data stays unknown. `selectionPermission` is `null`: these planning checks are not an equip/select operation.
+
+`dedications` describes the **current engine deck**, including native deck size, point balances, costs, individual/group limits, selected cards and read-only ADD checks. A completed or full deck cannot report an addition as available merely because the native check succeeds. `deckAge` is explicit and `nextAgeChoices` remains `null`; old Exploration cards must not be presented as Modern choices. Card effect metadata and AI lists are not exposed.
+
+`mementos.currentSlots` and `transitionSlots` keep current and prospective loadouts distinct. Entries come from the filtered local setup parameters, with effect descriptions and domain-validity reasons. Online profile metadata is never requested; profile unlock status and equip permission remain `null` rather than being inferred from list membership. The finish-operation check is read-only and is not a general selection-phase flag.
+
+`carryOverRules` provides **source-inspected estimates**, not a final-state simulation. For the installed post-load script's ORIGINAL and KEEP_MORE settings, the next Exploration/Modern gold and Influence cap estimates use the native game-speed adjustment. `currentGoldAboveCap` and `currentInfluenceAboveCap` compare today's balances with those estimates, not predicted losses. The script's non-capital-city regression precedes retention cards; final city/town status, retained units, dynamic card effects and other transition outcomes are not predicted. Unknown modes/next Ages return unknown caps. No transition is performed to verify these estimates. Transition planning data is also included as `ageTransition` in snapshots/exports.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:

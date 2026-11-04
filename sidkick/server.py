@@ -9,6 +9,7 @@ from mcp.types import Icon, ToolAnnotations
 
 from civ7.player import snapshot
 from civ7.queries import (
+    age_transition,
     available_decisions,
     building_placements,
     city_states,
@@ -64,7 +65,7 @@ def create_server() -> MCPServer:
             "including empire totals, settlements, growth choices, research and government, "
             "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
-            "context. Excludes "
+            "context and age-transition planning data. Excludes "
             "the large per-tile explored map and targeted building-placement/movement/combat queries, "
             "which have separate tools."
         ),
@@ -298,6 +299,21 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(turn_context)
+    server.tool(
+        name="get_civ7_age_transition",
+        title="Get Civ VII age-transition planning data",
+        description=(
+            "Read next-Age civilization candidates from the transition-specific selector, "
+            "native local unlock requirements/progress and current/transition Memento setup "
+            "candidates. Includes current engine Dedication deck costs, limits and eligibility; "
+            "current cards are not presented as next-Age choices. Profile Memento unlock/equip "
+            "permission and unavailable future cards remain unknown. Carry-over caps are labelled "
+            "source-inspected estimates, not a verified final-state simulation. Never selects "
+            "civilizations/cards/Mementos, queries online profile data or advances the Age."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(age_transition)
     server.tool(
         name="get_civ7_explored_map",
         title="Get Civ VII explored map",

@@ -39,6 +39,7 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_city_states",
                 "get_civ7_visible_threats",
                 "get_civ7_turn_context",
+                "get_civ7_age_transition",
                 "get_civ7_explored_map",
             },
         )
@@ -74,6 +75,7 @@ class GrowthTests(unittest.IsolatedAsyncioTestCase):
         data = {"turn": 67, "settlements": []}
         religion_data = {"turn": 67, "beliefs": []}
         city_state_data = {"turn": 67, "powers": []}
+        transition_data = {"turn": 67, "nextAge": None}
         names = (
             "run_script", "empire", "settlements", "research_and_government",
             "resources_and_trade", "units", "known_world", "victory_progress",
@@ -94,13 +96,18 @@ class GrowthTests(unittest.IsolatedAsyncioTestCase):
             city_states = stack.enter_context(patch(
                 "civ7.player.city_states", new_callable=AsyncMock, return_value=city_state_data,
             ))
+            transition = stack.enter_context(patch(
+                "civ7.player.age_transition", new_callable=AsyncMock, return_value=transition_data,
+            ))
             result = await snapshot()
             self.assertEqual(result.get("growth"), data)
             self.assertEqual(result.get("religion"), religion_data)
             self.assertEqual(result.get("cityStates"), city_state_data)
+            self.assertEqual(result.get("ageTransition"), transition_data)
             growth.assert_awaited_once_with()
             religion.assert_awaited_once_with()
             city_states.assert_awaited_once_with()
+            transition.assert_awaited_once_with()
 
 
 class ReligionTests(unittest.IsolatedAsyncioTestCase):
@@ -139,6 +146,16 @@ class CityStateTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result.is_error)
         self.assertEqual(result.structured_content, data)
         run.assert_awaited_once_with("city_states.js")
+
+
+class AgeTransitionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_age_transition_tool_uses_bundled_read_only_script(self):
+        self.assertTrue(callable(getattr(queries, "age_transition", None)))
+        with patch("civ7.queries.run_script", new_callable=AsyncMock, return_value={"turn": 113}) as run:
+            result = await create_server().call_tool("get_civ7_age_transition", {})
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content, {"turn": 113})
+        run.assert_awaited_once_with("age_transition.js")
 
 
 if __name__ == "__main__":
