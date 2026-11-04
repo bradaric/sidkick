@@ -26,6 +26,19 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 .\civ7\.venv\Scripts\python.exe .\civ7\player.py
 ```
 
+## Snapshot reliability
+
+`get_civ7_player_snapshot` puts **`snapshotStatus` first**. Read it before combining domains; a successful MCP call does not mean a complete snapshot:
+
+- `status: "complete"`: all reads/checks succeeded and their observed consistency evidence agrees.
+- `status: "partial"`: a domain or boundary check failed. Successful domains remain available; failed fields are `null`, not empty lists or stale core fallbacks. `errors` records domain/type/message.
+- `status: "inconsistent"`: observed boundary turn/Age/local-player/civilization/leader changed, or domain turns disagree. Data is retained with a warning, not silently retried. This takes precedence over `partial`; check `complete` and `errors` too.
+- `status: "unverified"`: reads succeeded but consistency evidence, such as a valid domain turn, is missing. `consistent` is `null`, not `true`.
+
+`start`/`end` contain lightweight boundary markers; `domainTurns` retains provenance even for the flattened player, settlement/archived-Great-Work and unit fields. `complete` describes collection success, not consistency by itself. `consistent` applies only to observed surviving reads and boundary evidence. Collection remains sequential and **not atomic**: same-turn changes, or loading another save with identical markers, cannot be ruled out. There is no automatic retry, cache reuse or game/UI action. Cancellation still propagates rather than becoming partial success.
+
+The full export includes the explored map within the same consistency boundary. The exporter requires `status: "complete"`, `complete: true` and `consistent: true` **before creating a temporary file or replacing an existing export**; partial/inconsistent/unverified data is returned for diagnosis/advice, not written over a portable save snapshot. The existing Catherine Exploration filename restrictions are unchanged; this does not enable Modern exports.
+
 ## Standalone local service
 
 For a client that expects an HTTP URL, start the server yourself and leave the terminal open:

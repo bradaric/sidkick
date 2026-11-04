@@ -87,6 +87,7 @@ The commerce source for the first two rows is `base-standard/ui-next/screens/com
 
 ## Verification limits
 
+- Snapshot reliability update: **78 Node tests and 51 Python tests passed**, including per-domain/core/map failures, observed turn/Age/player/identity changes, missing evidence, cancellation, export gating and rejection of partial snapshots by the live smoke checker. The actual disconnected FireTuner path returned explicit partial/null/error data. Successful live snapshot/Modern verification is blocked while port 4318 is not listening; no persistent process was restarted and no export was written.
 - Combat follow-up: **76 Node tests and 37 Python tests passed**, plus live read-only calls to all **20 tools**. Live T115 checks cover readiness/modifier/terrain evidence, not positive hostile-target commander attacks or numerical outcomes.
 - Factory/rail and ideology/project additions: **72 Node tests and 37 Python tests passed**, plus live read-only calls to all **20 tools** in the Exploration save. Positive Modern behavior remains fixture-tested only; no transition was performed to obtain a Modern scenario.
 - Original six-increment baseline verification: **54 Node tests and 36 Python tests passed**. `scripts/check-live-mcp.py` discovered and called all **19 tools** successfully using a temporary stdio child, not a restart of the user's persistent MCP connection.
@@ -103,7 +104,7 @@ These are retained limitations, not additional changes included in the six incre
 
 The later crisis/transition additions above address part of this baseline; the documented unknowns and original scenario limits still apply.
 
-- **Snapshot consistency and failure isolation:** [player.py](../civ7/player.py) gathers domains sequentially without enforcing a single turn; one exception still aborts the whole snapshot.
+- **Snapshot consistency and failure isolation (post-audit update):** [player.py](../civ7/player.py) now isolates individual read failures as `null` fields with per-domain errors and prominent `snapshotStatus`. Lightweight before/after turn/Age/local-player/civilization/leader markers plus domain turn stamps detect observed inconsistencies; missing evidence is unknown. The map is inside the full export boundary, and export selection refuses partial/inconsistent/unverified data before writing. Reads remain sequential and non-atomic; same-turn changes and save switches with identical markers cannot be ruled out. No retry, cached fallback, game transition or service restart is performed.
 - **Export generality:** one-shot export paths currently recognize Catherine's Exploration Maya/Chola saves only. Targeted placement, movement and combat queries are deliberately excluded from the export.
 - **Economy/policy completeness:** source summaries can leave unattributed base income; most cards have unknown impact. Government alternatives, celebration choices, full source-level bottleneck explanations and general what-if effects remain incomplete.
 - **Diplomacy depth:** agreement terms/expiry, negotiation details and secondary-target choices are not a complete API. Older ongoing-action progress still uses an inferred formula and has not been revalidated as a general progress model.

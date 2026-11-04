@@ -54,15 +54,20 @@ def create_server() -> MCPServer:
             "focused tools for the needed domain. The explored-map tool is large and "
             "contains only tiles already revealed to the local player. Known-world and "
             "victory tools omit unmet players. Diplomacy omits unmet players, and visible "
-            "threats are discovered only on tiles visible this turn."
+            "threats are discovered only on tiles visible this turn. Inspect snapshotStatus "
+            "before using a player snapshot: partial, inconsistent or unverified results are "
+            "not a complete coherent game state, even when the tool call succeeds."
         ),
     )
     server.tool(
         name="get_civ7_player_snapshot",
         title="Get Civ VII player snapshot",
         description=(
-            "Read the loaded local player's complete Civilization VII strategy snapshot, "
-            "including empire totals, settlements, growth choices, research and government, "
+            "Read the loaded local player's Civilization VII strategy snapshot. Inspect "
+            "snapshotStatus first: failed domains are null with errors, and observed turn/Age/"
+            "player changes are flagged. Successful domains survive other failures. Boundary "
+            "checks are not an atomic read or a guarantee against same-turn changes. Includes "
+            "empire totals, settlements, growth choices, research and government, "
             "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context and age-transition planning data. Excludes "

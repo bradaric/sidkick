@@ -49,6 +49,13 @@ async def main() -> None:
                 result = await session.call_tool(tool.name, arguments)
                 if result.is_error:
                     raise RuntimeError(f"{tool.name} returned an MCP error")
+                if tool.name == "get_civ7_player_snapshot":
+                    status = (result.structured_content or {}).get("snapshotStatus")
+                    if (
+                        not isinstance(status, dict) or status.get("status") != "complete"
+                        or status.get("complete") is not True or status.get("consistent") is not True
+                    ):
+                        raise RuntimeError(f"Player snapshot failed reliability checks: {status}")
             print(
                 f"MCP {initialized.protocol_version}: "
                 f"{len(tools.tools)} tools discovered and called successfully"
