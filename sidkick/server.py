@@ -93,7 +93,9 @@ def create_server() -> MCPServer:
         title="Get Civ VII available decisions",
         description=(
             "Get currently available settlement production and purchase choices, costs, "
-            "turns, town conversions, and visible unit upgrades."
+            "turns, town conversions, and visible unit upgrades. Includes current/engine-offered "
+            "town focuses, descriptions, population requirements, eligibility and owned "
+            "connection/food evidence. Focus yield comparisons are unknown, not simulated."
         ),
         annotations=read_only,
         structured_output=True,
@@ -173,7 +175,10 @@ def create_server() -> MCPServer:
         title="Get Civ VII resources and trade",
         description=(
             "Get the local player's resources, settlement assignments and free slots, "
-            "trade-network state, and active or available known routes."
+            "trade-network state, read-only per-resource assignment eligibility, current "
+            "route count and known revealed route candidates including blocked routes/reasons. "
+            "Resource/focus marginal yields and Merchant-specific route eligibility are unknown. "
+            "Does not assign resources or invoke stateful preview requests."
         ),
         annotations=read_only,
         structured_output=True,
@@ -295,4 +300,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

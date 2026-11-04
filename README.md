@@ -97,6 +97,14 @@ Major-player diplomacy uses the same selected-target cost semantics, retaining i
 
 `bonusChoices[].eligible` follows the game's bonus picker; `availableNow` additionally requires a pending choice for this city-state, local suzerainty, and the engine's selection check. It does not imply an existing bonus can be replaced. `ongoingActions` includes only projects initiated by you against that power, with direct progress, required progress, turns remaining, and befriending support cost/eligibility. Other players' ongoing projects are omitted. City-state data and attribute trees are included in snapshots and exports. These tools never spend influence, select bonuses, befriend, levy, or incorporate anything.
 
+### Town focuses, resource assignments and trade comparisons
+
+`get_civ7_available_decisions` includes `townFocus` for towns: Growing Town plus the engine's currently offered project choices, current-selection flags, read-only eligibility and failure reasons, descriptions and population requirements. Project-specific checks use the project's hash, not its database index. Connected-settlement evidence is restricted to owned settlements. `reportedFoodPerConnectedCity` is a current engine value, **not** a projection for another focus or a guarantee that food is currently exported. Focus `netYieldChange` is `null`; Sidkick does not send `CONSIDER_TOWN_PROJECT` or change growth modes.
+
+`get_civ7_resources_and_trade` adds `assignmentChoices` for each owned resource, with current assignment, per-settlement `ASSIGN_RESOURCE` eligibility and failure reasons. Map and off-map instances with the same numeric ID remain distinct. Eligibility checks never assign or unassign resources. Marginal yields remain `null`: the UI's stateful `CONSIDER_ASSIGN_RESOURCE` preview request is not used.
+
+Trade comparisons retain blocked candidates with native status reasons and the current total route count. Only owned or revealed settlements belonging to met players are returned; origin names follow the same restriction. `status: "available"` is a route-level quote, not permission for a particular Merchant to establish it. `merchantOperationAllowed` and marginal `netYieldChange` remain `null`. Engine import/export payloads are not treated as marginal empire-wide gains, and raw paths are omitted.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:
@@ -174,4 +182,3 @@ The script prompts securely for the runtime key, saves it in the ignored `.sidki
 ```
 
 For double-click use, run `start-sidkick.bat` or `stop-sidkick.bat` from the repository root. Automatic startup is controlled by `enable-start-with-windows.bat` and `disable-start-with-windows.bat`; `start-with-windows-status.bat` reports the current setting. This uses the current user's Windows Startup folder and does not require administrator rights.
-

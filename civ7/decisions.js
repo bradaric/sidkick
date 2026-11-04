@@ -5,6 +5,42 @@
   const player = Players.get(playerId);
   const name = key => key ? Locale.compose(key) : null;
   const reasons = result => (result?.FailureReasons ?? []).map(name).filter(Boolean);
+  const cities = player.Cities.getCities();
+
+  function townFocus(city) {
+    if (!city.isTown) return null;
+    const offered = Game.CityCommands.canStart(city.id, CityCommandTypes.CHANGE_GROWTH_MODE,
+      {Type: GrowthTypes.PROJECT}, false);
+    const choices = [{id: "GROWTH", name: name("LOC_UI_FOOD_CHOOSER_FOCUS_GROWTH"),
+      description: name("LOC_PROJECT_TOWN_FOOD_INCREASE_DESCRIPTION"), type: GrowthTypes.EXPAND,
+      project: ProjectTypes.NO_PROJECT, prerequisitePopulation: null}];
+    for (const index of offered?.Projects ?? []) {
+      const def = GameInfo.Projects.lookup(index);
+      if (def) choices.push({id: def.ProjectType, name: name(def.Name), description: name(def.Description),
+        type: GrowthTypes.PROJECT, project: def.$hash, prerequisitePopulation: def.PrereqPopulation ?? null});
+    }
+    return {
+      scope: "Growth plus the engine's currently offered focus projects; no stateful preview initialization",
+      failureReasons: reasons(offered),
+      options: choices.map(choice => {
+        const result = Game.CityCommands.canStart(city.id, CityCommandTypes.CHANGE_GROWTH_MODE,
+          {Type: choice.type, ProjectType: choice.project, City: city.id.id}, false);
+        return {
+          id: choice.id, name: choice.name, description: choice.description,
+          current: city.Growth.growthType === choice.type &&
+            (choice.type === GrowthTypes.EXPAND || city.Growth.projectType === choice.project),
+          availableNow: Boolean(result?.Success), failureReasons: reasons(result),
+          prerequisitePopulation: choice.prerequisitePopulation,
+          netYieldChange: null
+        };
+      }),
+      connectedOwnedSettlements: (city.getConnectedCities() ?? []).map(connected => cities.find(other =>
+        other.id.owner === connected.owner && other.id.id === connected.id && other.id.type === connected.type))
+        .filter(Boolean).map(other => name(other.name)),
+      reportedFoodPerConnectedCity: city.getSentFoodPerCity(),
+      comparisonNote: "Reported food is current engine data, not a projection for another focus or a guarantee food is being exported"
+    };
+  }
 
   function constructibleChoice(city, entry, purchase) {
     const result = entry.result;
@@ -105,6 +141,7 @@
       name: name(city.name),
       status: city.isCapital ? "capital" : city.isTown ? "town" : "city",
       location: {x: city.location.x, y: city.location.y},
+      townFocus: townFocus(city),
       townUpgrade: city.isTown ? {
         cost: townUpgradeCost,
         affordable: townUpgradeCost == null ? null : player.Treasury.goldBalance >= townUpgradeCost
@@ -147,7 +184,7 @@
   return {
     turn: Game.turn,
     treasury: player.Treasury.goldBalance,
-    settlements: player.Cities.getCities().map(settlement),
+    settlements: cities.map(settlement),
     unitUpgrades
   };
 })()
