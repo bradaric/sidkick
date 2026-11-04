@@ -9,11 +9,18 @@ from mcp.types import Icon, ToolAnnotations
 
 from civ7.player import snapshot
 from civ7.queries import (
+    age_transition,
     available_decisions,
+    building_placements,
+    city_states,
+    combat_options,
     diplomacy,
     empire,
     explored_map,
+    growth,
     known_world,
+    movement_and_founding,
+    religion,
     research_and_government,
     resources_and_trade,
     settlements,
@@ -47,19 +54,25 @@ def create_server() -> MCPServer:
             "focused tools for the needed domain. The explored-map tool is large and "
             "contains only tiles already revealed to the local player. Known-world and "
             "victory tools omit unmet players. Diplomacy omits unmet players, and visible "
-            "threats are discovered only on tiles visible this turn."
+            "threats are discovered only on tiles visible this turn. Inspect snapshotStatus "
+            "before using a player snapshot: partial, inconsistent or unverified results are "
+            "not a complete coherent game state, even when the tool call succeeds."
         ),
     )
     server.tool(
         name="get_civ7_player_snapshot",
         title="Get Civ VII player snapshot",
         description=(
-            "Read the loaded local player's complete Civilization VII strategy snapshot, "
-            "including empire totals, settlements, research and government, Triumphs and "
-            "Dedications, resources and trade, units, victory progress, and known-world "
-            "summary, plus available decisions, diplomacy, visible threats, and turn "
-            "context. Excludes "
-            "the large per-tile explored map, which has a separate tool."
+            "Read the loaded local player's Civilization VII strategy snapshot. Inspect "
+            "snapshotStatus first: failed domains are null with errors, and observed turn/Age/"
+            "player changes are flagged. Successful domains survive other failures. Boundary "
+            "checks are not an atomic read or a guarantee against same-turn changes. Includes "
+            "empire totals, settlements, growth choices, research and government, "
+            "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
+            "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
+            "context and age-transition planning data. Excludes "
+            "the large per-tile explored map and targeted building-placement/movement/combat queries, "
+            "which have separate tools."
         ),
         annotations=ToolAnnotations(
             readOnlyHint=True,
@@ -88,7 +101,9 @@ def create_server() -> MCPServer:
         title="Get Civ VII available decisions",
         description=(
             "Get currently available settlement production and purchase choices, costs, "
-            "turns, town conversions, and visible unit upgrades."
+            "turns, town conversions, and visible unit upgrades. Includes current/engine-offered "
+            "town focuses, descriptions, population requirements, eligibility and owned "
+            "connection/food evidence. Focus yield comparisons are unknown, not simulated."
         ),
         annotations=read_only,
         structured_output=True,
@@ -98,27 +113,85 @@ def create_server() -> MCPServer:
         title="Get Civ VII settlement details",
         description=(
             "Get the local player's cities and towns, focuses, growth, specialists, "
-            "buildings, districts, Great Work slots, yields, and production queues."
+            "buildings, districts, Great Work slots, yields, and production queues. "
+            "Includes engine-reported yield-source summaries, income modifiers in percent, "
+            "maintenance and unattributed base income; missing sources are null, not zero."
         ),
         annotations=read_only,
         structured_output=True,
     )(settlements)
     server.tool(
+        name="get_civ7_growth",
+        title="Get Civ VII growth choices",
+        description=(
+            "Get local settlement growth progress, legal expansion choices, separate "
+            "improvement placement previews, and specialist slots with yield bonuses, "
+            "maintenance changes, and net yield changes per turn. Positive maintenance "
+            "changes are costs. Previews are not legal growth choices; options may be "
+            "empty until population is ready to place. Hidden tiles are excluded."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(growth)
+    server.tool(
+        name="get_civ7_building_placements",
+        title="Get Civ VII building placement choices",
+        description=(
+            "Get legal building/wonder placement tiles for one owned settlement. "
+            "Required settlement is an exact displayed name (case-insensitive); optional "
+            "constructible is an exact type ID or displayed name. Includes production/"
+            "purchase availability, costs, turns, actual placement yield changes, bonus "
+            "breakdowns, upkeep changes and overbuilding losses. Positive maintenance "
+            "changes are costs. Tile validity does not imply purchase affordability. "
+            "Yield totals include engine-reported effects on other settlements. Hidden "
+            "tiles are excluded. Read-only: does not place, queue, or purchase anything."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(building_placements)
+    server.tool(
         name="get_civ7_research_and_government",
         title="Get Civ VII research and government",
         description=(
             "Get active and available technologies and civics with costs and unlocks, "
-            "plus government, policies, traditions, crisis cards, and attribute points."
+            "plus government, policies, traditions, crisis cards, and leader attribute "
+            "points, purchased/available perks, effects, prerequisites, base costs and wildcard funding. "
+            "Cards include audited base-science estimates for Pet Kot, Milpa I and Tequitl, "
+            "with qualifying counts/evidence. Other impacts are explicitly unknown. "
+            "Estimates exclude multipliers, cross-yield conversions and non-science effects; "
+            "they are not simulated policy-swap totals. In Modern, includes chosen ideology, "
+            "policy affiliations and native entry-civic research checks with costs/unlocks; "
+            "immediate ideology adoption/change permission and diplomatic impacts remain unknown."
         ),
         annotations=read_only,
         structured_output=True,
     )(research_and_government)
     server.tool(
+        name="get_civ7_religion",
+        title="Get Civ VII religion and belief choices",
+        description=(
+            "Get the local player's religion, selected pantheons and beliefs with effects, "
+            "holy city, belief-class slots, and owned settlements' majority, urban and "
+            "rural religions. Distinguishes global belief claimability, picker slot "
+            "availability, choices available now, and choices selectable during founding. "
+            "Foreign founders are identified only when met; no hidden world totals. "
+            "Read-only: does not found religions, select beliefs, or convert settlements."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(religion)
+    server.tool(
         name="get_civ7_resources_and_trade",
         title="Get Civ VII resources and trade",
         description=(
             "Get the local player's resources, settlement assignments and free slots, "
-            "trade-network state, and active or available known routes."
+            "trade-network state, read-only per-resource assignment eligibility, current "
+            "route count and known revealed route candidates including blocked routes/reasons. "
+            "Includes owned rail-network membership, station presence and land-capital connectivity; "
+            "Modern factory state/counts and native factory/station build/purchase reasons. "
+            "Factory GDP and marginal production are unknown; station presence is not connectivity. "
+            "Resource/focus marginal yields and Merchant-specific route eligibility are unknown. "
+            "Does not assign resources or invoke stateful preview requests."
         ),
         annotations=read_only,
         structured_output=True,
@@ -128,11 +201,47 @@ def create_server() -> MCPServer:
         title="Get Civ VII units",
         description=(
             "Get only the local player's units, locations, health, movement, experience, "
-            "promotions, and commander packing state."
+            "promotions, commander packing state, and stable instanceId values for targeted queries. "
+            "Includes unowned promotion/commendation choices, effects, prerequisite ownership, "
+            "picker eligibility and native operation checks; prerequisite logic is not inferred."
         ),
         annotations=read_only,
         structured_output=True,
     )(units)
+    server.tool(
+        name="get_civ7_movement_and_founding",
+        title="Get Civ VII unit movement and founding evidence",
+        description=(
+            "Read one owned unit by its integer instanceId from get_civ7_units. Returns "
+            "revealed movement options and optional destination path/site evidence. Supply "
+            "both x and y, or omit both to inspect the unit's location. Native path turn "
+            "labels are retained; paths through hidden tiles are withheld. Settlers include "
+            "current/adjacent founding checks; arbitrary future-site legality and new "
+            "settlement yields are unknown. Site evidence includes fresh water, current tile "
+            "yields, nearby revealed resources and owned settlement distances. Separate rail command "
+            "eligibility and revealed native rail destination plots are included; rail travel cost "
+            "and paths are unknown. Never moves, transports by rail or founds."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(movement_and_founding)
+    server.tool(
+        name="get_civ7_combat_options",
+        title="Get Civ VII combat eligibility and evidence",
+        description=(
+            "Read one owned unit by integer instanceId and a target x/y. Target tiles must "
+            "be currently visible; only visible hostile defenders belonging to met players "
+            "are exposed. Returns read-only melee/ranged/naval/air attack checks and observable "
+            "health/non-contextual strength. Includes attacker readiness, whitelisted local "
+            "reported modifiers, visible terrain definition values and a separate commander-attack "
+            "command check requiring this target in native plots. Reported modifiers are not "
+            "applied contextual totals. Damage predictions, contextual strengths and outcomes "
+            "are unknown, not simulated. Never attacks, declares war, selects units or invokes "
+            "asynchronous simulation requests."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(combat_options)
     server.tool(
         name="get_civ7_known_world",
         title="Get Civ VII known world",
@@ -148,7 +257,11 @@ def create_server() -> MCPServer:
         title="Get Civ VII victory progress",
         description=(
             "Get Test of Time victory conditions, thresholds, countdowns, prerequisites, "
-            "and progress for the local player and met major players only."
+            "and progress for the local player and met major players only. Includes loaded "
+            "Modern production-project requirements and owned-settlement BUILD eligibility, "
+            "blocked reasons, prerequisite scopes, mastery unlock depths and current cost/turn "
+            "quotes. Project inventory includes conversion projects, not just victory projects. "
+            "Completed project counts and victory-completion forecasts remain unknown."
         ),
         annotations=read_only,
         structured_output=True,
@@ -158,11 +271,28 @@ def create_server() -> MCPServer:
         title="Get Civ VII diplomacy",
         description=(
             "Get relationships, modifiers, deals, ongoing projects, and available "
-            "diplomatic actions involving met major players only."
+            "diplomatic actions involving met major players only. Action costs and failure "
+            "reasons are for the selected leader; actions requiring secondary targets "
+            "have unknown total costs and may need further eligibility checks."
         ),
         annotations=read_only,
         structured_output=True,
     )(diplomacy)
+    server.tool(
+        name="get_civ7_city_states",
+        title="Get Civ VII city-state and independent diplomacy",
+        description=(
+            "Get met city-states and met/discovered independent powers, suzerains, current "
+            "bonus effects and eligible bonus choices, local influence, diplomatic action "
+            "eligibility and selected-target costs including incorporation, plus your "
+            "ongoing befriending progress and support costs. Bonus eligibility is not a "
+            "pending selection; actions may require secondary targets. Omits hidden "
+            "locations, unmet suzerain identities, and other players' ongoing projects. "
+            "Read-only: never spends influence, selects bonuses, or incorporates powers."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(city_states)
     server.tool(
         name="get_civ7_visible_threats",
         title="Get Civ VII visible threats",
@@ -178,11 +308,31 @@ def create_server() -> MCPServer:
         title="Get Civ VII turn context",
         description=(
             "Get active quests, crisis timing, notifications, deadlines, and Age progress "
-            "for the local player."
+            "for the local player. Includes pending local narrative/crisis response choices, "
+            "injected rewards/actions, base costs, affordability and read-only eligibility. "
+            "Trial-specific choices and runtime cost quotes are unknown. Owned crisis settlement "
+            "evidence includes infection, revealed plague durations, damage and happiness/unrest; "
+            "damage cause and numerical crisis yield penalties are not inferred. Never triggers "
+            "events, selects responses or changes turn/UI state."
         ),
         annotations=read_only,
         structured_output=True,
     )(turn_context)
+    server.tool(
+        name="get_civ7_age_transition",
+        title="Get Civ VII age-transition planning data",
+        description=(
+            "Read next-Age civilization candidates from the transition-specific selector, "
+            "native local unlock requirements/progress and current/transition Memento setup "
+            "candidates. Includes current engine Dedication deck costs, limits and eligibility; "
+            "current cards are not presented as next-Age choices. Profile Memento unlock/equip "
+            "permission and unavailable future cards remain unknown. Carry-over caps are labelled "
+            "source-inspected estimates, not a verified final-state simulation. Never selects "
+            "civilizations/cards/Mementos, queries online profile data or advances the Age."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(age_transition)
     server.tool(
         name="get_civ7_explored_map",
         title="Get Civ VII explored map",
@@ -223,4 +373,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

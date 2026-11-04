@@ -6,6 +6,61 @@
   if (!localPlayer) throw Error("No local player");
   const diplomacy = localPlayer.Diplomacy;
   const name = key => key ? Locale.compose(key) : null;
+  const age = GameInfo.Ages.lookup(Game.age);
+
+  function modernProjectRequirements() {
+    if (age?.AgeType !== "AGE_MODERN") return null;
+    const cities = localPlayer.Cities.getCities();
+    const completed = localPlayer.LegacyPaths?.getCompletedLegacyPaths();
+    const completedPaths = completed == null ? null : new Set(completed
+      .map(type => GameInfo.LegacyPaths.lookup(type)?.LegacyPathType).filter(Boolean));
+    // Include loaded production projects, not a hardcoded victory chain that may be obsolete.
+    const projects = [...GameInfo.Projects].filter(def => !def.TownOnly && !def.UpgradeToCity && def.Cost > 0).map(def => {
+      const constructible = def.PrereqConstructible ? GameInfo.Constructibles.lookup(def.PrereqConstructible) : null;
+      const legacyPath = def.RequireCompletedLegacyPathType ? GameInfo.LegacyPaths.lookup(def.RequireCompletedLegacyPathType) : null;
+      const unlocks = GameInfo.ProgressionTreeNodeUnlocks.filter(unlock => !unlock.Hidden &&
+        unlock.TargetKind === "KIND_PROJECT" && unlock.TargetType === def.ProjectType).map(unlock => {
+        const node = GameInfo.ProgressionTreeNodes.lookup(unlock.ProgressionTreeNodeType);
+        const state = node ? Game.ProgressionTrees.getNode(localId, node.$hash) : null;
+        return {id: unlock.ProgressionTreeNodeType, name: name(node?.Name), requiredDepth: unlock.UnlockDepth ?? null,
+          depthUnlocked: state?.depthUnlocked ?? null,
+          met: state?.depthUnlocked == null || unlock.UnlockDepth == null ? null : state.depthUnlocked >= unlock.UnlockDepth};
+      });
+      const hasPrerequisite = city => city.Constructibles?.hasConstructible(def.PrereqConstructible, false) ?? null;
+      const anyCityPrerequisite = def.PrereqConstructible && def.PrereqAnyCity ? cities.map(hasPrerequisite) : null;
+      const empirePrerequisite = anyCityPrerequisite?.some(value => value === true) ? true
+        : anyCityPrerequisite?.every(value => value === false) ? false : null;
+      return {
+        id: def.ProjectType, name: name(def.Name), description: name(def.Description),
+        baseProductionCost: def.Cost, maxPlayerInstances: def.MaxPlayerInstances ?? null,
+        completedCopies: null, completionForecast: null,
+        requirements: {
+          cityOnly: Boolean(def.CityOnly), requiresUnlock: def.RequiresUnlock ?? null,
+          constructible: def.PrereqConstructible ? {id: def.PrereqConstructible, name: name(constructible?.Name), anyOwnedSettlement: Boolean(def.PrereqAnyCity)} : null,
+          legacyPath: def.RequireCompletedLegacyPathType ? {id: def.RequireCompletedLegacyPathType, name: name(legacyPath?.Name),
+            complete: completedPaths == null ? null : completedPaths.has(def.RequireCompletedLegacyPathType)} : null,
+          unlocks
+        },
+        settlements: cities.map(city => {
+          const result = Game.CityOperations.canStart(city.id, CityOperationTypes.BUILD, {ProjectType: def.$index}, false);
+          return {
+            name: name(city.name), availableNow: result ? Boolean(result.Success) : null,
+            failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+            meetsNativeRequirements: result?.Requirements?.MeetsRequirements ?? null,
+            fullFailure: result?.Requirements?.FullFailure ?? null,
+            prerequisiteConstructiblePresent: !def.PrereqConstructible ? null : def.PrereqAnyCity ? empirePrerequisite : hasPrerequisite(city),
+            inQueue: result?.InQueue ?? null,
+            productionCost: city.Production.getProjectProductionCost(def.ProjectType) ?? null,
+            turnsAtCurrentProduction: result?.Success ? city.BuildQueue.getTurnsLeft(def.ProjectType) ?? null : null
+          };
+        })
+      };
+    });
+    return {projects,
+      scope: "Loaded Modern non-town, non-upgrade projects with positive definition costs; includes conversion projects, not an assertion that every project wins a victory",
+      note: "Owned settlements only. Visible unlock links and definition prerequisites are evidence, not an exhaustive requirement evaluator or an AND dependency chain. Native BUILD checks decide availability; current-production turn quotes are not victory forecasts"
+    };
+  }
 
   const players = [];
   for (const playerId of Players.getAliveIds()) {
@@ -95,6 +150,7 @@
     },
     scope: "Local player and met major players only",
     players,
-    victoryConditions
+    victoryConditions,
+    modernProjects: modernProjectRequirements()
   };
 })()
