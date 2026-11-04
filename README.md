@@ -105,6 +105,12 @@ Major-player diplomacy uses the same selected-target cost semantics, retaining i
 
 Trade comparisons retain blocked candidates with native status reasons and the current total route count. Only owned or revealed settlements belonging to met players are returned; origin names follow the same restriction. `status: "available"` is a route-level quote, not permission for a particular Merchant to establish it. `merchantOperationAllowed` and marginal `netYieldChange` remain `null`. Engine import/export payloads are not treated as marginal empire-wide gains, and raw paths are omitted.
 
+### Movement and founding-site evidence
+
+`get_civ7_units` includes a stable numeric `instanceId`, distinct from the existing unit-type `id`. Pass it to `get_civ7_movement_and_founding`, optionally with **both** `x` and `y`. Without coordinates, it inspects the unit's current location. Only owned units and revealed destinations are accepted. The tool returns revealed movement-range candidates, per-tile operation eligibility, and the engine's path turn labels without converting them to an inferred number of turns remaining. Attack targets are excluded from movement candidates; packed units and units stopped by a zone of control do not receive an unrestricted range. A path containing any hidden tile is withheld in full, and raw path obstacles are never returned.
+
+Settlers include the engine's current-location and adjacent-plot founding checks. A destination also includes fresh water, terrain/features, current tile yields, resources already revealed within three hexes, and distances to owned settlements. These are **site-comparison evidence**, not a founding-site simulator: arbitrary `legalToFoundAfterMoving` and `newSettlementYields` remain `null`. Current/adjacent founding eligibility is not extended to distant tiles. The tool does not use AI settlement recommendations that could incorporate hidden-world information, and never selects, moves or founds anything. This targeted query is excluded from snapshots/exports.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:

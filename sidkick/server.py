@@ -17,6 +17,7 @@ from civ7.queries import (
     explored_map,
     growth,
     known_world,
+    movement_and_founding,
     religion,
     research_and_government,
     resources_and_trade,
@@ -63,7 +64,7 @@ def create_server() -> MCPServer:
             "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context. Excludes "
-            "the large per-tile explored map and targeted building-placement queries, "
+            "the large per-tile explored map and targeted building-placement/movement queries, "
             "which have separate tools."
         ),
         annotations=ToolAnnotations(
@@ -188,11 +189,26 @@ def create_server() -> MCPServer:
         title="Get Civ VII units",
         description=(
             "Get only the local player's units, locations, health, movement, experience, "
-            "promotions, and commander packing state."
+            "promotions, commander packing state, and stable instanceId values for targeted queries."
         ),
         annotations=read_only,
         structured_output=True,
     )(units)
+    server.tool(
+        name="get_civ7_movement_and_founding",
+        title="Get Civ VII unit movement and founding evidence",
+        description=(
+            "Read one owned unit by its integer instanceId from get_civ7_units. Returns "
+            "revealed movement options and optional destination path/site evidence. Supply "
+            "both x and y, or omit both to inspect the unit's location. Native path turn "
+            "labels are retained; paths through hidden tiles are withheld. Settlers include "
+            "current/adjacent founding checks; arbitrary future-site legality and new "
+            "settlement yields are unknown. Site evidence includes fresh water, current tile "
+            "yields, nearby revealed resources and owned settlement distances. Never moves or founds."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(movement_and_founding)
     server.tool(
         name="get_civ7_known_world",
         title="Get Civ VII known world",

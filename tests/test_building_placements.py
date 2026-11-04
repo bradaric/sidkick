@@ -104,7 +104,7 @@ class QueryArgumentTests(unittest.IsolatedAsyncioTestCase):
 
 
 class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
-    async def test_live_check_supplies_required_settlement_argument(self) -> None:
+    async def test_live_check_supplies_required_target_arguments(self) -> None:
         path = Path(__file__).resolve().parents[1] / "scripts/check-live-mcp.py"
         spec = importlib.util.spec_from_file_location("check_live_mcp", path)
         check = importlib.util.module_from_spec(spec)
@@ -121,13 +121,18 @@ class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
         )
         session.list_tools.return_value = SimpleNamespace(tools=[
             SimpleNamespace(name="get_civ7_building_placements"),
+            SimpleNamespace(name="get_civ7_movement_and_founding"),
             SimpleNamespace(name="get_civ7_empire"),
         ])
 
         async def call_tool(name, arguments):
             if name == "get_civ7_building_placements":
                 self.assertEqual(arguments, {"settlement": "City"})
-            return SimpleNamespace(is_error=False, structured_content={"settlements": [{"name": "City"}]})
+            if name == "get_civ7_movement_and_founding":
+                self.assertEqual(arguments, {"unit_id": 7})
+            return SimpleNamespace(is_error=False, structured_content={
+                "settlements": [{"name": "City"}], "units": [{"instanceId": 7}],
+            })
 
         session.call_tool.side_effect = call_tool
         with patch.object(check, "stdio_client", transport), patch.object(check, "ClientSession", return_value=session):

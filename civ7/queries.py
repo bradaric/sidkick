@@ -53,6 +53,19 @@ async def units() -> dict[str, Any]:
     return await run_script("units.js")
 
 
+async def movement_and_founding(
+    unit_id: int, x: int | None = None, y: int | None = None,
+) -> dict[str, Any]:
+    """Read one owned unit's movement and optional revealed-site evidence."""
+    if type(unit_id) is not int or unit_id < 0:
+        raise ValueError("A nonnegative owned unit instance ID is required")
+    if (x is None) != (y is None):
+        raise ValueError("Supply x and y together")
+    if x is not None and (type(x) is not int or type(y) is not int or x < 0 or y < 0):
+        raise ValueError("Coordinates must be nonnegative integers")
+    return await run_script("movement.js", {"unit_id": unit_id, "x": x, "y": y})
+
+
 async def known_world() -> dict[str, Any]:
     return await run_script("known_world.js")
 

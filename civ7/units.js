@@ -37,6 +37,7 @@
       }
       return {
         id: def?.UnitType ?? unit.type,
+        instanceId: unit.id.id,
         name: name(unit.name ?? def?.Name),
         typeName: name(def?.Name),
         formationClass: def?.FormationClass ?? null,
