@@ -4,7 +4,10 @@
   if (!Number.isInteger(id) || id < 0) throw Error("No local player");
   const player = Players.get(id);
   const name = key => key ? Locale.compose(key) : null;
-  const modern = GameInfo.Ages.lookup(Game.age)?.AgeType === "AGE_MODERN";
+  const age = GameInfo.Ages.lookup(Game.age)?.AgeType ?? null;
+  const modern = age === "AGE_MODERN";
+  const modifierDescription = modifierId => name(GameInfo.ModifierStrings.find(value =>
+    value.ModifierId === modifierId && value.Context === "Description")?.Text);
   const describeIdeology = hash => {
     const def = modern ? GameInfo.Ideologies.lookup(hash) : null;
     return def ? {id: def.IdeologyType, name: name(def.Name)} : null;
@@ -262,7 +265,93 @@
     };
   }
 
-  const government = GameInfo.Governments.lookup(player.Culture.getGovernmentType());
+  const governmentType = player.Culture.getGovernmentType();
+  const government = GameInfo.Governments.lookup(governmentType);
+  const happiness = player.Happiness;
+  const celebrationDuration = happiness?.getGoldenAgeDuration() ?? null;
+  function celebrationDefinition(type) {
+    const def = GameInfo.GoldenAges.lookup(type);
+    return def ? {id: def.GoldenAgeType, name: name(def.Name), durationTurns: celebrationDuration,
+      description: celebrationDuration == null || !def.Description ? null : Locale.compose(def.Description, celebrationDuration),
+      netYieldChange: null} : null;
+  }
+  const governmentNotification = (Game.Notifications.getIdsForPlayer(id) ?? []).some(notificationId =>
+    Game.Notifications.getTypeName(Game.Notifications.getType(notificationId)) === "NOTIFICATION_CHOOSE_GOVERNMENT");
+  const governmentPending = governmentNotification || governmentType === -1 ? true : governmentType == null ? null : false;
+  const governmentSelection = {
+    pending: governmentPending,
+    choices: [...new Set(GameInfo.StartingGovernments.filter(value => value.AgeType === age).map(value => value.GovernmentType))]
+      .map(type => {
+        const def = GameInfo.Governments.lookup(type);
+        if (!def) return null;
+        const result = Game.PlayerOperations.canStart(id, PlayerOperationTypes.CHANGE_GOVERNMENT,
+          {GovernmentType: def.$index, Action: PlayerOperationParameters.Activate}, false);
+        return {
+          id: type, name: name(def.Name), description: name(def.Description), current: government?.GovernmentType === type,
+          passiveEffects: [...new Set(GameInfo.GovernmentModifiers.filter(value => value.GovernmentType === type).map(value => value.ModifierId))]
+            .map(modifierId => ({id: modifierId, description: modifierDescription(modifierId)})),
+          traditionUnlocks: GameInfo.ProgressionTreeNodeUnlocks.filter(value => !value.Hidden &&
+            value.RequiredGovernmentType === type && value.TargetKind === "KIND_TRADITION").map(unlock => {
+            const tradition = GameInfo.Traditions.lookup(unlock.TargetType);
+            const node = GameInfo.ProgressionTreeNodes.lookup(unlock.ProgressionTreeNodeType);
+            return tradition ? {id: tradition.TraditionType, name: name(tradition.Name), description: name(tradition.Description),
+              node: {id: unlock.ProgressionTreeNodeType, name: name(node?.Name)}, requiredDepth: unlock.UnlockDepth ?? null} : null;
+          }).filter(Boolean),
+          celebrations: [...new Set(Game.Culture.GetCelebrationTypesForGovernment(type) ?? [])].map(celebrationDefinition).filter(Boolean),
+          operationAllowed: result ? Boolean(result.Success) : null,
+          availableNow: governmentPending === true && Boolean(result?.Success),
+          failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean), netYieldChange: null
+        };
+      }).filter(Boolean),
+    note: "Current-Age StartingGovernments picker candidates. Availability conservatively requires a government-choice notification or no selected government, plus native permission. Celebration descriptions use the current duration, not a simulated duration after switching"
+  };
+  let celebration = null;
+  if (happiness) {
+    const active = happiness.isInGoldenAge();
+    const choicePending = typeof happiness.canChoose === "function" ? happiness.canChoose() ?? null : null;
+    celebration = {
+      active, choicePending, durationTurns: celebrationDuration,
+      remainingTurns: active ? happiness.getGoldenAgeTurnsLeft() ?? null : null,
+      current: active ? celebrationDefinition(happiness.getCurrentGoldenAge()) : null,
+      choices: [...new Set(player.Culture.getGoldenAgeChoices() ?? [])].map(type => {
+        const choice = celebrationDefinition(type);
+        if (!choice) return null;
+        const result = Game.PlayerOperations.canStart(id, PlayerOperationTypes.CHOOSE_GOLDEN_AGE,
+          {GoldenAgeType: Database.makeHash(choice.id)}, false);
+        return {...choice, operationAllowed: result ? Boolean(result.Success) : null,
+          availableNow: choicePending === true && Boolean(result?.Success),
+          failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
+      }).filter(Boolean),
+      note: "Current native picker choices, including extra choices. Availability requires Happiness.canChoose and native permission; a definition benefit is not a marginal-yield forecast"
+    };
+  }
+
+  function ideologyBranch(def) {
+    const tree = def.ProgressionTreeType ? GameInfo.ProgressionTrees.lookup(def.ProgressionTreeType) : null;
+    if (!tree) return null;
+    const definitionStructure = Game.ProgressionTrees.getTreeStructure(tree.ProgressionTreeType) ?? [];
+    const structure = definitionStructure.filter(node => !Game.ProgressionTrees.canEverUnlock(id, node.nodeType).isLocked);
+    return {id: tree.ProgressionTreeType, prerequisiteMode: tree.PrereqFormat ?? null,
+      definitionNodes: definitionStructure.map(node => {
+        const nodeDef = GameInfo.ProgressionTreeNodes.lookup(node.nodeType);
+        return nodeDef ? {id: nodeDef.ProgressionTreeNodeType, name: name(nodeDef.Name), baseCost: nodeDef.Cost ?? null,
+          unlocks: GameInfo.ProgressionTreeNodeUnlocks.filter(unlock => !unlock.Hidden &&
+            unlock.ProgressionTreeNodeType === nodeDef.ProgressionTreeNodeType)
+            .map(unlock => ({...unlockDefinition(unlock), requiredGovernment: unlock.RequiredGovernmentType ?? null}))} : null;
+      }).filter(Boolean),
+      nodes: structure.map(node => {
+        const details = progressionNode(node.nodeType, player.Culture);
+        if (!details) return null;
+        const result = Game.PlayerOperations.canStart(id, PlayerOperationTypes.SET_CULTURE_TREE_NODE,
+          {ProgressionTreeNodeType: node.nodeType}, false);
+        return {...details, researchAllowed: result ? Boolean(result.Success) : null,
+          failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+          prerequisites: structure.filter(parent => (parent.connectedNodeTypes ?? []).includes(node.nodeType))
+            .map(parent => GameInfo.ProgressionTreeNodes.lookup(parent.nodeType)?.ProgressionTreeNodeType ?? parent.nodeType)};
+      }).filter(Boolean),
+      note: "definitionNodes are public loaded rules for comparison, not proof of local applicability or reveal. nodes contains local non-locked research state; missing local nodes must not be treated as zero progress or free research"
+    };
+  }
   let ideology = null;
   if (modern) {
     const chosen = describeIdeology(player.Culture.getChosenIdeology());
@@ -278,10 +367,20 @@
           entryCivic: node ? progressionNode(node.$hash, player.Culture) : null,
           researchAllowed: result ? Boolean(result.Success) : null,
           failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+          branch: ideologyBranch(def),
+          adoptionBonuses: GameInfo.IdeologyAdoptionModifiers.filter(value => value.IdeologyType === def.IdeologyType).map(value => {
+            const modifier = GameInfo.Modifiers.find(row => row.ModifierId === value.ModifierId);
+            const dynamic = modifier && GameInfo.DynamicModifiers.find(row => row.ModifierType === modifier.ModifierType);
+            return {adoptionOrder: value.AdoptionOrder, modifierId: value.ModifierId,
+              description: modifierDescription(value.ModifierId), effectType: dynamic?.EffectType ?? null,
+              definitionArguments: Object.fromEntries(GameInfo.ModifierArguments.filter(row => row.ModifierId === value.ModifierId &&
+                ["SlotType", "Amount"].includes(row.Name)).map(row => [row.Name, row.Value])),
+              applicableToLocalPlayer: null};
+          }),
           adoptionPermission: null, diplomaticImpact: null
         };
       }),
-      note: "Local entry-civic research checks, not immediate ideology adoption/change permission. RivalIdeology is a definition link, not a forecast of diplomatic penalties or rewards"
+      note: "Local entry/branch civic research checks and visible unlock benefits, not immediate ideology adoption/change permission. Adoption-order effects/arguments are conditional definitions, not the local player's rank or promised slots; unmet-player counts are not queried. RivalIdeology is a definition link, not a diplomatic forecast"
     };
   }
   return {
@@ -299,6 +398,8 @@
       name: name(government.Name),
       description: name(government.Description)
     } : null,
+    governmentSelection,
+    celebration,
     ideology,
     policies: {
       totalCapacity: player.Culture.getNumAllCultureSlots(),
