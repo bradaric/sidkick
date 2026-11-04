@@ -213,7 +213,9 @@ def create_server() -> MCPServer:
         title="Get Civ VII diplomacy",
         description=(
             "Get relationships, modifiers, deals, ongoing projects, and available "
-            "diplomatic actions involving met major players only."
+            "diplomatic actions involving met major players only. Action costs and failure "
+            "reasons are for the selected leader; actions requiring secondary targets "
+            "have unknown total costs and may need further eligibility checks."
         ),
         annotations=read_only,
         structured_output=True,

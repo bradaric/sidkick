@@ -6,8 +6,8 @@
   const diplomacy = player.Diplomacy;
   const name = key => key ? Locale.compose(key) : null;
 
-  function failureReasons(project) {
-    return (project?.resultData?.FailureReasons ?? []).map(name).filter(Boolean);
+  function failureReasons(...records) {
+    return [...new Set(records.flatMap(record => record?.resultData?.FailureReasons ?? []).map(name).filter(Boolean))];
   }
 
   function availableActions(otherId) {
@@ -25,17 +25,26 @@
         DiplomacyProjectStatus.PROJECT_BLOCKED,
         DiplomacyProjectStatus.PROJECT_ACTIVE
       ].includes(project.projectStatus))
-      .map(project => ({
-        id: project.actionTypeName ?? project.actionType,
-        name: name(project.actionDisplayName),
-        description: name(project.projectDescription),
-        group: project.actionGroup,
-        influenceCost: project.influenceCost,
-        available: project.projectStatus === DiplomacyProjectStatus.PROJECT_AVAILABLE,
-        targetChoices: (project.targetList ?? []).length,
-        secondaryTargetChoices: (project.targetList2 ?? []).length,
-        failureReasons: failureReasons(project)
-      }));
+      .map(project => {
+        const target = (project.targetList1 ?? []).find(value => value.targetID === otherId);
+        const reasons = failureReasons(project, target);
+        const requiresSecondaryTarget = Boolean(project.targetList2?.length);
+        const selectedCost = Number.isFinite(target?.costYieldD) && target.costYieldD >= 0 ? target.costYieldD : null;
+        return {
+          id: project.actionTypeName ?? project.actionType,
+          name: name(project.actionDisplayName),
+          description: name(project.projectDescription),
+          group: project.actionGroup,
+          influenceCost: requiresSecondaryTarget ? null : selectedCost,
+          selectedTargetInfluenceCost: selectedCost,
+          available: project.projectStatus === DiplomacyProjectStatus.PROJECT_AVAILABLE && Boolean(target) && !reasons.length,
+          targetChoices: target ? 1 : 0,
+          requiresSecondaryTarget,
+          // Do not expose unrelated targets or counts from unfiltered native lists.
+          secondaryTargetChoices: requiresSecondaryTarget ? null : 0,
+          failureReasons: reasons
+        };
+      });
   }
 
   function ongoingActions(otherId) {
