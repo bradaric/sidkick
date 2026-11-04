@@ -26,6 +26,7 @@ function run({ branchPoints = 0, wildcardPoints = 1, nativeAllowed = true } = {}
       Identity: { getWildcardPoints: () => wildcardPoints, getAvailableAttributePoints: () => branchPoints, getNextAttributePointProgress: () => 0.5 },
     }; } },
     GameInfo: {
+      Ages: { lookup: () => ({ AgeType: 'AGE_EXPLORATION' }) },
       Attributes: [
         { AttributeType: 'ATTRIBUTE_SCIENCE', Name: 'Science', ProgressionTreeType: 'TREE_SCIENCE' },
         { AttributeType: 'ATTRIBUTE_WILDCARD', Name: 'Wildcard', ProgressionTreeType: null },

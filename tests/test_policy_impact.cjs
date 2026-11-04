@@ -58,6 +58,7 @@ function research({ changeRule = false, missingAmount = false, routeCount = 5, p
       Trade: { countPlayerTradeRoutes: () => routeCount },
     }; } },
     GameInfo: {
+      Ages: { lookup: () => ({ AgeType: 'AGE_EXPLORATION' }) },
       Attributes: [], Governments: { lookup: () => null }, Traditions: { lookup: id => cards.find(c => c.TraditionType === id) },
       Constructibles: { lookup: id => definitions.find(d => d.ConstructibleType === id) },
       Features: { lookup: () => ({ FeatureClassType: 'FEATURE_CLASS_VEGETATED' }) },

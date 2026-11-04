@@ -4,6 +4,11 @@
   if (!Number.isInteger(id) || id < 0) throw Error("No local player");
   const player = Players.get(id);
   const name = key => key ? Locale.compose(key) : null;
+  const modern = GameInfo.Ages.lookup(Game.age)?.AgeType === "AGE_MODERN";
+  const describeIdeology = hash => {
+    const def = modern ? GameInfo.Ideologies.lookup(hash) : null;
+    return def ? {id: def.IdeologyType, name: name(def.Name)} : null;
+  };
 
   function unlockDefinition(unlock) {
     let def = null;
@@ -176,6 +181,7 @@
       name: name(def.Name),
       description: name(def.Description),
       slotType: def.CultureSlotType,
+      ideology: modern ? describeIdeology(player.Culture.getIdeologyForTradition(def.TraditionType)) : null,
       impact: cardImpact(def)
     };
   }
@@ -257,6 +263,27 @@
   }
 
   const government = GameInfo.Governments.lookup(player.Culture.getGovernmentType());
+  let ideology = null;
+  if (modern) {
+    const chosen = describeIdeology(player.Culture.getChosenIdeology());
+    ideology = {
+      chosen,
+      choices: [...GameInfo.Ideologies].map(def => {
+        const node = def.FirstTreeNode ? GameInfo.ProgressionTreeNodes.lookup(def.FirstTreeNode) : null;
+        const result = node ? Game.PlayerOperations.canStart(id, PlayerOperationTypes.SET_CULTURE_TREE_NODE,
+          {ProgressionTreeNodeType: node.$hash}, false) : null;
+        return {
+          id: def.IdeologyType, name: name(def.Name), chosen: chosen?.id === def.IdeologyType,
+          rivalIdeology: def.RivalIdeology ?? null,
+          entryCivic: node ? progressionNode(node.$hash, player.Culture) : null,
+          researchAllowed: result ? Boolean(result.Success) : null,
+          failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+          adoptionPermission: null, diplomaticImpact: null
+        };
+      }),
+      note: "Local entry-civic research checks, not immediate ideology adoption/change permission. RivalIdeology is a definition link, not a forecast of diplomatic penalties or rewards"
+    };
+  }
   return {
     turn: Game.turn,
     technology: {
@@ -272,6 +299,7 @@
       name: name(government.Name),
       description: name(government.Description)
     } : null,
+    ideology,
     policies: {
       totalCapacity: player.Culture.getNumAllCultureSlots(),
       policies: policyGroup(CultureSlotTypes.POLICY_CULTURE_SLOT),

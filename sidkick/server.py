@@ -154,7 +154,9 @@ def create_server() -> MCPServer:
             "Cards include audited base-science estimates for Pet Kot, Milpa I and Tequitl, "
             "with qualifying counts/evidence. Other impacts are explicitly unknown. "
             "Estimates exclude multipliers, cross-yield conversions and non-science effects; "
-            "they are not simulated policy-swap totals."
+            "they are not simulated policy-swap totals. In Modern, includes chosen ideology, "
+            "policy affiliations and native entry-civic research checks with costs/unlocks; "
+            "immediate ideology adoption/change permission and diplomatic impacts remain unknown."
         ),
         annotations=read_only,
         structured_output=True,
@@ -247,7 +249,11 @@ def create_server() -> MCPServer:
         title="Get Civ VII victory progress",
         description=(
             "Get Test of Time victory conditions, thresholds, countdowns, prerequisites, "
-            "and progress for the local player and met major players only."
+            "and progress for the local player and met major players only. Includes loaded "
+            "Modern production-project requirements and owned-settlement BUILD eligibility, "
+            "blocked reasons, prerequisite scopes, mastery unlock depths and current cost/turn "
+            "quotes. Project inventory includes conversion projects, not just victory projects. "
+            "Completed project counts and victory-completion forecasts remain unknown."
         ),
         annotations=read_only,
         structured_output=True,

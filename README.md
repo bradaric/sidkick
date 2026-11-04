@@ -145,6 +145,12 @@ In Modern, `factory` follows the commerce UI's factory indicator and reports the
 
 `get_civ7_movement_and_founding` adds `rail`, using the distinct read-only `UNITCOMMAND_MOVE_BY_RAIL` check. It returns deduplicated, revealed native destination plots and optional destination membership, separately from ordinary movement/pathfinding. Hidden/invalid plots and raw native metadata are withheld; packed units are not checked as deployed passengers. Travel cost, rail path and future connection forecasts remain unknown. These additions were live-read in Exploration at T114 (12 settlements, no rail networks and a blocked rail command); positive Modern factory/rail cases are fixture-tested only.
 
+### Modern ideologies and project requirements
+
+`get_civ7_research_and_government` adds Modern-only `ideology`: chosen ideology and loaded candidates with their entry civic, current research costs/turns/unlocks and native `SET_CULTURE_TREE_NODE` eligibility/failure reasons. Policy cards include an `ideology` affiliation. `researchAllowed` means the entry civic can be selected for research, **not** that an ideology can be adopted or changed immediately. `adoptionPermission` and numerical `diplomaticImpact` remain unknown. `rivalIdeology` is the loaded definition link, not a simulated diplomatic penalty or reward. No civic or policy is selected.
+
+`get_civ7_victory_progress` adds Modern-only `modernProjects`, covering loaded positive-cost, non-town, non-upgrade production projects—including conversion projects, not an assertion that every item wins a victory. Each entry retains definition prerequisites, visible project-unlock nodes with required/current mastery depth, native required-Legacy-Path completion when supplied, and local versus empire-wide constructible scope. Owned-settlement BUILD checks include blocked projects and failure reasons, native requirement flags, current production costs and turn quotes for available projects. Unlock links are not assumed to be an AND dependency chain or a complete requirement evaluator. Completed project counts and victory-completion forecasts remain `null`; wonder, Great Person and other non-project victory paths are not implied to be covered by this inventory. No production request is sent. Positive Modern cases are fixture-tested only; the T114 Exploration live save verified that both additions return `null` outside Modern.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:

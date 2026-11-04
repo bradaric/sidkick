@@ -67,6 +67,8 @@ Ordinary tool data may include later-Age units, buildings, projects and cards wh
 
 **Post-audit factory/rail update:** commerce now includes owned native rail-network/land-capital connectivity and station presence, plus Modern-only factory state, resource counts and native factory/station construction checks with blocked reasons. Targeted movement adds the distinct read-only rail command and visibility-filtered destination plots. Positive, blocked, empty-factory, hidden-plot and packed-unit paths are fixture-tested; T114 live reads exercised Exploration's `factory: null`, 12 settlements outside rail networks and a blocked rail command. Factory GDP/marginal production, full rail paths and positive Modern live behavior remain unverified. The inventory below records the original audit baseline.
 
+**Post-audit ideology/project update:** research now includes Modern-only chosen ideology, policy affiliation, entry-civic costs/unlocks and native research eligibility—not immediate adoption permission or diplomatic effect forecasts. Victory progress adds loaded Modern production projects (including conversion projects) with definition prerequisites, mastery-depth unlock evidence, native required-Legacy-Path completion and owned-settlement BUILD checks retaining blocked reasons. Local/empire prerequisite scope is explicit; counts of completed projects, complete victory dependency chains and completion forecasts remain unknown. Positive Modern cases are fixture-tested; the T114 Exploration live save exercised the non-Modern `null` paths only.
+
 | System | Current coverage | Remaining gap / source evidence |
 |---|---|---|
 | Treasure Convoys | Resource descriptions/classes, owned units and generic scores/projects | No settlement generation timer, cargo-value breakdown or generation prerequisites. The commerce UI's `populateTreasureFleetData()` reads generated gold/GDP/points, automatic value, improved-resource status and turns until generation. |
@@ -81,6 +83,7 @@ The commerce source for the first two rows is `base-standard/ui-next/screens/com
 
 ## Verification limits
 
+- Factory/rail and ideology/project additions: **72 Node tests and 37 Python tests passed**, plus live read-only calls to all **20 tools** in the Exploration save. Positive Modern behavior remains fixture-tested only; no transition was performed to obtain a Modern scenario.
 - Original six-increment baseline verification: **54 Node tests and 36 Python tests passed**. `scripts/check-live-mcp.py` discovered and called all **19 tools** successfully using a temporary stdio child, not a restart of the user's persistent MCP connection.
 - Live town/commerce checks returned 9 towns, 40 resources, 440 resource-destination checks and 5 current routes. An explicit Scout destination path and a blocked current-location Settler founding check were read successfully.
 - The units query returned 63 unowned promotion/commendation choices at turn 110. Positive and blocked picker/native eligibility combinations are fixture-tested; no points were spent.
