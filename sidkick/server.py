@@ -16,6 +16,7 @@ from civ7.queries import (
     explored_map,
     growth,
     known_world,
+    religion,
     research_and_government,
     resources_and_trade,
     settlements,
@@ -58,8 +59,8 @@ def create_server() -> MCPServer:
         description=(
             "Read the loaded local player's complete Civilization VII strategy snapshot, "
             "including empire totals, settlements, growth choices, research and government, "
-            "Triumphs and Dedications, resources and trade, units, victory progress, and known-world "
-            "summary, plus available decisions, diplomacy, visible threats, and turn "
+            "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
+            "and known-world summary, plus available decisions, diplomacy, visible threats, and turn "
             "context. Excludes "
             "the large per-tile explored map and targeted building-placement queries, "
             "which have separate tools."
@@ -145,6 +146,20 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(research_and_government)
+    server.tool(
+        name="get_civ7_religion",
+        title="Get Civ VII religion and belief choices",
+        description=(
+            "Get the local player's religion, selected pantheons and beliefs with effects, "
+            "holy city, belief-class slots, and owned settlements' majority, urban and "
+            "rural religions. Distinguishes global belief claimability, picker slot "
+            "availability, choices available now, and choices selectable during founding. "
+            "Foreign founders are identified only when met; no hidden world totals. "
+            "Read-only: does not found religions, select beliefs, or convert settlements."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(religion)
     server.tool(
         name="get_civ7_resources_and_trade",
         title="Get Civ VII resources and trade",

@@ -28,6 +28,7 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_growth",
                 "get_civ7_building_placements",
                 "get_civ7_research_and_government",
+                "get_civ7_religion",
                 "get_civ7_resources_and_trade",
                 "get_civ7_units",
                 "get_civ7_known_world",
@@ -66,8 +67,9 @@ class GrowthTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await queries.growth(), data)
         run.assert_awaited_once_with("growth.js")
 
-    async def test_includes_growth_in_snapshot(self) -> None:
+    async def test_includes_growth_and_religion_in_snapshot(self) -> None:
         data = {"turn": 67, "settlements": []}
+        religion_data = {"turn": 67, "beliefs": []}
         names = (
             "run_script", "empire", "settlements", "research_and_government",
             "resources_and_trade", "units", "known_world", "victory_progress",
@@ -82,8 +84,33 @@ class GrowthTests(unittest.IsolatedAsyncioTestCase):
             growth = stack.enter_context(patch(
                 "civ7.player.growth", new_callable=AsyncMock, return_value=data,
             ))
-            self.assertEqual((await snapshot()).get("growth"), data)
+            religion = stack.enter_context(patch(
+                "civ7.player.religion", new_callable=AsyncMock, return_value=religion_data,
+            ))
+            result = await snapshot()
+            self.assertEqual(result.get("growth"), data)
+            self.assertEqual(result.get("religion"), religion_data)
             growth.assert_awaited_once_with()
+            religion.assert_awaited_once_with()
+
+
+class ReligionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_runs_bundled_religion_query(self) -> None:
+        self.assertTrue(callable(getattr(queries, "religion", None)))
+        data = {"turn": 96, "beliefs": []}
+        with patch("civ7.queries.run_script", new_callable=AsyncMock, return_value=data) as run:
+            self.assertEqual(await queries.religion(), data)
+        run.assert_awaited_once_with("religion.js")
+
+    async def test_religion_tool_returns_structured_data(self) -> None:
+        server = create_server()
+        self.assertIn("get_civ7_religion", {tool.name for tool in server._tool_manager.list_tools()})
+        data = {"turn": 96, "beliefs": []}
+        with patch("civ7.queries.run_script", new_callable=AsyncMock, return_value=data) as run:
+            result = await server.call_tool("get_civ7_religion", {})
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content, data)
+        run.assert_awaited_once_with("religion.js")
 
 
 if __name__ == "__main__":

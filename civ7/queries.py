@@ -41,6 +41,10 @@ async def research_and_government() -> dict[str, Any]:
     return await run_script("research.js")
 
 
+async def religion() -> dict[str, Any]:
+    return await run_script("religion.js")
+
+
 async def resources_and_trade() -> dict[str, Any]:
     return await run_script("commerce.js")
 

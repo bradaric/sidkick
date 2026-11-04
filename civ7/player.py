@@ -17,6 +17,7 @@ from civ7.queries import (
     explored_map,
     growth,
     known_world,
+    religion,
     research_and_government,
     resources_and_trade,
     settlements,
@@ -36,6 +37,7 @@ async def snapshot() -> dict[str, Any]:
     settlement_data = await settlements()
     growth_data = await growth()
     research_data = await research_and_government()
+    religion_data = await religion()
     commerce_data = await resources_and_trade()
     unit_data = await units()
     world_data = await known_world()
@@ -51,6 +53,7 @@ async def snapshot() -> dict[str, Any]:
         "growth": growth_data,
         "archivedGreatWorks": settlement_data["archivedGreatWorks"],
         "researchAndGovernment": research_data,
+        "religion": religion_data,
         "resourcesAndTrade": commerce_data,
         "units": unit_data["units"],
         "knownWorld": world_data,
