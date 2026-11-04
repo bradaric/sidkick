@@ -7,6 +7,29 @@
   const diplomacy = localPlayer.Diplomacy;
   const name = key => key ? Locale.compose(key) : null;
   const age = GameInfo.Ages.lookup(Game.age);
+  const currentAgePoints = Game.AgeProgressManager.getCurrentAgeProgressionPoints();
+  const maximumAgePoints = Game.AgeProgressManager.getMaxAgeProgressionPoints();
+  const agePercent = Number.isFinite(currentAgePoints) && maximumAgePoints > 0 ? currentAgePoints / maximumAgePoints * 100 : null;
+
+  function dominanceSchedule(type) {
+    if (type.ScoringType !== "COUNTDOWN_VICTORY_SCORING_TYPE_DOMINATION") return null;
+    const config = typeof Configuration === "undefined" ? null : Configuration.getGame();
+    const startingAge = config?.campaignStartAgeType == null ? null : GameInfo.Ages.lookup(config.campaignStartAgeType)?.AgeType ?? null;
+    const previousAgeCount = config?.previousAgeCount ?? null;
+    const tiers = startingAge == null || previousAgeCount == null ? [] : (GameInfo.VictoryDominationPercents ?? [])
+      .filter(row => row.VictoryType === type.VictoryType && row.StartingAge === startingAge && row.PreviousAgeCount === previousAgeCount)
+      .map(row => ({name: name(row.Name), minAgeProgressPercent: row.MinAgeProgressPercent ?? null,
+        dominationPercent: row.DominationPercent ?? null,
+        multiplier: Number.isFinite(row.DominationPercent) ? (row.DominationPercent + 100) / 100 : null}))
+      .sort((a, b) => a.minAgeProgressPercent - b.minAgeProgressPercent);
+    const reached = agePercent == null ? [] : tiers.filter(tier => Number.isFinite(tier.minAgeProgressPercent) && tier.minAgeProgressPercent <= agePercent);
+    return {startingAge, previousAgeCount, ageProgressPercent: agePercent, tiers,
+      currentTier: reached[reached.length - 1] ?? null,
+      nextTier: agePercent == null ? null : tiers.find(tier => Number.isFinite(tier.minAgeProgressPercent) && tier.minAgeProgressPercent > agePercent) ?? null,
+      estimatedTurnsUntilChange: null,
+      note: "Loaded campaign/previous-Age rule schedule, matching the victory UI. Thresholds change with Age progress, not a fixed turn estimate. Native targetPoints/countdown remain authoritative; missing tiers are unknown, not a 1x rule"
+    };
+  }
 
   function modernProjectRequirements() {
     if (age?.AgeType !== "AGE_MODERN") return null;
@@ -64,10 +87,10 @@
 
   const players = [];
   for (const playerId of Players.getAliveIds()) {
-    const player = Players.get(playerId);
-    if (!player?.isMajor || !player.Victories) continue;
     const isLocal = playerId === localId;
     if (!isLocal && !diplomacy?.hasMet(playerId)) continue;
+    const player = Players.get(playerId);
+    if (!player?.isMajor || !player.Victories) continue;
     const leader = GameInfo.Leaders.lookup(player.leaderType);
     players.push({
       id: playerId,
@@ -89,7 +112,7 @@
       const progress = players.map(known => {
         const player = Players.get(known.id);
         const status = player.Victories.getVictoryCountdownStatus(type.$hash);
-        const turnsProgress = status?.turns ?? 0;
+        const turnsProgress = Number.isFinite(status?.turns) ? status.turns : null;
         const duration = type.CountdownDuration;
         return {
           playerId: known.id,
@@ -98,19 +121,19 @@
             victory => victory.victory === type.$hash && victory.team === player.team
           ),
           countdown: status ? {
-            isDominant: Boolean(status.isDominant),
+            isDominant: typeof status.isDominant === "boolean" ? status.isDominant : null,
             turnsProgress,
-            turnsRemaining: duration > 0
+            turnsRemaining: duration > 0 && turnsProgress != null
               ? Math.max(duration - turnsProgress, 0)
               : null,
             prerequisites: (status.prereqs ?? []).map(prereq => ({
               name: name(prereq.description),
-              current: prereq.current,
-              total: prereq.total,
-              complete: prereq.current >= prereq.total
+              current: prereq.current ?? null,
+              total: prereq.total ?? null,
+              complete: Number.isFinite(prereq.current) && Number.isFinite(prereq.total) ? prereq.current >= prereq.total : null
             }))
           } : null,
-          scoring: player.Victories.getScoringForVictoryType(type.$hash).map(score => ({
+          scoring: (player.Victories.getScoringForVictoryType(type.$hash) ?? []).map(score => ({
             name: name(score.name),
             points: score.points,
             turn: score.turn,
@@ -130,26 +153,53 @@
         minimumPoints: type.MinimumPoints,
         targetPoints: Game.VictoryManager.getCountdownVictoryDominanceScore(type.$hash),
         countdownDuration: type.CountdownDuration,
+        prerequisiteRuleSet: type.PrereqRequirementSetId ?? null,
+        dominanceSchedule: dominanceSchedule(type),
+        scoringRules: (GameInfo.VictoryScorings ?? []).filter(rule => rule.VictoryType === type.VictoryType).map(rule => ({
+          id: rule.ScoringId, name: name(rule.Name), trackerType: rule.TrackerType, definitionPoints: rule.Points ?? null,
+          data: rule.Data ?? null, requiresActivation: rule.RequiresActivation == null ? null : Boolean(rule.RequiresActivation),
+          staticCarryover: rule.StaticCarryover == null ? null : Boolean(rule.StaticCarryover), activeForLocalPlayer: null,
+          arguments: (GameInfo.VictoryScoringArgs ?? []).filter(arg => arg.ScoringId === rule.ScoringId)
+            .map(arg => ({key: arg.Key, value: arg.ValueAsInt ?? arg.ValueAsText ?? null}))
+        })),
         progress
       };
     })
     .filter(Boolean);
 
-  const currentAgePoints = Game.AgeProgressManager.getCurrentAgeProgressionPoints();
-  const maximumAgePoints = Game.AgeProgressManager.getMaxAgeProgressionPoints();
+  const victoryAlerts = [];
+  for (const victory of victoryConditions) {
+    for (const progress of victory.progress) {
+      if (progress.won) victoryAlerts.push({kind: "completed-victory", victoryId: victory.id, playerId: progress.playerId,
+        isLocal: progress.playerId === localId});
+      else if (victory.enabled && progress.countdown?.isDominant === true) victoryAlerts.push({
+        kind: "dominance-countdown", victoryId: victory.id, playerId: progress.playerId, isLocal: progress.playerId === localId,
+        turnsRemaining: progress.countdown.turnsRemaining,
+        note: "Remaining engine countdown if qualifying conditions continue; not an unconditional future victory date"
+      });
+    }
+    const schedule = victory.dominanceSchedule;
+    if (Number.isFinite(schedule?.currentTier?.multiplier) && Number.isFinite(schedule?.nextTier?.multiplier) &&
+        schedule.nextTier.multiplier < schedule.currentTier.multiplier) victoryAlerts.push({
+      kind: "dominance-threshold-change", victoryId: victory.id,
+      atAgeProgressPercent: schedule.nextTier.minAgeProgressPercent,
+      currentMultiplier: schedule.currentTier.multiplier, nextMultiplier: schedule.nextTier.multiplier,
+      note: "A lower scheduled ratio can make victory easier without any rival earning additional points; recheck native targets/countdowns as Age progress changes"
+    });
+  }
   return {
     turn: Game.turn,
     age: name(GameInfo.Ages.lookup(Game.age)?.Name),
     ageProgress: {
       current: currentAgePoints,
       total: maximumAgePoints,
-      percent: maximumAgePoints > 0
-        ? currentAgePoints / maximumAgePoints * 100
-        : null,
+      percent: agePercent,
       extendedGame: Boolean(Game.AgeProgressManager.isExtendedGame)
     },
     scope: "Local player and met major players only",
     players,
+    victoryAlerts,
+    planningNote: "Inspect victoryAlerts and each dominanceSchedule, not a remembered ratio or description. Public scoring rules are conditional definitions, not a complete dependency evaluator or a promise that every source is active. No thresholds are recomputed from only met rivals",
     victoryConditions,
     modernProjects: modernProjectRequirements()
   };

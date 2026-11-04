@@ -263,6 +263,10 @@ def create_server() -> MCPServer:
         description=(
             "Get Test of Time victory conditions, thresholds, countdowns, prerequisites, "
             "and progress for the local player and met major players only. Includes loaded "
+            "campaign-specific dominance tier schedules with current/next ratios and Age-progress "
+            "thresholds, met-player countdown alerts and conditional public scoring rules. Never "
+            "assume Culture requires a permanent 4x lead: ratios can ease as the Age progresses. "
+            "Native point targets remain authoritative; alerts are not unconditional win dates. "
             "Modern production-project requirements and owned-settlement BUILD eligibility, "
             "blocked reasons, prerequisite scopes, mastery unlock depths and current cost/turn "
             "quotes. Project inventory includes conversion projects, not just victory projects. "
