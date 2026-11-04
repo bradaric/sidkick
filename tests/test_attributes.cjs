@@ -27,6 +27,7 @@ function run({ branchPoints = 0, wildcardPoints = 1, nativeAllowed = true } = {}
     }; } },
     GameInfo: {
       Ages: { lookup: () => ({ AgeType: 'AGE_EXPLORATION' }) },
+      StartingGovernments: [],
       Attributes: [
         { AttributeType: 'ATTRIBUTE_SCIENCE', Name: 'Science', ProgressionTreeType: 'TREE_SCIENCE' },
         { AttributeType: 'ATTRIBUTE_WILDCARD', Name: 'Wildcard', ProgressionTreeType: null },
@@ -46,6 +47,7 @@ function run({ branchPoints = 0, wildcardPoints = 1, nativeAllowed = true } = {}
     PlayerOperationTypes: { BUY_ATTRIBUTE_TREE_NODE: 'BUY_ATTRIBUTE' },
     Game: {
       turn: 97,
+      Notifications: { getIdsForPlayer: () => [] },
       ProgressionTrees: {
         getTreeStructure: () => [
           { nodeType: 1, connectedNodeTypes: [2, 3] }, { nodeType: 2, connectedNodeTypes: [3] },

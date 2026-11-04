@@ -59,6 +59,7 @@ function research({ changeRule = false, missingAmount = false, routeCount = 5, p
     }; } },
     GameInfo: {
       Ages: { lookup: () => ({ AgeType: 'AGE_EXPLORATION' }) },
+      StartingGovernments: [],
       Attributes: [], Governments: { lookup: () => null }, Traditions: { lookup: id => cards.find(c => c.TraditionType === id) },
       Constructibles: { lookup: id => definitions.find(d => d.ConstructibleType === id) },
       Features: { lookup: () => ({ FeatureClassType: 'FEATURE_CLASS_VEGETATED' }) },
@@ -85,7 +86,7 @@ function research({ changeRule = false, missingAmount = false, routeCount = 5, p
       getFeatureType: x => { assert.notEqual(x, 5, 'hidden tiles are never inspected'); return 'FOREST'; },
     },
     RevealedStates: { HIDDEN: 0 }, CultureSlotTypes: { POLICY_CULTURE_SLOT: 0, TRADITION_CULTURE_SLOT: 1, CRISIS_CULTURE_SLOT: 2 },
-    ProgressionTreeNodeState: {}, Game: { turn: 106 },
+    ProgressionTreeNodeState: {}, Game: { turn: 106, Notifications: { getIdsForPlayer: () => [] } },
   });
   const group = JSON.parse(JSON.stringify(data)).policies.traditions;
   return Object.fromEntries([...group.active, ...group.available].map(c => [c.name, c]));

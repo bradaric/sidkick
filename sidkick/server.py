@@ -154,13 +154,18 @@ def create_server() -> MCPServer:
         title="Get Civ VII research and government",
         description=(
             "Get active and available technologies and civics with costs and unlocks, "
-            "plus government, policies, traditions, crisis cards, and leader attribute "
+            "plus current government, governmentSelection and celebration picker choices with "
+            "passives/benefits, conditional traditions and native eligibility. Government/"
+            "celebration availableNow requires a confirmed pending choice, not native permission "
+            "alone. Includes policies, traditions, crisis cards, and leader attribute "
             "points, purchased/available perks, effects, prerequisites, base costs and wildcard funding. "
             "Cards include audited base-science estimates for Pet Kot, Milpa I and Tequitl, "
             "with qualifying counts/evidence. Other impacts are explicitly unknown. "
             "Estimates exclude multipliers, cross-yield conversions and non-science effects; "
             "they are not simulated policy-swap totals. In Modern, includes chosen ideology, "
-            "policy affiliations and native entry-civic research checks with costs/unlocks; "
+            "policy affiliations, public branch benefit definitions, local branch research checks "
+            "and conditional adoption-order bonus definitions. Raw Amount/SlotType definition "
+            "arguments are not a promise of locally available slots. Includes entry-civic costs/unlocks; "
             "immediate ideology adoption/change permission and diplomatic impacts remain unknown."
         ),
         annotations=read_only,

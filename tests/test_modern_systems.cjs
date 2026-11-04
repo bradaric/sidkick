@@ -22,6 +22,7 @@ function research({ modern = true, allowed = true, chosen = -1, missingNode = fa
     }; } },
     GameInfo: { Ages: { lookup: () => ({ AgeType: modern ? 'AGE_MODERN' : 'AGE_EXPLORATION' }) },
       Attributes: [], Governments: { lookup: () => null }, Ideologies: ideologies,
+      StartingGovernments: [], IdeologyAdoptionModifiers: [], ProgressionTrees: { lookup: () => null },
       Traditions: { lookup: () => ({ TraditionType: 'CARD', Name: 'Policy', Description: 'Policy effect' }) },
       ProgressionTreeNodes: nodes, ProgressionTreeNodeUnlocks: [
         { ProgressionTreeNodeType: 'NODE_A', TargetKind: 'KIND_MODIFIER', TargetType: 'BENEFIT', UnlockDepth: 1 },
@@ -31,7 +32,7 @@ function research({ modern = true, allowed = true, chosen = -1, missingNode = fa
     },
     CultureSlotTypes: { POLICY_CULTURE_SLOT: 0, TRADITION_CULTURE_SLOT: 1, CRISIS_CULTURE_SLOT: 2 },
     ProgressionTreeNodeState: {}, PlayerOperationTypes: { SET_CULTURE_TREE_NODE: 'RESEARCH' },
-    Game: { turn: 5, ProgressionTrees: { getNode: (id, hash) => {
+    Game: { turn: 5, Notifications: { getIdsForPlayer: () => [] }, ProgressionTrees: { getNode: (id, hash) => {
       assert.equal(id, 0); assert.equal(hash, 20); return { depthUnlocked: chosen === 100 ? 1 : 0, unlockIndices: [0, 1] };
     } },
       PlayerOperations: { canStart: (id, operation, args, visible) => {
