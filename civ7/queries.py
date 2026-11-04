@@ -65,6 +65,10 @@ async def diplomacy() -> dict[str, Any]:
     return await run_script("diplomacy.js")
 
 
+async def city_states() -> dict[str, Any]:
+    return await run_script("city_states.js")
+
+
 async def visible_threats() -> dict[str, Any]:
     return await run_script("threats.js")
 

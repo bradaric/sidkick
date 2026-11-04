@@ -80,6 +80,68 @@
     };
   }
 
+  const wildcardPoints = player.Identity.getWildcardPoints();
+  const nodeStateNames = Object.fromEntries(Object.entries(ProgressionTreeNodeState).map(([key, value]) => [value, key]));
+  function attributeBranch(def) {
+    const availablePoints = player.Identity.getAvailableAttributePoints(def.AttributeType);
+    const tree = def.ProgressionTreeType ? GameInfo.ProgressionTrees.lookup(def.ProgressionTreeType) : null;
+    // Match the tree UI's content filtering without initializing its stateful managers.
+    const structure = tree ? (Game.ProgressionTrees.getTreeStructure(tree.ProgressionTreeType) ?? [])
+      .filter(node => !Game.ProgressionTrees.canEverUnlock(id, node.nodeType).isLocked) : [];
+    const states = new Map(structure.map(node => [node.nodeType, Game.ProgressionTrees.getNode(id, node.nodeType)]));
+    const nodes = structure.map(node => {
+      const nodeDef = GameInfo.ProgressionTreeNodes.lookup(node.nodeType);
+      const state = states.get(node.nodeType);
+      if (!nodeDef || !state) return null;
+      const nodeState = Game.ProgressionTrees.getNodeState(id, node.nodeType);
+      const legendLocked = Boolean(Game.ProgressionTrees.hasLegendUnlocked(id, node.nodeType).isLocked);
+      const result = Game.PlayerOperations.canStart(id, PlayerOperationTypes.BUY_ATTRIBUTE_TREE_NODE,
+        {ProgressionTreeNodeType: node.nodeType}, false);
+      const unlocks = (state.unlockIndices ?? []).map(index => GameInfo.ProgressionTreeNodeUnlocks[index])
+        .filter(unlock => unlock && !unlock.Hidden).map(unlockDefinition);
+      const fullyUnlocked = nodeState === ProgressionTreeNodeState.NODE_STATE_FULLY_UNLOCKED;
+      const basePointCost = nodeDef.Cost ?? null;
+      return {
+        id: nodeDef.ProgressionTreeNodeType,
+        name: name(nodeDef.Name) ?? unlocks.find(unlock => unlock.name && unlock.name !== unlock.id)?.name ?? nodeDef.ProgressionTreeNodeType,
+        description: name(nodeDef.Description) ?? (unlocks.map(unlock => unlock.description).filter(Boolean).join("\n") || null),
+        state: nodeStateNames[nodeState] ?? nodeState,
+        purchased: state.depthUnlocked > 0,
+        fullyUnlocked,
+        repeatable: Boolean(nodeDef.Repeatable),
+        timesRepeated: state.repeatedDepth ?? 0,
+        depthUnlocked: state.depthUnlocked,
+        maxDepth: state.maxDepth,
+        basePointCost,
+        funding: {
+          coversBaseCost: basePointCost == null ? null : availablePoints + wildcardPoints >= basePointCost,
+          wildcardPointsNeededAtBaseCost: basePointCost == null ? null : Math.max(basePointCost - availablePoints, 0)
+        },
+        availableNow: Boolean(result.Success) && !legendLocked &&
+          nodeState !== ProgressionTreeNodeState.NODE_STATE_CLOSED && nodeState !== ProgressionTreeNodeState.NODE_STATE_INVALID &&
+          (!fullyUnlocked || Boolean(nodeDef.Repeatable)),
+        legendLocked,
+        lockedReason: legendLocked ? name(Game.ProgressionTrees.getLegendAttributeNodeLockedString(id, node.nodeType)) : null,
+        failureReasons: (result.FailureReasons ?? []).map(name).filter(Boolean),
+        prerequisites: structure.filter(parent => (parent.connectedNodeTypes ?? []).includes(node.nodeType))
+          .map(parent => ({
+            id: GameInfo.ProgressionTreeNodes.lookup(parent.nodeType)?.ProgressionTreeNodeType ?? parent.nodeType,
+            purchased: (states.get(parent.nodeType)?.depthUnlocked ?? 0) > 0
+          })),
+        unlocks
+      };
+    }).filter(Boolean);
+    return {
+      id: def.AttributeType,
+      name: name(def.Name),
+      availablePoints,
+      nextPointProgressPercent: player.Identity.getNextAttributePointProgress(def.AttributeType) * 100,
+      tree: tree?.ProgressionTreeType ?? null,
+      prerequisiteMode: tree?.PrereqFormat ?? null,
+      nodes
+    };
+  }
+
   const government = GameInfo.Governments.lookup(player.Culture.getGovernmentType());
   return {
     turn: Game.turn,
@@ -103,13 +165,8 @@
       crises: policyGroup(CultureSlotTypes.CRISIS_CULTURE_SLOT)
     },
     attributes: {
-      wildcardPoints: player.Identity.getWildcardPoints(),
-      branches: [...GameInfo.Attributes].map(def => ({
-        id: def.AttributeType,
-        name: name(def.Name),
-        availablePoints: player.Identity.getAvailableAttributePoints(def.AttributeType),
-        nextPointProgressPercent: player.Identity.getNextAttributePointProgress(def.AttributeType) * 100
-      }))
+      wildcardPoints,
+      branches: [...GameInfo.Attributes].map(attributeBranch)
     }
   };
 })()

@@ -41,7 +41,7 @@ On Windows:
 .\civ7\.venv\Scripts\python.exe -m sidkick.server
 ```
 
-The MCP endpoint is `http://127.0.0.1:8765/mcp`; press Ctrl+C to stop it. It binds only to loopback by default. Neither OpenCode's stdio connection nor the ChatGPT bridge needs this HTTP server. It queries Civ VII only when a client calls a tool. Use the focused empire, decisions, settlement, growth, research/government, religion, resources/trade, units, diplomacy, visible-threats, turn-context, victory-progress, or known-world tools for normal advice. The separate explored-map tool can return a much larger response.
+The MCP endpoint is `http://127.0.0.1:8765/mcp`; press Ctrl+C to stop it. It binds only to loopback by default. Neither OpenCode's stdio connection nor the ChatGPT bridge needs this HTTP server. It queries Civ VII only when a client calls a tool. Use the focused empire, decisions, settlement, growth, research/government, religion, resources/trade, units, major-player diplomacy, city-state/independent diplomacy, visible-threats, turn-context, victory-progress, or known-world tools for normal advice. The separate explored-map tool can return a much larger response.
 
 `get_civ7_growth` returns growth progress, legal rural expansion options, separate improvement placement previews, and specialist placements (including empty, blocked, or full slots). Legal growth choices require population ready to place; improvement previews are not promises of legal expansion. Yield changes are per turn, positive maintenance changes are extra costs, and net changes subtract maintenance. Missing improvement previews return `null`, not zero benefit. Hidden tiles are excluded. Growth data is also included in snapshots and exports.
 
@@ -72,6 +72,20 @@ Choice data distinguishes several checks:
 - `availableForFounding`: a claimable belief selectable in the initial founding picker, gated by `canFoundReligion` and its class slots. This is not an independently executable add-belief action before founding.
 
 Choices exclude already-selected beliefs/pantheons and retain engine failure reasons and additional descriptions for other options. Religion data is also included in snapshots and exports. The tool never founds a religion, chooses a belief, or converts a settlement.
+
+### Leader attribute trees
+
+`get_civ7_research_and_government` includes attribute points and next-point progress, plus each applicable branch's purchased perks, effect descriptions, unlocks, prerequisite links and `prerequisiteMode` (for example, `OR` does not require every incoming node). Inapplicable nodes are excluded; visible legend-locked nodes retain their lock reason. Wildcard points remain a shared balance, not a separate spendable balance for each branch.
+
+`basePointCost` and `funding` describe the definition's base cost and how many wildcard points would cover a branch-point shortfall. They are not an actual price quote for repeat purchases. `availableNow` uses the engine's read-only purchase check and node/legend state; sufficient funding alone does not unlock a perk. This tool never spends points.
+
+### City-state and independent diplomacy
+
+`get_civ7_city_states` returns met city-states and met/discovered independent powers, relationships, suzerains, selected bonus effects, eligible bonus choices, local influence, and diplomatic action eligibility/costs, including incorporation. Hidden players and target coordinates are excluded; an unmet suzerain's identity is `null`. The existing `get_civ7_diplomacy` tool remains focused on met major players.
+
+For action summaries, `availableNow` means the game offers the action for this power. If `requiresSecondaryTarget` is true (for example, choosing a unit to levy or a civilization to raid), the final target selection still needs its own eligibility check. `selectedTargetInfluenceCost` is the power-level UI quote, which can be a placeholder; `influenceCost` is `null` for secondary-target actions rather than implying a complete or zero cost. Other missing cost data also returns `null`.
+
+`bonusChoices[].eligible` follows the game's bonus picker; `availableNow` additionally requires a pending choice for this city-state, local suzerainty, and the engine's selection check. It does not imply an existing bonus can be replaced. `ongoingActions` includes only projects initiated by you against that power, with direct progress, required progress, turns remaining, and befriending support cost/eligibility. Other players' ongoing projects are omitted. City-state data and attribute trees are included in snapshots and exports. These tools never spend influence, select bonuses, befriend, levy, or incorporate anything.
 
 ## ChatGPT architecture
 

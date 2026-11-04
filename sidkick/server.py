@@ -11,6 +11,7 @@ from civ7.player import snapshot
 from civ7.queries import (
     available_decisions,
     building_placements,
+    city_states,
     diplomacy,
     empire,
     explored_map,
@@ -60,7 +61,7 @@ def create_server() -> MCPServer:
             "Read the loaded local player's complete Civilization VII strategy snapshot, "
             "including empire totals, settlements, growth choices, research and government, "
             "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
-            "and known-world summary, plus available decisions, diplomacy, visible threats, and turn "
+            "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context. Excludes "
             "the large per-tile explored map and targeted building-placement queries, "
             "which have separate tools."
@@ -141,7 +142,8 @@ def create_server() -> MCPServer:
         title="Get Civ VII research and government",
         description=(
             "Get active and available technologies and civics with costs and unlocks, "
-            "plus government, policies, traditions, crisis cards, and attribute points."
+            "plus government, policies, traditions, crisis cards, and leader attribute "
+            "points, purchased/available perks, effects, prerequisites, base costs and wildcard funding."
         ),
         annotations=read_only,
         structured_output=True,
@@ -210,6 +212,21 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(diplomacy)
+    server.tool(
+        name="get_civ7_city_states",
+        title="Get Civ VII city-state and independent diplomacy",
+        description=(
+            "Get met city-states and met/discovered independent powers, suzerains, current "
+            "bonus effects and eligible bonus choices, local influence, diplomatic action "
+            "eligibility and selected-target costs including incorporation, plus your "
+            "ongoing befriending progress and support costs. Bonus eligibility is not a "
+            "pending selection; actions may require secondary targets. Omits hidden "
+            "locations, unmet suzerain identities, and other players' ongoing projects. "
+            "Read-only: never spends influence, selects bonuses, or incorporates powers."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(city_states)
     server.tool(
         name="get_civ7_visible_threats",
         title="Get Civ VII visible threats",
