@@ -81,8 +81,13 @@ Ordinary tool data may include later-Age units, buildings, projects and cards wh
 
 The commerce source for the first two rows is `base-standard/ui-next/screens/commerce/commerce-screen-model.js` (`populateTreasureFleetData` and `populateFactoryResourceDataForCity`). These references establish missing fields and possible read surfaces, not approval to invoke stateful UI setup or game-changing handlers.
 
+## Combat follow-up
+
+`get_civ7_combat_options` now adds local attack-readiness flags/counts/range, whitelisted local native modifier values and visible target terrain/feature defense definitions. These are not summed or treated as applied contextual modifiers; contextual strength, damage and outcome stay unknown. Neighbor-count-dependent fields, foreign modifiers and raw objects are not exported. A separate deployed-commander check uses `UNITCOMMAND_COMMANDER_ATTACK` and requires the requested observable hostile target in its native plot list, without returning other plots. The source is `base-standard/ui/interface-modes/interface-mode-commander-attack.js`; only its read-only `canStart` call is used, not interface initialization or request handlers. Numerical preview still depends on `simulateAttackAsync` in the inspected UI and remains deliberately unimplemented. T115 live reads exercised readiness, modifier and terrain evidence with no hostile defender; positive unit/district commander cases and visibility exclusions are fixture-tested only.
+
 ## Verification limits
 
+- Combat follow-up: **76 Node tests and 37 Python tests passed**, plus live read-only calls to all **20 tools**. Live T115 checks cover readiness/modifier/terrain evidence, not positive hostile-target commander attacks or numerical outcomes.
 - Factory/rail and ideology/project additions: **72 Node tests and 37 Python tests passed**, plus live read-only calls to all **20 tools** in the Exploration save. Positive Modern behavior remains fixture-tested only; no transition was performed to obtain a Modern scenario.
 - Original six-increment baseline verification: **54 Node tests and 36 Python tests passed**. `scripts/check-live-mcp.py` discovered and called all **19 tools** successfully using a temporary stdio child, not a restart of the user's persistent MCP connection.
 - Live town/commerce checks returned 9 towns, 40 resources, 440 resource-destination checks and 5 current routes. An explicit Scout destination path and a blocked current-location Settler founding check were read successfully.

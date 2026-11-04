@@ -227,7 +227,10 @@ def create_server() -> MCPServer:
             "Read one owned unit by integer instanceId and a target x/y. Target tiles must "
             "be currently visible; only visible hostile defenders belonging to met players "
             "are exposed. Returns read-only melee/ranged/naval/air attack checks and observable "
-            "health/non-contextual strength. Damage predictions, contextual modifiers and outcomes "
+            "health/non-contextual strength. Includes attacker readiness, whitelisted local "
+            "reported modifiers, visible terrain definition values and a separate commander-attack "
+            "command check requiring this target in native plots. Reported modifiers are not "
+            "applied contextual totals. Damage predictions, contextual strengths and outcomes "
             "are unknown, not simulated. Never attacks, declares war, selects units or invokes "
             "asynchronous simulation requests."
         ),

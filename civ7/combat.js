@@ -59,13 +59,48 @@
         failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)});
     }
   }
+  let commanderAttack = null;
+  if (defender && deployed && attacker.isCommanderUnit) {
+    const result = Game.UnitCommands.canStart(attacker.id, "UNITCOMMAND_COMMANDER_ATTACK", {}, false);
+    const targetInNativePlots = (result?.Plots ?? []).includes(GameplayMap.getIndexFromLocation(location));
+    commanderAttack = {
+      operationAllowed: result ? Boolean(result.Success) : null, targetInNativePlots,
+      availableNow: Boolean(result?.Success) && targetInNativePlots,
+      failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)
+    };
+  }
+  const terrain = GameInfo.Terrains.lookup(GameplayMap.getTerrainType(x, y));
+  const feature = GameInfo.Features.lookup(GameplayMap.getFeatureType(x, y));
+  const biome = GameInfo.Biomes.lookup(GameplayMap.getBiomeType(x, y));
+  const targetTerrain = {
+    terrain: terrain ? {id: terrain.TerrainType, name: name(terrain.Name), definitionDefenseModifier: terrain.DefenseModifier ?? null} : null,
+    feature: feature ? {id: feature.FeatureType, name: name(feature.Name), definitionDefenseModifier: feature.DefenseModifier ?? null} : null,
+    biome: biome ? {id: biome.BiomeType, name: name(biome.Name)} : null,
+    note: "Visible target definition values only, not an applied or combined combat-defense total"
+  };
+  const modifierKeys = ["combatStrengthModifier", "rangedStrengthModifier", "bombardStrengthModifier", "antiAirStrengthModifier",
+    "friendlyTerritoryCombatMod", "flankingAttackPercentageModifier", "flankingAttackStrengthModifier", "canMoveAfterAttacking"];
+  const reportedModifiers = attacker.Combat?.combatModifiers;
   const attackerDef = GameInfo.Units.lookup(attacker.type);
   return {
     turn: Game.turn,
     attacker: {instanceId: attacker.id.id, name: name(attacker.name ?? attackerDef?.Name),
-      health: health(attacker), strength: strength(attacker), canAttack: Boolean(attacker.Combat?.canAttack)},
-    location, defender, options,
+      health: health(attacker), strength: strength(attacker), canAttack: Boolean(attacker.Combat?.canAttack),
+      readiness: {
+        deployed, attacksRemaining: attacker.Combat?.attacksRemaining ?? null,
+        maximumAttacks: attacker.Combat?.maxNumAttacks ?? null, attackRange: attacker.Combat?.attackRange ?? null,
+        antiAirStrength: attacker.Combat?.antiAirStrength ?? null,
+        canAttackAfterMoving: attacker.Combat?.canAttackAfterMoving ?? null,
+        hasAttacked: attacker.Combat?.hasAttacked ?? null, hasMoved: attacker.Movement?.hasMoved ?? null,
+        movementRemaining: attacker.Movement?.movementMovesRemaining ?? null,
+        stoppedByZOC: attacker.Combat?.hasMovedIntoZOC ?? null,
+        fortified: attacker.isFortified ?? null, embarked: attacker.isEmbarked ?? null
+      },
+      reportedModifiers: reportedModifiers ? Object.fromEntries(modifierKeys.map(key => [key, reportedModifiers[key] ?? null])) : null
+    },
+    location, targetTerrain, defender, options, commanderAttack,
+    contextualStrength: null,
     expectedDamageToAttacker: null, expectedDamageToDefender: null, outcome: null,
-    note: "Visible hostile target and read-only operation checks only. Strengths are non-contextual native values, not a damage simulation. No asynchronous simulation or attack request is issued"
+    note: "Visible hostile target and read-only operation/commander-command checks only. Strengths, local reported modifiers and terrain definition values are separate evidence, not contextual totals or a damage simulation. Commander availability requires this target in the native plot list; no other plots are returned. No asynchronous simulation or attack request is issued"
   };
 })()
