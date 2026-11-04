@@ -180,6 +180,9 @@ def create_server() -> MCPServer:
             "Get the local player's resources, settlement assignments and free slots, "
             "trade-network state, read-only per-resource assignment eligibility, current "
             "route count and known revealed route candidates including blocked routes/reasons. "
+            "Includes owned rail-network membership, station presence and land-capital connectivity; "
+            "Modern factory state/counts and native factory/station build/purchase reasons. "
+            "Factory GDP and marginal production are unknown; station presence is not connectivity. "
             "Resource/focus marginal yields and Merchant-specific route eligibility are unknown. "
             "Does not assign resources or invoke stateful preview requests."
         ),
@@ -208,7 +211,9 @@ def create_server() -> MCPServer:
             "labels are retained; paths through hidden tiles are withheld. Settlers include "
             "current/adjacent founding checks; arbitrary future-site legality and new "
             "settlement yields are unknown. Site evidence includes fresh water, current tile "
-            "yields, nearby revealed resources and owned settlement distances. Never moves or founds."
+            "yields, nearby revealed resources and owned settlement distances. Separate rail command "
+            "eligibility and revealed native rail destination plots are included; rail travel cost "
+            "and paths are unknown. Never moves, transports by rail or founds."
         ),
         annotations=read_only,
         structured_output=True,

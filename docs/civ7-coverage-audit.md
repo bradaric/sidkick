@@ -65,6 +65,8 @@ These boundaries are also described in the [README](../README.md). With the post
 
 Ordinary tool data may include later-Age units, buildings, projects and cards when the engine offers them. That is **not** evidence of complete later-Age mechanic coverage.
 
+**Post-audit factory/rail update:** commerce now includes owned native rail-network/land-capital connectivity and station presence, plus Modern-only factory state, resource counts and native factory/station construction checks with blocked reasons. Targeted movement adds the distinct read-only rail command and visibility-filtered destination plots. Positive, blocked, empty-factory, hidden-plot and packed-unit paths are fixture-tested; T114 live reads exercised Exploration's `factory: null`, 12 settlements outside rail networks and a blocked rail command. Factory GDP/marginal production, full rail paths and positive Modern live behavior remain unverified. The inventory below records the original audit baseline.
+
 | System | Current coverage | Remaining gap / source evidence |
 |---|---|---|
 | Treasure Convoys | Resource descriptions/classes, owned units and generic scores/projects | No settlement generation timer, cargo-value breakdown or generation prerequisites. The commerce UI's `populateTreasureFleetData()` reads generated gold/GDP/points, automatic value, improved-resource status and turns until generation. |

@@ -4,16 +4,22 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run() {
+function run({ modern = false, count = 2, factoryResource = 'TEA', prereq = true, rail = true, station = false } = {}) {
   const records = [false, true].map(isOffMap => ({ value: 5, isOffMap, uniqueResource: { resource: 'TEA' } }));
   const city = { id: { owner: 0, id: 10 }, owner: 0, name: 'Home', location: { x: 0, y: 0 },
-    Resources: { getAssignedResources: () => [records[0]], getAssignedResourcesCap: () => 2 }, Trade: { isInTradeNetwork: () => true, numRoutes: 1 } };
+    Resources: { getAssignedResources: () => [records[0]], getAssignedResourcesCap: () => 2,
+      getFactoryResource: () => factoryResource, getNumFactoryResources: () => count, isTreasureConstructiblePrereqMet: () => prereq },
+    Constructibles: { hasConstructible: (type, includeIncomplete) => {
+      assert.equal(type, 'BUILDING_RAIL_STATION'); assert.equal(includeIncomplete, false); return station;
+    } },
+    Trade: { isInTradeNetwork: () => true, numRoutes: 1, isInRailNetwork: () => rail, isConnectedToOwnersCapitalByLand: () => true } };
   const foreign = owner => ({ id: { owner, id: 20 }, owner, name: owner === 1 ? 'Known' : 'Hidden', location: { x: owner, y: 0 } });
   const calls = [];
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/commerce.js'), 'utf8'), {
     UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
     RevealedStates: { HIDDEN: 0 }, DomainType: { DOMAIN_LAND: 1 }, TradeRouteStatus: { SUCCESS: 1, ALREADY_EXISTS: 2, DISTANCE: 3 },
     PlayerOperationTypes: { ASSIGN_RESOURCE: 'ASSIGN' },
+    CityOperationTypes: { BUILD: 'BUILD' }, CityCommandTypes: { PURCHASE: 'BUY' }, CityQueryType: { Constructible: 'BUILDING' },
     GameplayMap: { getLocationFromIndex: value => ({ x: value, y: 0 }), getRevealedState: (id, x) => x === 2 ? 0 : 1 },
     Players: { get: id => { if (id === 0) return {
       Resources: { getResources: () => records }, Cities: { getCities: () => [city] },
@@ -26,8 +32,19 @@ function run() {
         ] },
     }; assert.equal(id, 1, 'unmet owners and hidden-city leaders are not inspected'); return { civilizationFullName: 'Known empire' }; } },
     Cities: { get: id => { assert.notEqual(id.owner, 3); return id.owner === 0 ? city : foreign(id.owner); } },
-    GameInfo: { Resources: { lookup: () => ({ ResourceType: 'TEA', Name: 'Tea' }) }, Yields: { lookup: () => null } },
+    GameInfo: { Resources: { lookup: type => type === 'TEA' ? { ResourceType: 'TEA', Name: 'Tea', ResourceClassType: modern ? 'RESOURCECLASS_FACTORY' : 'RESOURCECLASS_CITY' } : null },
+      Ages: { lookup: () => ({ AgeType: modern ? 'AGE_MODERN' : 'AGE_EXPLORATION' }) },
+      Constructibles: { lookup: index => ({ ConstructibleType: index === 1 ? 'BUILDING_FACTORY' : 'BUILDING_RAIL_STATION' }) },
+      Yields: { lookup: () => null } },
     Game: { turn: 108, Resources: { getOriginCity: () => null },
+      CityOperations: { canStartQuery: (id, op, type) => {
+        assert.equal(modern, true); assert.equal(id.id, 10); assert.equal(op, 'BUILD'); assert.equal(type, 'BUILDING');
+        return [{ index: 1, result: { Success: false, FailureReasons: ['Needs rail'], Plots: [999] } }];
+      } },
+      CityCommands: { canStartQuery: (id, op, type) => {
+        assert.equal(modern, true); assert.equal(id.id, 10); assert.equal(op, 'BUY'); assert.equal(type, 'BUILDING');
+        return [{ index: 1, result: { Success: false, InsufficientFunds: true, Cost: 700, FailureReasons: ['Needs gold'] } }];
+      } },
       PlayerOperations: { canStart: (id, op, args, visible) => {
         assert.equal(id, 0); assert.equal(op, 'ASSIGN'); assert.equal(args.City, 10); assert.equal(visible, false);
         calls.push(args); return { Success: args.ID === 5, FailureReasons: args.ID === 5 ? [] : ['Already assigned'] };
@@ -58,6 +75,47 @@ test('trade comparisons retain blocked known routes, exclude hidden/unmet cities
   assert.equal(route.netYieldChange, null);
   assert.ok(!JSON.stringify(data).includes('Hidden'));
   assert.ok(!JSON.stringify(data).includes('999'));
+});
+
+test('Modern factory evidence retains native counts and assignment checks without inventing GDP', () => {
+  const { data } = run({ modern: true });
+  const factory = data.settlements[0].factory;
+  assert.ok(factory, 'factory state is explicit in Modern');
+  assert.equal(factory.constructiblePrerequisiteMet, true);
+  assert.equal(factory.hasFactory, true);
+  assert.equal(factory.resource.id, 'TEA');
+  assert.equal(factory.resourceCount, 2);
+  assert.equal(factory.producing, true);
+  assert.equal(factory.assignedResourceCount, 1, 'assigned copies and native factory count remain distinct');
+  assert.equal(factory.currentGDP, null);
+  assert.equal(factory.gdpChangeOnAssignment, null);
+  assert.equal(data.resources.owned[1].assignmentChoices[0].availableNow, true);
+});
+
+test('factory state is Age-gated and follows UI prerequisites rather than treating treasure infrastructure as factories', () => {
+  assert.equal(run().data.settlements[0].factory, null);
+  assert.equal(run({ modern: true, prereq: false }).data.settlements[0].factory?.hasFactory, false);
+  assert.equal(run({ modern: true, factoryResource: null }).data.settlements[0].factory?.hasFactory, false);
+  const empty = run({ modern: true, count: 0, factoryResource: null }).data.settlements[0].factory;
+  assert.equal(empty?.hasFactory, true, 'a factory may have no assigned resource');
+  assert.equal(empty?.producing, false);
+  assert.equal(empty?.resource, null);
+});
+
+test('rail-network membership is independent of station presence and construction keeps blocked native reasons', () => {
+  const { data } = run({ modern: true });
+  const infrastructure = data.settlements[0].infrastructure;
+  assert.ok(infrastructure, 'owned infrastructure state is exported');
+  assert.equal(infrastructure.inRailNetwork, true);
+  assert.equal(infrastructure.railStationPresent, false);
+  assert.equal(infrastructure.landConnectedToCapital, true);
+  assert.equal(run({ rail: false, station: true }).data.settlements[0].infrastructure.inRailNetwork, false);
+  assert.equal(infrastructure.construction.factory.production.availableNow, false);
+  assert.deepEqual(infrastructure.construction.factory.production.failureReasons, ['Needs rail']);
+  assert.equal(infrastructure.construction.factory.purchase.cost, 700);
+  assert.equal(infrastructure.construction.factory.purchase.affordable, false);
+  assert.equal(infrastructure.construction.railStation, null, 'missing native entries are unknown, not legal');
+  assert.ok(!JSON.stringify(data).includes('999'), 'raw construction plots are not leaked');
 });
 
 test('town focus choices check hashed project types, retain requirements and filter connections to owned settlements', () => {

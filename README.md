@@ -137,6 +137,14 @@ Crisis stages are enumerated using the engine's stage count for crisis index `0`
 
 `carryOverRules` provides **source-inspected estimates**, not a final-state simulation. For the installed post-load script's ORIGINAL and KEEP_MORE settings, the next Exploration/Modern gold and Influence cap estimates use the native game-speed adjustment. `currentGoldAboveCap` and `currentInfluenceAboveCap` compare today's balances with those estimates, not predicted losses. The script's non-capital-city regression precedes retention cards; final city/town status, retained units, dynamic card effects and other transition outcomes are not predicted. Unknown modes/next Ages return unknown caps. No transition is performed to verify these estimates. Transition planning data is also included as `ageTransition` in snapshots/exports.
 
+### Modern factories and rail evidence
+
+`get_civ7_resources_and_trade` adds per-settlement `infrastructure`: native rail-network membership, rail-station presence and land connectivity to the capital. These are distinct signals; a station alone does not prove a rail connection. In Modern, `construction` retains native factory/station build and purchase checks, including blocked reasons and quoted costs when present; missing entries remain `null`. No placement preview or construction request is sent.
+
+In Modern, `factory` follows the commerce UI's factory indicator and reports the selected resource, native factory-resource count, producing flag and separately counted assigned factory resources. Other Ages return `factory: null` rather than treating Exploration treasure prerequisites as factories. `currentGDP` and `gdpChangeOnAssignment` remain unknown; no rate, future factory output or marginal yield is inferred. Existing per-resource `assignmentChoices` supply destination eligibility for factory resources too.
+
+`get_civ7_movement_and_founding` adds `rail`, using the distinct read-only `UNITCOMMAND_MOVE_BY_RAIL` check. It returns deduplicated, revealed native destination plots and optional destination membership, separately from ordinary movement/pathfinding. Hidden/invalid plots and raw native metadata are withheld; packed units are not checked as deployed passengers. Travel cost, rail path and future connection forecasts remain unknown. These additions were live-read in Exploration at T114 (12 settlements, no rail networks and a blocked rail command); positive Modern factory/rail cases are fixture-tested only.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:

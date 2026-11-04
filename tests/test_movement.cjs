@@ -4,12 +4,12 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = false, zoc = false } = {}) {
+function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = false, zoc = false, railAllowed = true, moves = 2 } = {}) {
   const script = path.join(__dirname, '../civ7/movement.js');
   assert.ok(fs.existsSync(script), 'bundled movement query exists');
   const nativeCalls = [];
   const unit = { id: { owner: 0, id: 7, type: 26 }, type: 'SETTLER', location: packed ? { x: -1, y: -1 } : { x: 0, y: 0 },
-    Movement: { movementMovesRemaining: 2 }, Combat: { hasMovedIntoZOC: zoc } };
+    Movement: { movementMovesRemaining: moves }, Combat: { hasMovedIntoZOC: zoc } };
   const result = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
     queryArguments: args, UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
     Players: { get: id => { assert.equal(id, 0); return {
@@ -37,7 +37,14 @@ function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = f
       Biomes: { lookup: () => ({ BiomeType: 'TEMPERATE' }) }, Resources: { lookup: type => type ? { ResourceType: type, Name: type } : null },
       Yields: { lookup: () => ({ YieldType: 'YIELD_FOOD' }) },
     },
-    Game: { turn: 109, UnitOperations: { canStart: (id, op, options, visible) => {
+    Game: { turn: 109,
+      UnitCommands: { canStart: (id, command, options, visible) => {
+        assert.equal(packed, false, 'packed units must not be checked as deployed rail passengers');
+        assert.equal(id.owner, 0); assert.equal(id.id, 7); assert.equal(command, 'UNITCOMMAND_MOVE_BY_RAIL');
+        assert.equal(Object.keys(options).length, 0); assert.equal(visible, false);
+        return { Success: railAllowed, FailureReasons: railAllowed ? [] : ['No rail access'], Plots: [1, 1, 3, -1, 999] };
+      } },
+      UnitOperations: { canStart: (id, op, options, visible) => {
       assert.equal(id.owner, 0); assert.equal(visible, false);
       if (op === 'UNITOPERATION_FOUND_CITY') return { Success: false, FailureReasons: ['Too close'] };
       if (op === 'UNITOPERATION_FOUND_CITY_ADJACENT_PLOT') return { Success: false, Plots: [3] };
@@ -71,6 +78,28 @@ test('packed units and zone-of-control restrictions do not offer misleading move
   assert.deepEqual(run({ packed: true }).data.movement.options, []);
   assert.equal(run({ packed: true }).data.destination.path, null);
   assert.deepEqual(run({ zoc: true }).data.movement.options.map(o => o.location.x), [0]);
+});
+
+test('rail options use the distinct command check and exclude hidden, duplicate and invalid plots', () => {
+  const { data } = run();
+  assert.ok(data.rail, 'rail evidence is exported separately from ordinary movement');
+  assert.equal(data.rail.operationAllowed, true);
+  assert.deepEqual(data.rail.options, [{ location: { x: 1, y: 0 }, availableNow: true }]);
+  assert.equal(data.rail.destinationAvailableNow, true);
+  assert.equal(data.rail.travelCost, null);
+  assert.ok(!JSON.stringify(data.rail).includes('999'));
+});
+
+test('rail failure, absent destinations and packed-unit permissions do not become positive options', () => {
+  const blocked = run({ railAllowed: false }).data.rail;
+  assert.equal(blocked?.operationAllowed, false);
+  assert.equal(blocked?.destinationAvailableNow, false);
+  assert.deepEqual(blocked?.failureReasons, ['No rail access']);
+  assert.equal(blocked?.options[0].availableNow, false);
+  assert.equal(run({ args: { unit_id: 7, x: 2, y: 0 } }).data.rail?.destinationAvailableNow, false);
+  assert.equal(run({ packed: true }).data.rail?.operationAllowed, null);
+  assert.deepEqual(run({ packed: true }).data.rail?.options, []);
+  assert.equal(run({ zoc: true, moves: 0 }).data.rail?.operationAllowed, true, 'ordinary movement filters must not replace the rail command result');
 });
 
 test('unit inventory exposes stable local instance IDs without replacing existing type IDs', () => {

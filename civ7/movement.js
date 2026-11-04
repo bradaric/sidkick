@@ -49,6 +49,17 @@
       pathNote: "Native turn labels, not inferred turns remaining; unavailable/unrevealed paths and raw obstacles are withheld"
     };
   }
+  const railResult = deployed ? Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_MOVE_BY_RAIL", {}, false) : null;
+  const railOptions = [...new Set(railResult?.Plots ?? [])].map(locationForPlot).filter(revealed)
+    .map(location => ({location: {x: location.x, y: location.y}, availableNow: Boolean(railResult?.Success)}));
+  const rail = {
+    operationAllowed: railResult ? Boolean(railResult.Success) : null,
+    failureReasons: reasons(railResult), options: railOptions,
+    destinationAvailableNow: !railResult || !destination ? null : Boolean(railResult.Success) &&
+      railOptions.some(option => option.location.x === destination.x && option.location.y === destination.y),
+    travelCost: null,
+    note: "Read-only MOVE_BY_RAIL command check and revealed native destination plots, separate from ordinary movement. No path, travel cost or future rail connection is inferred"
+  };
   let founding = null;
   if (def?.FoundCity) {
     const current = deployed ? Game.UnitOperations.canStart(unit.id, "UNITOPERATION_FOUND_CITY", {}, false) : null;
@@ -97,7 +108,7 @@
     turn: Game.turn,
     unit: {instanceId: unit.id.id, type: def?.UnitType ?? unit.type, name: name(unit.name ?? def?.Name)},
     movement: {remaining: unit.Movement?.movementMovesRemaining ?? null, options},
-    destination: target, founding, site,
+    destination: target, rail, founding, site,
     settlementLimit: {current: player.Stats.numSettlements, limit: player.Stats.settlementCap}
   };
 })()

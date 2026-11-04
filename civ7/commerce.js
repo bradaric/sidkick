@@ -8,6 +8,42 @@
   const sameResource = (left, right) => left.instance === right.instance && left.offMap === right.offMap;
   const reasons = result => (result?.FailureReasons ?? []).map(name).filter(Boolean);
   const statusNames = Object.fromEntries(Object.entries(TradeRouteStatus).map(([key, value]) => [value, key]));
+  const age = GameInfo.Ages.lookup(Game.age)?.AgeType ?? null;
+  const modern = age === "AGE_MODERN";
+
+  function infrastructureChoices(city) {
+    if (!modern) return null;
+    const production = Game.CityOperations.canStartQuery(city.id, CityOperationTypes.BUILD, CityQueryType.Constructible) ?? [];
+    const purchase = Game.CityCommands.canStartQuery(city.id, CityCommandTypes.PURCHASE, CityQueryType.Constructible) ?? [];
+    function choice(type) {
+      const find = entries => entries.find(entry => GameInfo.Constructibles.lookup(entry.index)?.ConstructibleType === type)?.result;
+      const build = find(production), buy = find(purchase);
+      const describe = (result, buying) => result ? {
+        availableNow: Boolean(result.Success), failureReasons: reasons(result),
+        cost: result.Cost ?? null, affordable: buying && result.InsufficientFunds != null ? !result.InsufficientFunds : null,
+        repair: Boolean(result.RepairDamaged), inQueue: Boolean(result.InQueue), alreadyExists: Boolean(result.AlreadyExists)
+      } : null;
+      return build || buy ? {id: type, production: describe(build, false), purchase: describe(buy, true)} : null;
+    }
+    return {factory: choice("BUILDING_FACTORY"), railStation: choice("BUILDING_RAIL_STATION")};
+  }
+
+  function factoryState(city, assigned) {
+    if (!modern) return null;
+    const count = city.Resources.getNumFactoryResources();
+    const def = GameInfo.Resources.lookup(city.Resources.getFactoryResource());
+    const prerequisite = city.Resources.isTreasureConstructiblePrereqMet();
+    return {
+      constructiblePrerequisiteMet: prerequisite,
+      // Same factory indicator as the commerce UI, including its empty-factory case.
+      hasFactory: prerequisite && (count === 0 || def != null),
+      resource: def ? {id: def.ResourceType, name: name(def.Name), description: name(def.Tooltip)} : null,
+      resourceCount: count, producing: count > 0,
+      assignedResourceCount: assigned.filter(record => record.class === "RESOURCECLASS_FACTORY").length,
+      currentGDP: null, gdpChangeOnAssignment: null,
+      note: "Native factory count and current assignment count are distinct evidence; no GDP rate or marginal production is inferred"
+    };
+  }
 
   function knownCity(componentId) {
     if (!componentId || (componentId.owner !== id && !player.Diplomacy.hasMet(componentId.owner))) return null;
@@ -43,6 +79,13 @@
       free: Math.max(0, capacity - assigned.length),
       inTradeNetwork: Boolean(city.Trade.isInTradeNetwork()),
       routeCount: city.Trade.numRoutes,
+      infrastructure: {
+        railStationPresent: city.Constructibles?.hasConstructible("BUILDING_RAIL_STATION", false) ?? null,
+        inRailNetwork: city.Trade.isInRailNetwork(),
+        landConnectedToCapital: city.Trade.isConnectedToOwnersCapitalByLand(),
+        construction: infrastructureChoices(city)
+      },
+      factory: factoryState(city, assigned),
       assigned
     };
   });
@@ -96,6 +139,7 @@
 
   return {
     turn: Game.turn,
+    age,
     resources: {
       owned,
       total: owned.length,
