@@ -29,7 +29,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `start_civ7_diplomatic_project`, `start_civ7_city_state_project`,
 `append_civ7_city_production`, `purchase_civ7_city_item`,
 `establish_civ7_trade_route`, `place_civ7_population`, `move_civ7_unit`,
-`set_civ7_town_focus`, `upgrade_civ7_town` and `assign_civ7_specialist`, which
+`set_civ7_town_focus`, `upgrade_civ7_town`, `assign_civ7_specialist`,
+`set_civ7_unit_order` and `end_civ7_turn`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -67,7 +68,7 @@ delegated sandbox tasks, not unrestricted unattended play. Ordinary use needs
 exact-action instructions; a user's explicit playground delegation can authorize
 the agreed disposable-game test scope without per-action approval. MCP
 annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these sixteen action capabilities. No
+The opt-in grants the connected client these eighteen action capabilities. No
 combat, turn advancement, or other write types are included. A live write
 needs user authorization; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
@@ -482,6 +483,44 @@ debug-created prerequisites, not naturally earned eligibility. No turn advanced.
 
 The agreed backlog and ongoing results are in
 [`docs/civ7-action-backlog.md`](docs/civ7-action-backlog.md).
+
+#### Everyday unit orders and guarded turn completion
+
+- `set_civ7_unit_order(unit_id, order, expected_turn)` supports only `skip`,
+  `sleep`, `wake`, `fortify`, `heal`, `alert` and `cancel`. Uses native non-target
+  operations/commands and verifies current activity/operation, not eventual
+  healing or future defense bonuses. Existing queues require explicit cancel or
+  wake; no raw operation IDs, attacks, disbanding or automation are exposed.
+- `end_civ7_turn(expected_turn)` requires a verified single-player active local
+  turn, no native blockers and no ready unit needing an order. Submits once and
+  polls for at most 60 seconds for exactly the next active local turn, same Age
+  and player. It never forces completion, ignores blockers or makes pending
+  choices. New blockers or timeout can leave the result `unknown`; inspect fresh
+  state before proceeding, never automatically retry. Unsupported Age/endgame
+  boundaries remain separate work.
+
+Default mode still exposes 23 read-only tools; write mode has 41 tools, including
+18 actions. **128 Python and 265 Node tests pass.**
+
+**Live playground verification, 2026-11-05, turns 59–60:** native wake, sleep,
+cancel, skip, fortify and alert verified through the typed MCP handler. A Scout
+skip initially returned `unknown`: stable native activity is `HOLD`, no queued
+operation, and movement remains. Fresh read-only evidence resolved the effect;
+the verifier was regression-tested and corrected without repeating that skip.
+Heal has fixture coverage only; no eligible damaged unit was used.
+
+The turn guard rejected real population, production and resource-review blockers.
+Roskilde's upgrade-created population was placed on Pearls `(26,8)` and a Scout
+was queued through existing typed tools. A private contract probe submitted the
+UI's native `CONSIDER_ASSIGN_RESOURCE` review operation; it did not force or
+dismiss a blocker. Typed review support is still pending. The first unblocked
+turn request exposed two newly ready ships and remained on turn 59, correctly
+returning `unknown` after bounded polling. Fresh readback confirmed the state;
+after explicit skip orders for both ships, a new guarded request returned
+`verified_applied`: turn **59 → 60**, same player/Age, active local turn, no sent
+completion. Turn 60 now requires a diplomatic response; no automatic response
+or further turn submission was made. This remains the sandbox with Batch 1's
+debug Gold/population setup, not an unmodified campaign replay.
 
 ## One-shot export
 

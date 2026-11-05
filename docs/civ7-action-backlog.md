@@ -34,8 +34,8 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
 | 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Pending |
-| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Pending |
-| 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Pending |
+| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders implemented; travel/promotions/upgrades pending |
+| 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Pending |
@@ -78,3 +78,21 @@ introduce an arbitrary operation dispatcher or change persistent client config.
   Roskilde upgrade spent 3400 Gold and created a city with one pending placement.
   Native typed Copan specialist `(25,11)` changed workers 0 → 1, pending 1 → 0.
   Independent readers confirmed both. No turn advancement in this batch.
+- Batch 1 committed as `78ac464`.
+- Batch 2: basic orders and guarded turn completion. 128 Python + 265 Node tests.
+  Typed wake/sleep/cancel/skip/fortify/alert live-verified; heal fixture-only.
+  Stable skip activity is HOLD without a queued operation; first unknown outcome
+  was resolved by read-only evidence, not repeated. Existing queues need explicit
+  cancel/wake. Real population/production/resource-review blockers were respected.
+  Roskilde Pearls growth `(26,8)` and Scout queue used existing typed actions.
+  Resource review was a private native UI contract probe (CONSIDER_ASSIGN_RESOURCE),
+  not typed support or a forced blocker bypass. First native end request remained
+  on turn 59 with two newly ready ships; returned unknown, no automatic retry.
+  After fresh readback and explicit ship skips, native typed turn completion
+  verified 59 → 60. Current blocker: DIPLOMATIC_RESPOSE_REQUIRED (native spelling).
+
+## Next batch: mandatory choices
+
+Implement native government/celebration and resource-review handling, inspect
+the turn-60 diplomatic response contract, then fill policy/narrative/crisis
+picker gaps. Continue to stop at unsupported blockers rather than forcing turns.

@@ -13,6 +13,7 @@ from civ7.actions import (
     assign_specialist,
     buy_attribute_node,
     establish_trade_route,
+    end_turn,
     move_great_work,
     move_unit,
     place_population,
@@ -21,6 +22,7 @@ from civ7.actions import (
     select_technology,
     set_policy_active,
     set_town_focus,
+    set_unit_order,
     start_city_state_project,
     start_diplomatic_project,
     upgrade_town,
@@ -211,6 +213,28 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="set_civ7_unit_order", title="Set Civ VII unit order",
+            description=("CHANGE GAME STATE: set one owned on-map unit_id to skip, sleep, wake, fortify, heal, "
+                         "alert or cancel using fresh expected_turn. Fixed non-target native operations only; "
+                         "no attacks, travel, disbanding or raw operation strings. An existing queued order "
+                         "requires explicit cancel/wake first. Verifies native activity/current operation, "
+                         "not eventual healing or a future fortification bonus. Requires user authorization; "
+                         "submits once and never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(set_unit_order)
+        server.tool(
+            name="end_civ7_turn", title="End one Civ VII turn",
+            description=("CHANGE GAME STATE: submit exactly one active single-player turn using fresh expected_turn. "
+                         "Requires no native turn blockers or ready unit needing an order; never skips blockers, "
+                         "forces turn completion or selects pending choices. Waits up to 60 seconds for exactly "
+                         "the next active local turn in the same Age/player context. Age transitions/endgame "
+                         "continuation need separate handling. Requires explicit action or bounded sandbox "
+                         "authorization. Never automatically retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(end_turn)
         server.tool(
             name="set_civ7_town_focus", title="Set Civ VII town focus",
             description=("CHANGE GAME STATE: select an exact engine-offered focus ID or GROWTH for an exact owned "

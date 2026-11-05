@@ -13,6 +13,7 @@ from civ7.connection import run_script
 _action_lock = asyncio.Lock()
 _VERIFICATION_TIMEOUT = 2.0
 _VERIFICATION_INTERVAL = 0.1
+_TURN_VERIFICATION_TIMEOUT = 60.0
 
 
 async def select_technology(technology: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
@@ -227,6 +228,50 @@ async def _manage_settlement(arguments: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("A nonnegative expected turn is required")
     return await _execute_and_verify("settlement_management.js", {**arguments, "settlement": settlement.strip()},
                                      "settlement_management_state.js")
+
+
+async def set_unit_order(
+    unit_id: StrictInt, order: Literal["skip", "sleep", "wake", "fortify", "heal", "alert", "cancel"], expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Issue one bounded non-target unit order without replacing queued orders implicitly."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or not isinstance(order, str) or order not in {
+        "skip", "sleep", "wake", "fortify", "heal", "alert", "cancel",
+    }:
+        raise ValueError("An owned unit, supported non-target order and expected turn are required")
+    return await _execute_and_verify("unit_order.js", {"unit_id": unit_id, "order": order, "expected_turn": expected_turn},
+                                     "unit_order_state.js")
+
+
+async def end_turn(expected_turn: StrictInt) -> dict[str, Any]:
+    """Submit one unblocked single-player turn and await the next active local turn."""
+    if type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("A nonnegative expected turn is required")
+    async with _action_lock:
+        result = {"status": "unknown", "expected_turn": expected_turn}
+        after = None
+        try:
+            result = await run_script("end_turn.js", {"expected_turn": expected_turn})
+            if result.get("status") == "rejected":
+                return result
+            if result.get("status") != "submitted":
+                raise ValueError("Unexpected turn submission response")
+            before = result["before"]
+            if before.get("turn") != expected_turn or any(type(before.get(k)) is not int for k in ("turn", "age", "playerId")):
+                raise ValueError("Unverified pre-submit turn identity")
+            async with asyncio.timeout(_TURN_VERIFICATION_TIMEOUT):
+                while True:
+                    after = await run_script("turn_state.js")
+                    if any(type(after.get(k)) is not int or after[k] != before[k] for k in ("age", "playerId")) or \
+                            type(after.get("turn")) is not int or after["turn"] not in (expected_turn, expected_turn + 1):
+                        return {**result, "status": "unknown", "after": after,
+                                "reason": "Unexpected player/Age/turn boundary; never retry automatically"}
+                    if after["turn"] == expected_turn + 1 and after.get("active") is True and after.get("sent") is False:
+                        return {**result, "status": "verified_applied", "after": after}
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", **({"after": after} if after is not None else {}),
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Turn outcome is unknown; inspect current state and do not retry automatically"}
 
 
 async def _execute_and_verify(
