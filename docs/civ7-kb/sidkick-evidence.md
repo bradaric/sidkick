@@ -106,9 +106,10 @@ Native descriptions are not converted-population forecasts or arbitrary-target e
 ## Military logistics
 
 - Query without a selector for owned commanders, packed membership, air units, reinforcement assignments and WMD counts. Capacity is not free space; empty inventories and zero stockpiles are not missing data.
+- `packedUnitIds: null` means membership is unknown. Any unknown commander membership suppresses deployment checks and locations; withheld locations do not prove packing. `reinforcements: null` means assignment APIs are unavailable, not that no reinforcements exist. Missing arrival quotes remain `nativeArrivalTime: null`.
 - For rebase/reinforcement readiness, pass an owned `get_civ7_units` instance ID as `unit_id`. Inspect the selected unit's `deployed` flag, operation permission, destinations and failure reasons. Packed/off-map units are not checked as deployed: null permission is unknown/not checked, not a failed attempt.
-- Destinations are revealed native options, not a route or mission-range forecast. Native arrival quotes are not guaranteed travel times, and `travelTurns` remains unknown. Do not infer launch eligibility, strikes or damage from WMD counts.
-- This focused query is separate from snapshots/exports. It never packs, moves, rebases, reinforces or launches a unit.
+- Destinations require explicit revealed/visible evidence. Missing or unknown visibility withholds options without discarding known native permission; empty options do not prove no eligible destinations exist. Options are not a route or mission-range forecast. Native arrival quotes are not guaranteed travel times, and `travelTurns` remains unknown. Do not infer launch eligibility, strikes or damage from WMD counts.
+- This focused query is separate from snapshots/exports. Refresh live evidence before advising; successful checks never authorize actions. It never packs, moves, rebases, reinforces or launches a unit.
 
 ## Visible foreign settlements
 
