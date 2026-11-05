@@ -20,10 +20,35 @@
     return [...new Set(records.flatMap(record => record?.resultData?.FailureReasons ?? []).map(name).filter(Boolean))];
   }
 
+  function secondarySettlement(target, otherId) {
+    if (typeof GameplayMap === "undefined" || typeof RevealedStates === "undefined") return null;
+    const valid = location => location && Number.isInteger(location.x) && Number.isInteger(location.y) &&
+      location.x >= 0 && location.y >= 0 && location.x < GameplayMap.getGridWidth() && location.y < GameplayMap.getGridHeight();
+    const plot = target.targetPlot;
+    if (!valid(plot)) return null;
+    const state = GameplayMap.getRevealedState(localId, plot.x, plot.y);
+    if (state == null || ![RevealedStates.VISIBLE, RevealedStates.REVEALED].includes(state)) return null;
+    // City IDs can repeat across owners; an ID alone cannot prove an owned selection.
+    const owned = (player.Cities?.getCities() ?? []).filter(city => city.id.owner === localId && city.id.id === target.targetID &&
+      valid(city.location) && city.location.x === plot.x && city.location.y === plot.y);
+    let city = owned.length === 1 ? owned[0] : null;
+    if (!city) {
+      if (state !== RevealedStates.VISIBLE || typeof MapCities === "undefined" || typeof MapCities.getCity !== "function" ||
+        typeof Cities === "undefined" || typeof Cities.get !== "function") return null;
+      const component = MapCities.getCity(plot.x, plot.y);
+      if (!component || component.owner !== otherId || component.id !== target.targetID || !diplomacy.hasMet(component.owner)) return null;
+      city = Cities.get(component);
+      if (!city || city.owner !== component.owner || city.id?.owner !== component.owner || city.id?.id !== component.id ||
+        !valid(city.location) || GameplayMap.getRevealedState(localId, city.location.x, city.location.y) !== RevealedStates.VISIBLE) return null;
+    }
+    return {kind: city.id.owner === localId ? "owned-settlement" : "visible-foreign-settlement", name: name(city.name),
+      settlement: {ownerId: city.id.owner, cityId: city.id.id, location: {x: city.location.x, y: city.location.y}}};
+  }
+
   function secondaryChoice(project, primary, target, otherId) {
     const parameter = target.parameterName;
     if (!Number.isInteger(target.targetID) || target.targetID === -1 || (parameter !== "Unit" && target.targetID < 0)) return null;
-    let kind, label;
+    let kind, label, settlement;
     if (parameter === "Player3" || parameter === "ID2") {
       if (target.targetID !== localId && !diplomacy.hasMet(target.targetID)) return null;
       const other = target.targetID === localId ? player : Players.get(target.targetID);
@@ -34,10 +59,11 @@
       kind = "amount";
       label = name(target.targetName);
     } else if (parameter === "City") {
-      const cities = player.Cities?.getCities().filter(city => city.id.owner === localId && city.id.id === target.targetID) ?? [];
-      if (cities.length !== 1) return null;
-      kind = "owned-settlement";
-      label = name(cities[0].name);
+      const city = secondarySettlement(target, otherId);
+      if (!city) return null;
+      kind = city.kind;
+      label = city.name;
+      settlement = city.settlement;
     } else if (parameter === "Unit") {
       // The picker resolves public unit definitions here, not foreign unit instances.
       const def = GameInfo.Units?.lookup(target.targetName);
@@ -49,6 +75,7 @@
     const result = project.operationType == null ? null : Game.PlayerOperations.canStart(localId, project.operationType, args, false);
     const reasons = failureReasons(project, primary, target, {resultData: result});
     return {parameter, value: target.targetID, kind, name: label,
+      ...(settlement ? {settlement} : {}),
       operationAllowed: result ? Boolean(result.Success) : null,
       availableNow: project.projectStatus === DiplomacyProjectStatus.PROJECT_AVAILABLE && !reasons.length && Boolean(result?.Success),
       quotedInfluenceCost: nonnegative(target.costYieldD), failureReasons: reasons};
@@ -167,7 +194,7 @@
     scope: "Local player and met major counterparts; secondary choices are visibility-filtered",
     netInfluencePerTurn: player.Stats.getNetYield(YieldTypes.YIELD_DIPLOMACY),
     dealCount: (Game.DiplomacyDeals.getDealIds(localId) ?? []).length,
-    detailNote: "Secondary choices include only met/local players, owned settlements, public unit types and offered amounts; unsupported/foreign-settlement choices and raw target plots are omitted. Exact selected-argument checks do not establish complete total costs; quoted secondary influence is not added to the primary quote. Project terms are definitions; duration/completion quotes are not guaranteed final expiry dates. Progress uses native event scores, not a duration formula. Incoming hidden/espionage events are omitted rather than attributed. Enacted peace-deal item terms and working-deal negotiations remain unsupported; no deal is created, changed or sent",
+    detailNote: "Secondary choices include only met/local players, offered owned settlements with a matching revealed centre plot, offered currently visible settlement centres of the met primary counterpart, public unit types and offered amounts. City choices carry owner-qualified settlement identity; IDs alone cannot prove ownership. Hidden/fogged foreign centres, unrelated owners, ambiguous/missing plots, unsupported choices and raw target plots are omitted. No foreign city inventory or private yields/queues are queried. Exact selected-argument checks do not establish complete total costs; quoted secondary influence is not added to the primary quote. Project terms are definitions; duration/completion quotes are not guaranteed final expiry dates. Progress uses native event scores, not a duration formula. Incoming hidden/espionage events are omitted rather than attributed. Enacted peace-deal item terms and working-deal negotiations remain unsupported; no deal is created, changed or sent",
     majorPlayers
   };
 })()

@@ -5,8 +5,13 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 
 function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = false, noPrimary = false,
-  emptySecondary = false, operationAllowed = true, privateEvents = false, signedUnit = false } = {}) {
+  emptySecondary = false, operationAllowed = true, privateEvents = false, signedUnit = false,
+  visibleCity = false, cityIdCollision = false, cityPlotState = 2, centreState = 2,
+  cityOwner = 1, missingCityApi = false, wrongCityId = false, noCityPlot = false, ownedPlotState = 1,
+  invalidCityPlot = false } = {}) {
   const calls = [];
+  const cityReads = [], mapReads = [];
+  const foreignCityId = cityIdCollision ? 1000 : 2000;
   const secretPlot = {get x() {throw Error('Target plots must not be inspected');}};
   const projects = [{actionTypeName: 'SECONDARY', actionType: 10, operationType: 'OP', projectStatus: 0,
     projectDescription: 'Choose a secondary target', target2Type: 22, lastStageDuration: 15,
@@ -15,8 +20,8 @@ function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = 
       {parameterName: 'Player3', targetID: 2, targetName: 'SECRET_PLAYER', targetPlot: secretPlot},
       {parameterName: 'Player3', targetID: 3, targetPlot: secretPlot, costYieldD: 30},
       {parameterName: 'Amount2', targetID: 100, targetName: '100 Gold', costYieldD: 0},
-      {parameterName: 'City', targetID: 1000, targetName: 'Home', targetPlot: secretPlot},
-      {parameterName: 'City', targetID: 2000, targetName: 'SECRET_CITY', targetPlot: secretPlot},
+      {parameterName: 'City', targetID: 1000, targetName: 'Home', targetPlot: {x: 1, y: 0}},
+      {parameterName: 'City', targetID: foreignCityId, targetName: 'SECRET_CITY', targetPlot: noCityPlot ? undefined : {x: invalidCityPlot ? 999 : 2, y: 0}},
       {parameterName: 'Unit', targetID: signedUnit ? -55 : 55, targetName: 'UNIT_PUBLIC', targetPlot: secretPlot},
       {parameterName: 'ID2', targetID: 4, targetPlot: secretPlot},
       {parameterName: 'UNSUPPORTED', targetID: 9999, targetName: 'SECRET_DATA', targetPlot: secretPlot},
@@ -33,7 +38,7 @@ function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = 
   const local = {
     Diplomacy: {hasMet: id => [1, 3, 4].includes(id), getRelationshipLevelName: () => 'Friendly', getRelationshipLevel: () => 2,
       getRelationshipEnum: () => 2, isAtWarWith: () => false, hasAllied: () => false, getPlayerRelationshipHistory: () => []},
-    Stats: {getNetYield: () => 10}, Cities: {getCities: () => [{id: {owner: 0, id: 1000}, name: 'Home'}]},
+    Stats: {getNetYield: () => 10}, Cities: {getCities: () => [{id: {owner: 0, id: 1000}, name: 'Home', location: {x: 1, y: 0}}]},
   };
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/diplomacy.js'), 'utf8'), {
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0}, Locale: {compose: s => s},
@@ -43,6 +48,20 @@ function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = 
     }},
     GameInfo: {Leaders: {lookup: () => null}, Units: {lookup: type => type === 'UNIT_PUBLIC' ? {UnitType: type, Name: 'Public unit'} : null},
       DiplomacyActions: {lookup: () => ({BaseDuration: 15, Description: 'Conditional agreement terms', IsMutualSupport: true, Supportable: true, Opposable: true})}},
+    GameplayMap: {getGridWidth: () => 5, getGridHeight: () => 1,
+      getRevealedState: (id, x) => {assert.equal(id, 0); return x === 1 ? ownedPlotState : x === 2 ? visibleCity ? cityPlotState : 0 : x === 3 ? centreState : 0;}},
+    RevealedStates: {HIDDEN: 0, REVEALED: 1, VISIBLE: 2},
+    MapCities: missingCityApi ? undefined : {getCity: (x, y) => {
+      assert.equal(x, 2); assert.equal(y, 0); assert.equal(cityPlotState, 2, 'no fogged foreign discovery');
+      mapReads.push(x); return {owner: cityOwner, id: foreignCityId};
+    }},
+    Cities: {get: component => {
+      assert.equal(component.owner, 1, 'unmet/unrelated owners are rejected before city metadata reads');
+      cityReads.push(component.id);
+      return {id: {owner: 1, id: wrongCityId ? 9999 : foreignCityId}, owner: 1, location: {x: 3, y: 0},
+        get name() {assert.equal(centreState, 2, 'a visible district cannot expose a fogged centre name'); return 'Visible foreign city';},
+        get Production() {throw Error('No private foreign production');}};
+    }},
     DiplomacyActionTargetTypes: {NO_DIPLOMACY_TARGET: -1, DIPLOMACY_TARGET_NONE: 0},
     DiplomacyActionGroups: {NO_DIPLOMACY_ACTION_GROUP: -1, DIPLOMACY_ACTION_GROUP_ESPIONAGE: 44},
     DiplomacyProjectStatus: {PROJECT_AVAILABLE: 0, PROJECT_ACTIVE: 1, PROJECT_BLOCKED: -1, PROJECT_NOT_UNLOCKED: -2},
@@ -70,14 +89,15 @@ function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = 
       sendRequest: () => {throw Error('Diplomatic actions are forbidden');},
     }, DiplomacyDeals: {
       hasPendingDeal: () => false, getDealIds: () => [],
+      getDeal: () => {throw Error('No guessed enacted-deal schema');}, getDealItem: () => {throw Error('No guessed enacted-item schema');},
       getWorkingDeal: () => {throw Error('No working-deal access');}, clearWorkingDeal: () => {throw Error('No working-deal mutation');},
       sendWorkingDeal: () => {throw Error('No deal requests');},
     }},
   });
-  return {data: JSON.parse(JSON.stringify(data)), calls};
+  return {data: JSON.parse(JSON.stringify(data)), calls, cityReads, mapReads};
 }
 
-test('secondary choices check exact selected arguments and exclude unmet players, foreign cities and raw plots', () => {
+test('secondary choices check exact selected arguments and exclude unmet players, hidden cities and raw plots', () => {
   const {data, calls} = run();
   const action = data.majorPlayers[0].availableActions[0];
   assert.ok(action.secondaryTargets, 'safe secondary choices are exported');
@@ -145,4 +165,60 @@ test('public unit selectors retain signed native type hashes rather than requiri
   assert.ok(choice, 'signed public unit selector is retained');
   assert.equal(choice.value, -55);
   assert.equal(calls.find(args => 'Unit' in args).Unit, -55);
+});
+
+test('offered City choices include only the met counterpart’s currently visible centre with exact native eligibility', () => {
+  const {data, calls, cityReads} = run({visibleCity: true});
+  const action = data.majorPlayers[0].availableActions[0];
+  const choice = action.secondaryTargets.find(target => target.kind === 'visible-foreign-settlement');
+  assert.ok(choice, 'visible foreign City choice is exported');
+  assert.equal(choice.name, 'Visible foreign city');
+  assert.deepEqual(choice.settlement, {ownerId: 1, cityId: 2000, location: {x: 3, y: 0}});
+  assert.equal(choice.parameter, 'City');
+  assert.equal(choice.value, 2000);
+  assert.equal(choice.availableNow, true);
+  assert.ok(calls.some(args => args.City === 2000));
+  assert.deepEqual(cityReads, [2000]);
+  assert.equal(action.influenceCost, null);
+  assert.equal(action.secondaryTargetsComplete, false);
+  assert.ok(!JSON.stringify(data).includes('SECRET'));
+  assert.ok(!JSON.stringify(choice).includes('targetPlot'));
+});
+
+test('reused city IDs are resolved by offered plot ownership rather than mislabelled as an owned city', () => {
+  const {data} = run({visibleCity: true, cityIdCollision: true});
+  const choices = data.majorPlayers[0].availableActions[0].secondaryTargets.filter(target => target.parameter === 'City');
+  assert.deepEqual(choices.map(choice => [choice.kind, choice.name]), [
+    ['owned-settlement', 'Home'], ['visible-foreign-settlement', 'Visible foreign city'],
+  ]);
+  assert.deepEqual(choices.map(choice => choice.settlement.ownerId), [0, 1]);
+});
+
+test('hidden/fogged plots, fogged centres, unmet/unrelated owners and mismatched city IDs are omitted before checks', () => {
+  for (const options of [{cityPlotState: 0}, {cityPlotState: 1}, {centreState: 1}, {centreState: 0},
+    {cityOwner: 2}, {cityOwner: 3}, {wrongCityId: true}, {missingCityApi: true}]) {
+    const {data, calls, mapReads, cityReads} = run({visibleCity: true, ...options});
+    assert.equal(data.majorPlayers[0].availableActions[0].secondaryTargets.filter(target => target.parameter === 'City').length, 1);
+    assert.ok(!calls.some(args => args.City === 2000));
+    if (options.cityPlotState != null && options.cityPlotState !== 2) assert.equal(mapReads.length, 0);
+    if (options.cityOwner != null) assert.equal(cityReads.length, 0);
+  }
+});
+
+test('a missing offered plot cannot identify an ambiguous city and native rejection never becomes availability', () => {
+  const ambiguous = run({visibleCity: true, cityIdCollision: true, noCityPlot: true});
+  assert.equal(ambiguous.data.majorPlayers[0].availableActions[0].secondaryTargets.filter(target => target.parameter === 'City').length, 1);
+  const blocked = run({visibleCity: true, operationAllowed: false}).data.majorPlayers[0].availableActions[0].secondaryTargets
+    .find(target => target.kind === 'visible-foreign-settlement');
+  assert.ok(blocked);
+  assert.equal(blocked.operationAllowed, false);
+  assert.equal(blocked.availableNow, false);
+});
+
+test('invalid offered coordinates and unknown visibility cannot produce City eligibility', () => {
+  const invalid = run({visibleCity: true, invalidCityPlot: true});
+  assert.equal(invalid.mapReads.length, 0);
+  assert.ok(!invalid.calls.some(args => args.City === 2000));
+  const unknown = run({ownedPlotState: null});
+  assert.ok(!unknown.calls.some(args => args.City === 1000));
 });
