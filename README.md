@@ -1,6 +1,6 @@
 # Sidkick
 
-Sidkick provides read-only, on-demand game data to AI strategy conversations.
+Sidkick provides read-only-by-default, on-demand game data to AI strategy conversations.
 Civilization VII is the first adapter.
 
 ## Current modes
@@ -10,7 +10,7 @@ Civilization VII is the first adapter.
 - The ChatGPT bridge runs a managed tunnel runtime, which launches its own stdio MCP server.
 - A standalone HTTP MCP server is available for clients that connect to a URL.
 
-The game adapter connects only to `127.0.0.1:4318`. It reads the local player's empire, decisions, settlements, research and government, religion, resources and trade, units, diplomacy, visible threats, turn context, Test of Time victory progress, and known world. Map queries discard hidden tiles, diplomacy and victory queries discard unmet players, and threat queries scan only tiles visible this turn. It does not poll between tool calls or change game state.
+The game adapter connects only to `127.0.0.1:4318`. It reads the local player's empire, decisions, settlements, research and government, religion, resources and trade, units, diplomacy, visible threats, turn context, Test of Time victory progress, and known world. Map queries discard hidden tiles, diplomacy and victory queries discard unmet players, and threat queries scan only tiles visible this turn. By default it does not poll between tool calls or change game state. An explicit stdio-only write mode adds the typed gameplay actions described below.
 
 ## OpenCode: no start/stop wrapper needed
 
@@ -19,6 +19,143 @@ With Sidkick configured as a **local stdio MCP server**, OpenCode launches the P
 The configured command is `civ7/.venv/bin/python -m sidkick.server --transport stdio`, run from the repository root. After Python server code or tool registrations change, disconnect/reconnect Sidkick through `/mcps` to load the new code. You do not need to restart Civ VII or the whole OpenCode service.
 
 The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not start them merely to use Sidkick in OpenCode. The game connection is local, but tool results become part of the conversation sent to your selected AI provider.
+
+### Opt-in gameplay actions (OpenCode first)
+
+The normal server still exposes **23 read-only tools**. Starting it with both
+`--transport stdio --enable-writes` additionally registers
+`select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
+`assign_civ7_resource`, `move_civ7_great_work` and `buy_civ7_attribute_node`, which
+**change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
+changed automatically; enabling it for a client is a separate deliberate step.
+Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
+
+Use a fresh `get_civ7_research_and_government` result to obtain the exact
+`technology.available[].id` or `civic.available[].id` and `turn`. The technology action arguments are:
+
+```json
+{"technology": "NODE_TECH_TYPE_FROM_THE_READ", "expected_turn": 58}
+```
+
+For the civic action, use `{"civic": "NODE_CIVIC_TYPE_FROM_THE_READ", "expected_turn": 58}`.
+Each action selects **one offered research node**, not a long-term research
+target. It requires an active local turn, no completed-turn submission and no
+existing long-term target for that research system. An existing target must be
+cleared in the game; these tools will not silently clear it with a second request.
+The native check uses the offered node's native numeric selector, not a guessed
+hash/index. The expected turn rejects stale turns but cannot detect every
+same-turn change or a save switch with identical context markers.
+
+Results distinguish `rejected`, `already_active` (no request),
+`verified_applied` (fresh separate readback matched the requested active
+technology/civic and turn/Age/player), and `unknown`. After one submission the adapter
+checks read-only state at 100 ms intervals for up to two seconds, stopping as
+soon as the selection is verified or the context changes. The deadline also
+bounds a hanging read. Timeouts/disconnects can still happen after submission,
+and the action may apply after the deadline. **Do not automatically repeat unknown or cancelled calls**;
+read current research before deciding what to do next. There is no rollback,
+cross-process deduplication, or exactly-once guarantee. Actions are serialized
+through readback within one server process; use only one write-enabled server
+for the game.
+
+This is intended for user-directed single-player commands, not unattended turn
+execution. A user's explicit instruction for the exact gameplay action is still
+required; MCP annotations and server instructions are not authorization controls.
+The opt-in grants the connected client these six action capabilities. No
+city production/purchases, unit movement, turn advancement, or other write types are included. A live write
+needs separate approval; use a disposable save/checkpoint. See the historical
+[write-capability investigation](docs/civ7-write-capability-report.md) for the
+broader API surface and unverified areas.
+
+**Live verification, 2026-11-05:** two user-approved MCP calls switched Mass
+Production to Combustion II and restored Mass Production on turn 58. Fresh reads
+observed both selections; Mass Production retained 1,805 progress at depth 0.
+No turns were advanced, requests retried, save/load commands issued, or persistent
+OpenCode settings changed. Both calls returned `unknown` because the single
+immediate readback preceded native application; subsequent read-only checks
+confirmed success. The adapter now uses bounded read-only verification to cover
+this delay; delayed application, expiration, hanging reads and cancellation are
+fixture-tested. An approved repeat of the same two selections returned
+`verified_applied` for both calls (about 60 ms each), with the same turn and
+1,805 progress restored. A separately approved Political Theory → Samoderzhaviye
+→ Political Theory round-trip also returned `verified_applied` for both calls
+(about 190 ms and 60 ms). Political Theory retained 2,319 progress at turn 58;
+technology and all active policy/tradition/crisis groups were unchanged. The
+actions share submission serialization and bounded verification, but have
+separate native scripts, selectors and readback fields.
+
+#### Single ordinary-policy toggle
+
+`set_civ7_policy_active` accepts:
+
+```json
+{"policy": "TRADITION_TYPE_FROM_THE_READ", "active": false, "expected_turn": 58}
+```
+
+Only exact unlocked ordinary-policy IDs are supported. Deactivation can leave
+an empty slot and immediately change yields. Activation requires a known empty
+**ordinary** policy slot; there is no automatic replacement, tradition-slot
+fallback or card migration. The action honors `Culture.canSwapCultureSlot` and
+the exact native `CHANGE_TRADITION` check, using the definition's index rather
+than its hash. It never clears the policy notification through a separate
+`CONSIDER_ASSIGN_TRADITIONS` request and does not edit tradition/crisis cards.
+
+`already_active` and `already_inactive` are no-ops. After submission, verification
+requires the exact expected ordinary-card membership and unchanged tradition/
+crisis membership in the same turn/Age/player context. Unknown/cancelled results
+have the same no-retry rule as research; there is no atomic multi-card swap or
+automatic rollback. The live turn-58 preflight reported swapping locked and
+native rejection of Social Science removal and Levies activation. Positive
+toggle behavior is fixture-tested, not live-certified; an unlocked scenario is
+still required. An approved live `set_civ7_policy_active` attempt to deactivate
+Social Science returned `rejected` with "Ordinary policy changes are currently
+locked"; fresh reads confirmed all slot memberships and both research selections
+unchanged on turn 58. No turn is advanced or unlock manufactured to obtain a
+positive case.
+
+#### Resources, Great Works and leader attributes
+
+- `assign_civ7_resource(resource_instance, off_map, settlement, expected_turn)`
+  assigns one proven-owned resource to an exact owned settlement name with free
+  capacity. The map/off-map flag is part of its identity, not inferred from a
+  numeric ID. It checks the UI's native resource-assignment lock and operation
+  permission. No unassignment, resource swaps, bulk clearing or stateful previews.
+- `move_civ7_great_work(great_work_index, destination_city_id,
+  destination_building, expected_turn)` moves one owned instance into a compatible
+  free owned building slot. City IDs and constructible type IDs come from the
+  existing Great Work inventory. It checks unique ownership, slot evidence,
+  source/destination damage and native eligibility. Archived works omit
+  `SourceCity`; occupied-slot swaps and archiving are unsupported. Yield changes
+  are not predicted.
+- `buy_civ7_attribute_node(node, expected_turn)` buys a first nonrepeatable leader
+  perk by its exact node ID from the local attribute branch. It honors local
+  applicability, legend locks, node state, available branch/wildcard funding and
+  the native purchase check. This can permanently spend points. Repeat purchases
+  are explicitly unsupported; no points are granted or unlocks manufactured.
+  Readback verifies the node's depth against its captured pre-submit depth and
+  reports the observed balances without inventing an exact price quote.
+
+These actions use the same single-submission, bounded read-only verifier and
+return the same rejected/no-op/verified/unknown outcomes. Asset readback is
+targeted to the selected resource, work instance or attribute node. Positive and
+blocked cases are fixture-tested. Current offline verification: **100 Python and
+205 Node tests pass**.
+
+**Live verification, 2026-11-05, turn 58:** the approved Pearls instance `531`
+assignment to Wak Kab'nal returned `rejected` because resource assignment is
+locked. Buying `NODE_ATTRIBUTE_CULTURAL_02` returned `rejected` because no branch
+or wildcard points are available. Resource assignment and the selected node's
+depth/point balances stayed unchanged. Positive resource/attribute execution
+remains fixture-tested only.
+
+The approved relocation of owned Great Work `6` (Exhibit) from St. Petersburg's
+Palace to Bàakʼ's Museum returned `verified_applied`; a separate Great Work
+inventory read confirmed the Museum location. The work was deliberately left
+there for manual inspection, not restored. Research IDs/progress/depth and
+policy memberships were unchanged; no turns, save/load commands or write retries
+were issued. Manual inspection precedes the first commit. Diplomacy/city-state
+actions and city production/purchases are separate, not implemented by this batch.
+The user subsequently confirmed in-game that the Exhibit is in Bàakʼ.
 
 ## One-shot export
 

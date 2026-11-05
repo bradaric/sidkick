@@ -7,6 +7,14 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 from mcp.types import Icon, ToolAnnotations
 
+from civ7.actions import (
+    assign_resource,
+    buy_attribute_node,
+    move_great_work,
+    select_civic,
+    select_technology,
+    set_policy_active,
+)
 from civ7.player import snapshot
 from civ7.queries import (
     age_transition,
@@ -46,14 +54,19 @@ def server_icon() -> Icon:
     )
 
 
-def create_server() -> MCPServer:
+def create_server(*, enable_writes: bool = False) -> MCPServer:
     server = MCPServer(
         "Sidkick",
         title="Sidkick",
-        description="Live, read-only game data for strategy advice.",
+        description=("Live game data and opt-in typed gameplay actions." if enable_writes
+                     else "Live, read-only game data for strategy advice."),
         icons=[server_icon()],
         instructions=(
-            "Read-only, local-player Civilization VII data for strategy advice. Use "
+            ("Local-player Civilization VII data with explicitly enabled typed gameplay actions. "
+             "Only perform a write when the user explicitly requests the exact action. "
+             "Never retry an unknown/cancelled action automatically; read current state first. "
+             if enable_writes else "Read-only, local-player Civilization VII data for strategy advice. ")
+            + "Use "
             "focused tools for the needed domain. The explored-map tool is large and "
             "contains only tiles already revealed to the local player. Known-world and "
             "victory tools omit unmet players. Diplomacy omits unmet players, and visible "
@@ -186,6 +199,115 @@ def create_server() -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(research_and_government)
+    if enable_writes:
+        server.tool(
+            name="select_civ7_technology",
+            title="Select Civ VII technology",
+            description=(
+                "CHANGE GAME STATE: select one local technology using its exact technology.available[].id "
+                "and the turn from a fresh get_civ7_research_and_government read as expected_turn. "
+                "Requires an active local turn, no existing long-term research target, and a successful "
+                "native check. Submits once, then checks read-only state for up to two seconds. "
+                "Status is rejected, already_active, "
+                "verified_applied or unknown. Unknown/cancelled calls must not be retried automatically. "
+                "Does not select civics, clear research targets or advance turns. Requires the user's "
+                "explicit instruction to perform this exact gameplay action."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(select_technology)
+        server.tool(
+            name="select_civ7_civic",
+            title="Select Civ VII civic",
+            description=(
+                "CHANGE GAME STATE: select one local civic using its exact civic.available[].id "
+                "and the turn from a fresh get_civ7_research_and_government read as expected_turn. "
+                "Requires an active local turn, no existing long-term civic target, and a successful "
+                "native check. Submits once, then checks read-only state for up to two seconds. "
+                "Status is rejected, already_active, verified_applied or unknown. Unknown/cancelled "
+                "calls must not be retried automatically. Does not select technology, change policies, "
+                "clear civic targets or advance turns. Requires the user's explicit instruction "
+                "to perform this exact gameplay action."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(select_civic)
+        server.tool(
+            name="set_civ7_policy_active",
+            title="Enable or disable Civ VII ordinary policy",
+            description=(
+                "CHANGE GAME STATE: enable/disable one exact ordinary policy ID from "
+                "get_civ7_research_and_government using policy, boolean active and its fresh turn as "
+                "expected_turn. Requires an active local turn, an unlocked ordinary card, the native "
+                "policy-swap gate and operation check, plus a free ordinary slot when enabling. "
+                "Does not swap cards, migrate tradition slots, acknowledge policy notifications, "
+                "change crisis/tradition cards or advance turns. Submits once and verifies exact "
+                "membership of all three slot groups for up to two seconds. Status is rejected, "
+                "already_active, already_inactive, verified_applied or unknown. Never automatically "
+                "retry unknown/cancelled calls. Requires the user's explicit instruction for this "
+                "exact gameplay action; deactivation can leave an empty slot and change yields."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(set_policy_active)
+        server.tool(
+            name="assign_civ7_resource",
+            title="Assign Civ VII resource",
+            description=(
+                "CHANGE GAME STATE: assign one owned resource_instance and off_map identity from "
+                "get_civ7_resources_and_trade to an exact owned settlement name, using its fresh turn "
+                "as expected_turn. Honors the assignment lock, destination capacity and exact native "
+                "check. No swaps, bulk clearing or preview requests. Changes resource effects/yields. "
+                "Submits once and verifies that resource's assignment for up to two seconds. "
+                "Requires the user's exact-action instruction; never retry unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(assign_resource)
+        server.tool(
+            name="buy_civ7_attribute_node",
+            title="Buy Civ VII leader attribute node",
+            description=(
+                "CHANGE GAME STATE: buy one first, nonrepeatable leader-attribute node using its "
+                "exact attributes.branches[].nodes[].id and fresh expected_turn from "
+                "get_civ7_research_and_government. Requires local applicability, milestone/node "
+                "eligibility, points and native purchase permission. Can irreversibly spend branch "
+                "and/or wildcard points. No repeat purchases or point grants. Submits once and "
+                "verifies the node unlock for up to two seconds; before/after balances are observations, "
+                "not a fabricated price quote. Requires the user's exact-action instruction; never "
+                "retry unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(buy_attribute_node)
+        server.tool(
+            name="move_civ7_great_work",
+            title="Move Civ VII Great Work",
+            description=(
+                "CHANGE GAME STATE: move one owned great_work_index from get_civ7_great_works to "
+                "an owned destination_city_id and exact destination_building type ID from its "
+                "buildings inventory, using fresh expected_turn. Requires a unique owned instance, "
+                "undamaged source/destination, free capacity and native compatibility. Archived works "
+                "omit SourceCity. No occupied-slot swaps or archiving. Changes display location and "
+                "possibly yields; no marginal yield forecast is claimed. Submits once and verifies "
+                "the exact instance location for up to two seconds. Requires the user's exact-action "
+                "instruction; never retry unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(move_great_work)
     server.tool(
         name="get_civ7_religion",
         title="Get Civ VII religion and belief choices",
@@ -460,9 +582,15 @@ def main() -> None:
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument(
+        "--enable-writes", action="store_true",
+        help="Expose supported gameplay actions, which change the loaded game (stdio only)",
+    )
     args = parser.parse_args()
+    if args.enable_writes and args.transport != "stdio":
+        parser.error("--enable-writes requires --transport stdio")
 
-    server = create_server()
+    server = create_server(enable_writes=args.enable_writes)
     if args.transport == "stdio":
         server.run(transport="stdio")
     else:

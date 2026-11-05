@@ -1,4 +1,4 @@
-"""Local, read-only FireTuner connection helpers for Civ VII."""
+"""Local FireTuner transport for fixed bundled Civ VII scripts."""
 
 import asyncio
 from contextlib import suppress
@@ -18,7 +18,7 @@ from civ7_terminal.protocol import decode_header, encode_command
 async def run_script(
     script_name: str, arguments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Execute a bundled read-only query, optionally binding JSON queryArguments."""
+    """Execute a bundled script once, optionally binding JSON queryArguments."""
     script_path = (ROOT / script_name).resolve()
     if script_path.parent != ROOT or script_path.suffix != ".js":
         raise ValueError("Civ VII queries must be bundled JavaScript files")
