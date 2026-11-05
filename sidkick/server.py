@@ -11,6 +11,7 @@ from civ7.actions import (
     append_city_production,
     assign_resource,
     buy_attribute_node,
+    establish_trade_route,
     move_great_work,
     purchase_city_item,
     select_civic,
@@ -204,6 +205,25 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="establish_civ7_trade_route",
+            title="Establish Civ VII Merchant trade route",
+            description=(
+                "CHANGE GAME STATE: use one owned UNIT_MERCHANT unit_id (instanceId from get_civ7_units) "
+                "to establish a direct route to an exact target_player_id and target_city_id, using a "
+                "fresh expected_turn. Target IDs can come from get_civ7_known_world.visibleForeignSettlements "
+                "(ownerId/cityId). Requires a unique engine-offered route, met peaceful counterpart, "
+                "revealed target city, unpacked on-map Merchant and exact MAKE_TRADE_ROUTE permission. "
+                "Can use the Merchant's action/charges and alter trade/resources. Sends once; verifies "
+                "target-specific newly active status and total/counterpart route counts rising by one. "
+                "No movement fallback, war, turn advancement or automatic retry after unknown/cancellation. "
+                "Requires the user's explicit instruction for this exact Merchant and destination."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(establish_trade_route)
         server.tool(
             name="append_civ7_city_production",
             title="Append Civ VII city production",

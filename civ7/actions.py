@@ -163,6 +163,17 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def establish_trade_route(
+    unit_id: StrictInt, target_player_id: StrictInt, target_city_id: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Establish one direct Merchant route, never silently falling back to movement."""
+    if any(type(value) is not int or value < 0 for value in (unit_id, target_player_id, target_city_id, expected_turn)):
+        raise ValueError("Nonnegative owned Merchant, target player/city IDs and expected turn are required")
+    arguments = {"unit_id": unit_id, "target_player_id": target_player_id,
+                 "target_city_id": target_city_id, "expected_turn": expected_turn}
+    return await _execute_and_verify("establish_trade_route.js", arguments, "trade_route_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

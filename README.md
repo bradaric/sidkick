@@ -27,7 +27,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
 `start_civ7_diplomatic_project`, `start_civ7_city_state_project`,
-`append_civ7_city_production` and `purchase_civ7_city_item`, which
+`append_civ7_city_production`, `purchase_civ7_city_item` and
+`establish_civ7_trade_route`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -63,7 +64,7 @@ for the game.
 This is intended for user-directed single-player commands, not unattended turn
 execution. A user's explicit instruction for the exact gameplay action is still
 required; MCP annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these ten action capabilities. No
+The opt-in grants the connected client these eleven action capabilities. No
 unit movement, turn advancement, or other write types are included. A live write
 needs separate approval; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
@@ -302,8 +303,62 @@ After that correction, the approved Quay purchase submitted once and returned
 `(24,4)` in Roskilde; independent settlement readback confirmed the Fishing Quay.
 Gold fell from 1274.27734375 to 1054.27734375, with no overbuilding, queue change
 or turn/Age/player change. No native submission was retried. All approved live
-production/purchase tests have now succeeded and been manually confirmed by
+production/purchase/trade tests have now succeeded and been manually confirmed by
 the user, including the final Quay inspection.
+
+#### Direct Merchant trade-route establishment
+
+`establish_civ7_trade_route(unit_id, target_player_id, target_city_id, expected_turn)`
+uses an exact owned Merchant instance and owner-qualified foreign city identity.
+Target IDs can come from `get_civ7_known_world.visibleForeignSettlements`
+(`ownerId`, `cityId`). It requires an active local turn, met peaceful counterpart,
+revealed target city, unique available projected route, known unpacked on-map
+Merchant and successful native `MAKE_TRADE_ROUTE` check. The command may use the
+Merchant's action/charges and change trade/resource access. Existing routes are
+no-ops. There is no movement fallback, automatic travel, war or turn advancement.
+
+The native UI falls back to `MOVE_TO` if immediate establishment fails; this
+handler explicitly does not. It submits once and uses the same bounded read-only
+verifier as other actions. Readback requests `INCLUDE_FAILED + EXTENDED_STATUS`,
+as the native commerce screen does, and requires the exact target to become
+`ALREADY_EXISTS`, with total routes and routes to that counterpart each rising by
+exactly one from captured counts. Merchant disappearance, movement consumption,
+or a counter increase alone is not success. Another writer can confound these
+observations; there is no atomic submission or cross-process deduplication.
+Unknown/cancelled outcomes must never be retried automatically.
+
+Current regression verification: **114 Python and 242 Node tests pass**. The
+separately approved live test buys a second Merchant in Kyiv for at most 400 Gold
+and attempts a direct route to Samapa (player `5`, city `65536`, at `(18,39)`).
+Native read-only extended-status evidence offered that target with `SUCCESS` on
+turn 58. The first Merchant (`3473432`, Delhi-bound) is excluded from this test.
+
+**Live verification, 2026-11-05, turn 58:** the approved second Merchant purchase
+in Kyiv returned `verified_applied`, creating instance `3538953` at `(23,38)`.
+Gold fell from 1550.58984375 to 1150.58984375 (400 spent); Kyiv's queue remained
+empty. The subsequent direct Samapa attempt returned `rejected` at native
+`canStart`, with no failure reasons supplied. No trade-route request was sent.
+The new Merchant remained at `(23,38)` with 0 movement remaining; that is observed
+state, not proof of the native rejection's cause. Extended-status readback kept
+Samapa inactive, total routes at 2 and Mughal routes at 0. At this point positive
+direct route execution/readback remained fixture-tested only.
+
+The original Delhi-bound Merchant's location and movement were unchanged. No
+movement fallback, retry or turn advancement was issued. Testing initially paused
+for manual inspection before the remaining Roskilde purchases.
+
+**Live verification, turn 59:** after the user manually advanced the turn, the
+same Kyiv Merchant had 4 movement and native checks permitted all four tested
+destinations (Samapa, St. Louis, Lahore and Kumasi). The user selected Samapa.
+One `establish_civ7_trade_route` call returned `verified_applied`: extended-status
+readback marked Samapa active, total routes rose from 2 to 3 and Mughal routes
+from 0 to 1. A separate targeted read confirmed those changes; the Merchant
+`3538953` was no longer in the owned unit roster. Turn/Age/player identity stayed
+unchanged during the call. No movement fallback, retry, other Merchant command
+or assistant-issued turn advancement occurred. This positively live-verifies
+direct establishment and its bounded readback; the earlier rejection supplied
+no native reason, so its precise cause is not asserted. The user subsequently
+confirmed the Samapa route in-game.
 
 ## One-shot export
 
