@@ -14,6 +14,8 @@ from civ7.actions import (
     select_civic,
     select_technology,
     set_policy_active,
+    start_city_state_project,
+    start_diplomatic_project,
 )
 from civ7.player import snapshot
 from civ7.queries import (
@@ -308,6 +310,42 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             ),
             structured_output=True,
         )(move_great_work)
+        server.tool(
+            name="start_civ7_diplomatic_project",
+            title="Start Civ VII diplomatic project",
+            description=(
+                "CHANGE GAME STATE: start one project with a met major target_player_id using an exact "
+                "action ID, approved max_influence_cost and fresh expected_turn. Supported actions: "
+                "DIPLOMACY_ACTION_OPEN_BORDERS, DIPLOMACY_ACTION_RESEARCH_COLLABORATION, "
+                "DIPLOMACY_ACTION_CULTURAL_EXCHANGE. Uses the selected target's native quote and exact "
+                "operation check. Spends Influence and can affect relationships. No wars, deals, "
+                "secondary targets, espionage or turn advancement. Submits once and verifies a new "
+                "matching local-initiated project record, not eventual acceptance or completion. "
+                "Requires the user's exact-action instruction; never retry unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(start_diplomatic_project)
+        server.tool(
+            name="start_civ7_city_state_project",
+            title="Start Civ VII city-state project",
+            description=(
+                "CHANGE GAME STATE: start one project with a met city-state target_player_id using "
+                "an exact action ID, approved max_influence_cost and fresh expected_turn. Supported: "
+                "DIPLOMACY_ACTION_CS_PROMOTE_GROWTH, DIPLOMACY_ACTION_CS_BOLSTER_MILITARY, "
+                "DIPLOMACY_ACTION_CS_INCORPORATE. Incorporation requires local suzerainty, spends "
+                "Influence and permanently adds the city-state as a town when the project completes; "
+                "this tool only initiates it. No secondary targets, levying, bonus selection, forced "
+                "annexation or turn advancement. Submits once and verifies a new matching own project "
+                "record. Requires the user's exact-action instruction; never retry unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(start_city_state_project)
     server.tool(
         name="get_civ7_religion",
         title="Get Civ VII religion and belief choices",

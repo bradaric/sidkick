@@ -1,9 +1,10 @@
 """Explicit gameplay actions; registered only by the write-enabled server."""
 
 import asyncio
+import math
 from typing import Any, Literal
 
-from pydantic import StrictBool, StrictInt, StrictStr
+from pydantic import StrictBool, StrictFloat, StrictInt, StrictStr
 
 from civ7.connection import run_script
 
@@ -98,6 +99,37 @@ async def move_great_work(
     )
 
 
+async def start_diplomatic_project(
+    target_player_id: StrictInt, action: StrictStr, max_influence_cost: StrictFloat, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Start one supported cooperative project with a met major player."""
+    return await _start_project("major", target_player_id, action, max_influence_cost, expected_turn)
+
+
+async def start_city_state_project(
+    target_player_id: StrictInt, action: StrictStr, max_influence_cost: StrictFloat, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Start one supported city-state project, including incorporation."""
+    return await _start_project("city-state", target_player_id, action, max_influence_cost, expected_turn)
+
+
+async def _start_project(
+    kind: Literal["major", "city-state"], target_player_id: int, action: str,
+    max_influence_cost: float, expected_turn: int,
+) -> dict[str, Any]:
+    if type(target_player_id) is not int or target_player_id < 0:
+        raise ValueError("A nonnegative target player ID is required")
+    if not isinstance(action, str) or not action.strip():
+        raise ValueError("An exact supported diplomatic action ID is required")
+    if type(max_influence_cost) not in (int, float) or not math.isfinite(max_influence_cost) or max_influence_cost < 0:
+        raise ValueError("A finite nonnegative Influence cap is required")
+    if type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("A nonnegative expected turn is required")
+    arguments = {"target_kind": kind, "target_player_id": target_player_id, "action": action.strip(),
+                 "max_influence_cost": max_influence_cost, "expected_turn": expected_turn}
+    return await _execute_and_verify("start_diplomatic_project.js", arguments, "diplomatic_project_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,
@@ -117,10 +149,13 @@ async def _execute_and_verify(
             expected = expected_fields if expected_fields is not None else result.get("expected")
             if not isinstance(expected, dict) or not expected:
                 raise ValueError("Missing action verification expectations")
+            read_arguments = result.get("verificationArguments", state_arguments)
+            if read_arguments is not None and not isinstance(read_arguments, dict):
+                raise ValueError("Invalid action verification arguments")
             async with asyncio.timeout(_VERIFICATION_TIMEOUT):
                 while True:
-                    after = (await run_script(state_script) if state_arguments is None
-                             else await run_script(state_script, state_arguments))
+                    after = (await run_script(state_script) if read_arguments is None
+                             else await run_script(state_script, read_arguments))
                     same_context = all(type(before.get(key)) is int and type(after.get(key)) is int
                                        and before[key] == after[key] for key in ("turn", "age", "playerId"))
                     if not same_context:

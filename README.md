@@ -25,7 +25,8 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 The normal server still exposes **23 read-only tools**. Starting it with both
 `--transport stdio --enable-writes` additionally registers
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
-`assign_civ7_resource`, `move_civ7_great_work` and `buy_civ7_attribute_node`, which
+`assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
+`start_civ7_diplomatic_project` and `start_civ7_city_state_project`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -61,7 +62,7 @@ for the game.
 This is intended for user-directed single-player commands, not unattended turn
 execution. A user's explicit instruction for the exact gameplay action is still
 required; MCP annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these six action capabilities. No
+The opt-in grants the connected client these eight action capabilities. No
 city production/purchases, unit movement, turn advancement, or other write types are included. A live write
 needs separate approval; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
@@ -138,7 +139,7 @@ positive case.
 These actions use the same single-submission, bounded read-only verifier and
 return the same rejected/no-op/verified/unknown outcomes. Asset readback is
 targeted to the selected resource, work instance or attribute node. Positive and
-blocked cases are fixture-tested. Current offline verification: **100 Python and
+blocked cases are fixture-tested. First-batch offline verification: **100 Python and
 205 Node tests pass**.
 
 **Live verification, 2026-11-05, turn 58:** the approved Pearls instance `531`
@@ -153,9 +154,75 @@ Palace to Bàakʼ's Museum returned `verified_applied`; a separate Great Work
 inventory read confirmed the Museum location. The work was deliberately left
 there for manual inspection, not restored. Research IDs/progress/depth and
 policy memberships were unchanged; no turns, save/load commands or write retries
-were issued. Manual inspection precedes the first commit. Diplomacy/city-state
-actions and city production/purchases are separate, not implemented by this batch.
+were issued. Manual inspection preceded the first commit. That first batch did
+not include diplomacy/city-state actions or city production/purchases.
 The user subsequently confirmed in-game that the Exhibit is in Bàakʼ.
+
+#### Diplomacy and city-state project starts
+
+`start_civ7_diplomatic_project(target_player_id, action, max_influence_cost,
+expected_turn)` supports Open Borders, Research Collaboration and Cultural
+Exchange with met major players. `start_civ7_city_state_project` accepts the same
+arguments for Promote Growth, Bolster Military and Incorporate with met
+city-states. Use exact `DIPLOMACY_ACTION_*` IDs from the corresponding read tool.
+Incorporation additionally requires local suzerainty; it starts a project that
+permanently adds the city-state as a town on completion, not immediate annexation.
+
+Both tools select a unique offered native project, require no secondary target,
+check the selected primary target's failure reasons and Influence quote against
+the explicit cap and balance, and perform the exact native operation check.
+Zero-cost quotes remain zero; missing costs are not free. Native quick-start
+arguments include both `Player2` and `ID`. The matched project's native
+`operationType` is retained: incorporation does not use the same operation as
+ordinary diplomatic projects. No raw operation dispatcher, wars, espionage,
+working deals, levying, independent befriending, bonus selection, support/response
+actions, cancellation or turn advancement is included.
+
+The cap is checked against the selected-target quote immediately before native
+submission; this is not an atomic engine transaction or a guarantee against
+another writer changing game state. Only one request is submitted. Verification
+passes captured pre-submit own-event IDs into a targeted read and requires
+exactly one new, matching local-initiated, same-turn, nonfailed ongoing record.
+Old IDs, incoming/foreign/unrelated projects and ended/failed records cannot
+prove a new start. IDs, observed progress, native remaining-turn quotes and
+Influence balances are returned without claiming eventual acceptance, completion
+or a guaranteed outcome. Existing matching ongoing projects are no-ops; uncertain
+results retain the no-automatic-retry rule.
+
+Current verification: **105 Python and 219 Node tests pass**. Read-only turn-58
+preflight offered Research Collaboration with Hatshepsut for 150 Influence,
+Promote Growth in Kutaraja for 90, and Incorporate in Kumasi for 720. Live calls
+are separately approved and paused after each successful start for manual
+inspection; this batch is kept separate from the first write-support commit.
+The native picker can include an active row for another counterpart alongside
+an available start row (observed with Hanseong versus Kumasi incorporation).
+Uniqueness is checked among available start rows, not the entire action-type
+list. A preflight initially rejected this mixed list without sending a native
+request or spending Influence; the source-backed distinction is regression-tested.
+
+**Live verification, 2026-11-05, turn 58:** after correcting that start-row
+selection, the separately approved Kumasi incorporation request submitted once
+and returned `verified_applied`. A distinct local-initiated project `72` appeared
+for Kumasi with native progress `0/10` and 10 turns remaining. Independent
+city-state readback confirmed the running project and Influence fell from
+1194.82421875 to 474.82421875, an observed cost of 720. Kumasi remains a city-state
+while incorporation runs; no annexation, turn advancement or cancellation was
+performed. The user subsequently confirmed Kumasi's project in-game.
+
+The next separately approved call started Research Collaboration with Hatshepsut
+(player `3`) for 150 Influence and returned `verified_applied`. Independent
+diplomacy readback found project `73`, response `DIPLOMACY_RESPONSE_ACCEPT`,
+progress `0/15` and a native quote of 15 turns remaining. Influence fell from
+474.82421875 to 324.82421875; turn/Age/player identity stayed unchanged at turn
+58. The user subsequently confirmed this collaboration in-game.
+
+The final approved call started Promote Growth in Kutaraja (player `7`) for 90
+Influence and returned `verified_applied`. Independent city-state readback found
+project `74`, native progress `0/10` and 10 turns remaining. Influence fell from
+324.82421875 to 234.82421875, with turn/Age/player identity still unchanged at
+turn 58. All three approved project starts are now live-verified and manually
+confirmed by the user, including the final Kutaraja inspection. No turn
+advancement, project cancellation or additional write calls are queued.
 
 ## One-shot export
 
