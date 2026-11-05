@@ -45,6 +45,13 @@ async def religion() -> dict[str, Any]:
     return await run_script("religion.js")
 
 
+async def great_works(great_work_index: int | None = None) -> dict[str, Any]:
+    """Read owned work inventory, optionally checking one owned instance's destinations."""
+    if great_work_index is not None and (type(great_work_index) is not int or great_work_index < 0):
+        raise ValueError("A nonnegative owned Great Work instance index is required")
+    return await run_script("great_works.js", {"great_work_index": great_work_index})
+
+
 async def resources_and_trade() -> dict[str, Any]:
     return await run_script("commerce.js")
 

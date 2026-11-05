@@ -11,7 +11,8 @@ const reliquaryClass = 'BELIEF_CLASS_RELIQUARY';
 const pantheonClass = 'BELIEF_CLASS_PANTHEON';
 
 function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0,
-  claimable = true, operationAllowed = true, inGame = true, playerId = 0 } = {}) {
+  claimable = true, operationAllowed = true, inGame = true, playerId = 0,
+  missionary = false, packed = false, spreadAllowed = true, charges = 2 } = {}) {
   assert.ok(fs.existsSync(scriptPath), 'bundled religion query exists');
   const definitions = [
     { $index: 0, $hash: -200, BeliefType: 'OWN_FOUNDER', BeliefClassType: founderClass, Name: 'Own founder', Description: 'Selected founder effect' },
@@ -50,6 +51,8 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
   ];
   if (!created) cities[0].Religion = { majorityReligion: -1, urbanReligion: -1, ruralReligion: -1, isHolyCity: false };
   const player = { civilizationFullName: 'Our civilization', Religion: religion,
+    Units: { getUnits: () => missionary ? [{ id: { owner: 0, id: 7 }, type: 'MISSIONARY', name: 'Missionary',
+      location: packed ? {x: -1, y: -1} : {x: 1, y: 2} }] : [] },
     Cities: { getCities: () => cities }, Diplomacy: { hasMet: id => id === 1 } };
   const playerReads = [];
   const operations = [];
@@ -62,10 +65,16 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
       assert.equal(id, 1, 'unmet players must never be inspected');
       return { civilizationFullName: 'Known civilization', Religion: { getReligionName: () => 'Known custom religion' } };
     } },
-    GameInfo: { Beliefs: definitions, Religions: religions }, Locale: { compose: key => key },
+    GameInfo: { Beliefs: definitions, Religions: religions, Units: { lookup: () => ({ UnitType: 'MISSIONARY', SpreadCharges: 3 }) } }, Locale: { compose: key => key },
+    GameplayMap: { getGridWidth: () => 10, getGridHeight: () => 10 },
     PlayerOperationTypes: { FOUND_PANTHEON: 'FOUND_PANTHEON', ADD_BELIEF: 'ADD_BELIEF' },
     Game: {
       turn: 96,
+      UnitOperations: { canStart: (id, operation, args, visible) => {
+        assert.equal(packed, false); assert.equal(id.owner, 0); assert.equal(operation, 'UNITOPERATION_SPREAD_RELIGION');
+        assert.equal(args.X, -9999); assert.equal(args.Y, -9999); assert.equal(args.UnitAbilityType, -1); assert.equal(visible, false);
+        return { Success: spreadAllowed, ChargesRemaining: charges, FailureReasons: spreadAllowed ? [] : ['No spreads left'], Plots: [999] };
+      } },
       Religion: {
         getPlayerFromReligion: type => ({ RELIGION_LOCAL: 0, RELIGION_MET: 1, RELIGION_UNMET: 3 })[type],
         isBeliefClaimable: index => { claimChecks.push(index); return claimable; },
@@ -94,6 +103,22 @@ test('returns selected pantheon and belief effects, custom religion, and holy ci
   assert.deepEqual(data.beliefs.map(b => b.id), ['OWN_FOUNDER', 'OWN_ENHANCER', 'OWN_RELIC']);
   assert.equal(data.beliefs[0].description, 'Selected founder effect');
   assert.equal(data.beliefsEarned, 3);
+});
+
+test('owned religious units expose native current-state spread readiness and charge quotes, not target forecasts', () => {
+  const data = run({ missionary: true }).data;
+  assert.ok(data.religiousUnits, 'spread-unit readiness is exported');
+  assert.equal(data.religiousUnits[0].instanceId, 7);
+  assert.equal(data.religiousUnits[0].baseSpreadCharges, 3);
+  assert.equal(data.religiousUnits[0].chargesRemaining, 2);
+  assert.equal(data.religiousUnits[0].availableNow, true);
+  assert.equal(data.religiousUnits[0].targetConversionPreview, null);
+  assert.ok(!JSON.stringify(data.religiousUnits).includes('999'));
+  const blocked = run({ missionary: true, spreadAllowed: false, charges: 0 }).data.religiousUnits[0];
+  assert.equal(blocked.chargesRemaining, 0);
+  assert.equal(blocked.availableNow, false);
+  assert.deepEqual(blocked.failureReasons, ['No spreads left']);
+  assert.equal(run({ missionary: true, packed: true }).data.religiousUnits[0].operationAllowed, null);
 });
 
 test('reports owned settlement urban/rural religions without inspecting unmet founders', () => {

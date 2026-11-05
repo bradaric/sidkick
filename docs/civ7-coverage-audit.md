@@ -19,7 +19,7 @@ Game-source paths below are relative to the installation's `Base/modules/` direc
 | 5. Combat/promotions | `7d8a625` | Visible hostile target evidence, attack-operation checks and promotion/commendation choices with native eligibility. Damage, contextual battle modifiers and outcomes remain unknown. |
 | 6. Coverage audit | This document | Records the remaining gaps and verification limits without expanding into another implementation project. |
 
-These boundaries are also described in the [README](../README.md). With the post-audit transition addition, there are 20 registered read-only MCP tools; the two targeted unit queries are not added to snapshots/exports.
+These boundaries are also described in the [README](../README.md). With the post-audit transition and Great Work additions, there are 21 registered read-only MCP tools; targeted unit/Great Work relocation queries are not added to snapshots/exports.
 
 ## Events and quests
 
@@ -91,6 +91,8 @@ Research now adds current-Age `StartingGovernments` picker candidates with all p
 
 ## Verification limits
 
+**Latest offline follow-ups:** **98 Node tests and 53 Python tests passed** across victory tier/countdown planning, local identity context and Great Work/religious-unit evidence. There are now **21 registered read-only tools**. The game was closed (FireTuner port 4318 unavailable), so these new paths are source/fixture-tested only; live validation and any reconstruction of the prior Culture loss remain pending. No save was loaded, turn advanced, service restarted or export written to manufacture coverage.
+
 **Victory planning follow-up:** the victory query now exposes loaded campaign-specific dominance tiers/current-next ratios, conditional met-player countdown and threshold-easing alerts, and public scoring definitions/arguments for non-project sources. Installed `base-standard/data/victories.xml` and `ui-next/screens/victories/victories-screen-model.js` establish the Age-progress schedule and percentage-to-multiplier conversion; the prior loss is not reconstructed without its save. Native targets remain authoritative, missing runtime values stay unknown, and unmet players are filtered before object lookup. Source/fixture verification only while FireTuner is offline; no turn/Age was advanced to trigger a tier.
 
 - Government/celebration/ideology choice follow-up: **84 Node tests and 51 Python tests passed**, plus live read-only calls to all **20 tools** in Modern. Live reads verified selected-government comparisons, active celebration state with no pending choice, conditional adoption definitions and unrevealed public ideology catalogs. Positive pending chooser and locally researchable ideology-branch cases remain fixture-tested only.
@@ -115,7 +117,7 @@ The later crisis/transition additions above address part of this baseline; the d
 - **Export generality:** one-shot export paths currently recognize Catherine's Exploration Maya/Chola saves only. Targeted placement, movement and combat queries are deliberately excluded from the export.
 - **Economy/policy completeness:** source summaries can leave unattributed base income; most cards have unknown impact. Government/celebration alternatives and ideology definition comparisons are now exposed as described above, but numerical swap impacts, full source-level bottleneck explanations and general what-if effects remain incomplete.
 - **Diplomacy depth:** agreement terms/expiry, negotiation details and secondary-target choices are not a complete API. Older ongoing-action progress still uses an inferred formula and has not been revalidated as a general progress model.
-- **Religion/Great Works:** belief/owned-settlement data and inventories exist, but missionary-target conversion previews, visible foreign-settlement religion and Great Work relocation eligibility/yield comparisons do not.
+- **Religion/Great Works (post-audit update):** the new Great Work query adds owned instance indices, current building yields and targeted native relocation/picker eligibility, distinguishing archive/displayed argument shapes and blocking full/damaged destinations. Marginal relocation yields, swaps and archive actions remain unknown. Religion adds current non-target spread-unit readiness and native charge quotes; arbitrary missionary-target conversion previews, custom ability variants and visible foreign-settlement religion remain gaps. These additions are source/fixture-tested while offline, not live-certified relocation/conversion scenarios.
 - **World and logistics:** no full visibility-safe foreign-settlement view, exploration-opportunity inventory, rail/carrier/reinforcement option inventory or long-horizon movement guarantee. Revealed data and currently visible combat targets remain distinct scopes.
 - **Ruleset and identity coverage (post-audit update):** empire now consolidates exact local leader/persona and current-Age civilization ability/unique-item definitions, linked traits and modifier requirement-set IDs. It does not evaluate conditional activation, applied yields or inherited past-civilization abilities. This summary is source/fixture-tested while offline, not a comprehensive rule simulator. Many non-unit records still use names or type IDs rather than stable instance selectors; broad DLC/mod/persona/cross-Age compatibility remains uncertified.
 

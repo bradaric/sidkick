@@ -18,6 +18,7 @@ from civ7.queries import (
     empire,
     explored_map,
     growth,
+    great_works,
     known_world,
     movement_and_founding,
     religion,
@@ -71,7 +72,8 @@ def create_server() -> MCPServer:
             "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context and age-transition planning data. Excludes "
-            "the large per-tile explored map and targeted building-placement/movement/combat queries, "
+            "the large per-tile explored map and targeted building-placement/movement/combat/"
+            "Great-Work relocation queries, "
             "which have separate tools."
         ),
         annotations=ToolAnnotations(
@@ -185,11 +187,28 @@ def create_server() -> MCPServer:
             "rural religions. Distinguishes global belief claimability, picker slot "
             "availability, choices available now, and choices selectable during founding. "
             "Foreign founders are identified only when met; no hidden world totals. "
+            "Owned units with positive base SpreadCharges include current non-target spread "
+            "operation readiness and native charges remaining; arbitrary target conversion "
+            "previews remain unknown. Packed units are not queried as deployed missionaries. "
             "Read-only: does not found religions, select beliefs, or convert settlements."
         ),
         annotations=read_only,
         structured_output=True,
     )(religion)
+    server.tool(
+        name="get_civ7_great_works",
+        title="Get Civ VII Great Work inventory and relocation evidence",
+        description=(
+            "Read owned archived/displayed Great Works with stable instanceIndex values and "
+            "owned building capacities/current Great Work yield totals. Optional great_work_index "
+            "checks one owned instance's native relocation eligibility and reasons for owned "
+            "building types with empty capacity. Current yields are not marginal relocation "
+            "gains; swaps and net yield changes remain unknown. Never selects, moves or archives "
+            "works. Targeted relocation data is excluded from player snapshots."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(great_works)
     server.tool(
         name="get_civ7_resources_and_trade",
         title="Get Civ VII resources and trade",

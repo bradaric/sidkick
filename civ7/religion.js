@@ -86,6 +86,22 @@
     return {id: def.ReligionType, name: displayName, founder};
   }
 
+  const religiousUnits = player.Units == null ? null : player.Units.getUnits().map(unit => {
+    const def = GameInfo.Units.lookup(unit.type);
+    if (!(def?.SpreadCharges > 0)) return null;
+    const location = unit.location;
+    const deployed = location && Number.isInteger(location.x) && Number.isInteger(location.y) && location.x >= 0 && location.y >= 0 &&
+      location.x < GameplayMap.getGridWidth() && location.y < GameplayMap.getGridHeight();
+    // Match the action panel's non-target operation check; do not invent arbitrary target previews.
+    const result = deployed ? Game.UnitOperations.canStart(unit.id, "UNITOPERATION_SPREAD_RELIGION",
+      {X: -9999, Y: -9999, UnitAbilityType: -1}, false) : null;
+    return {instanceId: unit.id.id, id: def.UnitType, name: name(unit.name ?? def.Name),
+      location: deployed ? {x: location.x, y: location.y} : null, baseSpreadCharges: def.SpreadCharges,
+      chargesRemaining: result?.ChargesRemaining ?? null, operationAllowed: result ? Boolean(result.Success) : null,
+      availableNow: Boolean(result?.Success), failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+      targetConversionPreview: null};
+  }).filter(Boolean);
+
   return {
     turn: Game.turn,
     scope: "Local player and owned settlements; foreign founders identified only when met",
@@ -100,6 +116,8 @@
     beliefsEarned,
     slots,
     choices,
+    religiousUnits,
+    spreadNote: "Owned units with positive definition SpreadCharges; current non-target operation permission/charge quotes only, not arbitrary destination eligibility, converted-population counts or a conversion forecast. Packed units are not queried as deployed missionaries",
     settlements: player.Cities.getCities().map(city => ({
       id: city.id,
       name: name(city.name),

@@ -86,6 +86,14 @@ Choice data distinguishes several checks:
 
 Choices exclude already-selected beliefs/pantheons and retain engine failure reasons and additional descriptions for other options. Religion data is also included in snapshots and exports. The tool never founds a religion, chooses a belief, or converts a settlement.
 
+`religiousUnits` adds owned units with positive definition `SpreadCharges`, their native current-state spread-operation eligibility/failure reasons and charge quotes. Zero remaining charges remain zero; missing charge data remains `null`. Packed units are not queried as deployed missionaries. This uses the action panel's non-target check, not hypothetical destination coordinates: arbitrary missionary-target eligibility, conversion counts/forecasts and custom ability variants remain unverified. Native target plots are not exported and no spread action is issued.
+
+### Great Work inventory and relocation
+
+Call `get_civ7_great_works` without arguments for owned displayed/archived works with stable `works[].instanceIndex`, owned building capacity, damage and current Great Work yield totals. Supply `great_work_index` from that inventory to check one owned instance's native destinations. Archived works omit `SourceCity`; displayed works retain it, and the native destination is a building type rather than a component ID, matching the UI. `availableNow` also requires empty capacity, an undamaged source/destination and a different destination; native permission alone is not enough. Foreign/ambiguous indices are rejected. No UI model is initialized and nothing is selected, moved or archived.
+
+Building yield totals cover the six yield families used by the Great Works UI and are **current whole-building totals**, not the selected work's contribution or a marginal relocation forecast. `netYieldChange` stays `null`; occupied-slot swaps and archive actions are not modeled. This separate query is not added to snapshots; existing settlement Great Work summaries remain available there. Inventory and positive/blocked/archived/displayed cases are fixture-tested while the game is closed; live relocation validation remains pending.
+
 ### Government and celebration choices
 
 `get_civ7_research_and_government` retains its current `government` summary and adds `governmentSelection`. Its deduplicated choices follow the current Age's `StartingGovernments` picker, with descriptions, all linked passive-effect descriptions, conditional tradition unlocks/civic depths and each government's celebration definitions. Missing effect text stays `null`; one government's effects are never reused for another. This is a picker-scoped list, not every government in the database or a numerical swap simulator.
