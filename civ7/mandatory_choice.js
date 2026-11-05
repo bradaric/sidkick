@@ -1,9 +1,9 @@
 (() => {
   const {mode, selection, expected_turn: expectedTurn} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["government", "celebration", "resource_review"].includes(mode) ||
+  if (!["government", "celebration", "resource_review", "policy_review"].includes(mode) ||
       !Number.isInteger(expectedTurn) || expectedTurn < 0 ||
-      (mode !== "resource_review" && (typeof selection !== "string" || !selection.trim()))) return reject("Invalid mandatory choice arguments");
+      (["government", "celebration"].includes(mode) && (typeof selection !== "string" || !selection.trim()))) return reject("Invalid mandatory choice arguments");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
   if (!Number.isInteger(playerId) || playerId < 0) return reject("No local player");
@@ -43,12 +43,15 @@
     args = {GoldenAgeType: Database.makeHash(selection)};
     expected = {celebration: selection, celebrationPending: false};
   } else {
-    pending = () => hasNotification("NOTIFICATION_ASSIGN_NEW_RESOURCES");
-    before.resourceReviewPending = pending();
-    if (!before.resourceReviewPending) return {status: "already_active", before};
-    operation = PlayerOperationTypes.CONSIDER_ASSIGN_RESOURCE;
+    const policyReview = mode === "policy_review";
+    const field = policyReview ? "policyReviewPending" : "resourceReviewPending";
+    pending = policyReview ? () => hasNotification("NOTIFICATION_TRADITIONS_AVAILABLE") || hasNotification("NOTIFICATION_CRISIS")
+      : () => hasNotification("NOTIFICATION_ASSIGN_NEW_RESOURCES");
+    before[field] = pending();
+    if (!before[field]) return {status: "already_active", before};
+    operation = policyReview ? PlayerOperationTypes.CONSIDER_ASSIGN_TRADITIONS : PlayerOperationTypes.CONSIDER_ASSIGN_RESOURCE;
     args = {};
-    expected = {resourceReviewPending: false};
+    expected = {[field]: false};
   }
   const check = Game.PlayerOperations.canStart(playerId, operation, args, false);
   if (check?.Success !== true) return reject("Native mandatory choice check failed", check?.FailureReasons ?? []);

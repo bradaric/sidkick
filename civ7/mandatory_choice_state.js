@@ -16,5 +16,6 @@
     celebration: player.Happiness?.isInGoldenAge() === true
       ? GameInfo.GoldenAges.lookup(player.Happiness.getCurrentGoldenAge())?.GoldenAgeType ?? null : null,
     celebrationPending: typeof player.Happiness?.canChoose === "function" ? player.Happiness.canChoose() : null,
-    resourceReviewPending: hasNotification("NOTIFICATION_ASSIGN_NEW_RESOURCES")};
+    resourceReviewPending: hasNotification("NOTIFICATION_ASSIGN_NEW_RESOURCES"),
+    policyReviewPending: hasNotification("NOTIFICATION_TRADITIONS_AVAILABLE") || hasNotification("NOTIFICATION_CRISIS")};
 })()

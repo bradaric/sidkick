@@ -22,9 +22,11 @@ from civ7.actions import (
     place_population,
     purchase_city_item,
     review_resources,
+    review_policies,
     select_civic,
     select_technology,
     set_policy_active,
+    set_culture_card,
     set_town_focus,
     set_unit_order,
     start_city_state_project,
@@ -217,6 +219,31 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="review_civ7_policies", title="Confirm Civ VII policy review",
+            description=("CHANGE GAME STATE: acknowledge a pending policy/tradition/crisis-card screen reminder "
+                         "after inspecting get_civ7_research_and_government, with fresh expected_turn. Mirrors "
+                         "closing the native screen using CONSIDER_ASSIGN_TRADITIONS; changes no cards and "
+                         "does not buy a swap window. Optional slots may remain empty. Requires native "
+                         "permission and verifies the specific policy-review notifications clear, not all "
+                         "turn blockers. Cannot dismiss government/narrative choices or end a turn. Requires "
+                         "user authorization; submits once, never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(review_policies)
+        server.tool(
+            name="set_civ7_culture_card", title="Set Civ VII policy, tradition or crisis card",
+            description=("CHANGE GAME STATE: activate/deactivate one unlocked exact card ID in explicit slot "
+                         "group policy, tradition or crisis, with fresh expected_turn. Requires native swap "
+                         "permission and an empty destination. Ordinary cards can enter tradition slots only "
+                         "when ordinary slots are full; native tradition/crisis cards must use their own group. "
+                         "No implicit migrations, automatic replacements or paid swap-window purchase. Verifies "
+                         "all three card inventories, preserving every other card. To replace a card, explicitly "
+                         "remove then add in separate calls; these are not atomic and removal may succeed even "
+                         "if addition fails. Requires user authorization; submits once, no automatic retry."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(set_culture_card)
         server.tool(
             name="acknowledge_civ7_agenda", title="Acknowledge Civ VII agenda message",
             description=("CHANGE GAME STATE: acknowledge exactly one owned NOTIFICATION_DIPLOMATIC_ACTION_AGENDA "

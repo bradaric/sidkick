@@ -289,11 +289,16 @@ async def review_resources(expected_turn: StrictInt) -> dict[str, Any]:
     return await _mandatory_choice("resource_review", None, expected_turn)
 
 
+async def review_policies(expected_turn: StrictInt) -> dict[str, Any]:
+    """Acknowledge the native policy review screen without changing any cards."""
+    return await _mandatory_choice("policy_review", None, expected_turn)
+
+
 async def _mandatory_choice(mode: str, selection: str | None, expected_turn: int) -> dict[str, Any]:
     if type(expected_turn) is not int or expected_turn < 0:
         raise ValueError("A nonnegative expected turn is required")
     arguments = {"mode": mode, "expected_turn": expected_turn}
-    if mode != "resource_review":
+    if mode in {"government", "celebration"}:
         if not isinstance(selection, str) or not selection.strip():
             raise ValueError("An exact offered choice ID is required")
         arguments["selection"] = selection.strip()
@@ -306,6 +311,19 @@ async def acknowledge_agenda(notification_id: StrictInt, expected_turn: StrictIn
         raise ValueError("A local agenda notification ID and expected turn are required")
     return await _execute_and_verify("acknowledge_agenda.js", {"notification_id": notification_id, "expected_turn": expected_turn},
                                      "agenda_state.js")
+
+
+async def set_culture_card(
+    card: StrictStr, active: StrictBool, slot: Literal["policy", "tradition", "crisis"], expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Change one explicitly selected card group without implicit swaps or migration."""
+    if not isinstance(card, str) or not card.strip() or type(active) is not bool or slot not in (
+        "policy", "tradition", "crisis",
+    ) or type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("An exact card ID, boolean active flag, supported slot group and expected turn are required")
+    return await _execute_and_verify("set_culture_card.js", {
+        "card": card.strip(), "active": active, "slot": slot, "expected_turn": expected_turn,
+    }, "policy_state.js")
 
 
 async def _execute_and_verify(

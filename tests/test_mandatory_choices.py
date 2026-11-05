@@ -15,6 +15,8 @@ CASES = [
      {'celebration': 'GOLDEN_AGE_TEST', 'celebrationPending': False}),
     ('review_civ7_resources', 'review_resources', (60,),
      {'mode': 'resource_review', 'expected_turn': 60}, {'resourceReviewPending': False}),
+    ('review_civ7_policies', 'review_policies', (60,),
+     {'mode': 'policy_review', 'expected_turn': 60}, {'policyReviewPending': False}),
 ]
 BEFORE = {'turn': 60, 'age': 42, 'playerId': 0}
 

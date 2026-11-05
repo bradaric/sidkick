@@ -33,7 +33,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | # | Capability family | Remaining work | Status |
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
-| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Government/celebration/review/agenda handlers implemented; slot/narrative work pending |
+| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group handlers implemented; narrative/project/deal responses pending |
 | 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders implemented; travel/promotions/upgrades pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
@@ -110,3 +110,14 @@ introduce an arbitrary operation dispatcher or change persistent client config.
 - Next: exact tradition/crisis slot placement and policy swaps; narrative/crisis
   responses; genuine project/deal responses. Stop at unsupported blockers instead
   of forcing turns.
+- Batch 3 committed as `c66d00b`.
+- Batch 4: 135 Python + 277 Node tests. Exact card group activation/removal with
+  all-group inventory verification; no implicit migration, bulk or atomic swaps.
+  Live Civil Engineering tradition-slot activation/removal, Pet Kot placement,
+  original Living Standards ordinary off/on round trip and typed policy-review
+  acknowledgement all verified. Ordinary-policy positive live gap is closed.
+  Crisis-card positive live coverage is unavailable (Modern crisis slots = 0).
+- Naturally pending St. Petersburg specialist `(18,9)` verified, workers 0 → 1
+  and pending population 1 → 0; differs from Copan debug prerequisite case.
+  Globalism selected through existing typed civic handler. Still turn 60;
+  remaining blocker UNITS. Campaign retains previously documented debug changes.

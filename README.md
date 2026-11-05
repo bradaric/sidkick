@@ -31,7 +31,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `establish_civ7_trade_route`, `place_civ7_population`, `move_civ7_unit`,
 `set_civ7_town_focus`, `upgrade_civ7_town`, `assign_civ7_specialist`,
 `set_civ7_unit_order`, `end_civ7_turn`, `choose_civ7_government`,
-`choose_civ7_celebration`, `review_civ7_resources` and `acknowledge_civ7_agenda`, which
+`choose_civ7_celebration`, `review_civ7_resources`, `acknowledge_civ7_agenda`,
+`set_civ7_culture_card` and `review_civ7_policies`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -69,7 +70,7 @@ delegated sandbox tasks, not unrestricted unattended play. Ordinary use needs
 exact-action instructions; a user's explicit playground delegation can authorize
 the agreed disposable-game test scope without per-action approval. MCP
 annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these twenty-two action capabilities. No
+The opt-in grants the connected client these twenty-four action capabilities. No
 combat, turn advancement, or other write types are included. A live write
 needs user authorization; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
@@ -560,6 +561,42 @@ pending or remaining-turn state; it is not counted as eligible picker coverage.
 Government/celebration successful submissions remain fixture-only until a genuine
 or demonstrably debug-created native pending case is available. Project/deal
 responses, tradition/crisis slots and narrative choices remain separate work.
+
+#### Explicit policy, tradition and crisis card groups
+
+`set_civ7_culture_card(card, active, slot, expected_turn)` supports exact local
+unlocked cards in `policy`, `tradition` or `crisis` groups. Native card commands
+have no slot parameter: this tool therefore only submits placements with a
+deterministic destination. Ordinary cards enter ordinary slots first, or a free
+tradition slot only when ordinary slots are full. Tradition/crisis cards use
+their own group. Full slots, implicit migrations, duplicate inventories and
+unexpected group changes are rejected; all three active inventories are verified.
+Removal must name the card's current group. Explicit remove/add calls can replace
+cards, but are **not atomic**: removal can succeed while a later addition fails.
+No bulk replacement or Gold-paid swap-window purchase is included. The narrower
+`set_civ7_policy_active` remains available for ordinary slots only.
+
+`review_civ7_policies(expected_turn)` mirrors closing the native policy screen
+through `CONSIDER_ASSIGN_TRADITIONS`, checking its specific reminder clears.
+It changes no cards; optional slots may remain empty. Native permission is still
+required, and unrelated mandatory choices are never dismissed.
+
+Default remains 23 read-only tools; write mode has 47 tools (24 actions).
+**135 Python and 277 Node tests pass.**
+
+**Live playground verification, 2026-11-06, turn 60:** Civil Engineering entered
+the free tradition slot while ordinary slots were full, then was removed; Pet Kot
+was placed in that tradition slot. All three calls verified the complete expected
+inventories without moving other cards. The original ordinary-policy handler also
+verified a Living Standards off/on round trip, closing its earlier positive live
+coverage gap. The pending policy review then cleared through the typed review
+handler. Crisis cards remain fixture-only (Modern currently has zero crisis slots).
+
+St. Petersburg's naturally pending turn-60 population was assigned as a specialist
+at `(18,9)`, workers 0 → 1, pending 1 → 0. Unlike Copan's debug-created case, this
+population became ready through ordinary turn advancement, although this is still
+the modified playground campaign. Globalism was selected as the next civic. No
+additional turn was submitted in this batch; the remaining blocker is unit orders.
 
 ## One-shot export
 
