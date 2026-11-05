@@ -259,6 +259,10 @@ def create_server() -> MCPServer:
         description=(
             "Get only the local player's units, locations, health, movement, experience, "
             "promotions, commander packing state, and stable instanceId values for targeted queries. "
+            "isPacked/isReinforcing are nullable: true is observed membership/assignment, false "
+            "is observed absence, null is unknown. Legacy null commander fields alone do not "
+            "prove absence. Packed/off-map units and unknown packing evidence withhold locations; "
+            "a withheld location does not prove packing. These fields also pass through snapshots. "
             "Includes unowned promotion/commendation choices, effects, prerequisite ownership, "
             "picker eligibility and native operation checks; prerequisite logic is not inferred."
         ),

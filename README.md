@@ -184,6 +184,14 @@ Trade comparisons retain blocked candidates with native status reasons and the c
 
 Settlers include the engine's current-location and adjacent-plot founding checks. A destination also includes fresh water, terrain/features, current tile yields, resources already revealed within three hexes, and distances to owned settlements. These are **site-comparison evidence**, not a founding-site simulator: arbitrary `legalToFoundAfterMoving` and `newSettlementYields` remain `null`. Current/adjacent founding eligibility is not extended to distant tiles. The tool does not use AI settlement recommendations that could incorporate hidden-world information, and never selects, moves or founds anything. This targeted query is excluded from snapshots/exports.
 
+### Unit state and snapshot compatibility
+
+`get_civ7_units()` adds nullable `isPacked` and `isReinforcing` flags to each proven-owned unit. `true` means native membership/assignment evidence was found; `false` means absence was observed; `null` means evidence is unavailable. Packing uses only owned commanders' owned armies and matches the unit component identity, not a colliding foreign ID. If any commander's membership is unknown, unmatched units have `isPacked: null`, while positive membership remains known. No owned commanders means known-empty packing evidence.
+
+The existing `packedInCommander` name and `reinforcingCommander` native army ID remain available. A null legacy field alone does not distinguish absence from unknown; use the flags. Reinforcement ID zero is valid, the native `-1` sentinel means not reinforcing, and missing getters/invalid values stay unknown. Missing packing/reinforcement APIs do not discard otherwise readable unit data. Locations are withheld for packed/off-map units, unknown packing state, and missing/invalid coordinates; a withheld location does not prove packing. Health, movement and promotion evidence remain separate from deployment.
+
+These per-unit fields pass through snapshots and exports unchanged. `snapshotStatus.complete` still describes successful domain collection, not certainty of every optional field. Unknown flags are not rewritten as false, and export consistency/safety gates are unchanged.
+
 ### Military logistics and visible foreign settlements
 
 `get_civ7_military_logistics()` reads owned commanders (including carrier/squadron/aerodrome commanders), their native combat/noncombat capacities, proven-owned packed-unit IDs, air-unit inventory, reinforcement assignments/native arrival quotes and WMD stockpile counts. Capacities are not inferred free slots. `nativeArrivalTime` preserves the engine quote without converting it to an absolute turn or a guaranteed number of turns remaining. Missing counts/interfaces stay unknown; zero stockpiles remain zero. Foreign packed members and raw reinforcement paths are not returned.

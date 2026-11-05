@@ -83,6 +83,28 @@ class SnapshotTests(unittest.IsolatedAsyncioTestCase):
         mocks["growth"].assert_awaited_once_with()
         mocks["age_transition"].assert_awaited_once_with()
 
+    async def test_nullable_unit_states_survive_snapshot_and_mcp_without_changing_collection_status(self):
+        for read in (player.snapshot, player.full_snapshot):
+            with self.subTest(read=read.__name__):
+                mocks = self.fixture()
+                units = [{"instanceId": 7, "isPacked": None, "isReinforcing": None,
+                          "location": None, "packedInCommander": None, "reinforcingCommander": None},
+                         {"instanceId": 8, "isPacked": False, "isReinforcing": True,
+                          "location": {"x": 1, "y": 2}, "packedInCommander": None, "reinforcingCommander": 0}]
+                mocks["units"].return_value = {"turn": 140, "units": units}
+                data = await read()
+                self.assertEqual(data["units"], units)
+                self.assertEqual(data["snapshotStatus"]["status"], "complete")
+                self.assertEqual(data["snapshotStatus"]["errors"], {})
+                self.assertIs(data["snapshotStatus"]["consistent"], True)
+                self.assertEqual(player.export_path(data), player.ROOT / "save-2-chola.json")
+        mocks = self.fixture()
+        mocks["units"].return_value = {"turn": 140, "units": units}
+        result = await create_server().call_tool("get_civ7_player_snapshot", {})
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content["units"], units)
+        self.assertEqual(result.structured_content["snapshotStatus"]["status"], "complete")
+
     async def test_failed_flattened_domains_do_not_reuse_core_fallbacks_or_empty_lists(self):
         mocks = self.fixture()
         mocks["settlements"].side_effect = TimeoutError("Timed out")
