@@ -133,7 +133,12 @@ test('unsupported cards and changed or incomplete definitions are unknown, not z
   assert.equal(research({ petAmount: '3' }).PET_KOT.impact.estimatedBaseYields.YIELD_SCIENCE, 3, 'uses the loaded amount, not a hardcoded yield');
 });
 
-function settlements({ missingSource = false } = {}) {
+function settlements({ missingSource = false, missingIncomeDetails = false, missingStepTypes = false,
+  incomeValue = 12, summaryBaseValue = 10,
+  nativeBase = {type: 1, value: 10, steps: [
+    {description: 'Buildings', value: 7, get context() {throw Error('No raw calculation contexts');}},
+    {description: 'Bourgeoisie', value: 3, get steps() {throw Error('No recursive policy attribution');}},
+  ]}} = {}) {
   const nodes = { INCOME: 1, MINUS_DEDUCTIONS: 2, DEDUCTIONS: 3, BUILDING_YIELDS: 4, IMPROVEMENT_YIELDS: 5, INCOME_MODIFIERS: 6, BUILDING_MAINTENANCE: 7 };
   const source = { description: 'Buildings', value: 10, base: { value: 8 }, modifier: { value: 25 }, context: { x: 999, y: 999, owner: 9 } };
   const city = {
@@ -144,9 +149,10 @@ function settlements({ missingSource = false } = {}) {
     Happiness: { netHappinessPerTurn: 2, hasUnrest: false }, BuildQueue: { getQueue: () => [] },
     Yields: {
       getNetYield: hash => { assert.equal(hash, 101); return 8; },
-      getYieldSummaryForNode: (index, path) => { assert.equal(index, 0, 'summary API uses the yield index'); return path[0] === 1 ? { value: 12, base: { value: 10 }, modifier: { value: 20 } } : { value: -4 }; },
+      getYieldSummaryForNode: (index, path) => { assert.equal(index, 0, 'summary API uses the yield index'); return path[0] === 1 ? { value: incomeValue, base: { value: summaryBaseValue }, modifier: { value: 20 } } : { value: -4 }; },
       getYieldsForNode: (index, path, details) => {
         assert.equal(index, 0); assert.equal(details, true);
+        if (path.length === 1 && path[0] === 1) return missingIncomeDetails ? null : {base: nativeBase, secret: 'SECRET_ROOT'};
         if (path.at(-1) === 4) return missingSource ? null : source;
         if (path.at(-1) === 6) return { value: 20, base: { steps: [{ description: 'Policy', value: 15 }, { description: 'Leader', value: 5 }] } };
         if (path.at(-1) === 7) return { value: 4, description: 'Building upkeep' };
@@ -158,6 +164,7 @@ function settlements({ missingSource = false } = {}) {
     UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: value => value },
     Players: { get: () => ({ Cities: { getCities: () => [city] }, Culture: { getNumWorksInArchive: () => 0 } }) },
     GameInfo: { Yields: [{ $index: 0, $hash: 101, YieldType: 'YIELD_SCIENCE' }] }, CityYieldNodes: nodes,
+    GameValueStepTypes: missingStepTypes ? undefined : {ADDITION: 1, MULTIPLY: 5},
     Game: { turn: 106 },
   });
   return JSON.parse(JSON.stringify(data)).settlements[0];
@@ -186,4 +193,63 @@ test('missing engine yield sources stay unknown rather than becoming zero', () =
   assert.ok(science, 'yield breakdown exists');
   assert.equal(science.sources.BUILDING_YIELDS, null);
   assert.equal(science.otherBaseIncome, 10, 'unattributed income is not silently lost');
+});
+
+test('native additive base-income evidence retains named current policy sources without copying calculation contexts', () => {
+  const science = settlements({missingSource: true}).yieldBreakdown.YIELD_SCIENCE;
+  assert.ok(science.baseIncomeEvidence, 'native top-level base evidence is exported');
+  assert.deepEqual(science.baseIncomeEvidence, {value: 10, sources: [
+    {name: 'Buildings', value: 7}, {name: 'Bourgeoisie', value: 3},
+  ], listedTotal: 10, residual: 0, matchesSummary: true});
+  assert.equal(science.otherBaseIncome, 10, 'legacy fixed-category residual retains its separate meaning');
+  assert.equal(science.incomeAdjustment, 2);
+  assert.ok(!JSON.stringify(science).includes('SECRET'));
+});
+
+test('missing details, absent step lists and nonadditive native calculations never become an additive explanation', () => {
+  assert.equal(settlements({missingIncomeDetails: true}).yieldBreakdown.YIELD_SCIENCE.baseIncomeEvidence, null);
+  for (const options of [{missingStepTypes: true}, {nativeBase: {value: 10, type: 5, steps: [{value: 2}, {value: 5}]}},
+    {nativeBase: {value: 10, type: 1}}]) {
+    const evidence = settlements(options).yieldBreakdown.YIELD_SCIENCE.baseIncomeEvidence;
+    assert.ok(evidence);
+    assert.equal(evidence.value, 10);
+    assert.equal(evidence.sources, null);
+    assert.equal(evidence.listedTotal, null);
+    assert.equal(evidence.residual, null);
+  }
+});
+
+test('unknown native source amounts remain null and unnamed sources are not silently dropped', () => {
+  const evidence = settlements({nativeBase: {value: 10, type: 1, steps: [{value: 4}, {description: 'Unknown policy', value: NaN}]}})
+    .yieldBreakdown.YIELD_SCIENCE.baseIncomeEvidence;
+  assert.ok(evidence);
+  assert.deepEqual(evidence.sources, [{name: null, value: 4}, {name: 'Unknown policy', value: null}]);
+  assert.equal(evidence.listedTotal, null);
+  assert.equal(evidence.residual, null);
+});
+
+test('native base reconciliation preserves genuine zeroes, unlisted income and negative residuals without inventing attribution', () => {
+  const empty = settlements({nativeBase: {value: 0, type: 1, steps: []}, summaryBaseValue: 0}).yieldBreakdown.YIELD_SCIENCE.baseIncomeEvidence;
+  assert.ok(empty);
+  assert.deepEqual(empty, {value: 0, sources: [], listedTotal: 0, residual: 0, matchesSummary: true});
+  assert.equal(settlements({nativeBase: {value: 10, type: 1, steps: []}}).yieldBreakdown.YIELD_SCIENCE.baseIncomeEvidence.residual, 10);
+  assert.equal(settlements({nativeBase: {value: 10, type: 1, steps: [{value: 12}]}}).yieldBreakdown.YIELD_SCIENCE.baseIncomeEvidence.residual, -2);
+});
+
+test('income adjustment uses observed native totals including penalties and fixed-point rounding, not a percent formula', () => {
+  assert.equal(settlements({incomeValue: 8.5}).yieldBreakdown.YIELD_SCIENCE.incomeAdjustment, -1.5);
+  assert.equal(settlements({incomeValue: 10}).yieldBreakdown.YIELD_SCIENCE.incomeAdjustment, 0);
+  assert.equal(settlements({incomeValue: 12.00390625}).yieldBreakdown.YIELD_SCIENCE.incomeAdjustment, 2.00390625);
+  assert.equal(settlements({incomeValue: null}).yieldBreakdown.YIELD_SCIENCE.incomeAdjustment, null);
+  assert.equal(settlements({summaryBaseValue: null}).yieldBreakdown.YIELD_SCIENCE.incomeAdjustment, null);
+});
+
+test('sequential native detail/summary differences are flagged rather than silently reconciled as one read', () => {
+  const science = settlements({nativeBase: {value: 11, type: 1, steps: [{value: 11}]}}).yieldBreakdown.YIELD_SCIENCE;
+  assert.ok(science.baseIncomeEvidence);
+  assert.equal(science.baseIncomeEvidence.matchesSummary, false);
+  assert.equal(science.baseIncomeEvidence.value, 11);
+  assert.equal(science.baseIncomeEvidence.residual, 0);
+  assert.equal(science.income.baseValue, 10);
+  assert.equal(settlements({summaryBaseValue: null}).yieldBreakdown.YIELD_SCIENCE.baseIncomeEvidence.matchesSummary, null);
 });

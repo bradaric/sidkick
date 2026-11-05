@@ -6,6 +6,7 @@
   const name = key => key ? Locale.compose(key) : null;
 
   function yieldBreakdown(city) {
+    const finite = value => Number.isFinite(value) ? value : null;
     const summary = node => node ? {
       name: name(node.description), value: node.value,
       baseValue: node.base?.value ?? null, modifierValue: node.modifier?.value ?? null
@@ -19,9 +20,23 @@
         : city.Yields.getYieldsForNode(def.$index, [...path, CityYieldNodes[key]], true);
       const modifiers = source("INCOME_MODIFIERS", [CityYieldNodes.INCOME]);
       const income = summary(city.Yields.getYieldSummaryForNode(def.$index, [CityYieldNodes.INCOME]));
+      const base = CityYieldNodes.INCOME == null ? null
+        : city.Yields.getYieldsForNode(def.$index, [CityYieldNodes.INCOME], true)?.base;
+      // Only the native top-level ADDITION is a verified additive decomposition.
+      // Do not recurse into calculation operands, resolve raw IDs or match names to policy cards.
+      const baseSources = typeof GameValueStepTypes !== "undefined" && GameValueStepTypes?.ADDITION != null &&
+        base?.type === GameValueStepTypes.ADDITION && Array.isArray(base.steps)
+        ? base.steps.map(step => ({name: name(step?.description), value: finite(step?.value)})) : null;
+      const listedTotal = baseSources?.every(step => step.value != null)
+        ? finite(baseSources.reduce((sum, step) => sum + step.value, 0)) : null;
       const incomeSources = Object.fromEntries(sources.map(key => [key, summary(source(key, [CityYieldNodes.INCOME]))]));
       return [def.YieldType, {
         income,
+        baseIncomeEvidence: base ? {value: finite(base.value), sources: baseSources, listedTotal,
+          residual: Number.isFinite(base.value) && listedTotal != null ? finite(base.value - listedTotal) : null,
+          matchesSummary: Number.isFinite(base.value) && Number.isFinite(income?.baseValue) ? base.value === income.baseValue : null} : null,
+        incomeAdjustment: Number.isFinite(income?.value) && Number.isFinite(income?.baseValue)
+          ? finite(income.value - income.baseValue) : null,
         deductions: summary(city.Yields.getYieldSummaryForNode(def.$index, [CityYieldNodes.MINUS_DEDUCTIONS])),
         sources: incomeSources,
         otherBaseIncome: income?.baseValue == null ? null

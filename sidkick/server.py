@@ -124,7 +124,13 @@ def create_server() -> MCPServer:
             "Get the local player's cities and towns, focuses, growth, specialists, "
             "buildings, districts, Great Work slots, yields, and production queues. "
             "Includes engine-reported yield-source summaries, income modifiers in percent, "
-            "maintenance and unattributed base income; missing sources are null, not zero."
+            "maintenance and unattributed base income; missing sources are null, not zero. "
+            "Native baseIncomeEvidence adds top-level additive source names/amounts, listedTotal, "
+            "residual and matchesSummary; missing/nonadditive evidence stays unknown. It is an "
+            "alternative explanation of the same income, not extra yield to add to existing "
+            "sources. incomeAdjustment is observed gross income minus base, including native "
+            "rounding and penalties, not a policy-swap gain or exact per-card attribution. "
+            "Raw calculation contexts/IDs and nested operands are withheld."
         ),
         annotations=read_only,
         structured_output=True,
