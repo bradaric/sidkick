@@ -232,6 +232,14 @@ Unavailable native victory targets (`-1`) are reported as `targetPoints: null`. 
 
 Native `targetPoints` and countdown/prerequisite readings remain authoritative; the tool never recomputes a global target from only met rivals. Tier boundaries are Age-progress percentages, **not turns until a change**. Countdown turns remaining are conditional on continued qualification, not guaranteed victory dates. Unknown countdown/requirement values stay `null`, not invented zeroes. Missing schedules/configuration do not become a default 1× rule. Public `scoringRules` include non-project sources such as wonders/Great Works, definition points, activation flags and scoring arguments. These describe conditional loaded rules, not proof of local activation or a complete dependency simulator. Unmet players are skipped before their objects are read. This increment is source/fixture-verified; the game was closed during implementation, so live threshold-change/countdown verification remains pending.
 
+### Culture scoring explanations
+
+Culture `scoringRules` now pair existing research/mastery/policy `activationEvidence` with owned `localEvidence`: current wonder candidates, trait-linked buildings/improvements, and displayed versus archived Great Works of the rule's object type. Incomplete/damaged assets remain visible as candidates, not qualifiers; a definition's Age is not the asset's build/scoring Age. Trait-linked buildings do not certify a complete unique quarter, and trait-only classification is not exhaustive (for example, independent-power improvements may lack a trait). Other tracker families return an explicit unknown asset explanation.
+
+Per-settlement observations include native rail membership and complete/undamaged presence of a loaded `REQUIRED_CONSTRUCTIBLE`. These do **not** establish whether its requirement applies locally or empire-wide, or whether a tracker is active. Missing/withheld inventory leaves absence unknown; archived works aren't treated as displayed. `activeForLocalPlayer`, `qualifyingCount`, `attributedPoints` and unverified scope remain `null` even when observed prerequisites are met.
+
+`ledgerEntryIndices` reference the local player's existing `progress.scoring` entries for that victory, using **tracker family only**. Several rules can reference the same entries, including historical entries from other Ages or Great Work types. Do not sum or attribute those points per rule, or infer lost points from a missing current display. The native ledger records earned points; current candidates explain observations, not incremental Tourism or a victory forecast. This extends the existing victory tool and its snapshots/exports; no new tool or game action is added.
+
 ## ChatGPT architecture
 
 ChatGPT shows two Sidkick entries under Plugins because they are different layers:
