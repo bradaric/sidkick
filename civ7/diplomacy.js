@@ -126,6 +126,26 @@
       });
   }
 
+  function responseOptions(event) {
+    if (event.targetPlayer !== localId || event.initialPlayer === localId || event.responseType !== responseTypes.INVALID_RESPONSE ||
+        event.gameTurnEnd !== -1 || event.failed === true || typeof Game.Diplomacy.getResponseDataForUI !== "function") return null;
+    const ui = Game.Diplomacy.getResponseDataForUI(event.uniqueID);
+    if (ui?.actionID !== event.uniqueID || ui.initialPlayer !== event.initialPlayer || ui.targetPlayer !== localId || !Array.isArray(ui.responseList)) return null;
+    const supportedAction = ["DIPLOMACY_ACTION_OPEN_BORDERS", "DIPLOMACY_ACTION_RESEARCH_COLLABORATION",
+      "DIPLOMACY_ACTION_CULTURAL_EXCHANGE", "DIPLOMACY_ACTION_LOCAL_FESTIVALS"].includes(event.actionTypeName);
+    const responseKeys = new Map([[responseTypes.DIPLOMACY_RESPONSE_ACCEPT, "accept"],
+      [responseTypes.DIPLOMACY_RESPONSE_SUPPORT, "support"], [responseTypes.DIPLOMACY_RESPONSE_REJECT, "reject"]]);
+    return ui.responseList.filter(row => responseKeys.has(row.responseType)).map(row => {
+      const cost = nonnegative(row.cost);
+      const result = Game.PlayerOperations.canStart(localId, PlayerOperationTypes.RESPOND_DIPLOMATIC_ACTION,
+        {ID: event.uniqueID, Type: row.responseType}, false);
+      return {response: responseKeys.get(row.responseType), name: name(row.responseName), description: name(row.responseDescription),
+        quotedInfluenceCost: cost, availableNow: row.canSelect === true && cost != null && result?.Success === true,
+        operationAllowed: result ? result.Success === true : null, supportedByWriteTool: supportedAction && cost != null,
+        failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
+    });
+  }
+
   function ongoingActions(otherId) {
     return (Game.Diplomacy.getPlayerEvents(otherId) ?? [])
       .filter(action => {
@@ -150,6 +170,7 @@
           turnEnded: nonnegative(action.gameTurnEnd),
           support: finite(action.support),
           response: action.responseType === responseTypes.INVALID_RESPONSE ? null : responseNames[action.responseType] ?? null,
+          responseOptions: responseOptions(action),
           terms: terms(action.actionType ?? action.actionTypeName),
           activeStage: stage ? {id: stage.stageType ?? null, previouslyEntered: stage.previouslyEntered ?? null,
             effects: (stage.stageModifiers ?? []).map(effect => ({description: name(effect.description), available: effect.available ?? null}))} : null,

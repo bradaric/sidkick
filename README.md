@@ -32,7 +32,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `set_civ7_town_focus`, `upgrade_civ7_town`, `assign_civ7_specialist`,
 `set_civ7_unit_order`, `end_civ7_turn`, `choose_civ7_government`,
 `choose_civ7_celebration`, `review_civ7_resources`, `acknowledge_civ7_agenda`,
-`set_civ7_culture_card`, `review_civ7_policies` and `choose_civ7_narrative`, which
+`set_civ7_culture_card`, `review_civ7_policies`, `choose_civ7_narrative` and
+`respond_civ7_diplomatic_project`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -70,7 +71,7 @@ delegated sandbox tasks, not unrestricted unattended play. Ordinary use needs
 exact-action instructions; a user's explicit playground delegation can authorize
 the agreed disposable-game test scope without per-action approval. MCP
 annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these twenty-five action capabilities. No
+The opt-in grants the connected client these twenty-six action capabilities. No
 combat, turn advancement, or other write types are included. A live write
 needs user authorization; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
@@ -636,6 +637,36 @@ instance `(owner 0, id 223, type 35)`. Its native `CLOSE` choice returned
 was no longer pending. The displayed reward was +1 Artifact, but no independent
 before/after artifact inventory was captured, so the reward is not separately
 claimed. Linked-choice and crisis-event positive execution remains fixture-only.
+
+#### Responses to incoming cooperative projects
+
+`get_civ7_diplomacy` now includes `responseOptions` for visible incoming projects
+awaiting a response: native descriptions, Influence quotes, selectability and
+exact-operation eligibility. Missing costs stay unknown. Hidden/unrevealed
+incoming events are still excluded before detailed reads.
+
+`respond_civ7_diplomatic_project(action_id, response, max_influence_cost,
+expected_turn)` supports `accept`, `support` or `reject` only for incoming Open
+Borders, Research Collaboration, Cultural Exchange and Local Festival from met
+peaceful major leaders. It proves local-target event provenance before querying
+the native response picker, checks the selected quote/cap/balance and exact
+`RESPOND_DIPLOMATIC_ACTION` permission, then rechecks identity and quote. No wars,
+military demands, espionage, deals, outgoing-event support increments or changing
+an existing different response. Rejection can worsen relations/impose cooldowns;
+support spends Influence. Readback verifies the same event's recorded response,
+not promised yields or eventual completion.
+
+Default remains 23 read-only tools; write mode has 49 tools (26 actions).
+**141 Python and 287 Node tests pass.**
+
+**Live playground verification, 2026-11-06, turn 62:** José Rizal's incoming
+Cultural Exchange event `76` offered Support 180, Accept 0 and Reject 60 Influence.
+A cap of 179 was rejected without submission. Support with cap 180 returned
+`verified_applied`; the same event recorded `DIPLOMACY_RESPONSE_SUPPORT` and
+Influence fell from 564.82421875 to 384.82421875, exactly 180. Independent diplomacy
+read confirmed the response. Accept/reject have fixture coverage, not positive
+live execution. No additional turn was advanced or post-victory continuation
+requested; the previously observed turn-boundary anomaly remains unresolved.
 
 ## One-shot export
 

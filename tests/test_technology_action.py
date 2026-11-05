@@ -147,6 +147,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "set_civ7_culture_card",
             "review_civ7_policies",
             "choose_civ7_narrative",
+            "respond_civ7_diplomatic_project",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

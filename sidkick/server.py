@@ -24,6 +24,7 @@ from civ7.actions import (
     purchase_city_item,
     review_resources,
     review_policies,
+    respond_diplomatic_project,
     select_civic,
     select_technology,
     set_policy_active,
@@ -220,6 +221,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="respond_civ7_diplomatic_project", title="Respond to Civ VII cooperative project",
+            description=("CHANGE GAME STATE: accept, support or reject one exact incoming action_id from "
+                         "get_civ7_diplomacy responseOptions with explicit max_influence_cost and fresh expected_turn. "
+                         "Only Open Borders, Research Collaboration, Cultural Exchange and Local Festival from "
+                         "met peaceful major leaders; no wars/demands, espionage or deals. Requires native "
+                         "offered response/quote/permission and sufficient Influence; rejects missing costs and "
+                         "replacement of an existing different response. Support spends Influence; rejection "
+                         "can worsen relationships and impose cooldowns. Verifies the same incoming event's "
+                         "recorded response, not eventual yields/completion. Requires user authorization; "
+                         "submits once, never automatically retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(respond_diplomatic_project)
         server.tool(
             name="choose_civ7_narrative", title="Choose Civ VII narrative response",
             description=("CHANGE GAME STATE: resolve one exact owned pending narrative instance_id/instance_type "
@@ -774,7 +789,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Get relationships, modifiers, deal counts, ongoing projects, and available "
             "diplomatic actions involving met major counterparts. Includes public term "
             "definitions, native duration quotes, active stages and native event progress/"
-            "completion timing, not guaranteed agreement expiry dates. Safe secondaryTargets "
+            "completion timing, not guaranteed agreement expiry dates. Pending visible incoming "
+            "projects include responseOptions with native descriptions, Influence quotes, selectability "
+            "and exact response-operation eligibility; these are not predicted final outcomes. Safe secondaryTargets "
             "include met/local players, offered owned settlements, offered currently visible "
             "settlement centres of the met counterpart, public unit types and amounts, with "
             "owner-qualified City identity, exact selected-argument checks and failure reasons. "

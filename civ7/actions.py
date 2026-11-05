@@ -338,6 +338,18 @@ async def choose_narrative(
     }, "narrative_state.js")
 
 
+async def respond_diplomatic_project(
+    action_id: StrictInt, response: Literal["accept", "support", "reject"], max_influence_cost: StrictFloat, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Respond once to one incoming cooperative project under a fresh native Influence quote."""
+    if any(type(v) is not int or v < 0 for v in (action_id, expected_turn)) or response not in ("accept", "support", "reject") or \
+            type(max_influence_cost) not in (int, float) or not math.isfinite(max_influence_cost) or max_influence_cost < 0:
+        raise ValueError("An incoming project ID, supported response, finite nonnegative Influence cap and expected turn are required")
+    return await _execute_and_verify("respond_diplomatic_project.js", {
+        "action_id": action_id, "response": response, "max_influence_cost": max_influence_cost, "expected_turn": expected_turn,
+    }, "diplomatic_response_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

@@ -33,12 +33,12 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | # | Capability family | Remaining work | Status |
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
-| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group and zero-cost non-trial narrative handlers implemented; paid/trial/project/deal responses pending |
+| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group, zero-cost non-trial narrative and cooperative project responses implemented; paid/trial/hostile/deal responses pending |
 | 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders implemented; travel/promotions/upgrades pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
-| 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Pending |
+| 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
 | 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Pending |
 | 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
@@ -139,3 +139,12 @@ introduce an arbitrary operation dispatcher or change persistent client config.
   reminder existed but native canChoose is false and celebration is active;
   earlier debug probe's eventual influence is uncertain, no selection coverage
   claimed. Real Jose Rizal diplomatic proposal is now available to inspect.
+- Batch 5 committed as `f4d87c8`.
+- Batch 6: 141 Python + 287 Node tests. Incoming cooperative accept/support/reject
+  handler with native selected-response quote, explicit Influence cap, provenance
+  and same-event verification; diplomacy readout includes native response options.
+  War/demand/espionage/deal and different-response replacement are rejected.
+  Live Jose Rizal Cultural Exchange 76: support quote 180, cap179 rejected, cap180
+  verified response SUPPORT and exact Influence 564.82421875 → 384.82421875.
+  Independent diplomacy read confirmed. Accept/reject fixture-only. Still T62;
+  no further end-turn or One More Turn calls, anomaly remains unresolved.
