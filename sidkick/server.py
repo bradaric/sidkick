@@ -8,16 +8,20 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import Icon, ToolAnnotations
 
 from civ7.actions import (
+    acknowledge_agenda,
     append_city_production,
     assign_resource,
     assign_specialist,
     buy_attribute_node,
+    choose_celebration,
+    choose_government,
     establish_trade_route,
     end_turn,
     move_great_work,
     move_unit,
     place_population,
     purchase_city_item,
+    review_resources,
     select_civic,
     select_technology,
     set_policy_active,
@@ -213,6 +217,49 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="acknowledge_civ7_agenda", title="Acknowledge Civ VII agenda message",
+            description=("CHANGE GAME STATE: acknowledge exactly one owned NOTIFICATION_DIPLOMATIC_ACTION_AGENDA "
+                         "notification_id from get_civ7_turn_context using fresh expected_turn. Mirrors closing "
+                         "the agenda popup and verifies that notification is dismissed/removed. It does not "
+                         "accept/reject diplomatic proposals or deals, alter relationships, dismiss arbitrary "
+                         "notifications or end a turn. Requires user authorization; submits once, never "
+                         "automatically retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(acknowledge_agenda)
+        server.tool(
+            name="choose_civ7_government", title="Choose Civ VII government",
+            description=("CHANGE GAME STATE: resolve a pending government choice using an exact current-Age "
+                         "government ID and fresh expected_turn. Requires native permission and a government "
+                         "picker notification or no current government. Changes celebration choices and may "
+                         "change passive effects/unlocks; no policy or ideology changes are selected. Verifies "
+                         "current government and cleared picker. Requires user authorization; one submission, "
+                         "never retry unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(choose_government)
+        server.tool(
+            name="choose_civ7_celebration", title="Choose Civ VII celebration",
+            description=("CHANGE GAME STATE: select one exact offered celebration ID with fresh expected_turn. "
+                         "Requires Happiness.canChoose and native permission; cannot start an unearned "
+                         "celebration. Applies the selected benefit immediately and may open policy slots. "
+                         "Verifies active celebration and cleared choice, not a yield forecast. Requires "
+                         "user authorization; submits once, never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(choose_celebration)
+        server.tool(
+            name="review_civ7_resources", title="Confirm Civ VII resource review",
+            description=("CHANGE GAME STATE: acknowledge the pending resource-review prompt after inspecting "
+                         "get_civ7_resources_and_trade, using fresh expected_turn. Runs only the native "
+                         "CONSIDER_ASSIGN_RESOURCE operation and verifies its specific notification clears. "
+                         "Does not assign/unassign resources, dismiss arbitrary notifications, bypass other "
+                         "blockers or end the turn. Requires user authorization; submits once, never retries "
+                         "unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(review_resources)
         server.tool(
             name="set_civ7_unit_order", title="Set Civ VII unit order",
             description=("CHANGE GAME STATE: set one owned on-map unit_id to skip, sleep, wake, fortify, heal, "

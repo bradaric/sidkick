@@ -30,7 +30,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `append_civ7_city_production`, `purchase_civ7_city_item`,
 `establish_civ7_trade_route`, `place_civ7_population`, `move_civ7_unit`,
 `set_civ7_town_focus`, `upgrade_civ7_town`, `assign_civ7_specialist`,
-`set_civ7_unit_order` and `end_civ7_turn`, which
+`set_civ7_unit_order`, `end_civ7_turn`, `choose_civ7_government`,
+`choose_civ7_celebration`, `review_civ7_resources` and `acknowledge_civ7_agenda`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -68,7 +69,7 @@ delegated sandbox tasks, not unrestricted unattended play. Ordinary use needs
 exact-action instructions; a user's explicit playground delegation can authorize
 the agreed disposable-game test scope without per-action approval. MCP
 annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these eighteen action capabilities. No
+The opt-in grants the connected client these twenty-two action capabilities. No
 combat, turn advancement, or other write types are included. A live write
 needs user authorization; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
@@ -521,6 +522,44 @@ after explicit skip orders for both ships, a new guarded request returned
 completion. Turn 60 now requires a diplomatic response; no automatic response
 or further turn submission was made. This remains the sandbox with Batch 1's
 debug Gold/population setup, not an unmodified campaign replay.
+
+#### Government, celebration and review prompts
+
+- `choose_civ7_government(government, expected_turn)` requires an exact
+  current-Age picker ID plus a pending government notification or no selected
+  government, then uses the UI's definition **index**, not its hash. Verifies the
+  selected government and cleared pending flag. No mid-Age arbitrary switching.
+- `choose_civ7_celebration(celebration, expected_turn)` requires an exact native
+  offered choice, `Happiness.canChoose()` and native permission. Verifies active
+  selection and cleared pending choice; does not manufacture eligibility.
+- `review_civ7_resources(expected_turn)` mirrors closing the native resource
+  review screen: `CONSIDER_ASSIGN_RESOURCE` with empty arguments. Requires a
+  pending local resource-review notification and verifies it clears; no resource
+  assignments, arbitrary dismissals or turn completion.
+- `acknowledge_civ7_agenda(notification_id, expected_turn)` mirrors closing one
+  exact owned agenda popup. Only `NOTIFICATION_DIPLOMATIC_ACTION_AGENDA` is
+  supported; it cannot dismiss a government/policy picker or answer a proposal.
+  Verification uses captured notification ID/component type, not the overall
+  blocker, which could be masked by another pending choice.
+
+Default mode remains 23 read-only tools; write mode has 45 tools, including 22
+actions. **132 Python and 272 Node tests pass.**
+
+**Live playground verification, turn 60, 2026-11-05/06:** exact agenda message
+`288` acknowledged once and verified dismissed. Unselected celebration was
+rejected because no choice was pending; current-government and already-reviewed
+resource calls were no-ops. Government's first preflight found native
+`GameInfo` collections do not implement `some`; it submitted nothing. A fixture
+now models this and the handler uses supported `filter` instead. No government
+change, celebration selection or typed positive resource review is claimed yet.
+
+A separate save `Sidkick_Playground_BeforeChoices_T60_1793919586400` completed
+with `RESULT_OK`, without overwrite. An authorized private no-argument
+`Happiness.startGoldenAge()` debug probe had **no observed effect** on active,
+pending or remaining-turn state; it is not counted as eligible picker coverage.
+Government/celebration successful submissions remain fixture-only until a genuine
+or demonstrably debug-created native pending case is available. Project/deal
+responses, tradition/crisis slots and narrative choices remain separate work.
 
 ## One-shot export
 

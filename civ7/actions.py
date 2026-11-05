@@ -274,6 +274,40 @@ async def end_turn(expected_turn: StrictInt) -> dict[str, Any]:
                     "reason": "Turn outcome is unknown; inspect current state and do not retry automatically"}
 
 
+async def choose_government(government: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Resolve a pending government picker using a current-Age offered government ID."""
+    return await _mandatory_choice("government", government, expected_turn)
+
+
+async def choose_celebration(celebration: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Resolve one pending native celebration choice."""
+    return await _mandatory_choice("celebration", celebration, expected_turn)
+
+
+async def review_resources(expected_turn: StrictInt) -> dict[str, Any]:
+    """Acknowledge the native resource-review prompt without changing assignments."""
+    return await _mandatory_choice("resource_review", None, expected_turn)
+
+
+async def _mandatory_choice(mode: str, selection: str | None, expected_turn: int) -> dict[str, Any]:
+    if type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("A nonnegative expected turn is required")
+    arguments = {"mode": mode, "expected_turn": expected_turn}
+    if mode != "resource_review":
+        if not isinstance(selection, str) or not selection.strip():
+            raise ValueError("An exact offered choice ID is required")
+        arguments["selection"] = selection.strip()
+    return await _execute_and_verify("mandatory_choice.js", arguments, "mandatory_choice_state.js")
+
+
+async def acknowledge_agenda(notification_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Acknowledge exactly one local agenda message, never a project or deal response."""
+    if any(type(v) is not int or v < 0 for v in (notification_id, expected_turn)):
+        raise ValueError("A local agenda notification ID and expected turn are required")
+    return await _execute_and_verify("acknowledge_agenda.js", {"notification_id": notification_id, "expected_turn": expected_turn},
+                                     "agenda_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

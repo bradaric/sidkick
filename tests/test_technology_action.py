@@ -142,6 +142,8 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "place_civ7_population", "move_civ7_unit",
             "set_civ7_town_focus", "upgrade_civ7_town", "assign_civ7_specialist",
             "set_civ7_unit_order", "end_civ7_turn",
+            "choose_civ7_government", "choose_civ7_celebration", "review_civ7_resources",
+            "acknowledge_civ7_agenda",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

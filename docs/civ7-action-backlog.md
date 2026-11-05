@@ -33,7 +33,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | # | Capability family | Remaining work | Status |
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
-| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Pending |
+| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Government/celebration/review/agenda handlers implemented; slot/narrative work pending |
 | 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders implemented; travel/promotions/upgrades pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
@@ -91,8 +91,22 @@ introduce an arbitrary operation dispatcher or change persistent client config.
   After fresh readback and explicit ship skips, native typed turn completion
   verified 59 → 60. Current blocker: DIPLOMATIC_RESPOSE_REQUIRED (native spelling).
 
-## Next batch: mandatory choices
+## Mandatory-choice progress
 
-Implement native government/celebration and resource-review handling, inspect
-the turn-60 diplomatic response contract, then fill policy/narrative/crisis
-picker gaps. Continue to stop at unsupported blockers rather than forcing turns.
+- Batch 2 committed as `ee68148`.
+- Batch 3: 132 Python + 272 Node tests. Three native picker/review handlers plus
+  exact agenda-popup acknowledgement. Turn-60 "diplomatic response" was an agenda
+  message, not an incoming proposal; exact notification 288 was acknowledged and
+  verified through MCP. No pending celebration was correctly rejected; current
+  government and resource review were no-ops. First government preflight found
+  GameInfo collections lack `some` (no write submitted); native-style fixture
+  reproduced it and supported `filter` fixed it.
+- Separate save `Sidkick_Playground_BeforeChoices_T60_1793919586400` confirmed
+  RESULT_OK, no overwrite. Private debug `Happiness.startGoldenAge()` with no
+  arguments produced no observed pending/active celebration; not counted as
+  synthetic eligibility or successful handler coverage. Positive government,
+  celebration and typed resource review remain live-test gaps, with fixture
+  coverage. Do not manufacture eligibility by replacing UI getters.
+- Next: exact tradition/crisis slot placement and policy swaps; narrative/crisis
+  responses; genuine project/deal responses. Stop at unsupported blockers instead
+  of forcing turns.
