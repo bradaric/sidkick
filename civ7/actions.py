@@ -195,6 +195,40 @@ async def move_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_tur
     return await _execute_and_verify("move_unit.js", arguments, "unit_position_state.js")
 
 
+async def set_town_focus(settlement: StrictStr, focus: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Select an offered town focus or return to Growing Town."""
+    if not isinstance(focus, str) or not focus.strip():
+        raise ValueError("An exact offered focus ID or GROWTH is required")
+    return await _manage_settlement({"mode": "focus", "settlement": settlement,
+                                     "focus": focus.strip(), "expected_turn": expected_turn})
+
+
+async def upgrade_town(settlement: StrictStr, max_gold_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Buy the native town-to-city upgrade under an explicit Gold cap."""
+    if type(max_gold_cost) not in (int, float) or not math.isfinite(max_gold_cost) or max_gold_cost < 0:
+        raise ValueError("A finite nonnegative Gold cap is required")
+    return await _manage_settlement({"mode": "upgrade", "settlement": settlement,
+                                     "max_gold_cost": max_gold_cost, "expected_turn": expected_turn})
+
+
+async def assign_specialist(settlement: StrictStr, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Spend one pending population in one unblocked owned city specialist slot."""
+    if any(type(v) is not int or v < 0 for v in (x, y)):
+        raise ValueError("Nonnegative integer tile coordinates are required")
+    return await _manage_settlement({"mode": "specialist", "settlement": settlement,
+                                     "x": x, "y": y, "expected_turn": expected_turn})
+
+
+async def _manage_settlement(arguments: dict[str, Any]) -> dict[str, Any]:
+    settlement, turn = arguments["settlement"], arguments["expected_turn"]
+    if not isinstance(settlement, str) or not settlement.strip():
+        raise ValueError("An exact owned settlement name is required")
+    if type(turn) is not int or turn < 0:
+        raise ValueError("A nonnegative expected turn is required")
+    return await _execute_and_verify("settlement_management.js", {**arguments, "settlement": settlement.strip()},
+                                     "settlement_management_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

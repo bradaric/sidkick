@@ -10,6 +10,7 @@ from mcp.types import Icon, ToolAnnotations
 from civ7.actions import (
     append_city_production,
     assign_resource,
+    assign_specialist,
     buy_attribute_node,
     establish_trade_route,
     move_great_work,
@@ -19,8 +20,10 @@ from civ7.actions import (
     select_civic,
     select_technology,
     set_policy_active,
+    set_town_focus,
     start_city_state_project,
     start_diplomatic_project,
+    upgrade_town,
 )
 from civ7.player import snapshot
 from civ7.queries import (
@@ -70,7 +73,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         icons=[server_icon()],
         instructions=(
             ("Local-player Civilization VII data with explicitly enabled typed gameplay actions. "
-             "Only perform a write when the user explicitly requests the exact action. "
+             "Only perform writes within the user's explicit action instructions or bounded delegated "
+             "single-player sandbox authorization; never infer permission outside that scope. "
              "Never retry an unknown/cancelled action automatically; read current state first. "
              if enable_writes else "Read-only, local-player Civilization VII data for strategy advice. ")
             + "Use "
@@ -207,6 +211,38 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="set_civ7_town_focus", title="Set Civ VII town focus",
+            description=("CHANGE GAME STATE: select an exact engine-offered focus ID or GROWTH for an exact owned "
+                         "settlement name, using fresh expected_turn. Only towns; native picker and exact command "
+                         "checks are required. Changes town yields/food exports and may stop ordinary growth. "
+                         "No town upgrade or turn advancement. Verifies the native focus; no yield forecast. "
+                         "Requires user authorization; submits once, never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(set_town_focus)
+        server.tool(
+            name="upgrade_civ7_town", title="Upgrade Civ VII town to city",
+            description=("CHANGE GAME STATE: buy one town-to-city upgrade for an exact owned settlement name, "
+                         "with approved max_gold_cost and fresh expected_turn. Uses the native upgrade directive, "
+                         "fresh town upgrade quote and balance check. Permanently spends Gold and changes town "
+                         "economy/production to a city; does not buy a building or choose production. Verifies "
+                         "the same owned settlement is a city. Requires user authorization; submits once and "
+                         "never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(upgrade_town)
+        server.tool(
+            name="assign_civ7_specialist", title="Assign Civ VII city specialist",
+            description=("CHANGE GAME STATE: spend one ready pending population in an owned city's unblocked "
+                         "specialist slot at exact x/y, using an exact settlement name and fresh expected_turn. "
+                         "Use get_civ7_growth for legal slots and yield/upkeep previews. Requires capacity and "
+                         "exact native ASSIGN_WORKER permission. Verifies that tile's count rises by one and "
+                         "pending population falls by one. No town specialists, removal or turn advancement. "
+                         "Adds food/happiness upkeep. Requires user authorization; submits once, no automatic retry."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(assign_specialist)
         server.tool(
             name="place_civ7_population",
             title="Place Civ VII pending population",

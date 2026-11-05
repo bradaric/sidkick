@@ -28,7 +28,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
 `start_civ7_diplomatic_project`, `start_civ7_city_state_project`,
 `append_civ7_city_production`, `purchase_civ7_city_item`,
-`establish_civ7_trade_route`, `place_civ7_population` and `move_civ7_unit`, which
+`establish_civ7_trade_route`, `place_civ7_population`, `move_civ7_unit`,
+`set_civ7_town_focus`, `upgrade_civ7_town` and `assign_civ7_specialist`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -61,12 +62,14 @@ cross-process deduplication, or exactly-once guarantee. Actions are serialized
 through readback within one server process; use only one write-enabled server
 for the game.
 
-This is intended for user-directed single-player commands, not unattended turn
-execution. A user's explicit instruction for the exact gameplay action is still
-required; MCP annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these thirteen action capabilities. No
+This is intended for explicitly authorized single-player commands or bounded
+delegated sandbox tasks, not unrestricted unattended play. Ordinary use needs
+exact-action instructions; a user's explicit playground delegation can authorize
+the agreed disposable-game test scope without per-action approval. MCP
+annotations and server instructions are not authorization controls.
+The opt-in grants the connected client these sixteen action capabilities. No
 combat, turn advancement, or other write types are included. A live write
-needs separate approval; use a disposable save/checkpoint. See the historical
+needs user authorization; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
 broader API surface and unverified areas.
 
@@ -439,6 +442,46 @@ the same owned Scout/component/type at `(10,15)`, with movement falling from
 war declaration, native submission retry or turn advancement was issued. All
 three approved actions are now live-verified and manually confirmed, including
 the final Scout inspection.
+
+#### Town focus, city upgrades and specialists
+
+- `set_civ7_town_focus(settlement, focus, expected_turn)` uses an exact offered
+  `PROJECT_TOWN_*` ID or `GROWTH`. Uses the UI's project hash and exact native
+  town command; changes food export/yields and can stop ordinary growth.
+- `upgrade_civ7_town(settlement, max_gold_cost, expected_turn)` uses the native
+  `ORDER_TOWN_UPGRADE` purchase directive, the UI's current town upgrade quote
+  and an explicit Gold cap. It permanently changes the same owned town into a
+  city. Already-city targets are no-ops. The native upgrade may create a pending
+  population placement; this tool does not silently choose it or production.
+- `assign_civ7_specialist(settlement, x, y, expected_turn)` spends one ready
+  pending population in an unblocked, nonfull owned city slot. Uses the exact
+  `ASSIGN_WORKER` location/amount command and verifies that tile's worker count
+  rises by one while pending population falls by one. No worker removals or town
+  specialists. Read `get_civ7_growth` for the current food/happiness upkeep preview.
+
+All three use fixed scripts, strict selectors, native eligibility and the shared
+single-submission bounded verifier. Default stdio remains 23 read-only tools;
+write mode exposes 39 tools (16 actions). **122 Python and 259 Node tests pass.**
+
+**Playground verification, 2026-11-05, turn 59:** a separate native local save
+`Sidkick_Playground_Baseline_T59_1793918023366` completed with serializer result
+`RESULT_OK`, without overwrite. Roskilde's Mining → Growing → Mining focus
+round-trip returned `verified_applied` twice; the repeated Mining call was a
+no-op. An upgrade at the normal balance of 1054.27734375 Gold was rejected.
+
+**Synthetic prerequisites, not normal-play earning/growth:** the authorized
+private debug setup granted 10000 Gold and one rural population to Copan. Separate
+readback confirmed Gold 11054.27734375 and Copan pending population 1 (immediate
+same-script getters were stale). Then the normal typed upgrade handler spent
+3400 Gold and converted Roskilde to a city, leaving 7654.27734375 Gold. Native
+upgrade readback also exposed one new pending population. The normal typed
+specialist handler assigned Copan `(25,11)`, workers 0 → 1 and pending 1 → 0.
+Both returned `verified_applied`; independent decisions/growth reads confirmed
+the new city and specialist. These establish normal native action execution with
+debug-created prerequisites, not naturally earned eligibility. No turn advanced.
+
+The agreed backlog and ongoing results are in
+[`docs/civ7-action-backlog.md`](docs/civ7-action-backlog.md).
 
 ## One-shot export
 
