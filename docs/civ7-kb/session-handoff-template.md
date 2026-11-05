@@ -4,6 +4,8 @@ Copy the fenced block into the next session's notes or a new campaign-specific M
 
 ```text
 Campaign/save identity:
+Exact current leader/persona and civilization; conditional abilities/requirements:
+Previous civilization (identity only, no assumed retained ability activation):
 Fresh read timestamp and game turn/Age:
 Rules/version/mod/settings known (unknowns explicit):
 Reloaded since previous session? Which prior notes are now historical?
@@ -36,6 +38,8 @@ Action, turn, evidence (UI/tool) and realized outcome:
 Completed technologies/civics and actually equipped cards:
 Completed builds and awarded Innovation/Tourism ledger entries:
 Claimed narrative rewards; displayed versus stored/archived works:
+Owned Great Work instance indices and any checked relocation availability:
+Great Work yield totals are current building evidence; relocation delta unknown:
 
 CURRENT QUEUES / RESEARCH
 Exact city, current item, quoted remaining turns and placement if known:
@@ -50,6 +54,7 @@ BLOCKERS / UNCERTAINTY
 Exact disabled-action tooltip / contradictory fields:
 Unknown marginal yields or rules:
 Pending events, damage and deadlines:
+Religious-unit readiness/charges, if relevant; target conversion still unknown:
 
 NEXT ONE OR TWO DECISIONS
 Recommendation, cost, net benefit/loss, deadline relevance:

@@ -7,6 +7,7 @@ Evidence: **REPO** [README](../../README.md), [coverage audit](../civ7-coverage-
 | Question | Focused tool(s) | Important checks |
 |---|---|---|
 | Can we survive/win in time? | `get_civ7_victory_progress` | `victoryAlerts`, native target/countdown/prerequisites, campaign-specific schedule, scoring ledger, project checks |
+| Which leader/persona and abilities apply? | `get_civ7_empire.identity` | Exact current identities, Age-filtered definitions and linked requirement-set IDs; not evaluated activation or numerical contribution |
 | What technology/civic/card? | `get_civ7_research_and_government` | Active versus available; depth; unlocks; slot type; current perk text; pending government/celebration state |
 | What can this city build/buy? | `get_civ7_available_decisions` | Queue elsewhere, availability, price, affordability, repair flag, project list |
 | Where should it go? | `get_civ7_building_placements` + `get_civ7_settlements` | Exact city/constructible; net yields; all displaced assets; unique improvements; district contents |
@@ -15,6 +16,8 @@ Evidence: **REPO** [README](../../README.md), [coverage audit](../civ7-coverage-
 | Resource/rail/Factory? | `get_civ7_resources_and_trade` | Eligibility, capacity, instance/origin, network membership, Factory production state; unknown marginal deltas |
 | City-state choice/incorporation? | `get_civ7_city_states` + empire | Pending bonus, selected effect, count-based requirements, Influence and settlement reserve |
 | A reward/disaster/blocked turn? | `get_civ7_turn_context` | Pending events and rewards; notifications; damage inventory; movement/path from UI as needed |
+| Which Great Works do we own or can relocate? | `get_civ7_great_works`, then the same tool with `great_work_index` | Owned displayed/archive inventory and stable instance indices; capacity/damage; native plus picker eligibility; no marginal yields, swaps or archive actions |
+| Can a religious unit spread now? | `get_civ7_religion.religiousUnits` | Owned current non-target readiness and charge quotes; packed units excluded from deployed checks; no arbitrary-target or conversion forecast |
 | Explorer/unit position? | `get_civ7_units`, then `get_civ7_movement_and_founding` | Numeric `instanceId`; movement; revealed position/path; no general archaeology action checker |
 | War feasibility? | Units, diplomacy, visible threats, targeted combat | Visibility/legal action, not inferred damage or unseen forces |
 
@@ -40,6 +43,30 @@ At baseline `a78cfda`, victory output gained:
 The implementation was source/fixture verified; its README said live verification of the new fields was pending while the game was closed. **This KB did not reopen the game or live-test that change.** The historical T56 target/countdown observations predate the new field support.
 
 Use these fields rather than baking a schedule calculator into another agent or pretending the old target stays constant. Native target/countdown remains authoritative; the met-player subset must not be used to overwrite a global target that can depend on unmet players.
+
+## Leader/civilization context (`e6c4d97`)
+
+`get_civ7_empire.identity` adds the exact current leader/persona and civilization, current-Age or Age-independent ability/unique-item definitions, linked traits and modifier descriptions. `ownerRequirementSet` and `subjectRequirementSet` identify conditions; they do not report those conditions as satisfied. `appliedYieldContribution` remains null. Missing catalogs remain unknown.
+
+Use this context before attributing a yield, slot bonus or unique item to Catherine/Russia from memory. `previousCivilization` is reported separately; it does not imply all Maya abilities survived the transition. Public unique-item definitions are not build/train eligibility checks. Memento descriptions and numerical swap effects still need separate evidence.
+
+## Great Work inventory and relocation (`d6892b5`)
+
+1. Call `get_civ7_great_works` without a selector. It returns owned displayed and archived `works`, stable `works[].instanceIndex`, and `buildings` with capacity, use/free space, damage and `currentGreatWorkYields`. No relocation matrix is requested on this inventory-only call.
+2. Select an owned `instanceIndex` from that response and pass it as `great_work_index` to the same tool. Do not use a work type ID, building component ID, unit `instanceId` or an invented numeric index.
+3. Inspect `selectedWork` and `destinations`. `operationAllowed` is native permission; `pickerEligible` also requires empty capacity, an undamaged destination, an undamaged displayed source (or an archived source), and a different destination. Use `availableNow` for the combined result and inspect failure reasons/flags when blocked.
+
+`currentGreatWorkYields` are **current whole-building totals across its works**, not the selected work's contribution. Comparing two buildings' totals does not simulate moving a work. `netYieldChange` remains null. Occupied-slot swaps and archive actions are unsupported; reading archived inventory is not an archive-action check. Foreign, ambiguous and invalid indices are rejected.
+
+This is a separate focused query, **not added to snapshots**. Existing snapshot settlement inventories are not a substitute for selected-work relocation checks. Source-inspected details such as archived works omitting `SourceCity` are handled by the tool; do not send a move request to test eligibility. It never moves a work.
+
+## Religious-unit readiness (`d6892b5`)
+
+`get_civ7_religion.religiousUnits` includes owned units with positive definition spread charges, their native **current non-target** spread readiness, failure reasons and charge quotes. Preserve `chargesRemaining: 0`; null means missing evidence, not zero. Packed units are not checked as deployed missionaries. `targetConversionPreview` remains null.
+
+This does not check an arbitrary missionary destination, forecast population conversion, or validate every custom spread ability. Use it to distinguish current readiness from an unknown target-specific outcome; do not issue spread actions or treat another unit's base charges as this unit's remaining charges.
+
+These two increments are documented as source/fixture-tested while the game was closed. The KB update did not live-test activation, relocation or spreading, and does not reconstruct the prior loss or resolve its historical unknowns.
 
 ## Known traps from this campaign
 

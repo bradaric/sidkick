@@ -36,8 +36,11 @@ These files were read while compiling the KB; links refer to the repository, not
 - [Coverage audit](../civ7-coverage-audit.md): what is source/fixture/live verified, and historical gaps.
 - [Victory query](../../civ7/victory.js): native targets, campaign-matched schedules, current/next tier, alert semantics, public scoring definitions and Modern project requirements.
 - [Victory planning fixtures](../../tests/test_victory_planning.cjs): multiplier conversion, missing values, alerts and native-target preservation.
+- [Empire query](../../civ7/empire.js) and [identity fixtures](../../tests/test_identity.cjs): exact current identity/persona, Age-filtered public definitions, modifier conditions and separate previous civilization.
+- [Great Works query](../../civ7/great_works.js) and [fixtures](../../tests/test_great_works.cjs): owned displayed/archive instance indices, current building yield/capacity evidence and selected-work relocation checks without marginal yields or move requests.
+- [Religion query](../../civ7/religion.js) and [fixtures](../../tests/test_religion.cjs): owned spread-unit current non-target readiness and charge quotes, not arbitrary-target/conversion previews.
 
-At inspection, HEAD was `a78cfda` (victory dominance schedules and countdown warnings). The earlier government/celebration evidence commit was `62532be`. Those identifiers identify the documentation baseline, not a lock on a concurrently changing worktree.
+At initial inspection, HEAD was `a78cfda` (victory dominance schedules and countdown warnings). The earlier government/celebration evidence commit was `62532be`. A follow-up KB review inspected `e6c4d97` (leader/civilization context) and `d6892b5` (Great Works and religious-unit readiness), including their implementation and fixture cases. These are source/fixture capabilities, not new live observations or a reconstruction of the conceded save. The identifiers record evidence provenance, not a lock on a concurrently changing worktree.
 
 **REPO:** a definition value `DominationPercent = 300` becomes `(300 + 100) / 100 = 4x`. A value of `100` means 2x, not 1x. The query matches `StartingAge` and `PreviousAgeCount`; unrelated rows are not defaults. Fixtures intentionally use synthetic rules and are not an exported copy of this campaign's database.
 

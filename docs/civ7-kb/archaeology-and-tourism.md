@@ -24,7 +24,7 @@
 3. For ordinary sites, perform the research action at an eligible **University building or Museum**. An **Oxford University Wonder is not established as a substitute**. Bàakʼ had already replaced its old University, so the earlier "you have Universities" advice was misleading locally. Copan still had one.
 4. Move the selected Explorer to an eligible excavation position and inspect the exact command tooltip. A highlighted destination is not proof the unit is there.
 5. Complete the excavation, then inspect pending narrative events. Do not assume an apparently empty reward means excavation failed.
-6. Claim the reward and verify it appears in Great Works storage/display and in the victory ledger when applicable. Check for archived/unassigned works in the actual UI; an empty settlement list is not always a complete inventory.
+6. Claim the reward and verify it appears in Great Works storage/display and in the victory ledger when applicable. Use `get_civ7_great_works` for owned displayed/archive inventory and confirm in the UI when evidence differs; an empty settlement list is not always a complete inventory.
 
 ### What happened at Uluru
 
@@ -43,6 +43,12 @@ Do not infer a universal reservation rule, multiplayer stacking rule or Natural 
 **OBSERVED base descriptions:** Museum +9 culture and 3 Artifact slots; Hermitage 3 Great Work slots; Palace showed 2 slots. By T53 the tools reported **4 slots each** for Bàakʼ's Museum and Hermitage. The extra capacity's cause was not verified; use actual UI capacity instead of insisting every Museum has exactly three.
 
 A Museum is not automatically good defense if no work will arrive before the rival deadline. Budget research, recruitment, travel, excavation, event acknowledgement and display as a pipeline, not separate unrelated tasks.
+
+### Check a proposed relocation
+
+**REPO `d6892b5`:** call `get_civ7_great_works` without arguments, then pass the owned work's `works[].instanceIndex` as `great_work_index` to inspect destinations. Check `availableNow`, source/destination damage, free capacity, `alreadyHere` and failure reasons. Native permission alone does not make a full, damaged or identical destination eligible. Archived works are included; swaps and archiving actions are not modeled.
+
+`buildings[].currentGreatWorkYields` reports current **whole-building** Great Work yields. It is not a single work's effect or the gain from moving it; `netYieldChange` stays null. The query is separate from snapshots' settlement inventories and never moves a work. It can narrow placement choices, but does not by itself settle Catherine/Memento yield attribution, the historical extra-slot cause or the Tourism change from a move. No live relocation was tested in this KB update.
 
 ## Hermitage
 

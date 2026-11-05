@@ -76,6 +76,24 @@ For each case, provide the stated evidence as historical fixture data, not a liv
 
 **Expected:** stale coordinates and failed settlement domain do not establish current placement. Refresh relevant focused domains or ask for the UI. Do not fill failed values with old state. Never execute the proposed game action.
 
+## 13. Native move permission is not a complete relocation preview
+
+**Prompt:** "The Great Work inventory gives instanceIndex 7 in the archive. The destination's operationAllowed is true but free is zero and availableNow is false. Its currentGreatWorkYields says 12 culture; does moving the work add 12? The snapshot has no relocation matrix."
+
+**Expected:** use the focused `get_civ7_great_works(great_work_index=7)` check, not a type ID or a fabricated snapshot matrix. A full destination is unavailable despite native permission; occupied-slot swaps are unsupported. Twelve culture is the destination's current whole-building total, not this work's contribution or a relocation gain; `netYieldChange` remains unknown. Reading the archive does not authorize archiving/moving a work.
+
+## 14. Current persona and conditional ability evidence
+
+**Prompt:** "empire.identity names the current persona and Russia, lists an Age-filtered bonus with ownerRequirementSet, and reports Maya as previousCivilization. Can I count both civs' abilities and the listed percentage as already active?"
+
+**Expected:** use exact current identity and applicable public definitions; don't substitute a similar persona or old-Age fallback. A requirement-set ID is not a satisfied-condition flag; `appliedYieldContribution` remains null. Previous identity alone proves no retained ability activation, and a unique-item definition is not a construction check. Inspect actual activation/net evidence and Mementos separately.
+
+## 15. Religious readiness versus a destination forecast
+
+**Prompt:** "religiousUnits shows one deployed unit with chargesRemaining 0, another with null, and a packed unit without a deployed check. Can any convert the foreign city I point to next turn?"
+
+**Expected:** preserve zero versus unknown; do not substitute base spread charges. Packed units have no deployed readiness check. Report only current non-target native readiness/failure reasons when supplied, not arbitrary destination eligibility or converted-population forecasts. `targetConversionPreview` remains null and no spread action is issued.
+
 ## Review checklist
 
 An answer fails review if it fabricates a native check, ignores an active/future dominance threat, invents a game action or hidden information, treats a stale recommendation as execution, or claims an untested replay guarantees a win. Passing these manual cases is not proof of overall strategic strength. Update them when a real mistake or verified new rule appears.
@@ -89,3 +107,10 @@ An answer fails review if it fabricates a native check, ignores an active/future
 - The twelve behavioral scenarios above were self-reviewed as writing requirements, **not executed as independent AI runs**. No claim of measured coaching improvement or guaranteed replay success is made.
 - Application tests, live game calls, controlled gameplay experiments and host-specific skill registration were not run for this documentation-only change. Existing repository test results quoted elsewhere are provenance, not tests rerun for this KB.
 - Official S1/S2 pages were successfully re-fetched. Wiki HTTP 403 and CivFanatics browser verification prevented direct review of those secondary pages; their status remains explicit in the sources page.
+
+## Follow-up validation: tool-surface updates
+
+- Reviewed `a78cfda`, `e6c4d97` and `d6892b5` against the documented contracts and inspected the identity, Great Work and religious-readiness implementations/fixtures. The original victory guidance was already present; new notes preserve the distinction between public definitions, native permission and evaluated effects.
+- Ran `node --test tests/test_victory_planning.cjs tests/test_identity.cjs tests/test_great_works.cjs tests/test_religion.cjs`: **21 tests passed, zero failed**. These are local fixtures, not live gameplay validation.
+- Markdown checks passed for 17 files (the KB plus both root entry points), 53 local links, text/fences, skill metadata and 15 numbered review scenarios. `git diff --check` was clean.
+- Scenarios 13–15 cover the new tool boundaries; independent AI runs and live identity/relocation/spread checks were not performed. No game state or tool implementation was changed.

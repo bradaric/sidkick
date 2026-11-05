@@ -21,6 +21,7 @@ The campaign owner prefers concise, practical recommendations, a science focus, 
 ## Establish state and deadlines
 
 - Identify the loaded campaign, turn, Age, game/rules version if available, and whether the user reloaded. Historical coordinates and queues are not live instructions.
+- Read `get_civ7_empire.identity` for the exact current leader/persona, civilization and Age-filtered ability/unique-item definitions. Linked modifier requirements are conditional evidence, not evaluated activation or yield contributions; a previous civilization's identity does not establish retained abilities.
 - On resuming a campaign, refresh victory progress. Inspect `victoryAlerts`, native `targetPoints`, all met-rival countdowns, prerequisites and `dominanceSchedule`. If fields are unavailable, say so; do not substitute a remembered fixed schedule as live evidence.
 - Use the next lower multiplier for a **conditional stress test**, not a guaranteed future target. Show whether the current rival lead would qualify after that change. Flag the gap before suggesting a long build or detour.
 - Tier thresholds use Age-progress percentages. Do not translate them to exact future turns without evidence of progression. T56 was this run's observation, not a universal deadline.
@@ -36,6 +37,8 @@ The campaign owner prefers concise, practical recommendations, a science focus, 
 - Give a landmark and a matching yield preview; coordinates are optional support. Do not invent a visual direction. If unclear, ask for a screenshot.
 - Policies: use actual slot type and UI swap preview. Account for food/happiness upkeep and effects on existing specialists. Do not confuse culture with Tourism.
 - Archaeology: distinguish ordinary ruins from Natural Wonder excavation; inspect movement, prerequisites, exact disabled-action tooltip, pending narrative reward and displayed work. Crowded icons alone do not establish who can excavate.
+- Great Works: call `get_civ7_great_works` for displayed/archived owned inventory, then pass an owned `works[].instanceIndex` as `great_work_index` for relocation checks. Require `availableNow`, not native permission alone. Current whole-building Great Work yields are not relocation deltas; swaps/archive actions and `netYieldChange` remain unsupported/unknown. This query is separate from snapshot inventories.
+- Religious spread: use `get_civ7_religion.religiousUnits` for owned current-state readiness and charge quotes. Zero charges are zero, missing charges are unknown, and packed units have no deployed check. Do not extend non-target readiness to an arbitrary destination or conversion forecast.
 - Prefer current UI previews over contradictory extraction. A definition describes an effect, not always its activation, final magnitude or availability.
 
 ## Answer usefully

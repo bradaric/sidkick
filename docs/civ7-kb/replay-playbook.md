@@ -12,10 +12,10 @@ A peaceful Modern win is **not guaranteed**. Culture is not proved universally s
 
 ## First reads after loading
 
-1. Confirm turn, Age, civilization, leader, city/town count, treasury, yields, existing infrastructure and selected cards.
+1. Confirm turn, Age, city/town count, treasury, yields, existing infrastructure and selected cards. Use `get_civ7_empire.identity` for exact current leader/persona, civilization and conditional Age-filtered ability context; do not assume previous-civilization abilities persist.
 2. Read native victory scores, targets, countdowns and **campaign-specific current/next schedule tiers**. Check all victory types, not only Hatshepsut's culture.
 3. Check owned perk descriptions, government/celebration choices, mementos, Dedications, pending events and damage. Do not assume last run's selections are already made in this save.
-4. Identify reachable **revealed** Natural Wonders, retained University buildings, legal Museum/Explorer options and Great Work slots. No map cheats or hidden-site assumptions.
+4. Identify reachable **revealed** Natural Wonders, retained University buildings and legal Museum/Explorer options. Read `get_civ7_great_works` for displayed/archive inventory and actual capacity/damage; pass an owned instance index for a specific relocation check, not a yield forecast. No map cheats or hidden-site assumptions.
 5. Preserve a distinct save if the user wants to compare approaches; saving/loading remains the user's action.
 
 Historical T1 clues: Hatshepsut approximately 300 Tourism, Rizal 101, target 404. Our score was later inferred as 87 from the observed T17 gains, not re-read at T1. **Refresh it.** At a frozen leader score of 300, a conservative 2x defensive floor is 151. If our refreshed score is 87, that means +64, **before** allowing for her growth. The old late-chat recollection of 105 at T1 would underestimate the required gain.

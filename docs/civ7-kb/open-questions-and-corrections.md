@@ -56,7 +56,7 @@ This page prevents a long conversation from becoming a collection of authoritati
 
 ### 5. Exact leader/Memento and culture-to-science effects
 
-The campaign used Catherine, Eagle Banner and Antikythera Mechanism; artifact science synergy was discussed. Their full exact current effect formulas were not recorded here. A city-culture penalty might also reduce science through secondary effects. **Next evidence:** current leader/Memento descriptions and net UI comparison. Do not promise a specific per-work science award from memory.
+The campaign used Catherine, Eagle Banner and Antikythera Mechanism; artifact science synergy was discussed. Their full exact current effect formulas were not recorded here. A city-culture penalty might also reduce science through secondary effects. **Next evidence:** `get_civ7_empire.identity` now supplies exact current leader/persona and Age-filtered civilization ability/trait/modifier definitions. These are conditional definitions with requirement-set IDs, not evaluated activation or numerical yield contributions. Check Mementos separately and use the net UI comparison. Do not assume previous-civilization abilities persist or promise a specific per-work science award from memory. The new read surface does not retroactively resolve this historical uncertainty.
 
 ### 6. Remaining space-race route and project identities
 
@@ -71,7 +71,7 @@ The T1 save was not reopened while making this KB. Difficulty, game version/mod 
 - Oxford's duplicated Industrialization reward: likely base plus Mastery, but not a controlled test of its technology selection.
 - Numerical Factory GDP/marginal empire yields and best resource allocation: descriptions and infrastructure checks existed; exact deltas remained unknown.
 - Actual +6 Tourism from each Maya-building city's Aerodrome: anticipated, not observed before concession.
-- Slot capacity bonuses: base-three Museum/Hermitage versus runtime four; cause unrecorded.
+- Slot capacity bonuses: base-three Museum/Hermitage versus runtime four; cause unrecorded. `get_civ7_great_works` can now inspect actual building capacity/damage and `get_civ7_empire.identity` can expose relevant conditional abilities, but neither alone proves the historical cause.
 - Natural Wonder identity/path in the final screenshot: it was a candidate, not a recorded second completed find.
 - Neutral American Settler destination and legality of interior gap settlement: no hostile-unit tool or current-distance calculation revealed its orders or future founding permission.
 - How much the selected science/culture narrative reward actually changed a completion turn after overflow: don't infer an exact saved turn from a 500-point award without an after-read.
