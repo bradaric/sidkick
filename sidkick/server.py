@@ -272,7 +272,11 @@ def create_server() -> MCPServer:
             "Read owned commander/carrier/squadron/aerodrome capacities and packed-unit membership, "
             "air units, reinforcement assignments/native arrival quotes and WMD stockpile counts. "
             "Optional unit_id from get_civ7_units checks one owned unit's native rebase/reinforce "
-            "destinations, filtered to revealed tiles. Packed units are not queried as deployed. "
+            "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
+            "withholds destinations, not native permission. Unknown commander membership "
+            "withholds deployment checks/locations; a withheld location does not prove packing. "
+            "Missing assignment APIs leave reinforcements null; missing arrival getters leave "
+            "nativeArrivalTime null. Packed/off-map units are not queried as deployed. "
             "Free slots, mission ranges and travel forecasts are not inferred; WMD launch checks, "
             "strikes and all movement requests are excluded. Separate from snapshots/exports."
         ),

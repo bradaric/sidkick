@@ -16,15 +16,17 @@
   const valid = location => location && Number.isInteger(location.x) && Number.isInteger(location.y) &&
     location.x >= 0 && location.y >= 0 && location.x < width && location.y < height;
   const records = owned.filter(unit => unit.isCommanderUnit).map(unit => {
-    const candidate = Armies.get(unit.armyId);
+    const candidate = typeof Armies !== "undefined" && typeof Armies?.get === "function" ? Armies.get(unit.armyId) : null;
     const army = candidate?.owner === id ? candidate : null;
-    const packedUnitIds = army ? [...new Set((army.getUnitIds() ?? []).filter(component =>
+    const members = typeof army?.getUnitIds === "function" ? army.getUnitIds() : null;
+    const packedUnitIds = members != null ? [...new Set(members.filter(component =>
       component.owner === id && byId.has(component.id)).map(component => component.id))] : null;
     return {unit, army, packedUnitIds};
   });
   const packedBy = new Map();
   for (const record of records) for (const packedId of record.packedUnitIds ?? []) packedBy.set(packedId, record.unit.id.id);
-  const deployed = unit => Boolean(valid(unit.location) && !packedBy.has(unit.id.id) && unit.isOnMap !== false);
+  const packingKnown = records.every(record => record.packedUnitIds !== null);
+  const deployed = unit => Boolean(packingKnown && valid(unit.location) && !packedBy.has(unit.id.id) && unit.isOnMap !== false);
   const describe = unit => ({instanceId: unit.id.id, id: GameInfo.Units.lookup(unit.type)?.UnitType ?? null,
     name: name(unit.name ?? GameInfo.Units.lookup(unit.type)?.Name),
     location: deployed(unit) ? {x: unit.location.x, y: unit.location.y} : null,
@@ -33,20 +35,24 @@
     armyCommander: unit.isArmyCommander ?? null, fleetCommander: unit.isFleetCommander ?? null,
     squadronCommander: unit.isSquadronCommander ?? null, aerodromeCommander: unit.isAerodromeCommander ?? null,
     combatCapacity: nonnegative(army?.combatUnitCapacity), nonCombatCapacity: nonnegative(army?.nonCombatUnitCapacity), packedUnitIds}));
-  const reinforcements = [];
-  for (const unit of owned) {
-    const armyId = player.Armies?.getUnitReinforcementCommanderId(unit.id, id);
+  const reinforcements = typeof player.Armies?.getUnitReinforcementCommanderId === "function" ? [] : null;
+  if (reinforcements !== null) for (const unit of owned) {
+    const armyId = player.Armies.getUnitReinforcementCommanderId(unit.id, id);
     if (!Number.isInteger(armyId) || armyId < 0) continue;
     const target = records.find(record => record.army && record.army.localId === armyId);
     if (!target) continue;
     reinforcements.push({...describe(unit), commanderInstanceId: target.unit.id.id,
-      nativeArrivalTime: nonnegative(player.Armies.getUnitReinforcementETA(unit.id, id))});
+      nativeArrivalTime: typeof player.Armies.getUnitReinforcementETA === "function"
+        ? nonnegative(player.Armies.getUnitReinforcementETA(unit.id, id)) : null});
   }
   function transport(unit, operation) {
     const result = deployed(unit) ? Game.UnitOperations.canStart(unit.id, operation, {}, false) : null;
     const options = [...new Set(result?.Plots ?? [])].filter(index => Number.isInteger(index) && index >= 0 && index < width * height)
-      .map(index => GameplayMap.getLocationFromIndex(index)).filter(location => valid(location) &&
-        GameplayMap.getRevealedState(id, location.x, location.y) !== RevealedStates.HIDDEN)
+      .map(index => GameplayMap.getLocationFromIndex(index)).filter(location => {
+        if (!valid(location) || typeof GameplayMap.getRevealedState !== "function" || typeof RevealedStates === "undefined") return false;
+        const state = GameplayMap.getRevealedState(id, location.x, location.y);
+        return state != null && (state === RevealedStates?.REVEALED || state === RevealedStates?.VISIBLE);
+      })
       .map(location => ({location: {x: location.x, y: location.y}, availableNow: Boolean(result?.Success)}));
     return {operationAllowed: result ? Boolean(result.Success) : null, options,
       failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean), travelTurns: null};
@@ -63,6 +69,6 @@
   return {turn: Game.turn, commanders,
     airUnits: owned.filter(unit => GameInfo.Units.lookup(unit.type)?.Domain === "DOMAIN_AIR").map(describe),
     reinforcements, wmdStockpile, selectedUnit,
-    note: "Owned commander/carrier/squadron/aerodrome membership and native capacity only, not inferred free slots or mission range. Reinforcement arrival is a native quote, not a guaranteed travel forecast. Optional unit_id checks revealed native REBASE/REINFORCE_ARMY destinations for one owned deployed unit; packed units are not checked as deployed. No hidden destinations, foreign units, launch eligibility, damage, WMD strikes or requests. This separate logistics query is not included in snapshots/exports"
+    note: "Owned commander/carrier/squadron/aerodrome membership and native capacity only, not inferred free slots or mission range. Missing membership stays null and suppresses deployment checks; a withheld location does not prove packing. Missing reinforcement assignment APIs return null, not an empty inventory; missing arrival getters leave nativeArrivalTime null. Reinforcement arrival is a native quote, not a guaranteed travel forecast. Optional unit_id checks explicitly REVEALED/VISIBLE native REBASE/REINFORCE_ARMY destinations for one owned deployed unit; packed/off-map units are not checked as deployed. Missing/unknown visibility withholds destinations. No hidden destinations, foreign units, launch eligibility, damage, WMD strikes or requests. This separate logistics query is not included in snapshots/exports"
   };
 })()
