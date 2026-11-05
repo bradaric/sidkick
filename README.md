@@ -26,7 +26,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `--transport stdio --enable-writes` additionally registers
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
-`start_civ7_diplomatic_project` and `start_civ7_city_state_project`, which
+`start_civ7_diplomatic_project`, `start_civ7_city_state_project`,
+`append_civ7_city_production` and `purchase_civ7_city_item`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -62,8 +63,8 @@ for the game.
 This is intended for user-directed single-player commands, not unattended turn
 execution. A user's explicit instruction for the exact gameplay action is still
 required; MCP annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these eight action capabilities. No
-city production/purchases, unit movement, turn advancement, or other write types are included. A live write
+The opt-in grants the connected client these ten action capabilities. No
+unit movement, turn advancement, or other write types are included. A live write
 needs separate approval; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
 broader API surface and unverified areas.
@@ -189,7 +190,7 @@ Influence balances are returned without claiming eventual acceptance, completion
 or a guaranteed outcome. Existing matching ongoing projects are no-ops; uncertain
 results retain the no-automatic-retry rule.
 
-Current verification: **105 Python and 219 Node tests pass**. Read-only turn-58
+Second-batch verification: **105 Python and 219 Node tests pass**. Read-only turn-58
 preflight offered Research Collaboration with Hatshepsut for 150 Influence,
 Promote Growth in Kutaraja for 90, and Incorporate in Kumasi for 720. Live calls
 are separately approved and paused after each successful start for manual
@@ -223,6 +224,86 @@ project `74`, native progress `0/10` and 10 turns remaining. Influence fell from
 turn 58. All three approved project starts are now live-verified and manually
 confirmed by the user, including the final Kutaraja inspection. No turn
 advancement, project cancellation or additional write calls are queued.
+
+#### Append-only city production and city/town purchases
+
+- `append_civ7_city_production(settlement, item, expected_turn, x=None, y=None)`
+  appends one exact unit, building or project type ID in an owned city. Uses
+  explicit native `InsertMode: Append`, never the default insertion behavior,
+  replacement, deletion or reordering. Town production/focus changes are excluded.
+- `purchase_civ7_city_item(settlement, item, max_gold_cost, expected_turn,
+  x=None, y=None)` buys one unit or building in an owned city or town. It uses
+  the native purchase command's exact `Cost`, rejects missing/over-cap quotes
+  and insufficient Gold, and preserves zero/fractional costs. Purchases create
+  assets and can add upkeep. Projects and town-to-city upgrades are excluded.
+
+The settlement is an exact displayed name (case-insensitive); the item is an
+exact type ID from `get_civ7_available_decisions`. Both handlers require an
+active local turn and exact native permission. Buildings additionally require
+both x and y from `get_civ7_building_placements`, an explicitly revealed native
+legal plot, and a placement preview whose overbuilt ID is `-1`. Omit coordinates
+for units/projects. No wonders, repairs, purchases of queued/in-progress items,
+overbuilding or automatic tile selection are supported.
+Building validation uses two native checks: the coordinate-free result supplies
+`Plots`/`ExpandUrbanPlots` for tile membership, then the X/Y-specific result must
+permit the exact tile and supplies the purchase cost. The latter can omit plot
+lists; requiring them again incorrectly rejects a legal placement. Both checks
+must pass, with the same no-overbuild, queue and budget guards retained.
+
+Each handler submits once, then polls targeted read-only state with captured
+pre-submit queue and owned asset identities. Append verification requires the
+complete original queue prefix and exactly one matching new tail (including the
+building tile). Purchase verification requires an unchanged queue and exactly
+one new matching owned unit component ID, or a new undamaged building component
+in the selected settlement at the exact tile. Gold loss alone is never proof.
+Unit IDs are compared across the local player's matching-type inventory; their
+observed spawn location is returned, not assumed to be the city centre. Native
+balance changes are observations, not an atomic cost guarantee. Another writer
+can still race submission/readback or confound asset attribution; use one writer,
+and never automatically retry an unknown/cancelled call.
+
+Production/purchase verification: **110 Python and 235 Node tests pass**. Positive
+building/project appends and all purchase types are fixture-tested. Separately
+approved turn-58 live tests are a Scout append after Copan's Department Store,
+a Merchant purchase in Copan (320 Gold cap), a Scout purchase in Roskilde (120),
+and a no-overbuild Fishing Quay purchase in Roskilde at `(24,4)` (220). Native
+read-only preflight confirmed the append operation and Quay placement.
+
+**Live verification, 2026-11-05, turn 58:** the approved Scout append in Copan
+returned `verified_applied`. Targeted native readback preserved the complete
+Department Store queue entry and added exactly one Scout after it. Independent
+settlement readback confirmed Department Store (6 turns), then Scout (1 turn).
+Gold remained 1870.58984375 and turn/Age/player identity was unchanged. The user
+subsequently confirmed the queue in-game.
+
+The next approved call purchased one Merchant in Copan for 320 Gold and returned
+`verified_applied`. Independent unit readback confirmed new owned instance
+`3473432` at `(26,12)`. Gold fell from 1870.58984375 to 1550.58984375, with the
+Department Store → Scout queue and turn/Age/player identity unchanged at turn 58.
+The user subsequently confirmed the Merchant and manually sent it toward Delhi.
+At turn 58, the approved Roskilde Scout and Fishing Quay purchases remained
+pending. No queue replacement, turn advancement or retry was performed by these tools.
+
+**Live verification, turn 59:** after refreshing eligibility and the approved
+120 Gold cap, the Roskilde Scout purchase returned `verified_applied`. Independent
+unit readback confirmed new owned Scout `3670032` at `(24,5)`. Gold fell from
+1394.27734375 to 1274.27734375, and Roskilde's empty queue and turn/Age/player
+identity stayed unchanged. The user subsequently confirmed the Scout in-game.
+
+The first Quay attempt stopped at the adapter's plot guard without a native
+request or Gold spend. Read-only diagnosis found that the general check listed
+plot `320` (`24,4`) in `ExpandUrbanPlots`, while the selected-tile check returned
+`Success: true`, `Cost: 220` and no plot lists. The separately approved two-stage
+guard fix was reproduced in a failing regression before implementation; tests
+also retain general-plot rejection and selected-tile permission/cost checks.
+
+After that correction, the approved Quay purchase submitted once and returned
+`verified_applied`. New undamaged building component `17367264` appeared at
+`(24,4)` in Roskilde; independent settlement readback confirmed the Fishing Quay.
+Gold fell from 1274.27734375 to 1054.27734375, with no overbuilding, queue change
+or turn/Age/player change. No native submission was retried. All approved live
+production/purchase tests have now succeeded and been manually confirmed by
+the user, including the final Quay inspection.
 
 ## One-shot export
 

@@ -130,6 +130,39 @@ async def _start_project(
     return await _execute_and_verify("start_diplomatic_project.js", arguments, "diplomatic_project_state.js")
 
 
+async def append_city_production(
+    settlement: StrictStr, item: StrictStr, expected_turn: StrictInt,
+    x: StrictInt | None = None, y: StrictInt | None = None,
+) -> dict[str, Any]:
+    """Append one unit, building or project without replacing an existing city queue."""
+    return await _city_construction("append", settlement, item, expected_turn, x, y, None)
+
+
+async def purchase_city_item(
+    settlement: StrictStr, item: StrictStr, max_gold_cost: StrictFloat, expected_turn: StrictInt,
+    x: StrictInt | None = None, y: StrictInt | None = None,
+) -> dict[str, Any]:
+    """Purchase one unit or non-overbuilding building in an owned city or town."""
+    return await _city_construction("purchase", settlement, item, expected_turn, x, y, max_gold_cost)
+
+
+async def _city_construction(
+    mode: Literal["append", "purchase"], settlement: str, item: str, expected_turn: int,
+    x: int | None, y: int | None, cap: float | None,
+) -> dict[str, Any]:
+    if not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item.strip():
+        raise ValueError("An exact owned settlement name and item type ID are required")
+    if type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("A nonnegative expected turn is required")
+    if (x is not None or y is not None) and any(type(value) is not int or value < 0 for value in (x, y)):
+        raise ValueError("Supply both nonnegative integer x and y, or omit both")
+    if mode == "purchase" and (type(cap) not in (int, float) or not math.isfinite(cap) or cap < 0):
+        raise ValueError("A finite nonnegative Gold cap is required")
+    arguments = {"mode": mode, "settlement": settlement.strip(), "item": item.strip(),
+                 "expected_turn": expected_turn, "x": x, "y": y, "max_gold_cost": cap}
+    return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

@@ -8,9 +8,11 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import Icon, ToolAnnotations
 
 from civ7.actions import (
+    append_city_production,
     assign_resource,
     buy_attribute_node,
     move_great_work,
+    purchase_city_item,
     select_civic,
     select_technology,
     set_policy_active,
@@ -202,6 +204,42 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="append_civ7_city_production",
+            title="Append Civ VII city production",
+            description=(
+                "CHANGE GAME STATE: append one exact unit, building or project item type ID to an "
+                "owned city's production queue. Required settlement is its exact displayed name "
+                "(case-insensitive); expected_turn must come from fresh available-decisions evidence. "
+                "Buildings require exact x and y from get_civ7_building_placements with no overbuilding. "
+                "Omit x/y for units/projects. Uses native Append and verifies the complete old queue "
+                "prefix plus one matching new tail. No town production/focus changes, wonders, repairs, "
+                "queue deletion/reordering/replacement or turn advancement. Requires the user's exact-action "
+                "instruction. Submits once; never automatically retry unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(append_city_production)
+        server.tool(
+            name="purchase_civ7_city_item",
+            title="Purchase Civ VII city or town item",
+            description=(
+                "CHANGE GAME STATE: buy one exact unit or building item type ID in an owned settlement "
+                "(exact displayed name, case-insensitive), using an approved max_gold_cost and fresh "
+                "expected_turn. Spends Gold, creates an asset and can add maintenance. Buildings require "
+                "explicit x/y from get_civ7_building_placements, legal native plots and a no-overbuilding "
+                "preview. Omit x/y for units. Verifies one new matching owned unit ID or a new undamaged "
+                "building component at the exact tile, not just Gold loss. No projects, wonders, repairs, "
+                "town upgrades, queue changes or turn advancement. Requires the user's exact-action "
+                "instruction. Submits once; never automatically retry unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(purchase_city_item)
         server.tool(
             name="select_civ7_technology",
             title="Select Civ VII technology",
