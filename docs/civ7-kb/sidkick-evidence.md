@@ -50,6 +50,14 @@ Read the loaded campaign's victory output:
 
 Use these fields rather than baking a schedule calculator into another agent or pretending the old target stays constant. Native target/countdown remains authoritative; the met-player subset must not be used to overwrite a global target that can depend on unmet players.
 
+### Culture asset evidence
+
+- Read `scoringRules[].localEvidence` alongside research/policy `activationEvidence` and the earned scoring ledger. Refresh current assets rather than carrying counts from another save.
+- Unique-improvement candidates use loaded `UNIQUE_IMPROVEMENT` tags, not trait presence. This includes traitless Monasteries; a trait link alone does not qualify an improvement. Missing tag data remains unknown.
+- For unique quarters, use per-settlement `uniqueQuarters` native recognition and inspect required buildings, completion and damage. Trait-linked `candidateAssets` are separate: a building pair alone does not establish a recognized quarter, and two buildings are not two quarters.
+- Missing native evidence remains null; `inventoryComplete: false` warns that observations may be partial. Classification, recognition, rail membership or a required building's presence does not establish Tourism activation, requirement scope or qualifying points. `qualifyingCount`, `attributedPoints` and `activeForLocalPlayer` remain unknown.
+- `ledgerEntryIndices` link to the local player's `progress.scoring` by tracker family only. Rules can share entries across Ages or Great Work types: never sum or attribute those points per rule. Current displays do not reconstruct historical awards, and an absent work does not prove earned points were lost.
+
 ## Leader/civilization context
 
 `get_civ7_empire.identity` adds the exact current leader/persona and civilization, current-Age or Age-independent ability/unique-item definitions, linked traits and modifier descriptions. `ownerRequirementSet` and `subjectRequirementSet` identify conditions; they do not report those conditions as satisfied. `appliedYieldContribution` remains null. Missing catalogs remain unknown.
