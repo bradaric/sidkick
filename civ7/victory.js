@@ -85,6 +85,51 @@
     };
   }
 
+  const modifierEffects = new Map([...(GameInfo.DynamicModifiers ?? [])].map(row => [row.ModifierType, row]));
+  const trackerArguments = new Map((GameInfo.ModifierArguments?.filter(arg => arg.Name === "TrackerName") ?? [])
+    .map(arg => [arg.ModifierId, arg.Value]));
+  const attachmentArguments = new Map((GameInfo.ModifierArguments?.filter(arg => arg.Name === "ModifierId") ?? [])
+    .map(arg => [arg.ModifierId, arg.Value]));
+
+  function cultureActivationEvidence(rule) {
+    if (!GameInfo.Modifiers || !GameInfo.DynamicModifiers || !GameInfo.ModifierArguments) return null;
+    const effect = modifier => modifierEffects.get(modifier.ModifierType);
+    const activators = GameInfo.Modifiers.filter(modifier =>
+      effect(modifier)?.EffectType === "EFFECT_PLAYER_ACTIVATE_VICTORY_POINT_TRACKER" &&
+      trackerArguments.get(modifier.ModifierId) === rule.ScoringId);
+    const activatorIds = new Set(activators.map(modifier => modifier.ModifierId));
+    // A bounded definition join, not a recursive modifier/requirement evaluator.
+    const parents = GameInfo.Modifiers.filter(modifier => effect(modifier)?.EffectType === "EFFECT_ATTACH_MODIFIERS" &&
+      activatorIds.has(attachmentArguments.get(modifier.ModifierId)));
+    const modifiers = [...activators, ...parents];
+    const modifierIds = new Set(modifiers.map(modifier => modifier.ModifierId));
+    return {
+      modifiers: modifiers.map(modifier => ({id: modifier.ModifierId, effect: effect(modifier)?.EffectType ?? null,
+        collection: effect(modifier)?.CollectionType ?? null,
+        ownerRequirementSet: modifier.OwnerRequirementSetId ?? null, subjectRequirementSet: modifier.SubjectRequirementSetId ?? null})),
+      unlocks: GameInfo.ProgressionTreeNodeUnlocks == null ? null : GameInfo.ProgressionTreeNodeUnlocks
+        .filter(unlock => !unlock.Hidden && unlock.TargetKind === "KIND_MODIFIER" && modifierIds.has(unlock.TargetType))
+        .map(unlock => {
+          const node = GameInfo.ProgressionTreeNodes.lookup(unlock.ProgressionTreeNodeType);
+          const state = node ? Game.ProgressionTrees.getNode(localId, node.$hash) : null;
+          return {modifierId: unlock.TargetType, id: unlock.ProgressionTreeNodeType, name: name(node?.Name),
+            requiredDepth: unlock.UnlockDepth ?? null, depthUnlocked: state?.depthUnlocked ?? null,
+            researchRequirementMet: Number.isFinite(state?.depthUnlocked) && Number.isFinite(unlock.UnlockDepth)
+              ? state.depthUnlocked >= unlock.UnlockDepth : null,
+            requiredGovernment: unlock.RequiredGovernmentType ?? null, requiredTrait: unlock.RequiredTraitType ?? null,
+            excludedTrait: unlock.NotTraitType ?? null};
+        }),
+      traditions: GameInfo.TraditionModifiers == null ? null : GameInfo.TraditionModifiers.filter(link => modifierIds.has(link.ModifierId))
+        .map(link => {
+          const def = GameInfo.Traditions.lookup(link.TraditionType);
+          return {modifierId: link.ModifierId, id: link.TraditionType, name: name(def?.Name),
+            active: def && typeof localPlayer.Culture?.isTraditionActive === "function"
+              ? localPlayer.Culture.isTraditionActive(def.$hash) ?? null : null};
+        }),
+      note: "Public activation-effect definitions plus direct or one-attachment research/policy links. Local mastery depth and policy state are evidence, not evaluated tracker activation or qualifying Tourism contributions. Requirement sets, other attachment depths, Triumph/building/leader sources and modifier lifetimes are not evaluated; an empty list does not prove inactivity"
+    };
+  }
+
   const players = [];
   for (const playerId of Players.getAliveIds()) {
     const isLocal = playerId === localId;
@@ -160,6 +205,7 @@
           id: rule.ScoringId, name: name(rule.Name), trackerType: rule.TrackerType, definitionPoints: rule.Points ?? null,
           data: rule.Data ?? null, requiresActivation: rule.RequiresActivation == null ? null : Boolean(rule.RequiresActivation),
           staticCarryover: rule.StaticCarryover == null ? null : Boolean(rule.StaticCarryover), activeForLocalPlayer: null,
+          activationEvidence: definition.VictoryClassType === "VICTORY_CLASS_CULTURE" ? cultureActivationEvidence(rule) : null,
           arguments: (GameInfo.VictoryScoringArgs ?? []).filter(arg => arg.ScoringId === rule.ScoringId)
             .map(arg => ({key: arg.Key, value: arg.ValueAsText || (arg.ValueAsInt ?? null)}))
         })),

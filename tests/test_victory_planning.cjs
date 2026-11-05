@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 
 function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unknown = false, fixed = false,
+  tourism = false, researchDepth = 1, traditionActive = false, nativeArguments = false,
   targetPoints = 999, scoringArguments = [{ ScoringId: 'WONDERS', Key: 'REQUIRED_CONSTRUCTIBLE', ValueAsText: 'WONDER', ValueAsInt: null }] } = {}) {
   const type = { $hash: 50, VictoryType: 'CULTURE', Name: 'Culture', CountdownDuration: 5,
     ScoringType: fixed ? 'COUNTDOWN_VICTORY_SCORING_TYPE_FIXED_SCORE' : 'COUNTDOWN_VICTORY_SCORING_TYPE_DOMINATION', FinalAge: 1 };
@@ -15,6 +16,7 @@ function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unkno
       assert.notEqual(id, 2, 'unmet players are not inspected, even to compute threats');
       return { isMajor: true, team: id, civilizationFullName: id === 0 ? 'Local' : 'Rival',
         Diplomacy: { hasMet: other => other === 1 },
+        Culture: { isTraditionActive: type => { assert.equal(id, 0); assert.equal(type, 88); return traditionActive; } },
         Victories: {
           getPointsForVictoryType: () => id === 0 ? 100 : 250,
           getVictoryCountdownStatus: () => unknown ? { prereqs: [{ description: 'Requirement' }] }
@@ -35,8 +37,31 @@ function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unkno
       ],
       VictoryScorings: [{ VictoryType: 'CULTURE', ScoringId: 'WONDERS', Name: 'Wonders', TrackerType: 'VICTORY_TRACKER_WONDER', Points: 12, Data: 'AGE_MODERN', RequiresActivation: true }],
       VictoryScoringArgs: scoringArguments,
+      Modifiers: tourism ? [
+        { ModifierId: 'ACTIVATE', ModifierType: 'ACTIVATE_TYPE', SubjectRequirementSetId: 'CONDITIONAL_TILES' },
+        { ModifierId: 'ATTACH', ModifierType: 'ATTACH_TYPE', OwnerRequirementSetId: 'CONDITIONAL_OWNER' },
+        { ModifierId: 'UNRELATED', ModifierType: 'OTHER_TYPE' },
+      ] : [],
+      DynamicModifiers: ((rows) => nativeArguments ? {find: predicate => rows.find(predicate),
+        filter: predicate => rows.filter(predicate), [Symbol.iterator]: () => rows[Symbol.iterator]()} : rows)([
+        { ModifierType: 'ACTIVATE_TYPE', EffectType: 'EFFECT_PLAYER_ACTIVATE_VICTORY_POINT_TRACKER', CollectionType: 'COLLECTION_OWNER' },
+        { ModifierType: 'ATTACH_TYPE', EffectType: 'EFFECT_ATTACH_MODIFIERS', CollectionType: 'COLLECTION_OWNER' },
+      ]),
+      ModifierArguments: ((rows) => nativeArguments ? {find: predicate => rows.find(predicate), filter: predicate => rows.filter(predicate)} : rows)([
+        { ModifierId: 'ACTIVATE', Name: 'TrackerName', Value: 'WONDERS' },
+        { ModifierId: 'ATTACH', Name: 'ModifierId', Value: 'ACTIVATE' },
+        { ModifierId: 'UNRELATED', Name: 'TrackerName', Value: 'WONDERS' },
+      ]),
+      ProgressionTreeNodeUnlocks: [
+        { TargetKind: 'KIND_MODIFIER', TargetType: 'ATTACH', ProgressionTreeNodeType: 'MASTERY', UnlockDepth: 2, RequiredGovernmentType: 'GOVERNMENT' },
+        { TargetKind: 'KIND_MODIFIER', TargetType: 'ATTACH', ProgressionTreeNodeType: 'SECRET', UnlockDepth: 1, Hidden: true },
+      ],
+      ProgressionTreeNodes: { lookup: () => ({ $hash: 77, Name: 'Mastery' }) },
+      TraditionModifiers: [{ TraditionType: 'POLICY', ModifierId: 'ATTACH' }],
+      Traditions: { lookup: () => ({ $hash: 88, Name: 'Policy' }) },
     },
     Game: { turn: 90, age: 1, VictoryManager: { getVictories: () => [], isCountdownVictoryEnabled: () => true, getCountdownVictoryDominanceScore: () => targetPoints },
+      ProgressionTrees: {getNode: (id, type) => {assert.equal(id, 0); assert.equal(type, 77); return researchDepth == null ? null : {depthUnlocked: researchDepth};}},
       AgeProgressManager: { getCurrentAgeProgressionPoints: () => percent, getMaxAgeProgressionPoints: () => 100 },
     },
   });
@@ -112,4 +137,33 @@ test('scoring arguments preserve text over numeric defaults and retain genuine n
     { key: 'NUMERIC_AMOUNT', value: 12 },
     { key: 'UNKNOWN', value: null },
   ]);
+});
+
+test('Culture scoring exposes public tracker activators and local research/policy evidence, not inferred activation', () => {
+  const rule = run({ tourism: true }).victoryConditions[0].scoringRules[0];
+  assert.ok(rule.activationEvidence, 'activation evidence is exported for Culture scoring rules');
+  assert.deepEqual(rule.activationEvidence.modifiers.map(modifier => modifier.id), ['ACTIVATE', 'ATTACH']);
+  assert.equal(rule.activationEvidence.modifiers[0].subjectRequirementSet, 'CONDITIONAL_TILES');
+  assert.equal(rule.activationEvidence.modifiers[1].ownerRequirementSet, 'CONDITIONAL_OWNER');
+  assert.equal(rule.activationEvidence.unlocks.length, 1, 'hidden unlocks are not presented as local choices');
+  assert.equal(rule.activationEvidence.unlocks[0].requiredDepth, 2);
+  assert.equal(rule.activationEvidence.unlocks[0].researchRequirementMet, false);
+  assert.equal(rule.activationEvidence.unlocks[0].requiredGovernment, 'GOVERNMENT');
+  assert.equal(rule.activationEvidence.traditions[0].active, false);
+  assert.equal(rule.activeForLocalPlayer, null);
+});
+
+test('mastery depth and slotted policy are evidence even when both are met, not proof a tracker is active', () => {
+  const rule = run({ tourism: true, researchDepth: 2, traditionActive: true }).victoryConditions[0].scoringRules[0];
+  assert.ok(rule.activationEvidence);
+  assert.equal(rule.activationEvidence.unlocks[0].researchRequirementMet, true);
+  assert.equal(rule.activationEvidence.traditions[0].active, true);
+  assert.equal(rule.activeForLocalPlayer, null);
+  const missing = run({ tourism: true, researchDepth: null }).victoryConditions[0].scoringRules[0];
+  assert.equal(missing.activationEvidence.unlocks[0].researchRequirementMet, null);
+});
+
+test('Culture activation evidence supports iterable native GameInfo catalogs without Array.some or map', () => {
+  const rule = run({tourism: true, nativeArguments: true}).victoryConditions[0].scoringRules[0];
+  assert.equal(rule.activationEvidence.modifiers.length, 2);
 });

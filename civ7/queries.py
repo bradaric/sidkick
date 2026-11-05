@@ -52,6 +52,11 @@ async def great_works(great_work_index: int | None = None) -> dict[str, Any]:
     return await run_script("great_works.js", {"great_work_index": great_work_index})
 
 
+async def archaeology() -> dict[str, Any]:
+    """Read revealed archaeology candidates and owned Explorer readiness."""
+    return await run_script("archaeology.js")
+
+
 async def resources_and_trade() -> dict[str, Any]:
     return await run_script("commerce.js")
 

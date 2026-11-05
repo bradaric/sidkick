@@ -10,6 +10,7 @@ from mcp.types import Icon, ToolAnnotations
 from civ7.player import snapshot
 from civ7.queries import (
     age_transition,
+    archaeology,
     available_decisions,
     building_placements,
     city_states,
@@ -73,7 +74,7 @@ def create_server() -> MCPServer:
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context and age-transition planning data. Excludes "
             "the large per-tile explored map and targeted building-placement/movement/combat/"
-            "Great-Work relocation queries, "
+            "Great-Work relocation queries and the map-scanning archaeology query, "
             "which have separate tools."
         ),
         annotations=ToolAnnotations(
@@ -210,6 +211,21 @@ def create_server() -> MCPServer:
         structured_output=True,
     )(great_works)
     server.tool(
+        name="get_civ7_archaeology",
+        title="Get Civ VII archaeology and Explorer readiness",
+        description=(
+            "In Modern, read revealed UI-filtered ruins, research buildings and natural wonders, "
+            "local research status on revealed continents, owned artifact-extracting Explorer "
+            "readiness, and owned Great Work display capacity. Explorer excavation/research "
+            "permission and blockers apply only at the current position, not after moving to "
+            "candidate sites. Fogged observations may be stale. No hidden ruin totals, artifact "
+            "rewards, compatibility or projected Tourism are inferred. No actions or UI selection. "
+            "This map-scanning query is separate from snapshots; outside Modern it is not applicable."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(archaeology)
+    server.tool(
         name="get_civ7_resources_and_trade",
         title="Get Civ VII resources and trade",
         description=(
@@ -291,6 +307,9 @@ def create_server() -> MCPServer:
             "thresholds, met-player countdown alerts and conditional public scoring rules. Never "
             "assume Culture requires a permanent 4x lead: ratios can ease as the Age progresses. "
             "Native point targets remain authoritative; alerts are not unconditional win dates. "
+            "Culture scoringRules include activation-effect definitions and bounded research/"
+            "policy evidence; mastery depth or a slotted card is not proof of actual tracker "
+            "activation, whose activeForLocalPlayer remains unknown. "
             "Modern production-project requirements and owned-settlement BUILD eligibility, "
             "blocked reasons, prerequisite scopes, mastery unlock depths and current cost/turn "
             "quotes. Project inventory includes conversion projects, not just victory projects. "
