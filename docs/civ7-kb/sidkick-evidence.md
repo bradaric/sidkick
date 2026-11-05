@@ -85,7 +85,9 @@ This does not check an arbitrary missionary destination, forecast population con
 
 - Read `terms`, native timing quotes, active-stage effects and support/response state. These are not guaranteed agreement expiry dates or evaluated yield contributions.
 - `completion.progress` is native progress, not an estimate derived from duration. Preserve unknowns and genuine zeroes; do not invent missing progress or future expiry.
-- `secondaryTargets` is a partial list of checked choices. Inspect each choice's `availableNow` and `failureReasons`, plus primary eligibility. It covers met/local players, owned settlements, public unit types and offered amounts—not every possible target. An empty list does not prove no other target exists.
+- `secondaryTargets` is a partial list of checked choices. Inspect each choice's `availableNow` and `failureReasons`, plus primary eligibility. It covers met/local players, owned settlements, offered currently visible settlement centres of the met counterpart, public unit types and amounts—not every possible target. An empty list does not prove no other target exists.
+- `City` choices include `settlement: {ownerId, cityId, location}` and distinguish owned from visible foreign settlements. City IDs can repeat across owners: use the owner/ID pair and matching offered-plot evidence, not the numeric ID alone. Fogged/hidden foreign centres, unrelated owners and ambiguous choices are excluded; no private foreign systems are exposed.
+- Read native blockers rather than inferring war or alliance prerequisites from an action's name.
 - Do not add primary and secondary influence quotes into a guessed total. A missing total cost remains unknown.
 - Hidden/espionage events are not attributed to a leader. Enacted peace-deal item terms and working-deal negotiation are unsupported. A successful read-only check is not permission to perform an action.
 
