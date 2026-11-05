@@ -27,8 +27,8 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
 `start_civ7_diplomatic_project`, `start_civ7_city_state_project`,
-`append_civ7_city_production`, `purchase_civ7_city_item` and
-`establish_civ7_trade_route`, which
+`append_civ7_city_production`, `purchase_civ7_city_item`,
+`establish_civ7_trade_route`, `place_civ7_population` and `move_civ7_unit`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -64,8 +64,8 @@ for the game.
 This is intended for user-directed single-player commands, not unattended turn
 execution. A user's explicit instruction for the exact gameplay action is still
 required; MCP annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these eleven action capabilities. No
-unit movement, turn advancement, or other write types are included. A live write
+The opt-in grants the connected client these thirteen action capabilities. No
+combat, turn advancement, or other write types are included. A live write
 needs separate approval; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
 broader API surface and unverified areas.
@@ -148,8 +148,9 @@ blocked cases are fixture-tested. First-batch offline verification: **100 Python
 assignment to Wak Kab'nal returned `rejected` because resource assignment is
 locked. Buying `NODE_ATTRIBUTE_CULTURAL_02` returned `rejected` because no branch
 or wildcard points are available. Resource assignment and the selected node's
-depth/point balances stayed unchanged. Positive resource/attribute execution
-remains fixture-tested only.
+depth/point balances stayed unchanged. At that checkpoint, positive resource/
+attribute execution remained fixture-tested only; a later resource assignment
+is recorded below.
 
 The approved relocation of owned Great Work `6` (Exhibit) from St. Petersburg's
 Palace to Bàakʼ's Museum returned `verified_applied`; a separate Great Work
@@ -327,7 +328,7 @@ or a counter increase alone is not success. Another writer can confound these
 observations; there is no atomic submission or cross-process deduplication.
 Unknown/cancelled outcomes must never be retried automatically.
 
-Current regression verification: **114 Python and 242 Node tests pass**. The
+Production/purchase/trade regression verification: **114 Python and 242 Node tests pass**. The
 separately approved live test buys a second Merchant in Kyiv for at most 400 Gold
 and attempts a direct route to Samapa (player `5`, city `65536`, at `(18,39)`).
 Native read-only extended-status evidence offered that target with `SUCCESS` on
@@ -359,6 +360,85 @@ or assistant-issued turn advancement occurred. This positively live-verifies
 direct establishment and its bounded readback; the earlier rejection supplied
 no native reason, so its precise cause is not asserted. The user subsequently
 confirmed the Samapa route in-game.
+
+#### Pending population and adjacent noncombat movement
+
+- `place_civ7_population(settlement, x, y, improvement, expected_turn)` consumes
+  one ready pending population on an exact native-offered improvement tile in an
+  owned city/town. The improvement is an exact type ID from the legal expansion
+  options in `get_civ7_growth`, not the separate improvement previews. Requires
+  an empty revealed nonforeign tile, unique general `EXPAND` plot/improvement
+  pairing and a successful selected-tile native check. No specialists, occupied
+  tile replacement, unique-improvement preview placement or resettlement.
+  Readback requires one fewer pending population and a genuinely new owned,
+  undamaged improvement at the exact tile. Existing tile ownership is not proof:
+  the approved Hanseong tile was already within its purchased territory.
+- `move_civ7_unit(unit_id, x, y, expected_turn)` moves one owned land/sea unit to
+  an adjacent empty, currently visible own/unowned tile. The unit must have
+  positive movement and known unpacked/nonreinforcing on-map state; commanders
+  and air units are excluded. The tile must be native-reachable, not an attack
+  target, with a direct two-plot path and native `NO_COMBAT` result. It uses only
+  `MOVE_TO` with explicit `NONE` modifiers, never the UI helper that can attack,
+  swap or declare war. No foreign territory, fogged travel, embarking/disembarking,
+  transport, multistep orders or turn advancement. Already-embarked land units
+  may travel water-to-water; shore transitions remain blocked. Readback verifies the exact
+  owned instance, component/type and location; packed/reinforcing/unknown packing
+  state withholds otherwise plausible coordinates. Movement is spent, not restored.
+
+Both tools remain stdio-write-opt-in only and submit once using the existing
+bounded verifier. Unknown/cancelled outcomes must not be automatically retried;
+same-turn races/save switches are not atomically excluded. Current verification:
+**118 Python and 253 Node tests pass**. Default stdio still discovers 23 read-only
+tools; write mode discovers 36 tools (13 actions). Land, naval and already-embarked
+movement are fixture-tested; the embarked Scout and population placement are
+additionally live-verified below.
+
+Separately approved turn-59 live tests: place Hanseong's pending population on
+Fishing Boat `(12,37)` (native preview +1 Food, +1 Production, +1 Science); assign
+new Whales `2976`, map identity, from Samapa to Ur's empty resource slot using the
+existing assignment tool; move Scout `196610` from `(9,15)` to `(10,15)`. Read-only
+preflight confirmed pending population, the offered improvement, assignment
+unlocked/native permission and the empty visible adjacent noncombat destination.
+Each successful write was paused for manual inspection. Remaining action types
+and their implementation priority are a separate discussion after these checks.
+
+**Live verification, 2026-11-05, turn 59:** the approved Hanseong placement at
+`(12,37)` returned `verified_applied`. New undamaged Fishing Boat component
+`17432801` appeared at that exact tile, and pending population fell from 1 to 0.
+Independent growth and settlement reads confirmed both changes. Total population
+remained 5: consuming a pending placement is not an additional population grant.
+The engine's pre-submit preview reported +1 Food, +1 Production and +1 Science;
+those are preview effects, not a reconstructed empire-wide marginal yield.
+Turn/Age/player identity stayed unchanged, with one native submission and no
+retry. The user confirmed the Fishing Boat and reported about three additional
+border tiles. The installed Civilopedia confirms that population placement also
+claims eligible adjacent tiles. No complete pre-placement border snapshot was
+captured, so that exact territorial delta is user-observed, not independently
+verified or reported by the current handler.
+
+The approved resource call then assigned Samapa Whales `2976` (map identity) to
+Ur and returned `verified_applied`. Native readback changed its assignment from
+none to owned city `524295`; independent commerce readback confirmed Whales in
+Ur with slots used `0 → 1` and no free slots remaining. This positively
+live-verifies the existing assignment tool with the assignment lock open.
+Turn/Age/player identity stayed unchanged at turn 59, with one request and no
+retry or resource swap. The user subsequently confirmed Ur's assignment in-game.
+
+The first Scout attempt stopped before submission at an overly strict domain
+guard: Scout `196610` has `DOMAIN_LAND` but was already embarked, on Coast at
+`(9,15)`, with an Ocean destination `(10,15)`. Both tiles were water and native
+`MOVE_TO` permitted the step. The separately approved fix allows water-to-water
+travel while already embarked; a failing regression reproduced the rejection
+before implementation, while embark/disembark and unknown-terrain cases remain
+blocked. No movement was spent by the rejected attempt.
+
+The corrected, separately approved step submitted once and returned
+`verified_applied`. Targeted native and independent unit readbacks confirmed
+the same owned Scout/component/type at `(10,15)`, with movement falling from
+3 to 2. Turn/Age/player identity remained unchanged at turn 59. No attack, swap,
+war declaration, native submission retry or turn advancement was issued. All
+three approved actions are now live-verified and manually confirmed, including
+the final Scout inspection.
 
 ## One-shot export
 

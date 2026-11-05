@@ -13,6 +13,8 @@ from civ7.actions import (
     buy_attribute_node,
     establish_trade_route,
     move_great_work,
+    move_unit,
+    place_population,
     purchase_city_item,
     select_civic,
     select_technology,
@@ -205,6 +207,43 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="place_civ7_population",
+            title="Place Civ VII pending population",
+            description=(
+                "CHANGE GAME STATE: consume one ready pending population in an exact owned settlement "
+                "name (case-insensitive), placing its native-offered improvement at exact x/y. Use "
+                "improvement type ID, legal expansion tile and expected_turn from fresh get_civ7_growth. "
+                "Requires an empty revealed nonforeign tile, unique native EXPAND choice and exact "
+                "selected-tile permission. No specialist assignment, overbuilding, resettling, special "
+                "improvement preview choices or turn advancement. Verifies a new owned undamaged "
+                "improvement at that tile and one fewer pending population, not tile ownership alone. "
+                "Requires exact-action user approval; submits once, never retries unknown/cancelled calls."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(place_population)
+        server.tool(
+            name="move_civ7_unit",
+            title="Move Civ VII unit one adjacent tile",
+            description=(
+                "CHANGE GAME STATE: move one owned noncommander unit_id (instanceId from get_civ7_units) "
+                "to adjacent x/y using fresh expected_turn. Land/sea only; requires positive movement, "
+                "known unpacked/nonreinforcing on-map state, an empty currently visible own/unowned "
+                "destination, native reachability and a direct one-edge noncombat path. No air, "
+                "embarking/disembarking, foreign territory, fogged travel, captures, attacks, swaps, "
+                "rail/transport, multistep orders or turn advancement. Uses MOVE_TO with NONE modifiers, "
+                "not the UI helper that can attack or declare war. Verifies exact owned component/type "
+                "and final location. Requires exact-action user approval; submits once and never "
+                "automatically retries unknown/cancelled outcomes. Movement is spent, not restored."
+            ),
+            annotations=ToolAnnotations(
+                readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
+            ),
+            structured_output=True,
+        )(move_unit)
         server.tool(
             name="establish_civ7_trade_route",
             title="Establish Civ VII Merchant trade route",

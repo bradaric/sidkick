@@ -174,6 +174,27 @@ async def establish_trade_route(
     return await _execute_and_verify("establish_trade_route.js", arguments, "trade_route_state.js")
 
 
+async def place_population(
+    settlement: StrictStr, x: StrictInt, y: StrictInt, improvement: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Place one pending population on a native-offered ordinary improvement tile."""
+    if not isinstance(settlement, str) or not settlement.strip() or not isinstance(improvement, str) or not improvement.strip():
+        raise ValueError("An exact owned settlement name and improvement type ID are required")
+    if any(type(value) is not int or value < 0 for value in (x, y, expected_turn)):
+        raise ValueError("Nonnegative tile coordinates and expected turn are required")
+    arguments = {"settlement": settlement.strip(), "x": x, "y": y,
+                 "improvement": improvement.strip(), "expected_turn": expected_turn}
+    return await _execute_and_verify("place_population.js", arguments, "population_state.js")
+
+
+async def move_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Move one owned unit a single visible, empty, noncombat land/sea step."""
+    if any(type(value) is not int or value < 0 for value in (unit_id, x, y, expected_turn)):
+        raise ValueError("Nonnegative owned unit ID, tile coordinates and expected turn are required")
+    arguments = {"unit_id": unit_id, "x": x, "y": y, "expected_turn": expected_turn}
+    return await _execute_and_verify("move_unit.js", arguments, "unit_position_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,
