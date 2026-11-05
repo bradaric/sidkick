@@ -83,13 +83,15 @@ Use this context before attributing a yield, slot bonus or unique item to the cu
 
 `currentGreatWorkYields` are **current whole-building totals across its works**, not the selected work's contribution. Comparing two buildings' totals does not simulate moving a work. `netYieldChange` remains null. Occupied-slot swaps and archive actions are unsupported; reading archived inventory is not an archive-action check. Foreign, ambiguous and invalid indices are rejected.
 
+`cityWorkTypeYieldQuote` describes the current city/work type, not the selected instance's destination-building benefit. Do not add quotes to building totals or subtract source/destination quotes into relocation gains; equal quotes do not prove zero impact. Missing quotes remain unknown; zero and negative quotes are valid observations. Eligibility and capacity remain separate from the quote.
+
 This is a separate focused query, **not included in snapshots**. Snapshot settlement inventories are not a substitute for selected-work relocation checks. Do not send a move request to test eligibility.
 
 ## Religious-unit readiness
 
-`get_civ7_religion.religiousUnits` includes owned units with positive definition spread charges, their native **current non-target** spread readiness, failure reasons and charge quotes. Preserve `chargesRemaining: 0`; null means missing evidence, not zero. Packed units are not checked as deployed missionaries. `targetConversionPreview` remains null.
+`get_civ7_religion.religiousUnits` includes owned units with positive definition spread charges, their native **current non-target** spread readiness, charge quotes, failure reasons and `additionalDescriptions`. Preserve `chargesRemaining: 0`; null means missing evidence, not zero. Packed/off-map units and unknown packing evidence suppress deployment checks even with plausible coordinates. A withheld location does not prove packing. `targetConversionPreview` remains null.
 
-This does not check an arbitrary missionary destination, forecast population conversion, or validate every custom spread ability. Use it to distinguish current readiness from an unknown target-specific outcome; do not issue spread actions or treat another unit's base charges as this unit's remaining charges.
+Native descriptions are not converted-population forecasts or arbitrary-target eligibility. Use them to distinguish current readiness from an unknown target-specific outcome; do not treat another unit's base charges as this unit's remaining charges or assume every custom spread ability is covered. Refresh live evidence before advising; successful relocation/spread checks never authorize actions.
 
 ## Major-player diplomacy detail
 
