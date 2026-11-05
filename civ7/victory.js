@@ -109,6 +109,7 @@
         value => value.VictoryType === type.VictoryType
       );
       if (!definition) return null;
+      const targetPoints = Game.VictoryManager.getCountdownVictoryDominanceScore(type.$hash);
       const progress = players.map(known => {
         const player = Players.get(known.id);
         const status = player.Victories.getVictoryCountdownStatus(type.$hash);
@@ -151,7 +152,7 @@
         enabled: Boolean(Game.VictoryManager.isCountdownVictoryEnabled(type.VictoryType)),
         scoringType: type.ScoringType,
         minimumPoints: type.MinimumPoints,
-        targetPoints: Game.VictoryManager.getCountdownVictoryDominanceScore(type.$hash),
+        targetPoints: targetPoints === -1 ? null : targetPoints,
         countdownDuration: type.CountdownDuration,
         prerequisiteRuleSet: type.PrereqRequirementSetId ?? null,
         dominanceSchedule: dominanceSchedule(type),
@@ -160,7 +161,7 @@
           data: rule.Data ?? null, requiresActivation: rule.RequiresActivation == null ? null : Boolean(rule.RequiresActivation),
           staticCarryover: rule.StaticCarryover == null ? null : Boolean(rule.StaticCarryover), activeForLocalPlayer: null,
           arguments: (GameInfo.VictoryScoringArgs ?? []).filter(arg => arg.ScoringId === rule.ScoringId)
-            .map(arg => ({key: arg.Key, value: arg.ValueAsInt ?? arg.ValueAsText ?? null}))
+            .map(arg => ({key: arg.Key, value: arg.ValueAsText || (arg.ValueAsInt ?? null)}))
         })),
         progress
       };

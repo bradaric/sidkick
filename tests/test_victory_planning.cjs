@@ -4,7 +4,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unknown = false, fixed = false } = {}) {
+function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unknown = false, fixed = false,
+  targetPoints = 999, scoringArguments = [{ ScoringId: 'WONDERS', Key: 'REQUIRED_CONSTRUCTIBLE', ValueAsText: 'WONDER', ValueAsInt: null }] } = {}) {
   const type = { $hash: 50, VictoryType: 'CULTURE', Name: 'Culture', CountdownDuration: 5,
     ScoringType: fixed ? 'COUNTDOWN_VICTORY_SCORING_TYPE_FIXED_SCORE' : 'COUNTDOWN_VICTORY_SCORING_TYPE_DOMINATION', FinalAge: 1 };
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/victory.js'), 'utf8'), {
@@ -33,9 +34,9 @@ function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unkno
         { VictoryType: 'CULTURE', StartingAge: 'AGE_MODERN', PreviousAgeCount: 0, MinAgeProgressPercent: 40, DominationPercent: 100 },
       ],
       VictoryScorings: [{ VictoryType: 'CULTURE', ScoringId: 'WONDERS', Name: 'Wonders', TrackerType: 'VICTORY_TRACKER_WONDER', Points: 12, Data: 'AGE_MODERN', RequiresActivation: true }],
-      VictoryScoringArgs: [{ ScoringId: 'WONDERS', Key: 'REQUIRED_CONSTRUCTIBLE', ValueAsText: 'WONDER', ValueAsInt: null }],
+      VictoryScoringArgs: scoringArguments,
     },
-    Game: { turn: 90, age: 1, VictoryManager: { getVictories: () => [], isCountdownVictoryEnabled: () => true, getCountdownVictoryDominanceScore: () => 999 },
+    Game: { turn: 90, age: 1, VictoryManager: { getVictories: () => [], isCountdownVictoryEnabled: () => true, getCountdownVictoryDominanceScore: () => targetPoints },
       AgeProgressManager: { getCurrentAgeProgressionPoints: () => percent, getMaxAgeProgressionPoints: () => 100 },
     },
   });
@@ -87,4 +88,28 @@ test('public scoring sources retain activation conditions and non-project requir
   assert.equal(condition.scoringRules[0].requiresActivation, true);
   assert.equal(condition.scoringRules[0].activeForLocalPlayer, null);
   assert.deepEqual(condition.scoringRules[0].arguments, [{ key: 'REQUIRED_CONSTRUCTIBLE', value: 'WONDER' }]);
+});
+
+test('unavailable native victory targets become null while numeric targets are preserved', () => {
+  assert.equal(run({ targetPoints: -1 }).victoryConditions[0].targetPoints, null);
+  assert.equal(run({ targetPoints: 0 }).victoryConditions[0].targetPoints, 0);
+  assert.equal(run({ targetPoints: 100 }).victoryConditions[0].targetPoints, 100);
+});
+
+test('scoring arguments preserve text over numeric defaults and retain genuine numeric zeroes', () => {
+  const values = [
+    { Key: 'REQUIRED_CONSTRUCTIBLE', ValueAsText: 'WONDER', ValueAsInt: 0 },
+    { Key: 'TEXT_ZERO', ValueAsText: '0', ValueAsInt: 0 },
+    { Key: 'NUMERIC_ZERO', ValueAsText: '', ValueAsInt: 0 },
+    { Key: 'NUMERIC_AMOUNT', ValueAsText: null, ValueAsInt: 12 },
+    { Key: 'UNKNOWN', ValueAsText: '', ValueAsInt: null },
+  ];
+  const condition = run({ scoringArguments: values.map(value => ({ ScoringId: 'WONDERS', ...value })) }).victoryConditions[0];
+  assert.deepEqual(condition.scoringRules[0].arguments, [
+    { key: 'REQUIRED_CONSTRUCTIBLE', value: 'WONDER' },
+    { key: 'TEXT_ZERO', value: '0' },
+    { key: 'NUMERIC_ZERO', value: 0 },
+    { key: 'NUMERIC_AMOUNT', value: 12 },
+    { key: 'UNKNOWN', value: null },
+  ]);
 });
