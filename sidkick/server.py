@@ -196,8 +196,10 @@ def create_server() -> MCPServer:
             "availability, choices available now, and choices selectable during founding. "
             "Foreign founders are identified only when met; no hidden world totals. "
             "Owned units with positive base SpreadCharges include current non-target spread "
-            "operation readiness and native charges remaining; arbitrary target conversion "
-            "previews remain unknown. Packed units are not queried as deployed missionaries. "
+            "operation readiness, native charges remaining and action-panel additionalDescriptions; "
+            "arbitrary target conversion previews remain unknown. Owned commander membership and "
+            "on-map state gate readiness; packed/off-map units and unknown packing evidence are "
+            "not queried as deployed missionaries, even with valid-looking coordinates. "
             "Read-only: does not found religions, select beliefs, or convert settlements."
         ),
         annotations=read_only,
@@ -211,7 +213,10 @@ def create_server() -> MCPServer:
             "owned building capacities/current Great Work yield totals. Optional great_work_index "
             "checks one owned instance's native relocation eligibility and reasons for owned "
             "building types with empty capacity. Current yields are not marginal relocation "
-            "gains; swaps and net yield changes remain unknown. Never selects, moves or archives "
+            "gains. Targeted destinations also carry cityWorkTypeYieldQuote from the pure tooltip "
+            "getter, using a work-definition index: city/work-type only, not instance-specific, "
+            "building-specific or an applied relocation forecast. Do not subtract quotes into "
+            "a guessed net gain; swaps and net yield changes remain unknown. Never selects, moves or archives "
             "works. Targeted relocation data is excluded from player snapshots."
         ),
         annotations=read_only,
