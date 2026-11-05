@@ -131,6 +131,8 @@
   }
 
   let cultureInventory;
+  const uniqueImprovementTypes = GameInfo.TypeTags == null ? null : new Set([...GameInfo.TypeTags]
+    .filter(tag => tag.Tag === "UNIQUE_IMPROVEMENT").map(tag => tag.Type));
   function ownedCultureInventory() {
     if (cultureInventory !== undefined) return cultureInventory;
     const revealed = location => location && Number.isInteger(location.x) && Number.isInteger(location.y) &&
@@ -162,6 +164,26 @@
           complete: instance.complete ?? null, damaged: instance.damaged ?? null,
           traitType: traitDefinition?.TraitType ?? null, traitDefinitionKnown: traitDefinition != null});
       }
+      let uniqueQuarters = assets != null && typeof Districts !== "undefined" && typeof Districts.getAtLocation === "function" &&
+        typeof UniqueQuarterTypes !== "undefined" && UniqueQuarterTypes.NO_QUARTER != null &&
+        typeof GameInfo.UniqueQuarters?.lookup === "function" ? [] : null;
+      const seenDistricts = new Set();
+      for (const asset of uniqueQuarters == null ? [] : assets) {
+        if (asset.class !== "BUILDING") continue;
+        const key = `${asset.location.x}:${asset.location.y}`;
+        if (seenDistricts.has(key)) continue;
+        seenDistricts.add(key);
+        const district = Districts.getAtLocation(asset.location);
+        if (!district || district.owner !== localId || district.uniqueQuarterType == null) { uniqueQuarters = null; break; }
+        if (district.uniqueQuarterType === UniqueQuarterTypes.NO_QUARTER) continue;
+        const def = GameInfo.UniqueQuarters.lookup(district.uniqueQuarterType);
+        if (!def) { uniqueQuarters = null; break; }
+        const requiredBuildingTypes = [def.BuildingType1 ?? null, def.BuildingType2 ?? null];
+        uniqueQuarters.push({districtId: district.id?.id ?? null, id: def.UniqueQuarterType, name: name(def.Name),
+          location: asset.location, isUniqueQuarter: district.isUniqueQuarter ?? null, requiredBuildingTypes,
+          buildings: assets.filter(building => building.class === "BUILDING" && requiredBuildingTypes.includes(building.id) &&
+            building.location.x === asset.location.x && building.location.y === asset.location.y)});
+      }
       const buildings = city.Constructibles?.getGreatWorkBuildings?.();
       let displayedWorks = buildings == null ? null : [];
       for (const building of buildings ?? []) {
@@ -177,7 +199,7 @@
         }
       }
       return {cityId: city.id.id, settlement: name(city.name), town: city.isTown ?? null,
-        railNetworkMembership: city.Trade?.isInRailNetwork?.() ?? null, inventoryComplete, assets, displayedWorks};
+        railNetworkMembership: city.Trade?.isInRailNetwork?.() ?? null, inventoryComplete, assets, uniqueQuarters, displayedWorks};
     });
     const archiveCount = localPlayer.Culture?.getNumWorksInArchive?.();
     const archivedWorks = Number.isInteger(archiveCount) && archiveCount >= 0 &&
@@ -191,7 +213,7 @@
   }
 
   function cultureLocalEvidence(rule, localScoring) {
-    const assetBasis = ({VICTORY_TRACKER_WONDER: "wonders", VICTORY_TRACKER_UNIQUE_IMPROVEMENT: "trait-linked-improvements",
+    const assetBasis = ({VICTORY_TRACKER_WONDER: "wonders", VICTORY_TRACKER_UNIQUE_IMPROVEMENT: "tagged-unique-improvements",
       VICTORY_TRACKER_UNIQUE_QUARTER: "trait-linked-buildings", VICTORY_TRACKER_GREAT_WORK: "great-works"})[rule.TrackerType] ?? "unknown";
     const trackerCode = typeof VictoryTrackerTypes === "undefined" ? undefined : VictoryTrackerTypes[rule.TrackerType];
     const ledgerEntryIndices = trackerCode == null || localScoring == null ? null
@@ -202,23 +224,25 @@
     const settlements = inventory?.settlements?.map(city => {
       let candidateAssets = null;
       if (assetBasis === "wonders") candidateAssets = city.assets?.filter(asset => asset.class === "WONDER") ?? null;
-      if (assetBasis === "trait-linked-improvements" || assetBasis === "trait-linked-buildings") {
-        const kind = assetBasis === "trait-linked-improvements" ? "IMPROVEMENT" : "BUILDING";
-        candidateAssets = city.assets == null || city.assets.some(asset => asset.class === kind && !asset.traitDefinitionKnown)
-          ? null : city.assets.filter(asset => asset.class === kind && asset.traitType);
+      if (assetBasis === "tagged-unique-improvements") candidateAssets = uniqueImprovementTypes == null ? null
+        : city.assets?.filter(asset => asset.class === "IMPROVEMENT" && uniqueImprovementTypes.has(asset.id)) ?? null;
+      if (assetBasis === "trait-linked-buildings") {
+        candidateAssets = city.assets == null || city.assets.some(asset => asset.class === "BUILDING" && !asset.traitDefinitionKnown)
+          ? null : city.assets.filter(asset => asset.class === "BUILDING" && asset.traitType);
       }
       const matching = city.assets?.filter(asset => asset.id === required);
       const observed = matching?.some(asset => asset.complete === true && asset.damaged === false) ? true
         : matching == null || !city.inventoryComplete || matching.some(asset => asset.complete == null || asset.damaged == null) ? null : false;
       return {cityId: city.cityId, settlement: city.settlement, town: city.town, railNetworkMembership: city.railNetworkMembership,
         inventoryComplete: city.inventoryComplete, candidateAssets,
+        uniqueQuarters: assetBasis === "trait-linked-buildings" ? city.uniqueQuarters : null,
         requiredConstructible: required ? {id: required, observedCompleteUndamaged: observed} : null,
         displayedWorks: assetBasis === "great-works" ? worksOfType(city.displayedWorks) : null};
     }) ?? null;
     return {assetBasis, settlements, archivedWorks: assetBasis === "great-works" ? worksOfType(inventory?.archivedWorks) : null,
       requiredConstructibleScope: null, ledgerMatchBasis: trackerCode == null ? "unknown" : "tracker-family-only", ledgerEntryIndices,
       qualifyingCount: null, attributedPoints: null,
-      note: "Local revealed owned candidates only: trait-linked buildings are not certified unique-quarter qualifiers; definition Age is not inferred build/scoring Age. Incomplete/damaged candidates are retained. Rail membership and observed required-building presence do not evaluate requirement scope or activation. Ledger indices refer to this victory's local progress.scoring and match tracker family only, potentially including other rules, Ages or work types: do not attribute or sum them per rule. Current/archived works do not reconstruct historical maximum displays. Unknown families, qualification, attributed points and future gains remain unknown"
+      note: "Local revealed owned candidates only: unique improvements use loaded UNIQUE_IMPROVEMENT tags, not traits. uniqueQuarters retain native district recognition and same-location required-building observations, never a reconstructed quarter from trait-linked buildings. Missing native evidence is unknown; inventoryComplete=false means observations may be partial. Recognition is not Tourism qualification; definition Age is not inferred build/scoring Age. Incomplete/damaged candidates are retained. Rail membership and observed required-building presence do not evaluate requirement scope or activation. Ledger indices refer to this victory's local progress.scoring and match tracker family only, potentially including other rules, Ages or work types: do not attribute or sum them per rule. Current/archived works do not reconstruct historical maximum displays. Unknown families, qualification, attributed points and future gains remain unknown"
     };
   }
 

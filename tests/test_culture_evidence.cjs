@@ -6,8 +6,11 @@ const {test} = require('node:test');
 
 function run({airfieldComplete = false, missingInventory = false, missingTraits = false,
   missingLedger = false, artifactDisplayed = true, hiddenAirfield = false, hiddenDisplay = false,
-  missingDisplay = false, missingArchive = false, missingArchiveGetter = false, archiveCount = 1} = {}) {
+  missingDisplay = false, missingArchive = false, missingArchiveGetter = false, archiveCount = 1,
+  missingTags = false, missingQuarterApi = false, missingQuarterDefinitions = false,
+  recognizedQuarter = true, foreignDistrict = false, quarterComplete = true, quarterDamaged = false} = {}) {
   let localLedgerReads = 0;
+  const districtReads = [];
   const trackerTypes = {VICTORY_TRACKER_UNIQUE_IMPROVEMENT: 1, VICTORY_TRACKER_UNIQUE_QUARTER: 2,
     VICTORY_TRACKER_WONDER: 3, VICTORY_TRACKER_GREAT_WORK: 4, VICTORY_TRACKER_IMPROVED_FEATURE: 5};
   const rules = [
@@ -27,6 +30,9 @@ function run({airfieldComplete = false, missingInventory = false, missingTraits 
     [6, {type: 'WONDER', complete: true, damaged: false, location: {x: hiddenDisplay ? 0 : 2, y: 0}}],
     [8, {type: 'SECRET_HIDDEN', complete: true, damaged: false, location: {x: 0, y: 0}}],
     [9, {type: 'AIRFIELD', complete: airfieldComplete, damaged: false, location: {x: hiddenAirfield ? 0 : 2, y: 0}}],
+    [10, {type: 'MONASTERY', complete: true, damaged: false}],
+    [11, {type: 'TRAIT_ONLY_IMP', complete: true, damaged: false}],
+    [12, {type: 'SECOND_UNIQUE_BUILDING', complete: quarterComplete, damaged: quarterDamaged}],
   ].map(([id, value]) => [id, {id: {owner: 0, id}, owner: 0, location: {x: 2, y: 0}, ...value}]));
   const cities = [10, 11].map((cityId, i) => ({id: {owner: 0, id: cityId}, name: `Home ${i}`, isTown: Boolean(i),
     Trade: {isInRailNetwork: () => !i},
@@ -56,6 +62,14 @@ function run({airfieldComplete = false, missingInventory = false, missingTraits 
         get Cities() {throw Error('Foreign assets must not be inspected');}};
     }},
     Constructibles: {getByComponentID: component => {assert.equal(component.owner, 0); return assets.get(component.id);}},
+    Districts: missingQuarterApi ? undefined : {getAtLocation: location => {
+      assert.equal(location.x, 2, 'district reads are limited to revealed owned building locations');
+      districtReads.push(location.x);
+      return {owner: foreignDistrict ? 1 : 0, id: {owner: foreignDistrict ? 1 : 0, id: 80},
+        get uniqueQuarterType() {assert.equal(foreignDistrict, false, 'foreign district metadata is not read'); return recognizedQuarter ? 9 : -1;},
+        isUniqueQuarter: recognizedQuarter};
+    }},
+    UniqueQuarterTypes: {NO_QUARTER: -1},
     GameInfo: {
       Ages: {lookup: () => ({AgeType: 'AGE_EXPLORATION', Name: 'Age'})}, Leaders: {lookup: () => null},
       VictoryTypes: [{$hash: 50, VictoryType: 'CULTURE', CountdownDuration: 5}],
@@ -63,9 +77,14 @@ function run({airfieldComplete = false, missingInventory = false, missingTraits 
       VictoryScoringArgs: [{ScoringId: 'RAIL', Key: 'REQUIRED_RAIL_NETWORK', ValueAsInt: 0},
         {ScoringId: 'FLIGHT', Key: 'REQUIRED_CONSTRUCTIBLE', ValueAsText: 'AIRFIELD', ValueAsInt: 0}],
       Constructibles: {lookup: type => {assert.notEqual(type, 'SECRET_HIDDEN'); return {ConstructibleType: type, Name: type,
-        Age: 'AGE_MODERN', ConstructibleClass: type === 'WONDER' ? 'WONDER' : type === 'UNIQUE_IMP' ? 'IMPROVEMENT' : 'BUILDING'};}},
-      Improvements: missingTraits ? undefined : {lookup: () => ({TraitType: 'UNIQUE_TRAIT'})},
-      Buildings: {lookup: type => ({TraitType: type === 'UNIQUE_BUILDING' ? 'UNIQUE_TRAIT' : null})},
+        Age: 'AGE_MODERN', ConstructibleClass: type === 'WONDER' ? 'WONDER' : ['UNIQUE_IMP', 'MONASTERY', 'TRAIT_ONLY_IMP'].includes(type) ? 'IMPROVEMENT' : 'BUILDING'};}},
+      Improvements: missingTraits ? undefined : {lookup: type => ({TraitType: type === 'MONASTERY' ? null : 'UNIQUE_TRAIT'})},
+      Buildings: {lookup: type => ({TraitType: type.includes('UNIQUE_BUILDING') ? 'UNIQUE_TRAIT' : null})},
+      TypeTags: missingTags ? undefined : [{Type: 'UNIQUE_IMP', Tag: 'UNIQUE_IMPROVEMENT'},
+        {Type: 'MONASTERY', Tag: 'UNIQUE_IMPROVEMENT'}, {Type: 'MONASTERY', Tag: 'CITY_STATE_UNIQUE_IMPROVEMENT'}],
+      UniqueQuarters: missingQuarterDefinitions ? undefined : {lookup: type => {
+        assert.equal(type, 9); return {UniqueQuarterType: 'QUARTER_PAIR', Name: 'Pair', BuildingType1: 'UNIQUE_BUILDING', BuildingType2: 'SECOND_UNIQUE_BUILDING'};
+      }},
       GreatWorks: {lookup: type => ({GreatWorkType: type, Name: type, GreatWorkObjectType: type === 'WORK_21' ? 'GREATWORKOBJECT_RELIC' : 'GREATWORKOBJECT_ARTIFACT'})},
     },
     VictoryTrackerTypes: trackerTypes,
@@ -79,7 +98,7 @@ function run({airfieldComplete = false, missingInventory = false, missingTraits 
       PlayerOperations: {sendRequest: () => {throw Error('No actions or previews');}},
     },
   });
-  return {data: JSON.parse(JSON.stringify(data)), localLedgerReads};
+  return {data: JSON.parse(JSON.stringify(data)), localLedgerReads, districtReads};
 }
 
 const rule = (data, id) => data.victoryConditions[0].scoringRules.find(value => value.id === id);
@@ -88,10 +107,10 @@ test('Culture rules link to observed owned candidate assets and retain incomplet
   const {data} = run();
   const rail = rule(data, 'RAIL');
   assert.ok(rail.localEvidence, 'local candidate evidence is exported');
-  assert.equal(rail.localEvidence.assetBasis, 'trait-linked-improvements');
+  assert.equal(rail.localEvidence.assetBasis, 'tagged-unique-improvements');
   const city = rail.localEvidence.settlements[0];
   assert.equal(city.railNetworkMembership, true);
-  assert.deepEqual(city.candidateAssets.map(asset => asset.instanceId), [2, 3, 4]);
+  assert.deepEqual(city.candidateAssets.map(asset => asset.instanceId), [2, 3, 4, 10]);
   assert.equal(city.candidateAssets[1].complete, false);
   assert.equal(city.candidateAssets[2].damaged, true);
   assert.equal(rail.localEvidence.qualifyingCount, null);
@@ -143,7 +162,7 @@ test('unsupported asset families and missing inventory/classification/ledger rem
   assert.equal(rule(data, 'UNSUPPORTED').localEvidence.settlements, null);
   assert.equal(rule(run({missingInventory: true}).data, 'FLIGHT').localEvidence.settlements[0].candidateAssets, null);
   assert.equal(rule(run({missingInventory: true}).data, 'FLIGHT').localEvidence.settlements[0].requiredConstructible.observedCompleteUndamaged, null);
-  assert.equal(rule(run({missingTraits: true}).data, 'RAIL').localEvidence.settlements[0].candidateAssets, null);
+  assert.equal(rule(run({missingTags: true}).data, 'RAIL').localEvidence.settlements[0].candidateAssets, null);
   assert.equal(rule(run({missingLedger: true}).data, 'ARTIFACTS').localEvidence.ledgerEntryIndices, null);
   assert.ok(!JSON.stringify(data).includes('SECRET'));
 });
@@ -161,4 +180,44 @@ test('an invalid archive count or missing instance getter leaves archive content
   assert.equal(rule(run({archiveCount: 1.5}).data, 'ARTIFACTS').localEvidence.archivedWorks, null);
   assert.equal(rule(run({missingArchiveGetter: true}).data, 'ARTIFACTS').localEvidence.archivedWorks, null);
   assert.deepEqual(rule(run({archiveCount: 0}).data, 'ARTIFACTS').localEvidence.archivedWorks, []);
+});
+
+test('unique-improvement tags include traitless Monasteries and exclude untagged trait-linked improvements', () => {
+  const {data} = run({missingTraits: true});
+  const assets = rule(data, 'RAIL').localEvidence.settlements[0].candidateAssets;
+  assert.ok(assets, 'tag-based classification does not require trait definitions');
+  assert.deepEqual(assets.map(asset => asset.instanceId), [2, 3, 4, 10]);
+  assert.equal(assets.find(asset => asset.id === 'MONASTERY').traitType, null);
+});
+
+test('native unique quarters are one district record rather than two trait-linked building counts', () => {
+  const {data, districtReads} = run();
+  const evidence = rule(data, 'FLIGHT').localEvidence;
+  assert.ok(evidence.settlements[0].uniqueQuarters, 'native quarter evidence is exported');
+  assert.equal(evidence.settlements[0].uniqueQuarters.length, 1);
+  const quarter = evidence.settlements[0].uniqueQuarters[0];
+  assert.equal(quarter.id, 'QUARTER_PAIR');
+  assert.equal(quarter.isUniqueQuarter, true);
+  assert.deepEqual(quarter.requiredBuildingTypes, ['UNIQUE_BUILDING', 'SECOND_UNIQUE_BUILDING']);
+  assert.deepEqual(quarter.buildings.map(asset => asset.instanceId), [5, 12]);
+  assert.deepEqual(districtReads, [2], 'shared definition rules reuse the owned inventory and same-tile buildings reuse the district read');
+  assert.equal(evidence.qualifyingCount, null);
+  assert.equal(evidence.attributedPoints, null);
+  assert.equal(rule(data, 'FLIGHT').activeForLocalPlayer, null);
+});
+
+test('quarter evidence preserves incomplete/damaged buildings and never reconstructs recognition from a pair', () => {
+  const evidence = rule(run({quarterComplete: false, quarterDamaged: true}).data, 'FLIGHT').localEvidence;
+  assert.ok(evidence.settlements[0].uniqueQuarters);
+  const building = evidence.settlements[0].uniqueQuarters[0].buildings.find(asset => asset.instanceId === 12);
+  assert.equal(building.complete, false);
+  assert.equal(building.damaged, true);
+  assert.deepEqual(rule(run({recognizedQuarter: false}).data, 'FLIGHT').localEvidence.settlements[0].uniqueQuarters, []);
+});
+
+test('missing native quarter evidence or conflicting ownership stays unknown without foreign metadata reads', () => {
+  for (const options of [{missingQuarterApi: true}, {missingQuarterDefinitions: true}, {missingInventory: true}, {foreignDistrict: true}]) {
+    const {data} = run(options);
+    assert.equal(rule(data, 'FLIGHT').localEvidence.settlements[0].uniqueQuarters, null);
+  }
 });
