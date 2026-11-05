@@ -8,7 +8,8 @@ function run({airfieldComplete = false, missingInventory = false, missingTraits 
   missingLedger = false, artifactDisplayed = true, hiddenAirfield = false, hiddenDisplay = false,
   missingDisplay = false, missingArchive = false, missingArchiveGetter = false, archiveCount = 1,
   missingTags = false, missingQuarterApi = false, missingQuarterDefinitions = false,
-  recognizedQuarter = true, foreignDistrict = false, quarterComplete = true, quarterDamaged = false} = {}) {
+  recognizedQuarter = true, foreignDistrict = false, quarterComplete = true, quarterDamaged = false,
+  scoringOverride = undefined} = {}) {
   let localLedgerReads = 0;
   const districtReads = [];
   const trackerTypes = {VICTORY_TRACKER_UNIQUE_IMPROVEMENT: 1, VICTORY_TRACKER_UNIQUE_QUARTER: 2,
@@ -47,7 +48,7 @@ function run({airfieldComplete = false, missingInventory = false, missingTraits 
     Culture: missingArchive ? undefined : {getNumWorksInArchive: () => archiveCount,
       getArchivedGreatWork: missingArchiveGetter ? undefined : index => {assert.equal(index, 0); return 22;}},
     Victories: {getVictoryCountdownStatus: () => null, getPointsForVictoryType: () => 100,
-      getScoringForVictoryType: () => {localLedgerReads++; return missingLedger ? null : [
+      getScoringForVictoryType: () => {localLedgerReads++; return missingLedger ? null : scoringOverride ?? [
         {name: 'Historic improvement', points: 1, trackerType: 1, age: 1, turn: 10},
         {name: 'Artifact award', points: 5, trackerType: 4, age: 2, turn: 42},
         {name: 'Historic relic award', points: 39, trackerType: 4, age: 1, turn: 100},
@@ -220,4 +221,26 @@ test('missing native quarter evidence or conflicting ownership stays unknown wit
     const {data} = run(options);
     assert.equal(rule(data, 'FLIGHT').localEvidence.settlements[0].uniqueQuarters, null);
   }
+});
+
+test('met infrastructure and matching historical award amounts cannot establish activation or exact rule attribution', () => {
+  const {data} = run({airfieldComplete: true, scoringOverride: [
+    {name: 'RAIL', id: -1837687688, data: 0, points: 3, trackerType: 1, age: 1, turn: 10},
+    {name: 'RAIL', id: -1837687688, data: 0, points: 1, trackerType: 1, age: 1, turn: 10},
+    {name: 'FLIGHT', id: -310792786, data: 0, points: 3, trackerType: 2, age: 2, turn: 40},
+  ]});
+  const flight = rule(data, 'FLIGHT');
+  assert.equal(flight.localEvidence.settlements[0].requiredConstructible.observedCompleteUndamaged, true);
+  assert.equal(flight.localEvidence.settlements[0].uniqueQuarters[0].isUniqueQuarter, true);
+  assert.equal(rule(data, 'RAIL').localEvidence.settlements[0].railNetworkMembership, true);
+  for (const id of ['RAIL', 'FLIGHT']) {
+    const source = rule(data, id);
+    assert.equal(source.activeForLocalPlayer, null);
+    assert.equal(source.localEvidence.requiredConstructibleScope, null);
+    assert.equal(source.localEvidence.attributedPoints, null);
+    assert.equal(source.localEvidence.qualifyingCount, null);
+    assert.equal(source.localEvidence.ledgerMatchBasis, 'tracker-family-only');
+  }
+  assert.deepEqual(rule(data, 'RAIL').localEvidence.ledgerEntryIndices, [0, 1]);
+  assert.deepEqual(flight.localEvidence.ledgerEntryIndices, [2]);
 });
