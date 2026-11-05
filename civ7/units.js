@@ -4,19 +4,27 @@
   if (!Number.isInteger(id) || id < 0) throw Error("No local player");
   const player = Players.get(id);
   const name = key => key ? Locale.compose(key) : null;
-  const commanders = player.Units.getUnits().filter(unit => unit.isCommanderUnit).map(commander => {
-    const army = Armies.get(commander.armyId);
-    return {commander, packedIds: army?.getUnitIds() ?? []};
+  const owned = player.Units.getUnits().filter(unit => unit.id.owner === id);
+  const commanders = owned.filter(unit => unit.isCommanderUnit).map(commander => {
+    const candidate = typeof Armies !== "undefined" && typeof Armies?.get === "function" ? Armies.get(commander.armyId) : null;
+    const army = candidate?.owner === id ? candidate : null;
+    return {commander, packedIds: typeof army?.getUnitIds === "function" ? army.getUnitIds() ?? null : null};
   });
+  const packingKnown = commanders.every(entry => entry.packedIds !== null);
   return {
     turn: Game.turn,
-    units: player.Units.getUnits().map(unit => {
+    units: owned.map(unit => {
       const def = GameInfo.Units.lookup(unit.type);
       const stats = def ? GameInfo.Unit_Stats.lookup(def.UnitType) : null;
       const experience = unit.Experience;
-      const packedBy = commanders.find(entry => entry.packedIds.some(unitId =>
+      const packedBy = commanders.find(entry => entry.packedIds?.some(unitId =>
         unitId.owner === unit.id.owner && unitId.id === unit.id.id && unitId.type === unit.id.type));
-      const reinforcementArmy = player.Armies?.getUnitReinforcementCommanderId(unit.id, id) ?? -1;
+      const isPacked = packedBy ? true : packingKnown ? false : null;
+      const reinforcementArmy = typeof player.Armies?.getUnitReinforcementCommanderId === "function"
+        ? player.Armies.getUnitReinforcementCommanderId(unit.id, id) : null;
+      const isReinforcing = reinforcementArmy === -1 ? false
+        : Number.isInteger(reinforcementArmy) && reinforcementArmy >= 0 ? true : null;
+      const location = unit.location;
       const promotions = [];
       const promotionChoices = [];
       const seenPromotions = new Set();
@@ -67,11 +75,13 @@
         formationClass: def?.FormationClass ?? null,
         promotionClass: def?.PromotionClass ?? null,
         domain: def?.Domain ?? null,
-        location: unit.location.x >= 0 && unit.location.y >= 0
-          ? {x: unit.location.x, y: unit.location.y}
+        location: isPacked === false && unit.isOnMap !== false && location &&
+          Number.isInteger(location.x) && Number.isInteger(location.y) && location.x >= 0 && location.y >= 0
+          ? {x: location.x, y: location.y}
           : null,
+        isPacked, isReinforcing,
         packedInCommander: packedBy ? name(packedBy.commander.name) : null,
-        reinforcingCommander: reinforcementArmy === -1 ? null : reinforcementArmy,
+        reinforcingCommander: isReinforcing === true ? reinforcementArmy : null,
         commander: Boolean(unit.isCommanderUnit),
         combat: stats ? {
           melee: stats.Combat,

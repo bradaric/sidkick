@@ -86,6 +86,34 @@
     return {id: def.ReligionType, name: displayName, founder};
   }
 
+  const ownedUnits = player.Units == null ? null : player.Units.getUnits().filter(unit => unit.id.owner === id);
+  const packedIds = new Set();
+  let packingKnown = true;
+  for (const commander of ownedUnits?.filter(unit => unit.isCommanderUnit) ?? []) {
+    const army = typeof Armies !== "undefined" && typeof Armies?.get === "function" ? Armies.get(commander.armyId) : null;
+    if (!army || army.owner !== id || typeof army.getUnitIds !== "function") { packingKnown = false; continue; }
+    const members = army.getUnitIds();
+    if (members == null) { packingKnown = false; continue; }
+    for (const member of members) if (member.owner === id) packedIds.add(member.id);
+  }
+  const religiousUnits = ownedUnits == null ? null : ownedUnits.map(unit => {
+    const def = GameInfo.Units.lookup(unit.type);
+    if (!(def?.SpreadCharges > 0)) return null;
+    const location = unit.location;
+    const deployed = packingKnown && !packedIds.has(unit.id.id) && unit.isOnMap !== false &&
+      location && Number.isInteger(location.x) && Number.isInteger(location.y) && location.x >= 0 && location.y >= 0 &&
+      location.x < GameplayMap.getGridWidth() && location.y < GameplayMap.getGridHeight();
+    // Match the action panel's non-target operation check; do not invent arbitrary target previews.
+    const result = deployed ? Game.UnitOperations.canStart(unit.id, "UNITOPERATION_SPREAD_RELIGION",
+      {X: -9999, Y: -9999, UnitAbilityType: -1}, false) : null;
+    return {instanceId: unit.id.id, id: def.UnitType, name: name(unit.name ?? def.Name),
+      location: deployed ? {x: location.x, y: location.y} : null, baseSpreadCharges: def.SpreadCharges,
+      chargesRemaining: result?.ChargesRemaining ?? null, operationAllowed: result ? Boolean(result.Success) : null,
+      availableNow: Boolean(result?.Success), failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+      additionalDescriptions: (result?.AdditionalDescription ?? []).map(name).filter(Boolean),
+      targetConversionPreview: null};
+  }).filter(Boolean);
+
   return {
     turn: Game.turn,
     scope: "Local player and owned settlements; foreign founders identified only when met",
@@ -100,6 +128,8 @@
     beliefsEarned,
     slots,
     choices,
+    religiousUnits,
+    spreadNote: "Proven owned units with positive definition SpreadCharges; current non-target operation permission/charge quotes and native action-panel additionalDescriptions only, not arbitrary destination eligibility, converted-population counts or a conversion forecast. Text is not parsed into an outcome. Owned commander membership and on-map state gate deployment, not coordinates alone. Packed/off-map units and units with unknown packing evidence are not queried as deployed missionaries; a withheld location does not prove the unit is packed",
     settlements: player.Cities.getCities().map(city => ({
       id: city.id,
       name: name(city.name),

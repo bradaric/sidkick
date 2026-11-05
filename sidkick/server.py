@@ -10,6 +10,7 @@ from mcp.types import Icon, ToolAnnotations
 from civ7.player import snapshot
 from civ7.queries import (
     age_transition,
+    archaeology,
     available_decisions,
     building_placements,
     city_states,
@@ -18,7 +19,9 @@ from civ7.queries import (
     empire,
     explored_map,
     growth,
+    great_works,
     known_world,
+    military_logistics,
     movement_and_founding,
     religion,
     research_and_government,
@@ -71,7 +74,8 @@ def create_server() -> MCPServer:
             "religion, Triumphs and Dedications, resources and trade, units, victory progress, "
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context and age-transition planning data. Excludes "
-            "the large per-tile explored map and targeted building-placement/movement/combat queries, "
+            "the large per-tile explored map and targeted building-placement/movement/combat/"
+            "Great-Work relocation/military-logistics queries and the map-scanning archaeology query, "
             "which have separate tools."
         ),
         annotations=ToolAnnotations(
@@ -92,7 +96,12 @@ def create_server() -> MCPServer:
     server.tool(
         name="get_civ7_empire",
         title="Get Civ VII empire totals",
-        description="Get the local player's treasury, net yields, and settlement limit.",
+        description=(
+            "Get the local player's treasury, net yields and settlement limit, plus current "
+            "leader/persona and civilization ability/unique-item definitions. Identity-linked "
+            "trait modifiers include requirement-set evidence, not evaluated activation or "
+            "numerical yield contributions. Old-Age/other-persona abilities are not assumed active."
+        ),
         annotations=read_only,
         structured_output=True,
     )(empire)
@@ -115,7 +124,13 @@ def create_server() -> MCPServer:
             "Get the local player's cities and towns, focuses, growth, specialists, "
             "buildings, districts, Great Work slots, yields, and production queues. "
             "Includes engine-reported yield-source summaries, income modifiers in percent, "
-            "maintenance and unattributed base income; missing sources are null, not zero."
+            "maintenance and unattributed base income; missing sources are null, not zero. "
+            "Native baseIncomeEvidence adds top-level additive source names/amounts, listedTotal, "
+            "residual and matchesSummary; missing/nonadditive evidence stays unknown. It is an "
+            "alternative explanation of the same income, not extra yield to add to existing "
+            "sources. incomeAdjustment is observed gross income minus base, including native "
+            "rounding and penalties, not a policy-swap gain or exact per-card attribution. "
+            "Raw calculation contexts/IDs and nested operands are withheld."
         ),
         annotations=read_only,
         structured_output=True,
@@ -180,11 +195,48 @@ def create_server() -> MCPServer:
             "rural religions. Distinguishes global belief claimability, picker slot "
             "availability, choices available now, and choices selectable during founding. "
             "Foreign founders are identified only when met; no hidden world totals. "
+            "Owned units with positive base SpreadCharges include current non-target spread "
+            "operation readiness, native charges remaining and action-panel additionalDescriptions; "
+            "arbitrary target conversion previews remain unknown. Owned commander membership and "
+            "on-map state gate readiness; packed/off-map units and unknown packing evidence are "
+            "not queried as deployed missionaries, even with valid-looking coordinates. "
             "Read-only: does not found religions, select beliefs, or convert settlements."
         ),
         annotations=read_only,
         structured_output=True,
     )(religion)
+    server.tool(
+        name="get_civ7_great_works",
+        title="Get Civ VII Great Work inventory and relocation evidence",
+        description=(
+            "Read owned archived/displayed Great Works with stable instanceIndex values and "
+            "owned building capacities/current Great Work yield totals. Optional great_work_index "
+            "checks one owned instance's native relocation eligibility and reasons for owned "
+            "building types with empty capacity. Current yields are not marginal relocation "
+            "gains. Targeted destinations also carry cityWorkTypeYieldQuote from the pure tooltip "
+            "getter, using a work-definition index: city/work-type only, not instance-specific, "
+            "building-specific or an applied relocation forecast. Do not subtract quotes into "
+            "a guessed net gain; swaps and net yield changes remain unknown. Never selects, moves or archives "
+            "works. Targeted relocation data is excluded from player snapshots."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(great_works)
+    server.tool(
+        name="get_civ7_archaeology",
+        title="Get Civ VII archaeology and Explorer readiness",
+        description=(
+            "In Modern, read revealed UI-filtered ruins, research buildings and natural wonders, "
+            "local research status on revealed continents, owned artifact-extracting Explorer "
+            "readiness, and owned Great Work display capacity. Explorer excavation/research "
+            "permission and blockers apply only at the current position, not after moving to "
+            "candidate sites. Fogged observations may be stale. No hidden ruin totals, artifact "
+            "rewards, compatibility or projected Tourism are inferred. No actions or UI selection. "
+            "This map-scanning query is separate from snapshots; outside Modern it is not applicable."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(archaeology)
     server.tool(
         name="get_civ7_resources_and_trade",
         title="Get Civ VII resources and trade",
@@ -207,12 +259,34 @@ def create_server() -> MCPServer:
         description=(
             "Get only the local player's units, locations, health, movement, experience, "
             "promotions, commander packing state, and stable instanceId values for targeted queries. "
+            "isPacked/isReinforcing are nullable: true is observed membership/assignment, false "
+            "is observed absence, null is unknown. Legacy null commander fields alone do not "
+            "prove absence. Packed/off-map units and unknown packing evidence withhold locations; "
+            "a withheld location does not prove packing. These fields also pass through snapshots. "
             "Includes unowned promotion/commendation choices, effects, prerequisite ownership, "
             "picker eligibility and native operation checks; prerequisite logic is not inferred."
         ),
         annotations=read_only,
         structured_output=True,
     )(units)
+    server.tool(
+        name="get_civ7_military_logistics",
+        title="Get Civ VII military logistics",
+        description=(
+            "Read owned commander/carrier/squadron/aerodrome capacities and packed-unit membership, "
+            "air units, reinforcement assignments/native arrival quotes and WMD stockpile counts. "
+            "Optional unit_id from get_civ7_units checks one owned unit's native rebase/reinforce "
+            "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
+            "withholds destinations, not native permission. Unknown commander membership "
+            "withholds deployment checks/locations; a withheld location does not prove packing. "
+            "Missing assignment APIs leave reinforcements null; missing arrival getters leave "
+            "nativeArrivalTime null. Packed/off-map units are not queried as deployed. "
+            "Free slots, mission ranges and travel forecasts are not inferred; WMD launch checks, "
+            "strikes and all movement requests are excluded. Separate from snapshots/exports."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(military_logistics)
     server.tool(
         name="get_civ7_movement_and_founding",
         title="Get Civ VII unit movement and founding evidence",
@@ -252,7 +326,10 @@ def create_server() -> MCPServer:
         title="Get Civ VII known world",
         description=(
             "Get only met leaders, city-states and independents, plus an aggregate of "
-            "terrain, features, and resources already revealed to the local player."
+            "terrain, features, and resources already revealed to the local player. Includes "
+            "basic visibleForeignSettlements metadata only when the met owner's settlement "
+            "centre is currently visible. No fogged settlement inventory, private yields, "
+            "production queues, religion or garrisons are queried."
         ),
         annotations=read_only,
         structured_output=True,
@@ -263,6 +340,20 @@ def create_server() -> MCPServer:
         description=(
             "Get Test of Time victory conditions, thresholds, countdowns, prerequisites, "
             "and progress for the local player and met major players only. Includes loaded "
+            "campaign-specific dominance tier schedules with current/next ratios and Age-progress "
+            "thresholds, met-player countdown alerts and conditional public scoring rules. Never "
+            "assume Culture requires a permanent 4x lead: ratios can ease as the Age progresses. "
+            "Native point targets remain authoritative; alerts are not unconditional win dates. "
+            "Culture scoringRules include activation-effect definitions and bounded research/"
+            "policy evidence; mastery depth or a slotted card is not proof of actual tracker "
+            "activation, whose activeForLocalPlayer remains unknown. "
+            "Culture localEvidence links owned wonder/tagged-unique-improvement candidates, "
+            "trait-linked buildings plus native uniqueQuarters with building completion/damage, "
+            "displayed versus archived works, rail membership and required-building observations "
+            "to tracker-family-only ledgerEntryIndices in local progress.scoring. Candidates are "
+            "not certified Tourism qualifiers; quarter recognition is not reconstructed from "
+            "building pairs. Missing native evidence stays unknown. Repeated ledger links must not be summed or attributed "
+            "per rule. Requirement scope, qualifying counts and incremental Tourism stay unknown. "
             "Modern production-project requirements and owned-settlement BUILD eligibility, "
             "blocked reasons, prerequisite scopes, mastery unlock depths and current cost/turn "
             "quotes. Project inventory includes conversion projects, not just victory projects. "
@@ -275,10 +366,19 @@ def create_server() -> MCPServer:
         name="get_civ7_diplomacy",
         title="Get Civ VII diplomacy",
         description=(
-            "Get relationships, modifiers, deals, ongoing projects, and available "
-            "diplomatic actions involving met major players only. Action costs and failure "
-            "reasons are for the selected leader; actions requiring secondary targets "
-            "have unknown total costs and may need further eligibility checks."
+            "Get relationships, modifiers, deal counts, ongoing projects, and available "
+            "diplomatic actions involving met major counterparts. Includes public term "
+            "definitions, native duration quotes, active stages and native event progress/"
+            "completion timing, not guaranteed agreement expiry dates. Safe secondaryTargets "
+            "include met/local players, offered owned settlements, offered currently visible "
+            "settlement centres of the met counterpart, public unit types and amounts, with "
+            "owner-qualified City identity, exact selected-argument checks and failure reasons. "
+            "City IDs alone never prove ownership; ambiguous plots, hidden/fogged foreign centres "
+            "and unrelated owners are omitted. No foreign inventory/private yields/queues are read. "
+            "Other target types are omitted, so lists are partial and total costs remain "
+            "unknown. Incoming hidden/espionage events are not attributed to a leader. Enacted "
+            "peace-deal item terms and working-deal negotiations are unsupported; never changes "
+            "or sends deals."
         ),
         annotations=read_only,
         structured_output=True,

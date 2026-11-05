@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 import sys
 from tempfile import NamedTemporaryFile
@@ -131,13 +132,15 @@ async def _snapshot(*, include_map: bool) -> dict[str, Any]:
     }
 
 
-def export_path(data: dict[str, Any]) -> Path:
+def export_path(data: dict[str, Any], output: Path | None = None) -> Path:
     status = data.get("snapshotStatus")
     if (
         not isinstance(status, dict) or status.get("status") != "complete"
         or status.get("complete") is not True or status.get("consistent") is not True
     ):
         raise SystemExit("Snapshot is incomplete, inconsistent, or unverified. No export written.")
+    if output is not None:
+        return Path(output)
     words = data["civilization"].casefold().split()
     if data["leader"] == "Catherine the Great" and data["age"] == "Exploration":
         if "maya" in words:
@@ -147,18 +150,43 @@ def export_path(data: dict[str, Any]) -> Path:
     raise SystemExit("Unrecognized leader, Age, or civilization. No export written.")
 
 
-if __name__ == "__main__":
+def write_export(data: dict[str, Any], output: Path | None = None) -> Path:
+    path = export_path(data, output)
+    temporary = None
+    try:
+        with NamedTemporaryFile(dir=path.parent, mode="w", encoding="utf-8", delete=False) as tmp:
+            temporary = Path(tmp.name)
+            json.dump(data, tmp, indent=2, ensure_ascii=False)
+        if output is None:
+            temporary.replace(path)
+            temporary = None
+        else:
+            # Publish the complete file atomically without replacing even a racing writer/symlink.
+            try:
+                os.link(temporary, path)
+            except FileExistsError as error:
+                raise SystemExit(f"Output already exists: {path}. No export written.") from error
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return path
+
+
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mcp", action="store_true")
-    args = parser.parse_args()
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--mcp", action="store_true")
+    mode.add_argument("--output", type=Path, metavar="FILE", help="Export any loaded save to a new file; never overwrite")
+    args = parser.parse_args(argv)
     if args.mcp:
         from sidkick.server import create_server
         server = create_server()
         server.run(transport="stdio")
     else:
         data = asyncio.run(full_snapshot())
-        path = export_path(data)
-        with NamedTemporaryFile(dir=ROOT, mode="w", encoding="utf-8", delete=False) as tmp:
-            json.dump(data, tmp, indent=2, ensure_ascii=False)
-        Path(tmp.name).replace(path)
+        path = write_export(data, args.output)
         print(path)
+
+
+if __name__ == "__main__":
+    main()

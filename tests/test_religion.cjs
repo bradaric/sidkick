@@ -11,7 +11,10 @@ const reliquaryClass = 'BELIEF_CLASS_RELIQUARY';
 const pantheonClass = 'BELIEF_CLASS_PANTHEON';
 
 function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0,
-  claimable = true, operationAllowed = true, inGame = true, playerId = 0 } = {}) {
+  claimable = true, operationAllowed = true, inGame = true, playerId = 0,
+  missionary = false, packed = false, spreadAllowed = true, charges = 2,
+  packedValidCoordinates = false, offMap = false, unknownArmy = false, foreignArmy = false, foreignUnit = false,
+  spreadDescriptions = ['Native current ability description'] } = {}) {
   assert.ok(fs.existsSync(scriptPath), 'bundled religion query exists');
   const definitions = [
     { $index: 0, $hash: -200, BeliefType: 'OWN_FOUNDER', BeliefClassType: founderClass, Name: 'Own founder', Description: 'Selected founder effect' },
@@ -50,6 +53,10 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
   ];
   if (!created) cities[0].Religion = { majorityReligion: -1, urbanReligion: -1, ruralReligion: -1, isHolyCity: false };
   const player = { civilizationFullName: 'Our civilization', Religion: religion,
+    Units: { getUnits: () => missionary ? [{ id: { owner: 0, id: 7 }, type: 'MISSIONARY', name: 'Missionary',
+      isOnMap: !offMap, location: packed && !packedValidCoordinates ? {x: -1, y: -1} : {x: 1, y: 2} },
+      ...(packed || unknownArmy || foreignArmy ? [{id: {owner: 0, id: 8}, type: 'COMMANDER', isCommanderUnit: true, armyId: 10}] : []),
+      ...(foreignUnit ? [{id: {owner: 2, id: 99}, type: 'MISSIONARY', name: 'SECRET_FOREIGN_UNIT', location: {x: 1, y: 2}}] : [])] : [] },
     Cities: { getCities: () => cities }, Diplomacy: { hasMet: id => id === 1 } };
   const playerReads = [];
   const operations = [];
@@ -62,10 +69,24 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
       assert.equal(id, 1, 'unmet players must never be inspected');
       return { civilizationFullName: 'Known civilization', Religion: { getReligionName: () => 'Known custom religion' } };
     } },
-    GameInfo: { Beliefs: definitions, Religions: religions }, Locale: { compose: key => key },
+    GameInfo: { Beliefs: definitions, Religions: religions, Units: { lookup: type => ({ UnitType: type, SpreadCharges: type === 'MISSIONARY' ? 3 : 0 }) } }, Locale: { compose: key => key },
+    Armies: unknownArmy ? undefined : {get: armyId => {
+      assert.equal(armyId, 10); return {owner: foreignArmy ? 2 : 0, getUnitIds: () => {
+        assert.equal(foreignArmy, false, 'foreign army membership must not be inspected');
+        return packed ? [{owner: 0, id: 7}, {owner: 2, id: 99}] : [];
+      }};
+    }},
+    GameplayMap: { getGridWidth: () => 10, getGridHeight: () => 10 },
     PlayerOperationTypes: { FOUND_PANTHEON: 'FOUND_PANTHEON', ADD_BELIEF: 'ADD_BELIEF' },
     Game: {
       turn: 96,
+      UnitOperations: { canStart: (id, operation, args, visible) => {
+        assert.equal(packed, false); assert.equal(id.owner, 0); assert.equal(operation, 'UNITOPERATION_SPREAD_RELIGION');
+        assert.equal(offMap, false); assert.equal(unknownArmy, false); assert.equal(foreignArmy, false);
+        assert.equal(args.X, -9999); assert.equal(args.Y, -9999); assert.equal(args.UnitAbilityType, -1); assert.equal(visible, false);
+        return { Success: spreadAllowed, ChargesRemaining: charges, FailureReasons: spreadAllowed ? [] : ['No spreads left'],
+          AdditionalDescription: spreadDescriptions, Plots: [999] };
+      } },
       Religion: {
         getPlayerFromReligion: type => ({ RELIGION_LOCAL: 0, RELIGION_MET: 1, RELIGION_UNMET: 3 })[type],
         isBeliefClaimable: index => { claimChecks.push(index); return claimable; },
@@ -94,6 +115,22 @@ test('returns selected pantheon and belief effects, custom religion, and holy ci
   assert.deepEqual(data.beliefs.map(b => b.id), ['OWN_FOUNDER', 'OWN_ENHANCER', 'OWN_RELIC']);
   assert.equal(data.beliefs[0].description, 'Selected founder effect');
   assert.equal(data.beliefsEarned, 3);
+});
+
+test('owned religious units expose native current-state spread readiness and charge quotes, not target forecasts', () => {
+  const data = run({ missionary: true }).data;
+  assert.ok(data.religiousUnits, 'spread-unit readiness is exported');
+  assert.equal(data.religiousUnits[0].instanceId, 7);
+  assert.equal(data.religiousUnits[0].baseSpreadCharges, 3);
+  assert.equal(data.religiousUnits[0].chargesRemaining, 2);
+  assert.equal(data.religiousUnits[0].availableNow, true);
+  assert.equal(data.religiousUnits[0].targetConversionPreview, null);
+  assert.ok(!JSON.stringify(data.religiousUnits).includes('999'));
+  const blocked = run({ missionary: true, spreadAllowed: false, charges: 0 }).data.religiousUnits[0];
+  assert.equal(blocked.chargesRemaining, 0);
+  assert.equal(blocked.availableNow, false);
+  assert.deepEqual(blocked.failureReasons, ['No spreads left']);
+  assert.equal(run({ missionary: true, packed: true }).data.religiousUnits[0].operationAllowed, null);
 });
 
 test('reports owned settlement urban/rural religions without inspecting unmet founders', () => {
@@ -169,4 +206,31 @@ test('before founding, identity is null and founding choices are distinct from a
 test('requires an in-game local player', () => {
   assert.throws(() => run({ inGame: false }), /Load a save first/);
   assert.throws(() => run({ playerId: -1 }), /No local player/);
+});
+
+test('packed or off-map missionaries are never queried as deployed even with valid-looking coordinates', () => {
+  for (const options of [{packed: true, packedValidCoordinates: true}, {offMap: true}, {unknownArmy: true}, {foreignArmy: true}]) {
+    const unit = run({missionary: true, ...options}).data.religiousUnits[0];
+    assert.equal(unit.location, null);
+    assert.equal(unit.operationAllowed, null);
+    assert.equal(unit.availableNow, false);
+    assert.equal(unit.targetConversionPreview, null);
+  }
+});
+
+test('religious readiness inspects only proven owned units and does not export foreign packed members', () => {
+  const data = run({missionary: true, foreignUnit: true}).data;
+  assert.deepEqual(data.religiousUnits.map(unit => unit.instanceId), [7]);
+  assert.ok(!JSON.stringify(data).includes('SECRET'));
+  const packedData = run({missionary: true, packed: true, packedValidCoordinates: true, foreignUnit: true}).data;
+  assert.deepEqual(packedData.religiousUnits.map(unit => unit.instanceId), [7]);
+  assert.ok(!JSON.stringify(packedData.religiousUnits).includes('99'));
+});
+
+test('spread readiness preserves native action-panel descriptions without parsing them into conversion forecasts', () => {
+  const unit = run({missionary: true}).data.religiousUnits[0];
+  assert.deepEqual(unit.additionalDescriptions, ['Native current ability description']);
+  assert.equal(unit.targetConversionPreview, null);
+  assert.deepEqual(run({missionary: true, spreadDescriptions: null}).data.religiousUnits[0].additionalDescriptions, []);
+  assert.deepEqual(run({missionary: true, packed: true}).data.religiousUnits[0].additionalDescriptions, []);
 });

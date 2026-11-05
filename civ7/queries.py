@@ -45,12 +45,31 @@ async def religion() -> dict[str, Any]:
     return await run_script("religion.js")
 
 
+async def great_works(great_work_index: int | None = None) -> dict[str, Any]:
+    """Read owned work inventory, optionally checking one owned instance's destinations."""
+    if great_work_index is not None and (type(great_work_index) is not int or great_work_index < 0):
+        raise ValueError("A nonnegative owned Great Work instance index is required")
+    return await run_script("great_works.js", {"great_work_index": great_work_index})
+
+
+async def archaeology() -> dict[str, Any]:
+    """Read revealed archaeology candidates and owned Explorer readiness."""
+    return await run_script("archaeology.js")
+
+
 async def resources_and_trade() -> dict[str, Any]:
     return await run_script("commerce.js")
 
 
 async def units() -> dict[str, Any]:
     return await run_script("units.js")
+
+
+async def military_logistics(unit_id: int | None = None) -> dict[str, Any]:
+    """Read owned logistics inventory, optionally checking one unit's destinations."""
+    if unit_id is not None and (type(unit_id) is not int or unit_id < 0):
+        raise ValueError("A nonnegative owned unit instance ID is required")
+    return await run_script("logistics.js", {"unit_id": unit_id})
 
 
 async def movement_and_founding(
