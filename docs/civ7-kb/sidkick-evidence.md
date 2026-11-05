@@ -34,6 +34,8 @@ Filter returned payloads to the few fields needed for the question so important 
 
 Read `snapshotStatus` first. A successful call may be `partial`, `inconsistent` or `unverified`. Failed domains are unknown, not empty/zero. Even a complete observed-consistent snapshot is **non-atomic**: same-turn actions or loading a save with matching markers can still make combined advice stale.
 
+`snapshotStatus.complete` means domain collection succeeded, not that every optional field is known. Preserve nullable unit-state flags and other unknown values in snapshots/exports; do not rewrite them as false or zero.
+
 Focused parallel calls should likewise have their domain turns compared. Re-query the minimum if the user advanced or changed the relevant queue after a read. Never equate "recommended", "available", "inQueue" and "completed".
 
 ### Portable exports
@@ -102,6 +104,11 @@ Native descriptions are not converted-population forecasts or arbitrary-target e
 - Read native blockers rather than inferring war or alliance prerequisites from an action's name.
 - Do not add primary and secondary influence quotes into a guessed total. A missing total cost remains unknown.
 - Hidden/espionage events are not attributed to a leader. Enacted peace-deal item terms and working-deal negotiation are unsupported. A successful read-only check is not permission to perform an action.
+
+## Unit state
+
+- Read `get_civ7_units`'s `isPacked` and `isReinforcing` alongside the legacy commander fields: true means observed, false means observed absence, null means unknown. A null commander field alone does not prove absence. Reinforcement ID `0` is valid.
+- Packed/off-map units and unknown packing evidence suppress locations. A withheld location does not prove packing, and readable health/movement does not establish deployment. Refresh live evidence before advising; successful checks never authorize actions.
 
 ## Military logistics
 
