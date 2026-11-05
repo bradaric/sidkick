@@ -15,6 +15,8 @@ This page prevents a long conversation from becoming a collection of authoritati
 | Bàakʼ already has a University for the Explorer | Its generic University had been replaced. Oxford's name does not establish ordinary research-action eligibility |
 | Excavating Uluru awarded nothing | T42's Wondrous narrative acknowledgement held +1 Artifact; later display/scoring was observed |
 | An Explorer crowd proves first-arrival reservation mechanics | It did not establish the exact disabled-action reason. Map tooltip was not the command tooltip |
+| An unavailable excavation means nothing is happening | It may already be running. Read `get_civ7_archaeology`'s `failureReasons` for a completion message; empty reasons leave activity unknown. Check the UI before assuming failure or recommending a reload |
+| Diplomacy duration predicts expiry, or progress can be reconstructed from it | Use native `completion.progress`. Timing quotes are not guaranteed expiry dates, and partial choices/quotes do not establish complete options or costs. See [diplomacy guidance](sidkick-evidence.md#major-player-diplomacy-detail) |
 | Every Natural Wonder hex is a separate find | Loaded civic text says once per player per wonder; check eligible position and prior personal excavation |
 | More Obshchinas automatically multiply rail Tourism | The observed rule counted unique improvement **types** in a connected settlement; extra copies are not new types |
 | Obshchina requires Tundra everywhere | Its +2 culture requires Tundra; Copan offered legal non-Tundra placements |
@@ -78,4 +80,4 @@ The T1 save was not reopened while making this KB. Difficulty, game version/mod 
 
 ## Updating this page
 
-When resolving a question, preserve the original concern, add evidence/turn/version and move the result into the relevant domain page. Say what remains uncertain. A reported fix in a later repository commit is not proof it was present in the earlier campaign's live connection.
+Keep reusable rules and material uncertainties here. Put campaign-specific evidence in the postmortem or a session handoff; keep development history and test counts out of gameplay guidance. Refresh live evidence before applying a rule to a new game.
