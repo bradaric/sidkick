@@ -21,6 +21,8 @@ Use the current [tool contracts](../../README.md) and live output. These notes e
 | Can a religious unit spread now? | `get_civ7_religion.religiousUnits` | Owned current non-target readiness and charge quotes; packed units excluded from deployed checks; no arbitrary-target or conversion forecast |
 | Archaeology readiness/countdown? | `get_civ7_archaeology`, then turn context/Great Works for rewards | Read excavation `failureReasons` even when unavailable: a native completion quote can indicate a running dig; no exported active-order or structured countdown fields |
 | Explorer/unit position? | `get_civ7_units`, then `get_civ7_movement_and_founding` | Numeric `instanceId`; movement; revealed position/path; movement alone does not establish excavation activity |
+| Commander packing, air bases or reinforcements? | `get_civ7_military_logistics`, optionally with owned `unit_id` | Native capacities, membership and targeted readiness; no inferred free slots or guaranteed travel times |
+| Which foreign settlements are visible? | `get_civ7_known_world.visibleForeignSettlements` | Currently visible centres of met owners only; identify each by `(ownerId, cityId)`, not city ID alone |
 | War feasibility? | Units, diplomacy, visible threats, targeted combat | Visibility/legal action, not inferred damage or unseen forces |
 
 Tool discovery is host-specific. If a refreshed catalog omits a tool, discover its current signature; do not fabricate a name or call through arbitrary string paths. No call here authorizes executing game actions.
@@ -32,6 +34,10 @@ Filter returned payloads to the few fields needed for the question so important 
 Read `snapshotStatus` first. A successful call may be `partial`, `inconsistent` or `unverified`. Failed domains are unknown, not empty/zero. Even a complete observed-consistent snapshot is **non-atomic**: same-turn actions or loading a save with matching markers can still make combined advice stale.
 
 Focused parallel calls should likewise have their domain turns compared. Re-query the minimum if the user advanced or changed the relevant queue after a read. Never equate "recommended", "available", "inQueue" and "completed".
+
+### Portable exports
+
+If the user requests a local export, `civ7/.venv/bin/python civ7/player.py --output FILE` supports any loaded leader/civilization/Age, but only with a complete, observed-consistent snapshot. Choose a new file in an existing private directory: explicit output refuses existing files, symlinks and concurrent writers; unsupported hard-link filesystems fail rather than overwrite. The legacy no-argument export can replace its recognized Exploration file, so prefer an explicit path. An export is a historical data snapshot, not a game save or live state. Do not write one merely to inspect the game.
 
 ## Victory deadlines and scoring
 
@@ -73,6 +79,17 @@ This does not check an arbitrary missionary destination, forecast population con
 - `secondaryTargets` is a partial list of checked choices. Inspect each choice's `availableNow` and `failureReasons`, plus primary eligibility. It covers met/local players, owned settlements, public unit types and offered amounts—not every possible target. An empty list does not prove no other target exists.
 - Do not add primary and secondary influence quotes into a guessed total. A missing total cost remains unknown.
 - Hidden/espionage events are not attributed to a leader. Enacted peace-deal item terms and working-deal negotiation are unsupported. A successful read-only check is not permission to perform an action.
+
+## Military logistics
+
+- Query without a selector for owned commanders, packed membership, air units, reinforcement assignments and WMD counts. Capacity is not free space; empty inventories and zero stockpiles are not missing data.
+- For rebase/reinforcement readiness, pass an owned `get_civ7_units` instance ID as `unit_id`. Inspect the selected unit's `deployed` flag, operation permission, destinations and failure reasons. Packed/off-map units are not checked as deployed: null permission is unknown/not checked, not a failed attempt.
+- Destinations are revealed native options, not a route or mission-range forecast. Native arrival quotes are not guaranteed travel times, and `travelTurns` remains unknown. Do not infer launch eligibility, strikes or damage from WMD counts.
+- This focused query is separate from snapshots/exports. It never packs, moves, rebases, reinforces or launches a unit.
+
+## Visible foreign settlements
+
+`get_civ7_known_world.visibleForeignSettlements` supplies basic metadata only for met foreign owners whose settlement centres are currently visible. City IDs can repeat across owners: use `(ownerId, cityId)` together. A visible outlying district does not reveal a fogged centre's metadata. This is not a complete remembered settlement inventory and exposes no private yields, queues, religion or garrisons. Missing discovery support is unknown, not an empty world. The same bounded summary is included in snapshots/exports.
 
 ## Known traps from this campaign
 
