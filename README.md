@@ -5,7 +5,7 @@ Civilization VII is the first adapter.
 
 ## Current modes
 
-- One-shot export writes the loaded Catherine save to its own JSON file.
+- One-shot export supports any loaded save with `--output FILE`; legacy no-argument filenames remain available for the two Catherine Exploration saves.
 - OpenCode launches a local MCP server over stdio and manages its process itself.
 - The ChatGPT bridge runs a managed tunnel runtime, which launches its own stdio MCP server.
 - A standalone HTTP MCP server is available for clients that connect to a URL.
@@ -26,6 +26,14 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 .\civ7\.venv\Scripts\python.exe .\civ7\player.py
 ```
 
+For any leader/civilization/Age, including Modern, choose a new output file:
+
+```bash
+civ7/.venv/bin/python civ7/player.py --output modern-t57.json
+```
+
+Explicit output paths are relative to the current working directory (or absolute), require an existing parent directory, and **never overwrite** an existing file, symlink or racing writer. A temporary file in the destination directory is published with a no-replace hard link; filesystems without hard-link support fail rather than fall back to overwriting. Temporary files are cleaned up on errors. There is no force flag or automatic directory creation. Files contain detailed local game/map data, so choose a private location. `--output` and `--mcp` cannot be combined. The no-argument command retains its existing behavior: recognized Catherine Exploration saves replace their matching `civ7/save-1-maya.json` or `civ7/save-2-chola.json`; other saves require explicit output.
+
 ## Snapshot reliability
 
 `get_civ7_player_snapshot` puts **`snapshotStatus` first**. Read it before combining domains; a successful MCP call does not mean a complete snapshot:
@@ -37,7 +45,7 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 
 `start`/`end` contain lightweight boundary markers; `domainTurns` retains provenance even for the flattened player, settlement/archived-Great-Work and unit fields. `complete` describes collection success, not consistency by itself. `consistent` applies only to observed surviving reads and boundary evidence. Collection remains sequential and **not atomic**: same-turn changes, or loading another save with identical markers, cannot be ruled out. There is no automatic retry, cache reuse or game/UI action. Cancellation still propagates rather than becoming partial success.
 
-The full export includes the explored map within the same consistency boundary. The exporter requires `status: "complete"`, `complete: true` and `consistent: true` **before creating a temporary file or replacing an existing export**; partial/inconsistent/unverified data is returned for diagnosis/advice, not written over a portable save snapshot. The existing Catherine Exploration filename restrictions are unchanged; this does not enable Modern exports.
+The full export includes the explored map within the same consistency boundary. The exporter requires `status: "complete"`, `complete: true` and `consistent: true` **before creating a temporary file or publishing an export**; partial/inconsistent/unverified data is returned for diagnosis/advice, not written over a portable save snapshot. The Catherine Exploration filename restrictions remain on no-argument exports only; `--output FILE` supports other complete saves without overwriting a destination.
 
 ## Standalone local service
 
@@ -114,6 +122,8 @@ Building yield totals cover the six yield families used by the Great Works UI an
 
 Owned units whose definition has `ExtractsArtifacts` expose stable `instanceId`, movement remaining and the action panel's non-target `EXCAVATE`/`RESEARCH_ARTIFACTS` permission, blockers and additional descriptions. These checks apply **at the Explorer's current position only**; packed units are not queried as deployed. `sites[].availableAfterMoving` remains `null`. No site-by-unit preview matrix, excavation duration, artifact reward, path guarantee or future Tourism gain is invented. Use the movement tool for an owned Explorer's revealed route evidence. Display buildings expose current capacity, used/free slots and damage, but capacity alone does not prove artifact compatibility. Use the Great Work tool for native relocation checks on an artifact you actually own. The archaeology map scan is excluded from snapshots and exports; no lens/UI model is initialized and no action is issued.
 
+**Excavation readiness is not activity.** An `explorers[].operations` excavation entry can report `availableNow: false` because a dig is already underway. Inspect `failureReasons`: a live Modern T57 read said **"Excavation will be complete in 4 turns."** At T56, a zero-movement check returned false without a reason, while a separate native diagnostic confirmed an active excavation and queue size 1. Missing reasons, a disappearing button or no visible digging timer do not prove failure. The diagnostic's raw `operationTimer` was 0 during active excavation and is not a verified remaining-turn counter. The focused tool currently exposes start checks/messages, not active-order/queue fields or a structured countdown; without an explanatory quote, leave progress unknown. Pending rewards and newly owned works must be checked separately: an older displayed artifact does not prove a second dig succeeded. These are historical observations, not current state or a universal dig duration.
+
 For Culture victories, `get_civ7_victory_progress.victoryConditions[].scoringRules[].activationEvidence` links public `ACTIVATE_VICTORY_POINT_TRACKER` definitions to direct or one-attachment research/policy sources. It retains owner/subject requirement-set IDs, local mastery depth versus required unlock depth, government/trait restrictions and native policy-active state. Examples include Industrialization, Flight, Globalism and Capitalism masteries when their links are loaded. These are **prerequisite/source evidence, not evaluated activation**: `activeForLocalPlayer` remains `null` even when research is complete or a policy is slotted. Empty source lists do not prove inactivity; deeper attachment chains, Triumph/building/leader sources, lifetimes and requirement sets are not evaluated. Earned scoring records and native victory targets/countdowns remain separate authoritative observations. This does not simulate a future Culture victory or sum conditional definition bonuses into an alleged Tourism rate.
 
 ### Local leader and civilization context
@@ -159,6 +169,14 @@ Trade comparisons retain blocked candidates with native status reasons and the c
 `get_civ7_units` includes a stable numeric `instanceId`, distinct from the existing unit-type `id`. Pass it to `get_civ7_movement_and_founding`, optionally with **both** `x` and `y`. Without coordinates, it inspects the unit's current location. Only owned units and revealed destinations are accepted. The tool returns revealed movement-range candidates, per-tile operation eligibility, and the engine's path turn labels without converting them to an inferred number of turns remaining. Attack targets are excluded from movement candidates; packed units and units stopped by a zone of control do not receive an unrestricted range. A path containing any hidden tile is withheld in full, and raw path obstacles are never returned.
 
 Settlers include the engine's current-location and adjacent-plot founding checks. A destination also includes fresh water, terrain/features, current tile yields, resources already revealed within three hexes, and distances to owned settlements. These are **site-comparison evidence**, not a founding-site simulator: arbitrary `legalToFoundAfterMoving` and `newSettlementYields` remain `null`. Current/adjacent founding eligibility is not extended to distant tiles. The tool does not use AI settlement recommendations that could incorporate hidden-world information, and never selects, moves or founds anything. This targeted query is excluded from snapshots/exports.
+
+### Military logistics and visible foreign settlements
+
+`get_civ7_military_logistics()` reads owned commanders (including carrier/squadron/aerodrome commanders), their native combat/noncombat capacities, proven-owned packed-unit IDs, air-unit inventory, reinforcement assignments/native arrival quotes and WMD stockpile counts. Capacities are not inferred free slots. `nativeArrivalTime` preserves the engine quote without converting it to an absolute turn or a guaranteed number of turns remaining. Missing counts/interfaces stay unknown; zero stockpiles remain zero. Foreign packed members and raw reinforcement paths are not returned.
+
+Optionally pass `unit_id` from `get_civ7_units` to check that one owned unit's distinct native `REBASE` (air units) and `REINFORCE_ARMY` (packable non-commanders) operations. Options are deduplicated native destinations filtered to valid revealed tiles; native failure reasons are retained and a failed check never creates positive destinations. Packed/off-map units are not queried as deployed, even if their coordinates look valid. `travelTurns` stays `null`; no mission range, future base compatibility, WMD launch eligibility, damage or diplomatic consequence is simulated. Nothing is packed, moved, rebased, reinforced or launched. This focused query is separate from snapshots/exports and does not create an all-unit destination matrix.
+
+`get_civ7_known_world.visibleForeignSettlements` adds a deduplicated, **currently visible centre** inventory for met foreign owners, with `(ownerId, cityId)`, name, location, population and town/capital flags. An outlying visible district does not expose a fogged centre's metadata. Fogged/hidden centres, unmet owners, private yields/queues/religion/garrisons and foreign empire-wide settlement lists are excluded; this is not a complete remembered world inventory. Missing discovery API returns `null`, not an assertion that no foreign settlements exist. The existing revealed-terrain aggregate is unchanged, and the bounded settlement summary is included with known-world snapshots/exports.
 
 ### Combat evidence and promotion choices
 

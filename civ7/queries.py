@@ -65,6 +65,13 @@ async def units() -> dict[str, Any]:
     return await run_script("units.js")
 
 
+async def military_logistics(unit_id: int | None = None) -> dict[str, Any]:
+    """Read owned logistics inventory, optionally checking one unit's destinations."""
+    if unit_id is not None and (type(unit_id) is not int or unit_id < 0):
+        raise ValueError("A nonnegative owned unit instance ID is required")
+    return await run_script("logistics.js", {"unit_id": unit_id})
+
+
 async def movement_and_founding(
     unit_id: int, x: int | None = None, y: int | None = None,
 ) -> dict[str, Any]:

@@ -55,6 +55,28 @@
 
   const width = GameplayMap.getGridWidth();
   const height = GameplayMap.getGridHeight();
+  const canDiscoverCities = typeof MapCities !== "undefined" && typeof MapCities.getCity === "function";
+  const visibleForeignSettlements = canDiscoverCities ? [] : null;
+  const seenCities = new Set();
+  function visibleSettlement(x, y) {
+    const component = MapCities.getCity(x, y);
+    if (!component || !Number.isInteger(component.id) || component.id < 0 ||
+      !Number.isInteger(component.owner) || component.owner < 0 || component.owner === id ||
+      !diplomacy.hasMet(component.owner)) return;
+    const key = `${component.owner}:${component.id}`;
+    if (seenCities.has(key)) return;
+    seenCities.add(key);
+    const city = Cities.get(component);
+    const location = city?.location;
+    // A visible district alone does not justify reading a fogged centre's current metadata.
+    if (!city || city.owner !== component.owner || !location || !Number.isInteger(location.x) || !Number.isInteger(location.y) ||
+      location.x < 0 || location.y < 0 || location.x >= width || location.y >= height ||
+      GameplayMap.getRevealedState(id, location.x, location.y) !== RevealedStates.VISIBLE) return;
+    visibleForeignSettlements.push({cityId: component.id, ownerId: component.owner,
+      civilization: name(Players.get(component.owner)?.civilizationFullName), name: name(city.name),
+      location: {x: location.x, y: location.y}, town: city.isTown ?? null, capital: city.isCapital ?? null,
+      population: Number.isFinite(city.population) && city.population >= 0 ? city.population : null});
+  }
   const terrain = {};
   const features = {};
   const resources = {};
@@ -72,6 +94,7 @@
     for (let x = 0; x < width; x++) {
       const state = GameplayMap.getRevealedState(id, x, y);
       if (state === RevealedStates.HIDDEN) continue;
+      if (state === RevealedStates.VISIBLE && canDiscoverCities) visibleSettlement(x, y);
       explored++;
       if (state === RevealedStates.VISIBLE) visible++;
       minX = Math.min(minX, x); minY = Math.min(minY, y);
@@ -86,6 +109,8 @@
     metLeaders: leaders,
     cityStates,
     independents,
+    visibleForeignSettlements,
+    settlementIntelligenceScope: "Currently visible settlement centres of met foreign owners only, not a complete or remembered empire inventory. No private yields, production queues, religion or garrisons are queried; fogged metadata is withheld",
     exploredMap: {
       width,
       height,

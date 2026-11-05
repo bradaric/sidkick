@@ -33,6 +33,7 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_archaeology",
                 "get_civ7_resources_and_trade",
                 "get_civ7_units",
+                "get_civ7_military_logistics",
                 "get_civ7_movement_and_founding",
                 "get_civ7_combat_options",
                 "get_civ7_known_world",

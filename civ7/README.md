@@ -12,6 +12,8 @@ Snapshots include `snapshotStatus`; inspect it before treating domains as a cohe
 
 The adapter is read-only and connects only to FireTuner at `127.0.0.1:4318`. It does not reveal hidden tiles or unmet-player data; enemy units are queried only from tiles visible this turn. Its legacy stdio MCP entry point is the same command with `--mcp`.
 
+For other saves, including Modern, use an explicit new file: `civ7/.venv/bin/python civ7/player.py --output modern-t57.json` (or append `--output modern-t57.json` to the Windows command). Explicit output bypasses only filename recognition, never snapshot reliability checks. It refuses existing files/symlinks, including a concurrent writer, and does not create parent directories. Publication uses a temporary file and a no-replace hard link in the destination directory; unsupported filesystems fail safely. Relative paths use the current working directory. There is no force flag; legacy no-argument replacement behavior is unchanged. Keep exported game/map data in a private location.
+
 The repository-level standalone service exposes focused on-demand tools over local HTTP:
 
 ```powershell

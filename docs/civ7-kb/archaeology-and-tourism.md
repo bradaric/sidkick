@@ -26,6 +26,15 @@
 5. Complete the excavation, then inspect pending narrative events. Do not assume an apparently empty reward means excavation failed.
 6. Claim the reward and verify it appears in Great Works storage/display and in the victory ledger when applicable. Use `get_civ7_great_works` for owned displayed/archive inventory and confirm in the UI when evidence differs; an empty settlement list is not always a complete inventory.
 
+### An unavailable excavation can already be running
+
+**OBSERVED in later save checks:** at Modern T56, the Explorer at (27,37) had 0 movement and its excavation start check returned false without a reason. A separate native diagnostic showed active `UNITOPERATION_EXCAVATE`, queue size 1 and raw `operationTimer: 0`. At T57, `get_civ7_archaeology` returned **"Excavation will be complete in 4 turns."** in the excavation entry's `failureReasons`; a separately loaded T60 save returned **"Excavation will be complete in 1 turn."** These are historical quotes, not a universal duration or proof of a continuously observed sequence.
+
+- `availableNow: false` can mean another excavation cannot start because one is underway. Always inspect `failureReasons`.
+- Missing reasons at zero movement, a disappearing button or no visible UI timer do not prove failure. Do not repeatedly recommend reloading solely on that evidence.
+- Raw `operationTimer: 0` was not a usable remaining-turn count. The focused tool exposes start checks/messages, not the diagnostic's active-order/queue fields or a structured countdown. Without a native completion quote, leave progress unknown.
+- Disabled **Research Artifacts** is a separate check and does not by itself block Natural Wonder excavation. Check pending narrative rewards and owned works after completion. The older Palace artifact does not prove a second dig awarded anything; that second reward remained unconfirmed.
+
 ### What happened at Uluru
 
 **OBSERVED T42:** pending event `ARCHAEOLOGY_14A`, **Wondrous**, described the survey of Uluru. The acknowledgement **Close** had the reward **+1 Artifact**. Our Tourism was still 128, with no Artifact scoring entry yet. Later StP's Palace contained an **Exhibit**, and Tourism included +5 for Artifacts, taking us to 133.

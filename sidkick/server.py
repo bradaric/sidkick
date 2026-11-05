@@ -21,6 +21,7 @@ from civ7.queries import (
     growth,
     great_works,
     known_world,
+    military_logistics,
     movement_and_founding,
     religion,
     research_and_government,
@@ -74,7 +75,7 @@ def create_server() -> MCPServer:
             "and known-world summary, plus available decisions, major/city-state diplomacy, visible threats, and turn "
             "context and age-transition planning data. Excludes "
             "the large per-tile explored map and targeted building-placement/movement/combat/"
-            "Great-Work relocation queries and the map-scanning archaeology query, "
+            "Great-Work relocation/military-logistics queries and the map-scanning archaeology query, "
             "which have separate tools."
         ),
         annotations=ToolAnnotations(
@@ -254,6 +255,20 @@ def create_server() -> MCPServer:
         structured_output=True,
     )(units)
     server.tool(
+        name="get_civ7_military_logistics",
+        title="Get Civ VII military logistics",
+        description=(
+            "Read owned commander/carrier/squadron/aerodrome capacities and packed-unit membership, "
+            "air units, reinforcement assignments/native arrival quotes and WMD stockpile counts. "
+            "Optional unit_id from get_civ7_units checks one owned unit's native rebase/reinforce "
+            "destinations, filtered to revealed tiles. Packed units are not queried as deployed. "
+            "Free slots, mission ranges and travel forecasts are not inferred; WMD launch checks, "
+            "strikes and all movement requests are excluded. Separate from snapshots/exports."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(military_logistics)
+    server.tool(
         name="get_civ7_movement_and_founding",
         title="Get Civ VII unit movement and founding evidence",
         description=(
@@ -292,7 +307,10 @@ def create_server() -> MCPServer:
         title="Get Civ VII known world",
         description=(
             "Get only met leaders, city-states and independents, plus an aggregate of "
-            "terrain, features, and resources already revealed to the local player."
+            "terrain, features, and resources already revealed to the local player. Includes "
+            "basic visibleForeignSettlements metadata only when the met owner's settlement "
+            "centre is currently visible. No fogged settlement inventory, private yields, "
+            "production queues, religion or garrisons are queried."
         ),
         annotations=read_only,
         structured_output=True,
