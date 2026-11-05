@@ -322,10 +322,16 @@ def create_server() -> MCPServer:
         name="get_civ7_diplomacy",
         title="Get Civ VII diplomacy",
         description=(
-            "Get relationships, modifiers, deals, ongoing projects, and available "
-            "diplomatic actions involving met major players only. Action costs and failure "
-            "reasons are for the selected leader; actions requiring secondary targets "
-            "have unknown total costs and may need further eligibility checks."
+            "Get relationships, modifiers, deal counts, ongoing projects, and available "
+            "diplomatic actions involving met major counterparts. Includes public term "
+            "definitions, native duration quotes, active stages and native event progress/"
+            "completion timing, not guaranteed agreement expiry dates. Safe secondaryTargets "
+            "include met/local players, owned settlements, public unit types and offered amounts, "
+            "with exact selected-argument permission checks and failure reasons. Other target "
+            "types/foreign settlements are omitted, so lists are partial and total costs remain "
+            "unknown. Incoming hidden/espionage events are not attributed to a leader. Enacted "
+            "peace-deal item terms and working-deal negotiations are unsupported; never changes "
+            "or sends deals."
         ),
         annotations=read_only,
         structured_output=True,
