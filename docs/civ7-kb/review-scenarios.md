@@ -98,19 +98,4 @@ For each case, provide the stated evidence as historical fixture data, not a liv
 
 An answer fails review if it fabricates a native check, ignores an active/future dominance threat, invents a game action or hidden information, treats a stale recommendation as execution, or claims an untested replay guarantees a win. Passing these manual cases is not proof of overall strategic strength. Update them when a real mistake or verified new rule appears.
 
-## Initial validation record: 2026-11-05
-
-- A local, standard-library Python check passed for all 15 Markdown files: UTF-8 decoding, final newlines, trailing whitespace, balanced fenced blocks, titles and 45 repository-local links.
-- Skill metadata checks passed: `name`/`description` frontmatter and a 65-line skill body/file, below the 500-line guidance limit. This is a lightweight structure check, not host-specific skill installation validation.
-- Arithmetic checks passed for five defensive-score scenarios, five historical target calculations and the city-state incorporation budget.
-- New-file diffs were inspected, including the skill, deadline arithmetic and replay guidance. Existing code/configuration changes made concurrently by another agent were left untouched.
-- The twelve behavioral scenarios above were self-reviewed as writing requirements, **not executed as independent AI runs**. No claim of measured coaching improvement or guaranteed replay success is made.
-- Application tests, live game calls, controlled gameplay experiments and host-specific skill registration were not run for this documentation-only change. Existing repository test results quoted elsewhere are provenance, not tests rerun for this KB.
-- Official S1/S2 pages were successfully re-fetched. Wiki HTTP 403 and CivFanatics browser verification prevented direct review of those secondary pages; their status remains explicit in the sources page.
-
-## Follow-up validation: tool-surface updates
-
-- Reviewed `a78cfda`, `e6c4d97` and `d6892b5` against the documented contracts and inspected the identity, Great Work and religious-readiness implementations/fixtures. The original victory guidance was already present; new notes preserve the distinction between public definitions, native permission and evaluated effects.
-- Ran `node --test tests/test_victory_planning.cjs tests/test_identity.cjs tests/test_great_works.cjs tests/test_religion.cjs`: **21 tests passed, zero failed**. These are local fixtures, not live gameplay validation.
-- Markdown checks passed for 17 files (the KB plus both root entry points), 53 local links, text/fences, skill metadata and 15 numbered review scenarios. `git diff --check` was clean.
-- Scenarios 13–15 cover the new tool boundaries; independent AI runs and live identity/relocation/spread checks were not performed. No game state or tool implementation was changed.
+These are manual review scenarios, not an independent benchmark of coaching quality or evidence of guaranteed replay success.

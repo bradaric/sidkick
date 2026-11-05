@@ -14,6 +14,7 @@ Use the current [tool contracts](../../README.md) and live output. These notes e
 | Specialist or expansion? | `get_civ7_growth` | Pending population; legal options; specialist-specific upkeep; separate improvement previews |
 | Town specialization? | Decisions + settlements | Count existing qualifying tiles; connection recipients; focus stops growth; no marginal focus simulation |
 | Resource/rail/Factory? | `get_civ7_resources_and_trade` | Eligibility, capacity, instance/origin, network membership, Factory production state; unknown marginal deltas |
+| What explains a settlement's income? | `get_civ7_settlements.yieldBreakdown` | Alternative source explanations, not extra yield; `netYields` remains authoritative |
 | City-state choice/incorporation? | `get_civ7_city_states` + empire | Pending bonus, selected effect, count-based requirements, Influence and settlement reserve |
 | Diplomatic terms, timing or secondary choices? | `get_civ7_diplomacy` | Native progress/stage/response evidence; partial checked choices, not guaranteed expiry dates or complete costs |
 | A reward/disaster/blocked turn? | `get_civ7_turn_context` | Pending events and rewards; notifications; damage inventory; movement/path from UI as needed |
@@ -58,6 +59,15 @@ Use these fields rather than baking a schedule calculator into another agent or 
 - Missing native evidence remains null; `inventoryComplete: false` warns that observations may be partial. Classification, recognition, rail membership or a required building's presence does not establish Tourism activation, requirement scope or qualifying points. `qualifyingCount`, `attributedPoints` and `activeForLocalPlayer` remain unknown.
 - No verified current tracker-activation getter or pure marginal-Tourism preview is available. Mastery, assets and matching historical awards are not substitutes. Airfield/rail scoring arguments do not establish local versus empire-wide scope; argument names or numeric zeroes do not resolve it.
 - `ledgerEntryIndices` link to the local player's `progress.scoring` by tracker family only. Ledger `id`/`data` meanings vary by tracker, so matching names, hashes or point amounts does not establish an exact rule. Rules can share entries across Ages or Great Work types: never sum or attribute those points per rule. Current displays do not reconstruct historical awards, and an absent work does not prove earned points were lost.
+
+## Settlement income explanations
+
+- `baseIncomeEvidence` reports the native base value, top-level named sources, `listedTotal` and `residual`. Only an explicit native `ADDITION` is additive. Missing/nonadditive details or unknown amounts remain unknown; preserve zeroes and negative residuals.
+- This explains the same base income as the existing source categories and `otherBaseIncome`. Do not add these alternative breakdowns together. Native labels describe observed sources, not stable policy identifiers or proof of exact policy contributions.
+- `matchesSummary` compares separate reads. A mismatch flags a difference; a match does not establish atomic consistency.
+- `incomeAdjustment` is gross income minus base, in yield units per turn. It is already included in gross income—not a percentage, extra net yield or predicted gain from removing/swapping a policy. Use authoritative `netYields` for actual totals.
+
+These observations are included in settlement snapshots/exports. They do not expand the three bounded base-science card estimates (Pet Kot, Milpa I and Tequitl) into general policy-swap forecasts.
 
 ## Leader/civilization context
 

@@ -55,9 +55,9 @@ A Museum is not automatically good defense if no work will arrive before the riv
 
 ### Check a proposed relocation
 
-**REPO `d6892b5`:** call `get_civ7_great_works` without arguments, then pass the owned work's `works[].instanceIndex` as `great_work_index` to inspect destinations. Check `availableNow`, source/destination damage, free capacity, `alreadyHere` and failure reasons. Native permission alone does not make a full, damaged or identical destination eligible. Archived works are included; swaps and archiving actions are not modeled.
+Call `get_civ7_great_works` without arguments, then pass the owned work's `works[].instanceIndex` as `great_work_index` to inspect destinations. Check `availableNow`, source/destination damage, free capacity, `alreadyHere` and failure reasons. Native permission alone does not make a full, damaged or identical destination eligible. Archived works are included; swaps and archiving actions are not modeled.
 
-`buildings[].currentGreatWorkYields` reports current **whole-building** Great Work yields. It is not a single work's effect or the gain from moving it; `netYieldChange` stays null. The query is separate from snapshots' settlement inventories and never moves a work. It can narrow placement choices, but does not by itself settle Catherine/Memento yield attribution, the historical extra-slot cause or the Tourism change from a move. No live relocation was tested in this KB update.
+`buildings[].currentGreatWorkYields` reports current **whole-building** Great Work yields. It is not a single work's effect or the gain from moving it; `netYieldChange` stays null. The query is separate from snapshots' settlement inventories and never moves a work. It can narrow placement choices, but does not by itself settle leader/Memento yield attribution, slot-bonus causes or the Tourism change from a move.
 
 ## Hermitage
 
