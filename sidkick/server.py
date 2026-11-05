@@ -15,6 +15,7 @@ from civ7.actions import (
     buy_attribute_node,
     choose_celebration,
     choose_government,
+    choose_narrative,
     establish_trade_route,
     end_turn,
     move_great_work,
@@ -219,6 +220,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="choose_civ7_narrative", title="Choose Civ VII narrative response",
+            description=("CHANGE GAME STATE: resolve one exact owned pending narrative instance_id/instance_type "
+                         "from get_civ7_turn_context with an exact offered choice ID and fresh expected_turn. "
+                         "Supports non-trial event/discovery/crisis linked choices whose definition Cost is "
+                         "exactly zero, or CLOSE only when no eligible links exist. Paid choices are rejected "
+                         "because runtime spending quotes are unavailable. May have permanent scripted rewards "
+                         "or negative consequences; no outcome forecast. Uses exact native choice permission "
+                         "and verifies that submitted instance leaves the pending queue, not its specific "
+                         "reward or every side effect. Requires user authorization; submits once, no automatic retry."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(choose_narrative)
         server.tool(
             name="review_civ7_policies", title="Confirm Civ VII policy review",
             description=("CHANGE GAME STATE: acknowledge a pending policy/tradition/crisis-card screen reminder "

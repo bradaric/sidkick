@@ -326,6 +326,18 @@ async def set_culture_card(
     }, "policy_state.js")
 
 
+async def choose_narrative(
+    instance_id: StrictInt, instance_type: StrictInt, choice: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Resolve one offered zero-definition-cost non-trial pending narrative choice."""
+    if any(type(v) is not int or v < 0 for v in (instance_id, instance_type, expected_turn)) or \
+            not isinstance(choice, str) or not choice.strip():
+        raise ValueError("A pending narrative instance, exact offered choice ID and expected turn are required")
+    return await _execute_and_verify("choose_narrative.js", {
+        "instance_id": instance_id, "instance_type": instance_type, "choice": choice.strip(), "expected_turn": expected_turn,
+    }, "narrative_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

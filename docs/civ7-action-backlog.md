@@ -33,7 +33,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | # | Capability family | Remaining work | Status |
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
-| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group handlers implemented; narrative/project/deal responses pending |
+| 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group and zero-cost non-trial narrative handlers implemented; paid/trial/project/deal responses pending |
 | 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders implemented; travel/promotions/upgrades pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
@@ -121,3 +121,21 @@ introduce an arbitrary operation dispatcher or change persistent client config.
   and pending population 1 → 0; differs from Copan debug prerequisite case.
   Globalism selected through existing typed civic handler. Still turn 60;
   remaining blocker UNITS. Campaign retains previously documented debug changes.
+- Batch 4 committed as `11df5d2`.
+- Batch 5: 138 Python + 281 Node tests. Exact pending non-trial narrative choices,
+  zero definition cost only; native offered/requisite links, CLOSE fallback and
+  native operation permission checked. Live normal ARCHAEOLOGY_14A CLOSE at Thera
+  consumed instance 223/type35; independent pending read confirmed. Artifact
+  reward was displayed but not independently measured. Linked/crisis choice
+  positives remain fixture-only. Nonpending instance 237 was correctly rejected.
+- Separate before-narrative save `Sidkick_Playground_BeforeNarrative_T60_1793920224440`
+  confirmed RESULT_OK. Debug onRequirementsMet(componentId) had no observed effect
+  on instance 237 or pending queue; not counted as synthetic eligibility.
+- One typed turn-completion submission after explicit T60 unit skips observed T62,
+  not T61; conservatively unknown, no automatic retry. Fresh state is active T62.
+  Extra advancement cause unresolved; auto-end-turn is off. No further end-turn
+  requests until this boundary is understood. Hatshepsut's cultural victory is
+  reported completed; no One More Turn/EXTEND_GAME has been submitted. Celebration
+  reminder existed but native canChoose is false and celebration is active;
+  earlier debug probe's eventual influence is uncertain, no selection coverage
+  claimed. Real Jose Rizal diplomatic proposal is now available to inspect.

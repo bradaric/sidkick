@@ -32,7 +32,7 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `set_civ7_town_focus`, `upgrade_civ7_town`, `assign_civ7_specialist`,
 `set_civ7_unit_order`, `end_civ7_turn`, `choose_civ7_government`,
 `choose_civ7_celebration`, `review_civ7_resources`, `acknowledge_civ7_agenda`,
-`set_civ7_culture_card` and `review_civ7_policies`, which
+`set_civ7_culture_card`, `review_civ7_policies` and `choose_civ7_narrative`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
 changed automatically; enabling it for a client is a separate deliberate step.
 Do not expose FireTuner or an unauthenticated game-control endpoint publicly.
@@ -70,7 +70,7 @@ delegated sandbox tasks, not unrestricted unattended play. Ordinary use needs
 exact-action instructions; a user's explicit playground delegation can authorize
 the agreed disposable-game test scope without per-action approval. MCP
 annotations and server instructions are not authorization controls.
-The opt-in grants the connected client these twenty-four action capabilities. No
+The opt-in grants the connected client these twenty-five action capabilities. No
 combat, turn advancement, or other write types are included. A live write
 needs user authorization; use a disposable save/checkpoint. See the historical
 [write-capability investigation](docs/civ7-write-capability-report.md) for the
@@ -597,6 +597,45 @@ at `(18,9)`, workers 0 → 1, pending 1 → 0. Unlike Copan's debug-created case
 population became ready through ordinary turn advancement, although this is still
 the modified playground campaign. Globalism was selected as the next civic. No
 additional turn was submitted in this batch; the remaining blocker is unit orders.
+
+#### Pending narrative/discovery/crisis choices
+
+`choose_civ7_narrative(instance_id, instance_type, choice, expected_turn)` selects
+one exact owned pending instance from `get_civ7_turn_context`. It reconstructs
+the native regular/graphic event's offered links, including variable order and
+requisite filtering, and requires exact native operation permission. `CLOSE` is
+allowed only when there are no eligible links, not when a paid choice is merely
+unaffordable. Currently only definition `Cost === 0` choices are supported;
+runtime cost quotes and trial-specific handling are not established. Scripted
+rewards or negative consequences can still be permanent. Verification proves the
+submitted instance left the pending queue, **not** each reward or side effect.
+
+Default remains 23 read-only tools; write mode has 48 tools (25 actions).
+**138 Python and 281 Node tests pass.**
+
+**Live playground verification, 2026-11-06:** a nonpending `210A` instance was
+rejected. Separate native save
+`Sidkick_Playground_BeforeNarrative_T60_1793920224440` confirmed `RESULT_OK`, no
+overwrite. A private debug `Stories.onRequirementsMet(componentId)` probe on
+instance `237` had no observed effect: that story stayed in its original state
+and no pending event appeared. It is not counted as successful synthetic setup.
+
+After explicit unit skip orders, one typed end-turn request from turn 60 observed
+turn **62**, not exactly 61, and returned `unknown` without retrying. Fresh read
+confirmed active turn 62; the cause of the extra advancement is unresolved.
+Auto-end-turn was observed **off**. No further end-turn requests were made.
+Hatshepsut's completed cultural victory is reported by the native victory query;
+no `EXTEND_GAME`/One More Turn request has been issued. A celebration notification
+existed, but native state reported an active Elective Republic celebration with
+`canChoose() === false`. This is not proof of the typed selection handler; the
+earlier debug probe's eventual influence on that state is uncertain.
+
+Turn 62 offered normal pending archaeology event `ARCHAEOLOGY_14A` at Thera,
+instance `(owner 0, id 223, type 35)`. Its native `CLOSE` choice returned
+`verified_applied`; independent turn-context read confirmed the exact instance
+was no longer pending. The displayed reward was +1 Artifact, but no independent
+before/after artifact inventory was captured, so the reward is not separately
+claimed. Linked-choice and crisis-event positive execution remains fixture-only.
 
 ## One-shot export
 
