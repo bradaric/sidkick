@@ -565,17 +565,31 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Carpet Bomb consumed Bomber attack and damaged that constructible, all armies
   preserved. Fortified district HP variant fixture-tested, no positive nearby case.
 - 232 Python / 417 Node pass; tools23/109 including86 actions, T62 unchanged.
+- `4dafe4b`: Fighter Sweep/Carpet Bomb. Economic peace concession editing and
+  proposal/responses now typed separately from strict white peace. Exact full draft
+  token plus one native valid lump-sum offer token for add, exact item ID for remove;
+  never clear existing work or edit/send in one step. One MAKE_PEACE agreement and
+  at most one native Gold/Influence lump each, gross local spending caps/balances,
+  no demands or asset concessions. Whole normalized terms/unchanged balances verify
+  edits; acceptance requires actual bilateral peace and agreed own currency deltas.
+  Diplomacy exposes only supported draft tokens/public native negotiation offers,
+  never unfiltered city/unit/captive terms or foreign private treasury inventory.
+- Native600/1500 Gold and120/300 Influence negotiation quotes read successfully.
+  Both wars still native10-turn cooldown blocked; attempted economic edit rejected
+  before draft/offer mutation, not bypassed or counted as positive execution.
+  Specific positive economic negotiation remains a deferred eligibility case.
+- 233 Python / 420 Node pass; tools23/110 including87 actions, T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 
 | Group 1 implementation still needed | Current boundary |
 |---|---|
-| Combat/capture and hostile diplomacy | Concession-bearing deals remain unimplemented; white-peace handlers are native-cooldown blocked. Real native trade plunder implemented/fixture-tested, no eligible current source; legacy physical-route operation absent and rejects. Empty-centre city melee/occupation and keep/raze live-verified, garrison/civilian/stack variants remain outside scope. |
+| Combat/capture and hostile diplomacy | White-peace and capped economic concession handlers implemented, native-cooldown blocked. Asset concessions/other transfer variants remain. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent and rejects. Empty-centre city assault/capture decisions live-verified, garrison/civilian/stack variants remain outside scope. |
 | Military transport | Broader travel/transport variants remain to assess. Squadron establishment/packed relocation, aircraft transfers, grouped Ground Attack, Fighter Sweep and Carpet Bomb implemented/live-verified. Single-aircraft carrier missions and packed-army ocean travel live-verified. Multi-aircraft Ground Attack/fortified district bombing cases fixture-tested. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
-| Diplomacy/choices | Concession editing, nonzero-penalty/multi-support withdrawal and remaining hostile/mandatory variants remain. Fixed loaded secondary aid/food/raid handlers and sole-own zero-penalty project withdrawal/cancellation implemented; aid/cancellation/levy live-verified. Paid/trial, independent befriending and bonus handlers implemented with unavailable positive cases kept separate. |
+| Diplomacy/choices | Asset concessions, nonzero-penalty/multi-support withdrawal and remaining hostile/mandatory variants remain. Economic concession editing/submission/response handlers implemented. Fixed secondary aid/food/raid and sole-own zero-penalty project withdrawal implemented; aid/cancellation/levy live-verified. Paid/trial/independent/bonus positive gaps kept separate. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

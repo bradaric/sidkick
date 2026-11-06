@@ -207,6 +207,16 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def peace_concession(target_player_id: StrictInt, action: Literal["add", "remove", "propose", "accept", "reject"], deal_token: StrictStr, max_gold_cost: StrictFloat, max_influence_cost: StrictFloat, expected_turn: StrictInt, item_token: StrictStr | None = None, item_id: StrictInt | None = None) -> dict[str, Any]:
+    """Edit/propose/respond to exact peace plus native-offered economic terms under gross currency caps."""
+    if (any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or action not in ("add","remove","propose","accept","reject") or not isinstance(deal_token,str) or not deal_token or len(deal_token)>100000 or
+            any(type(v) not in (int,float) or not math.isfinite(v) or v<0 for v in (max_gold_cost,max_influence_cost)) or
+            (action=="add" and (not isinstance(item_token,str) or not item_token or len(item_token)>10000)) or (action=="remove" and (type(item_id) is not int or item_id<0)) or
+            (action!="add" and item_token is not None) or (action!="remove" and item_id is not None)):
+        raise ValueError("Exact counterpart/draft, supported economic peace step/item and finite gross spending caps required")
+    return await _execute_and_verify("peace_concession.js",{"target_player_id":target_player_id,"action":action,"deal_token":deal_token,"max_gold_cost":max_gold_cost,"max_influence_cost":max_influence_cost,"expected_turn":expected_turn,"item_token":item_token,"item_id":item_id},"peace_concession_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def sweep_air_location(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """One native Fighter Sweep at an exact visible own/unowned location; no invented enemy-unit target."""
     if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):

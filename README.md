@@ -1555,6 +1555,15 @@ fresh constructible token; live7012435 damaged7340143 at `(23,21)` and consumed 
 attack, all armies retained. Synthetic aircraft/readiness, native effects.
 **232 Python / 417 Node pass; tools23/109 (86 actions).**
 
+`manage_civ7_peace_concession` separately edits or negotiates exact peace plus
+native Gold/Influence lump terms. Full draft/offer tokens, gross local caps and
+native peace eligibility required; never clears other work or auto-submits edits.
+Acceptance requires bilateral peace and agreed own currency deltas. Diplomacy
+exposes supported draft/offer tokens only, not raw asset terms/private treasuries.
+Native10-turn peace cooldown rejected live editing before mutation; positive
+negotiation remains fixture-only. Asset concessions are not supported here.
+**233 Python / 420 Node pass; tools23/110 (87 actions).**
+
 ## One-shot export
 
 ```powershell

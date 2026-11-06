@@ -65,6 +65,7 @@ from civ7.actions import (
     group_air_attack,
     sweep_air_location,
     bombard_air_district,
+    peace_concession,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -281,6 +282,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="manage_civ7_peace_concession",title="Edit or negotiate capped Civ VII economic peace terms",
+            description=("CHANGE GAME STATE: exact target_player_id, action add/remove/propose/accept/reject, "
+                         "fresh diplomacy economicPeace deal_token, max_gold_cost/max_influence_cost and "
+                         "expected_turn. Add requires exact native offered item_token; remove exact item_id. "
+                         "Only one MAKE_PEACE agreement plus at most one native Gold/Influence lump each, "
+                         "no other assets/demands. Existing met war/native peace eligibility required. Gross "
+                         "own obligations must fit caps/balances. Edits never send or clear other work; "
+                         "submission/acceptance separate and token-bound. Acceptance verifies bilateral "
+                         "peace plus own agreed currency deltas, not full diplomatic effects. One native "
+                         "write,15-second readback; no automatic concessions, rollback, turn or retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(peace_concession)
         server.tool(
             name="sweep_civ7_air_location",title="Execute Civ VII Fighter Sweep at exact location",
             description=("CHANGE GAME STATE: one native Fighter Sweep by exact squadron/carrier commander_id "

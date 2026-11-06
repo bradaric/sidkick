@@ -194,6 +194,24 @@
     return{dealToken:JSON.stringify({workingDealId,dealId:d.id,items:[JSON.parse(JSON.stringify(item))]}),scope:"Exact white-peace agreement only; no concessions or unfiltered city terms"};
   }
 
+  function economicPeaceDraft(otherId,direction){
+    if(typeof DiplomacyDealDirection==="undefined"||typeof DiplomacyDealItemGoldSubTypes==="undefined"||typeof DiplomacyDealItemInfluenceSubTypes==="undefined"||typeof Game.DiplomacyDeals.getPossibleWorkingDealItems!=="function")return null;
+    const workingDealId={direction,player1:localId,player2:otherId},d=Game.DiplomacyDeals.getWorkingDeal(workingDealId),items=[],offers=[];
+    const currency=i=>{
+      const gold=i?.type===DiplomacyDealItemTypes.GOLD,inf=i?.type===DiplomacyDealItemTypes.INFLUENCE,types=gold?DiplomacyDealItemGoldSubTypes:DiplomacyDealItemInfluenceSubTypes;
+      return(gold||inf)&&[types.SMALL_LUMP,types.LARGE_LUMP].includes(i.subType)&&[localId,otherId].includes(i.from)&&i.to===(i.from===localId?otherId:localId)&&Number.isFinite(i.amount)&&i.amount>0&&i.duration===0&&i.isValid===true;
+    };
+    let supported=Boolean(d&&Number.isInteger(d.id)&&d.id>=0&&d.isDemand===false&&d.isEnacted===false&&[d.player1,d.player2].includes(localId)&&[d.player1,d.player2].includes(otherId)&&d.player1!==d.player2&&Array.isArray(d.itemIds)&&d.itemIds.length>=1&&d.itemIds.length<=3),peace=0;const types=new Set();
+    if(supported)for(const id of d.itemIds){const i=Game.DiplomacyDeals.getWorkingDealItem(workingDealId,id);if(!i||i.id!==id){supported=false;break;}
+      if(i.type===DiplomacyDealItemTypes.AGREEMENTS&&i.agreementType===DiplomacyDealItemAgreementTypes.MAKE_PEACE)peace++;
+      else if(currency(i)&&!types.has(i.type))types.add(i.type);else{supported=false;break;}items.push(JSON.parse(JSON.stringify(i)));}
+    if(direction===DiplomacyDealDirection.OUTGOING)for(const from of [localId,otherId])for(const type of [DiplomacyDealItemTypes.GOLD,DiplomacyDealItemTypes.INFLUENCE]){
+      const rows=Game.DiplomacyDeals.getPossibleWorkingDealItems(workingDealId,from,type);if(!Array.isArray(rows))continue;
+      for(const i of rows)if(i.from===from&&i.type===type&&currency(i))offers.push({fromPlayer:from,currency:type===DiplomacyDealItemTypes.GOLD?"Gold":"Influence",amount:i.amount,itemToken:JSON.stringify(i),scope:"Native negotiation quote, not private treasury inventory"});
+    }
+    return{dealToken:supported&&peace===1?JSON.stringify({workingDealId,dealId:d.id,items}):null,offers,note:"Only peace plus at most one native Gold/Influence lump each supported. No raw unsupported city/unit/captive terms returned; incoming expiry/eligibility rechecked by action"};
+  }
+
   const majorPlayers = [];
   for (const otherId of Players.getAliveIds()) {
     if (otherId === localId || !diplomacy.hasMet(otherId)) continue;
@@ -211,6 +229,7 @@
       allied: Boolean(diplomacy.hasAllied(otherId)),
       pendingDeal: Boolean(Game.DiplomacyDeals.hasPendingDeal(localId, otherId)),
       whitePeace:typeof DiplomacyDealDirection!=="undefined"?{outgoing:whitePeaceDraft(otherId,DiplomacyDealDirection.OUTGOING),incoming:whitePeaceDraft(otherId,DiplomacyDealDirection.INCOMING)}:null,
+      economicPeace:typeof DiplomacyDealDirection!=="undefined"?{outgoing:economicPeaceDraft(otherId,DiplomacyDealDirection.OUTGOING),incoming:economicPeaceDraft(otherId,DiplomacyDealDirection.INCOMING)}:null,
       relationshipModifiers: (diplomacy.getPlayerRelationshipHistory(otherId) ?? []).map(event => ({
         name: name(event.eventType),
         amount: event.amount
@@ -225,7 +244,7 @@
     scope: "Local player and met major counterparts; secondary choices are visibility-filtered",
     netInfluencePerTurn: player.Stats.getNetYield(YieldTypes.YIELD_DIPLOMACY),
     dealCount: (Game.DiplomacyDeals.getDealIds(localId) ?? []).length,
-    detailNote: "Secondary choices include only met/local players, offered owned settlements with a matching revealed centre plot, offered currently visible settlement centres of the met primary counterpart, public unit types and offered amounts. City choices carry owner-qualified settlement identity; IDs alone cannot prove ownership. Hidden/fogged foreign centres, unrelated owners, ambiguous/missing plots, unsupported choices and raw target plots are omitted. No foreign city inventory or private yields/queues are queried. Exact selected-argument checks do not establish complete total costs; quoted secondary influence is not added to the primary quote. Project terms are definitions; duration/completion quotes are not guaranteed final expiry dates. Progress uses native event scores, not a duration formula. Incoming hidden/espionage events are omitted rather than attributed. Only exact single-agreement white-peace working drafts expose tokens; concessions and enacted deal item accounting remain unsupported. This readout never creates, changes or sends a deal",
+    detailNote: "Secondary choices include only met/local players, offered owned settlements with a matching revealed centre plot, offered currently visible settlement centres of the met primary counterpart, public unit types and offered amounts. City choices carry owner-qualified settlement identity; IDs alone cannot prove ownership. Hidden/fogged foreign centres, unrelated owners, ambiguous/missing plots, unsupported choices and raw target plots are omitted. No foreign city inventory or private yields/queues are queried. Exact selected-argument checks do not establish complete total costs; quoted secondary influence is not added to the primary quote. Project terms are definitions; duration/completion quotes are not guaranteed final expiry dates. Progress uses native event scores, not a duration formula. Incoming hidden/espionage events are omitted rather than attributed. Only supported white-peace or peace-plus-economic-lump working drafts expose tokens; asset concessions and enacted deal item accounting remain unsupported. Economic offers are native public negotiation quotes, not foreign treasury inventory. This readout never creates, changes or sends a deal",
     majorPlayers
   };
 })()

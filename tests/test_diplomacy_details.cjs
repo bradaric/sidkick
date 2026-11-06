@@ -8,7 +8,7 @@ function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = 
   emptySecondary = false, operationAllowed = true, privateEvents = false, signedUnit = false,
   visibleCity = false, cityIdCollision = false, cityPlotState = 2, centreState = 2,
   cityOwner = 1, missingCityApi = false, wrongCityId = false, noCityPlot = false, ownedPlotState = 1,
-  invalidCityPlot = false } = {}) {
+  invalidCityPlot = false, economic=false,unsupportedEconomic=false } = {}) {
   const calls = [];
   const cityReads = [], mapReads = [];
   const foreignCityId = cityIdCollision ? 1000 : 2000;
@@ -41,6 +41,7 @@ function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = 
     Stats: {getNetYield: () => 10}, Cities: {getCities: () => [{id: {owner: 0, id: 1000}, name: 'Home', location: {x: 1, y: 0}}]},
   };
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/diplomacy.js'), 'utf8'), {
+    ...(economic?{DiplomacyDealDirection:{OUTGOING:0,INCOMING:1},DiplomacyDealItemTypes:{AGREEMENTS:1,GOLD:2,INFLUENCE:3},DiplomacyDealItemAgreementTypes:{MAKE_PEACE:10},DiplomacyDealItemGoldSubTypes:{SMALL_LUMP:20,LARGE_LUMP:21},DiplomacyDealItemInfluenceSubTypes:{SMALL_LUMP:30,LARGE_LUMP:31}}:{}),
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0}, Locale: {compose: s => s},
     Players: {getAliveIds: () => [0, 1, 2, 3, 4], get: id => {
       assert.notEqual(id, 2, 'unmet players are filtered before object reads');
@@ -90,7 +91,9 @@ function run({ unknownProgress = false, unknownTiming = false, primaryBlocked = 
     }, DiplomacyDeals: {
       hasPendingDeal: () => false, getDealIds: () => [],
       getDeal: () => {throw Error('No guessed enacted-deal schema');}, getDealItem: () => {throw Error('No guessed enacted-item schema');},
-      getWorkingDeal: () => {throw Error('No working-deal access');}, clearWorkingDeal: () => {throw Error('No working-deal mutation');},
+      getWorkingDeal: w => {if(!economic)throw Error('No working-deal access');return{id:7,player1:0,player2:w.player2,isDemand:false,isEnacted:false,isExpired:false,itemIds:[10,11]};},
+      getWorkingDealItem:(w,n)=>n===10?{id:10,type:1,agreementType:10}:{id:11,type:unsupportedEconomic?99:2,subType:20,from:0,to:w.player2,amount:100,duration:0,isValid:true},
+      getPossibleWorkingDealItems:(w,from,type)=>type===2?[{id:0,type:2,subType:20,from,to:from===0?w.player2:0,amount:100,duration:0,isValid:true}]:[],clearWorkingDeal: () => {throw Error('No working-deal mutation');},
       sendWorkingDeal: () => {throw Error('No deal requests');},
     }},
   });
@@ -116,6 +119,11 @@ test('secondary choices check exact selected arguments and exclude unmet players
   assert.equal(action.secondaryTargetsComplete, false);
   assert.ok(!JSON.stringify(data).includes('SECRET'));
   assert.ok(!JSON.stringify(data).includes('9999'));
+});
+
+test('economic peace readout exposes exact supported draft/offer tokens but no unsupported raw terms',()=>{
+ const p=run({economic:true}).data.majorPlayers[0].economicPeace;assert.equal(JSON.parse(p.outgoing.dealToken).items.length,2);assert.equal(p.outgoing.offers.length,2);
+ const unsupported=run({economic:true,unsupportedEconomic:true}).data.majorPlayers[0].economicPeace;assert.equal(unsupported.outgoing.dealToken,null);assert.equal(JSON.stringify(unsupported).includes('"type":99'),false);
 });
 
 test('secondary action availability requires an eligible checked choice and primary eligibility', () => {
