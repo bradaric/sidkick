@@ -56,6 +56,7 @@ from civ7.actions import (
     assault_city,
     resolve_city_capture,
     peace_deal_action,
+    levy_city_state_unit,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -272,6 +273,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="levy_civ7_city_state_unit",title="Levy exact Civ VII city-state unit under cap",
+            description=("CHANGE GAME STATE: one fixed native CS_LEVY_UNIT levy for exact met "
+                         "minor target_player_id under local suzerainty, exact target_unit_id/offeredUnitId "
+                         "and public unit_type from city-state levyUnits, max_influence_cost and expected_turn. "
+                         "Requires one native offered unit/type pair, known zero primary cost, exact selected "
+                         "secondary Influence quote/balance and native permission. Never reads hidden foreign "
+                         "unit instances or guesses a unit from its type alone. Verifies one new chosen-type "
+                         "owned unit, preserved prior unit identities/types, exact Influence spend and "
+                         "preserved suzerainty. Not prior foreign HP/experience or full transfer-side effects. "
+                         "No forced suzerainty, new war, turn advance or unknown retry. One submission."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(levy_city_state_unit)
         server.tool(
             name="manage_civ7_white_peace_deal",title="Prepare propose or respond to Civ VII white peace",
             description=("CHANGE GAME STATE: one action prepare/propose/accept/reject for exact met major "

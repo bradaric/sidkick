@@ -35,6 +35,13 @@
         const target = (project.targetList1 ?? []).find(value => value.targetID === otherId);
         const failureReasons = reasons(project.resultData, target?.resultData);
         const requiresSecondaryTarget = Boolean(project.targetList2?.length);
+        const levyUnits=project.actionTypeName==="DIPLOMACY_ACTION_CS_LEVY_UNIT"&&target?.costYieldD===0?(project.targetList2??[]).flatMap(t=>{
+          if(t.parameterName!=="Unit"||!Number.isInteger(t.targetID)||t.targetID<0||typeof t.targetName!=="string")return[];
+          const def=GameInfo.Units?.lookup(t.targetName);if(def?.UnitType!==t.targetName)return[];
+          const result=Game.PlayerOperations.canStart(id,project.operationType,{Amount:1,Player1:id,Player2:otherId,Type:project.actionType,Unit:t.targetID},false);
+          const blocked=reasons(project.resultData,target.resultData,t.resultData,result);
+          return[{offeredUnitId:t.targetID,unitType:def.UnitType,name:name(def.Name),quotedInfluenceCost:cost(t.costYieldD),availableNow:project.projectStatus===DiplomacyProjectStatus.PROJECT_AVAILABLE&&!blocked.length&&result?.Success===true&&result.RequiresConfirmation!==true,failureReasons:blocked}];
+        }):[];
         return {
           id: project.actionTypeName,
           name: name(project.actionTypeName === "DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN"
@@ -46,6 +53,7 @@
           selectedTargetInfluenceCost: cost(target?.costYieldD),
           costDescription: name(project.costDescription),
           requiresSecondaryTarget,
+          levyUnits,
           failureReasons
         };
       });

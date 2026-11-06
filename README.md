@@ -1486,6 +1486,16 @@ Both current wars are natively cooldown-blocked for10 turns: guard rejection onl
 no draft/submission sent or eligibility bypass. Positive execution is deferred.
 **223 Python / 406 Node pass; tools23/100 (77 actions).**
 
+`levy_civ7_city_state_unit` binds an exact native-offered unit ID/public type to its
+selected Influence quote under local suzerainty. Readout exposes paired levy choices
+without inspecting hidden foreign units. Levies are immediate on this build, not
+persistent projects: first7 levy spent60/produced Scout6619213 but returned unknown
+under the original event verifier, never retried. Corrected verifier captures all
+owned units and requires one chosen-type receipt, old inventory preserved, exact
+debit and continued suzerainty. Distinct8 levy verified Scout6684750 for60 Influence;
+no synthetic setup. Influence54.82421875; T62 unchanged.
+**225 Python / 408 Node pass; tools23/101 (78 actions).**
+
 ## One-shot export
 
 ```powershell

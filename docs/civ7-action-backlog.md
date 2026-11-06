@@ -449,6 +449,22 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   positive proposal/acceptance belongs to specific deferred eligibility verification,
   implementation and fixtures are present. Concession editing remains Group 1.
 - 223 Python / 406 Node pass; tools23/100 including77 actions. T62 unchanged.
+- `e29264f`: white-peace negotiation. Exact city-state unit levy implemented with
+  local suzerainty, native offered unit ID/public-type pair (not a hidden foreign
+  unit read), known zero primary quote, exact secondary Influence cap and selected
+  permission. City-state readout exposes only paired public levy choices and checks.
+- First ordinary levy from7 for offered Scout327684 spent60 Influence and produced
+  owned Scout6619213 `(37,24)` immediately, but no persistent event existed; original
+  event-only verifier returned UNKNOWN. Never retried. Cause established from own
+  inventory/native reply; replaced event verification with captured complete owned
+  unit ledger, exactly one new chosen-type receipt, preserved prior identities/types,
+  exact quoted Influence debit and continued suzerainty. No retroactive success claim
+  for the first wrapper outcome.
+- Distinct ordinary levy from8 for offered Scout1048576 positively verified new
+  owned Scout6684750, all old units preserved, exact60 Influence debit, suzerainty
+  unchanged. No synthetic setup, foreign unit-instance inspection, turn or Gold.
+  Influence now54.82421875. Prior foreign HP/experience and all transfer-side effects
+  are not claimed. 225 Python / 408 Node pass; tools23/101 including78 actions.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -459,7 +475,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
-| Diplomacy/choices | Project cancellation, city-state levies, secondary targets/deals, paid/trial narrative and remaining hostile/mandatory variants remain unimplemented. Independent befriending and pending bonus choices implemented, positive live cases unavailable. |
+| Diplomacy/choices | Project support withdrawal/cancellation, general secondary targets/concession deals, paid/trial narrative and remaining hostile/mandatory variants remain. Exact city-state levies implemented and native receipt verified; independent befriending and pending bonus choices implemented, positive live cases unavailable. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

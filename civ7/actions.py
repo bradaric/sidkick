@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def levy_city_state_unit(target_player_id: StrictInt, target_unit_id: StrictInt, unit_type: StrictStr, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Levy one exact native-offered unit under an Influence cap with immediate receipt verification."""
+    if (any(type(v) is not int or v<0 for v in (target_player_id,target_unit_id,expected_turn)) or not isinstance(unit_type,str) or not unit_type or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0):
+        raise ValueError("Exact city-state, offered unit/type, finite Influence cap and expected turn required")
+    return await _execute_and_verify("start_diplomatic_project.js",{"target_kind":"city-state","target_player_id":target_player_id,"target_unit_id":target_unit_id,"unit_type":unit_type,"action":"DIPLOMACY_ACTION_CS_LEVY_UNIT","max_influence_cost":max_influence_cost,"expected_turn":expected_turn},"city_state_levy_state.js")
+
+
 async def peace_deal_action(target_player_id: StrictInt, action: Literal["prepare", "propose", "accept", "reject"], expected_turn: StrictInt, deal_token: StrictStr | None = None) -> dict[str, Any]:
     """One native white-peace draft/proposal/response step, never concessions or automatic acceptance."""
     if (any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or action not in ("prepare","propose","accept","reject") or

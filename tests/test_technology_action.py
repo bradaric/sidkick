@@ -196,6 +196,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "assault_civ7_city",
             "resolve_civ7_city_capture",
             "manage_civ7_white_peace_deal",
+            "levy_civ7_city_state_unit",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

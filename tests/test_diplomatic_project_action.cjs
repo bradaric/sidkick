@@ -20,14 +20,15 @@ function run(options = {}, script = 'start_diplomatic_project.js') {
     targetList1: options.wrongTarget ? [{targetID: 99, costYieldD: 1}] : [
       {targetID: 99, costYieldD: 1}, {targetID: 3, costYieldD: options.cost === null ? undefined : options.cost ?? 150,
         resultData: {FailureReasons: options.targetReasons ?? []}},
-    ], targetList2: options.secondary ? [{targetID: 99, targetPlot: {x: 9999, y: 9999}}] : [],
+    ], targetList2: options.levy?[{parameterName:'Unit',targetID:55,targetName:'UNIT_SCOUT',costYieldD:options.levyCost??60,resultData:{FailureReasons:[]}}]:options.secondary ? [{targetID: 99, targetPlot: {x: 9999, y: 9999}}] : [],
     resultData: {FailureReasons: options.projectReasons ?? []}};
   const local = {isTurnActive: options.activeTurn ?? true,
-    DiplomacyTreasury: {diplomacyBalance: options.balance ?? 1000},
+    Units:{getUnits:()=>[{id:{owner:0,id:10,type:26},type:200},...(options.levyArrived?[{id:{owner:0,id:30,type:26},type:100}]:[])]},
+    DiplomacyTreasury: {diplomacyBalance: options.balance ?? (options.levyArrived?940:1000)},
     Diplomacy: {hasMet: id => id === 3 && !options.unmet, isAtWarWith: () => options.atWar ?? false}};
   const context = {
     queryArguments: {target_kind: kind, target_player_id: 3, action, max_influence_cost: 150,
-      expected_turn: 58, baseline_event_ids: options.baseline ?? [], ...options.arguments},
+      expected_turn: 58, baseline_event_ids: options.baseline ?? [],...(options.levy?{target_unit_id:55,unit_type:'UNIT_SCOUT',expected_unit_type:100,before_influence:1000,quoted_cost:60,baseline_units:[{instanceId:10,componentType:26,unitType:200}]}:{}), ...options.arguments},
     UI: {isInGame: () => options.inGame !== false},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => options.sentTurn ?? false},
     Players: {get: id => {
@@ -40,7 +41,7 @@ function run(options = {}, script = 'start_diplomatic_project.js') {
         isIndependent: options.wrongKind ? kind !== 'independent' : kind === 'independent',
         Influence: {getSuzerain: () => options.suzerain ?? 0}};
     }},
-    GameInfo: {DiplomacyActions: {lookup: value => value === action || value === -101
+    GameInfo: {Units:{lookup:n=>n==='UNIT_SCOUT'?{UnitType:'UNIT_SCOUT',$hash:100}:null},DiplomacyActions: {lookup: value => value === action || value === -101
       ? {DiplomacyActionType: action, $hash: -101} : null}},
     DiplomacyProjectStatus: {PROJECT_AVAILABLE: 0, PROJECT_ACTIVE: 1, PROJECT_BLOCKED: -1, PROJECT_NOT_UNLOCKED: -2},
     DiplomacyActionTargetTypes: {NO_DIPLOMACY_TARGET: -1, DIPLOMACY_TARGET_NONE: 0},
@@ -86,6 +87,22 @@ test('major project start uses selected-target cost and exact quick-start UI arg
     {kind: 'send', id: 0, operation: 77, args: {Amount: 1, Player1: 0, Type: -101, Player2: 3, ID: 3}},
   ]);
   assert.deepEqual(data.verificationArguments.baseline_event_ids, []);
+});
+
+test('city-state levy binds one exact offered unit ID and public type to its own secondary quote',()=>{
+ const opts={kind:'city-state',action:'DIPLOMACY_ACTION_CS_LEVY_UNIT',levy:true,cost:0,secondaryType:9};
+ const r=run(opts);assert.equal(r.data.status,'submitted');assert.equal(r.data.quotedInfluenceCost,60);
+ assert.equal(r.data.expected.levyObserved,true,'instant levy must not await a nonexistent project event');
+ assert.deepEqual(r.calls.at(-1).args,{Amount:1,Player1:0,Type:-101,Player2:3,Unit:55});
+ for(const o of [{suzerain:1},{levyCost:151},{cost:1},{arguments:{target_unit_id:56}},{arguments:{unit_type:'UNIT_HIDDEN'}}]){
+  const r=run({...opts,...o});assert.equal(r.data.status,'rejected');assert.equal(r.calls.filter(c=>c.kind==='send').length,0);
+ }
+});
+
+test('levy readback requires exactly one new chosen-type owned unit, preserved old inventory and exact quoted Influence spend',()=>{
+ const opts={kind:'city-state',action:'DIPLOMACY_ACTION_CS_LEVY_UNIT',levy:true,levyArrived:true};
+ assert.equal(run(opts,'city_state_levy_state.js').data.levyObserved,true);
+ for(const o of [{levyArrived:false},{balance:941},{suzerain:1},{arguments:{expected_unit_type:999}}])assert.equal(run({...opts,...o},'city_state_levy_state.js').data.levyObserved,false);
 });
 
 test('independent befriending binds one met/discovered power to its native offered capped start, not a major-player action', () => {
