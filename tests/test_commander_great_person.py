@@ -3,6 +3,11 @@ from unittest.mock import AsyncMock,patch
 from civ7 import actions
 from sidkick.server import create_server
 class CommanderGreatPersonTests(unittest.IsolatedAsyncioTestCase):
+    async def test_villa_ability_profile_is_explicit_not_a_combat_gold_payout_claim(self):
+        with patch('civ7.actions.run_script',new_callable=AsyncMock,return_value={'status':'rejected'})as run:
+            await actions.activate_commander_great_person(10,30,62,effect='combat_gold')
+        self.assertEqual(run.await_args.args[1]['effect'],'combat_gold')
+
     async def test_morelos_heal_profile_is_explicit_not_inferred_from_source_or_general_end_turn_healing(self):
         with patch('civ7.actions.run_script',new_callable=AsyncMock,return_value={'status':'rejected'})as run:
             await actions.activate_commander_great_person(10,30,62,effect='heal')

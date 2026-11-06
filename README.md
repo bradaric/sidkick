@@ -1722,6 +1722,12 @@ First-meet remains unimplemented: native permission is true even without a pendi
 choice, so a permission-only handler would be unsafe.
 **253 Python / 456 Node pass; tools24/127 (103 actions).**
 
+Commander GP activation also supports `effect="combat_gold"` for Villa. Native
+activation added exactly `ABILITY_VILLA` to the chosen Army Commander, preserving
+prior abilities, experience, health, inventory/armies and balances. Creation-only
+setup; future combat Gold payouts remain unverified, not implied by the grant.
+**254 Python / 457 Node pass; all24 default tools freshly called over real stdio.**
+
 ## One-shot export
 
 ```powershell

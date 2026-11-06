@@ -14,6 +14,15 @@ function run(o={},script='activate_commander_great_person.js'){
   units.push(inside,outside);baseline.push({instanceId:20,componentType:26,unitType:400},{instanceId:21,componentType:26,unitType:400});baseline.sort((a,b)=>a.instanceId-b.instanceId);if(o.packedHeal)armies[0].packedUnitIds=[20];
   ctx.Units={getCommandRadiusPlots:()=>[33,43]};ctx.queryArguments.baseline_health=[gp,...commanders,inside,outside].map(u=>({instanceId:u.id.id,componentType:26,unitType:u.type,damage:u.id.id===20?14:u.id.id===21?15:0,maxDamage:100,heal:[10,30,20].includes(u.id.id)})).sort((a,b)=>a.instanceId-b.instanceId);
  }
+ if(o.combatGold){
+  ctx.queryArguments.effect='combat_gold';ctx.queryArguments.before_xp=0;ctx.queryArguments.baseline_abilities=[7];
+  commanders[0].Experience.getLevel=0;commanders[0].Experience.getStoredPromotionPoints=0;
+  commanders[0].getAbilities=()=>o.applied?[...(o.lostAbility?[]:[7]),99,...(o.extraAbility?[88]:[])]:o.alreadyAbility?[7,99]:[7];
+  ctx.GameInfo.Units.lookup=type=>({UnitType:type===100?'UNIT_REVOLUCIONARIO_VILLA':'UNIT_ARMY_COMMANDER',Domain:'DOMAIN_LAND'});
+  ctx.GameInfo.GreatPersonIndividuals.lookup=()=>({UnitType:'UNIT_REVOLUCIONARIO_VILLA',ActionCharges:1,ActionRequiresOnUnitType:'UNIT_ARMY_COMMANDER',ActionRequiresGoldCost:null,ActionRequiresInfluenceCost:null,ScaleGoldCostByActivation:false,ScaleGoldCostByRelationship:false,ScaleInfluenceCostByRelationship:false});
+  ctx.GameInfo.UnitAbilities={lookup:()=>({UnitAbilityType:'ABILITY_VILLA',$hash:99})};
+  const canStart=ctx.Game.UnitCommands.canStart;ctx.Game.UnitCommands.canStart=(...args)=>({...canStart(...args),AdditionalDescription:['Activate on an Army Commander. When a Unit within this Commander’s Command Radius defeats an enemy Unit, gain[icon:YIELD_GOLD] Gold equal to 25% of its Combat Strength.']});
+ }
  return JSON.parse(JSON.stringify({data:vm.runInNewContext(fs.readFileSync(`civ7/${script}`,'utf8'),ctx),calls}));
 }
 test('concrete Santa Anna activation binds one exact co-located Army Commander and native five-promotion quote',()=>{
@@ -35,4 +44,10 @@ test('Morelos captures primary radius including packed units and separately repo
   const mismatch=run({heal:true,applied:true,outsideDamage},'commander_great_person_state.js').data;
   assert.equal(mismatch.greatPersonEffectObserved,false);assert.deepEqual(mismatch.healthMismatches,[{unitId:21,expectedDamage:15,damage:outsideDamage}]);
  }
+});
+test('Villa grants only the exact native Commander ability without implying combat payouts',()=>{
+ const r=run({combatGold:true});assert.equal(r.data.status,'submitted');assert.deepEqual(r.data.verificationArguments.baseline_abilities,[7]);
+ assert.equal(run({combatGold:true,alreadyAbility:true}).data.status,'rejected','never retire a duplicate ability source');
+ const after=run({combatGold:true,applied:true},'commander_great_person_state.js').data;assert.equal(after.greatPersonEffectObserved,true);assert.deepEqual(after.commanderAbilities,[7,99]);
+ for(const extra of [{lostAbility:true},{extraAbility:true}])assert.equal(run({combatGold:true,applied:true,...extra},'commander_great_person_state.js').data.greatPersonEffectObserved,false);
 });

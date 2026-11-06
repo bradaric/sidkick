@@ -314,7 +314,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         server.tool(
             name="activate_civ7_commander_great_person",title="Activate concrete Civ VII Army Commander Great Person",
             description=("CHANGE GAME STATE: exact owned GP unit_id, co-located commander_id Army Commander, "
-                         "expected_turn and effect promotions(default Santa Anna)/heal(Morelos). Requires one unambiguous "
+                         "expected_turn and effect promotions(default Santa Anna)/heal(Morelos)/combat_gold(Villa). Requires one unambiguous "
                          "visible own/unowned land Army target, known unpacked/nonreinforcing state, unqueued "
                          "source/target, installed single-charge/no-currency-cost profile and exact native English "
                          "effect quote/permission. Promotions require zero XP remainder and verify level/points +5. "
@@ -324,7 +324,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "Commander areas/packed units too: reports additional owned heals separately; allows only "
                          "unchanged health or the same native99-damage reduction, no unexpected damage. "
                          "It may leave ongoing healing effects; readback is immediate, not a future/no-turn-heal "
-                         "guarantee. Both verify retirement, target location/queue, other unit identities/armies/balances. "
+                         "guarantee. Villa verifies exact new ABILITY_VILLA with prior target abilities, experience "
+                         "and health unchanged; does not prove future combat Gold payouts. All verify retirement, "
+                         "target location/queue, other unit identities/armies/balances. "
                          "Does not select promotions or fully "
                          "account for all trait/secondary effects. No placeholder/other-person substitution, "
                          "turn or retry;15-second readback."),

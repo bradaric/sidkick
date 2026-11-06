@@ -925,6 +925,18 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   intentionally not implemented. Need actual pending notification/session evidence
   before safely binding a reusable first-meet response; still implementation work.
 - 253 Python /456 Node pass; tools24/127 including103 actions, T62 unchanged.
+- `4bf8adf`: explicit hostile responses. Commander Great Person tool also supports
+  fixed `effect="combat_gold"` for concrete Villa: exact native individual/no-cost
+  profile and English quote, one selected Army, known complete target ability list
+  without existing ABILITY_VILLA. Verifies retirement and exactly that ability
+  added (no lost/extra target ability), target experience/health/location/queue and
+  other owned identities/armies/balances unchanged. Does not infer future combat
+  payouts, radius semantics or every trait/global effect.
+- Native9502841→Commander9109619 at `(26,11)` verified ability list
+  `[-18175781]→[-128225751,-18175781]` (ABILITY_VILLA added), level5/points5 unchanged,
+  source retired and ledgers/balances retained. Fresh creation only; no ability,
+  XP, health, movement or Gold effect forced. 254 Python /457 Node pass;
+  all24 default read-only tools passed fresh real stdio calls. Counts unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -934,7 +946,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
 | Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Observed Sweep and fortified Carpet Bomb now verified; fortified naval positive remains native-blocked. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
-| Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Santa Anna promotion and Morelos primary/wider-owned healing effect accounting implemented/native-verified with labelled synthetic prerequisites. Other effect-specific GP profiles remain unimplemented, not verification-only. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
+| Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Santa Anna promotion, Morelos primary/wider-owned healing and Villa ability grant implemented/native-verified with labelled synthetic prerequisites. Future Villa combat payouts remain unverified. Other effect-specific GP profiles remain unimplemented. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
 | Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel, five Modern espionage variants and explicit revealed hostile-sanction replies implemented; eligibility blocks positive tests. Own-war support/capped withdrawal verified. First-meet still needs a pending-choice binding (native permission alone is permissive); other mandatory variants remain distinct from paid/trial/independent/bonus verification gaps. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
