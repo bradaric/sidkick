@@ -465,13 +465,28 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   unchanged. No synthetic setup, foreign unit-instance inspection, turn or Gold.
   Influence now54.82421875. Prior foreign HP/experience and all transfer-side effects
   are not claimed. 225 Python / 408 Node pass; tools23/101 including78 actions.
+- `d179fb6`: exact city-state levies. Real installed trade plunder implemented
+  separately from the unavailable legacy physical-route operation: fixed current-
+  tile UNITCOMMAND_PLUNDER_TRADE_ROUTE with native UI no-target arguments. Ready
+  sole-unit visible source, known packing/reinforcement/treasury, own/unowned or
+  existing met-war tile and exact native permission without confirmation.
+  Native chooses an eligible trade route; no guessed route ID/owner or hidden
+  foreign trade inventory read. Readback requires movement spend, stable source,
+  positive Gold gain and command becoming unavailable, not physical road destruction
+  or complete route identity/payload/connectivity verification.
+- Focused live native scan found no eligible ready owned source; no plunder write
+  submitted. Game.Trade exposes route queries, not a supported route constructor;
+  native merchant route creation/war eligibility cannot be replaced with fake loot
+  or forced verification success. Positive trade plunder remains an eligibility
+  verification gap, implementation/fixtures are present. 226 Python / 409 Node
+  pass; tools23/102 including79 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 
 | Group 1 implementation still needed | Current boundary |
 |---|---|
-| Combat/capture and hostile diplomacy | Concession-bearing deals and trade-route plunder remain unimplemented; white-peace draft/proposal/responses implemented, live eligibility blocked by10-turn native cooldown. Legacy physical-route operation absent and now rejects. Empty-centre city melee/occupation and keep/raze implemented/live-verified, garrison/civilian/stack variants remain outside scope. |
+| Combat/capture and hostile diplomacy | Concession-bearing deals remain unimplemented; white-peace handlers are native-cooldown blocked. Real native trade plunder implemented/fixture-tested, no eligible current source; legacy physical-route operation absent and rejects. Empty-centre city melee/occupation and keep/raze live-verified, garrison/civilian/stack variants remain outside scope. |
 | Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |

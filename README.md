@@ -1496,6 +1496,15 @@ debit and continued suzerainty. Distinct8 levy verified Scout6684750 for60 Influ
 no synthetic setup. Influence54.82421875; T62 unchanged.
 **225 Python / 408 Node pass; tools23/101 (78 actions).**
 
+`plunder_civ7_trade_route` uses the real installed current-tile PLUNDER_TRADE_ROUTE
+command, separate from the absent legacy road operation. Requires a ready visible
+sole-unit source, known packing/treasury, own/unowned/existing-war tile and native
+permission. Native chooses the eligible trade route. Readback needs movement spend,
+stable source, positive Gold gain and command becoming unavailable; no exact route
+identity/owner, physical road destruction or full connectivity claim. No eligible
+ready live source found; no plunder request submitted, positive case fixture-only.
+**226 Python / 409 Node pass; tools23/102 (79 actions).**
+
 ## One-shot export
 
 ```powershell

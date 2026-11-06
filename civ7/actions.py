@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def plunder_trade_route(unit_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Use installed current-tile trade plunder; native selects the eligible route, never a physical road."""
+    if any(type(v) is not int or v<0 for v in (unit_id,expected_turn)):
+        raise ValueError("Exact owned combat unit and expected turn required")
+    return await _execute_and_verify("plunder_trade_route.js",{"unit_id":unit_id,"expected_turn":expected_turn},"trade_plunder_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def levy_city_state_unit(target_player_id: StrictInt, target_unit_id: StrictInt, unit_type: StrictStr, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
     """Levy one exact native-offered unit under an Influence cap with immediate receipt verification."""
     if (any(type(v) is not int or v<0 for v in (target_player_id,target_unit_id,expected_turn)) or not isinstance(unit_type,str) or not unit_type or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0):

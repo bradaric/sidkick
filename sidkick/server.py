@@ -57,6 +57,7 @@ from civ7.actions import (
     resolve_city_capture,
     peace_deal_action,
     levy_city_state_unit,
+    plunder_trade_route,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -273,6 +274,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="plunder_civ7_trade_route",title="Plunder native-selected Civ VII trade route at unit",
+            description=("CHANGE GAME STATE: installed fixed PLUNDER_TRADE_ROUTE command by exact ready "
+                         "land/sea combat unit_id at its current visible sole-unit tile with expected_turn. "
+                         "Known unpacked/nonreinforcing source on own/unowned/existing met-war territory "
+                         "and native permission without confirmation required. Native selects an eligible "
+                         "trade route: no exact route/owner selection, hidden trade inventory read, physical "
+                         "road destruction or new war. Verifies stable source, movement spend, positive Gold "
+                         "gain and command no longer available, not complete destroyed-route identity, "
+                         "payload/connectivity effects or exact loot forecast. One submission,15-second readback; "
+                         "no unknown retry or turn advance."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(plunder_trade_route)
         server.tool(
             name="levy_civ7_city_state_unit",title="Levy exact Civ VII city-state unit under cap",
             description=("CHANGE GAME STATE: one fixed native CS_LEVY_UNIT levy for exact met "
