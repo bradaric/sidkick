@@ -71,6 +71,8 @@ from civ7.actions import (
     withdraw_capped_project_support,
     observed_field_attack,
     peace_city_action,
+    fleet_attack,
+    observed_army_attack,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -289,6 +291,34 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
     )(research_and_government)
     if enable_writes:
         server.tool(
+            name="observe_civ7_army_attack",title="Execute Civ VII land group attack with visible effect observations",
+            description=("CHANGE GAME STATE: exact land commander_id, kind ranged/melee, target_player/"
+                         "target_unit_id at x/y and expected_turn. Same existing land Focus Fire/"
+                         "coordinated melee guards: empty packed commander, ready role-eligible deployed "
+                         "radius participants, exact visible own/unowned combat field target, existing "
+                         "met war and native permission. One command, not per-unit requests. Adds bounded "
+                         "visible health deltas and native kill attribution for captured participants, "
+                         "500ms observed-event quiet window within15-second readback. Partial/all attack "
+                         "consumption separate; quiet is not proof of full hidden/global effects. No "
+                         "captures, new war, turn advance or automatic retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(observed_army_attack)
+        server.tool(
+            name="attack_civ7_fleet",title="Execute native Heavy or Light Civ VII fleet attack",
+            description=("CHANGE GAME STATE: exact Fleet Commander commander_id, role heavy/light, "
+                         "target_player/target_unit_id at visible own/unowned water x/y and expected_turn. "
+                         "Existing met war, mobile deployed fleet with empty packed membership, known "
+                         "unpacked/nonreinforcing ready Heavy/Light naval participants in native radius, "
+                         "exact native NAVAL_ATTACK eligibility and focused-command permission required. "
+                         "Light participants must already be adjacent/native reachable; no hidden approach "
+                         "or future orders. One native command selects participants; readback requires "
+                         "primary effect plus participant consumption/loss, with some/all consumption "
+                         "separate and bounded visible effects/native kill attribution. No civilian/stack/"
+                         "district/capture/new-war/complete hidden-splash or turn claim.500ms captured-event quiet "
+                         "window within15-second readback is not proof of complete global effects; no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(fleet_attack)
+        server.tool(
             name="manage_civ7_city_peace_deal",title="Edit or negotiate one explicit Civ VII settlement concession",
             description=("CHANGE GAME STATE: exact target_player_id, city_owner/city_id and visible centre "
                          "x/y, action add/remove/propose/accept/reject, fresh deal_token, max_gold_cost/"
@@ -312,7 +342,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "native Combat/UnitKilledInCombat evidence tied to this exact local attacker. "
                          "Death is confirmed only by exact native attribution, never disappearance. No hidden "
                          "unit reads, damage forecasts or complete out-of-radius/interception/global effect "
-                         "claim. One native request,15-second readback; bounded listeners closed/replaced, no retry."),
+                         "claim. One native request,500ms captured-event quiet window within15-second readback; "
+                         "quiet is not complete-effect proof. Bounded listeners closed/replaced, no retry."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(observed_field_attack)
         server.tool(

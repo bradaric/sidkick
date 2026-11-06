@@ -1,7 +1,8 @@
 (() => {
   const {commander_id: commanderId, target_player: targetPlayer, target_unit_id: targetId, x, y, expected_turn: expectedTurn, attack_kind: kind} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (![commanderId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0) || !["ranged", "melee"].includes(kind)) return reject("Exact commander, enemy identity/tile, supported focused attack and expected turn are required");
+  const naval=["sea_ranged","sea_melee"].includes(kind),melee=["melee","sea_melee"].includes(kind),{observe_effects:observe=false,observation_radius:observationRadius=1}=queryArguments;
+  if (![commanderId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0) || !["ranged", "melee","sea_ranged","sea_melee"].includes(kind)||typeof observe!=="boolean"||!Number.isInteger(observationRadius)||observationRadius<1||observationRadius>3) return reject("Exact commander, enemy identity/tile, supported focused attack, bounded observation and expected turn required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
   if (!Number.isInteger(playerId) || playerId < 0 || targetPlayer === playerId) return reject("A local player and hostile target are required");
@@ -12,7 +13,7 @@
   if (matches.length !== 1) return reject("No unique owned commander");
   const commander = matches[0], valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) && l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();
   if (commander.isCommanderUnit !== true || commander.isOnMap !== true || commander.isDead === true || commander.operationQueueSize !== 0 ||
-      GameInfo.Units.lookup(commander.type)?.Domain !== "DOMAIN_LAND" || !valid(commander.location) || !valid({x, y}) ||
+      GameInfo.Units.lookup(commander.type)?.Domain !== (naval?"DOMAIN_SEA":"DOMAIN_LAND") || (naval&&(GameInfo.Units.lookup(commander.type)?.UnitType!=="UNIT_FLEET_COMMANDER"||commander.isEmbarked!==false||GameplayMap.isWater(commander.location?.x,commander.location?.y)!==true)) || !valid(commander.location) || !valid({x, y}) ||
       !Number.isFinite(commander.Movement?.movementMovesRemaining) || commander.Movement.movementMovesRemaining <= 0 ||
       GameplayMap.getRevealedState(playerId, commander.location.x, commander.location.y) !== RevealedStates.VISIBLE) return reject("A mobile deployed unqueued land commander is required");
   const army = typeof Armies !== "undefined" ? Armies.get(commander.armyId) : null, identity = army?.getCommanderId?.();
@@ -21,6 +22,7 @@
   const same = (a, b) => a?.owner === b?.owner && a?.id === b?.id && a?.type === b?.type;
   function target() {
     if (GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE || ![-1, playerId].includes(GameplayMap.getOwner(x, y))) return null;
+    if(naval&&MapCities.getDistrict(x,y)!==null)return null;
     const district = Game.Combat.getDefensibleDistrict({x, y}), ids = MapUnits.getUnits(x, y);
     if (!district || district.owner !== -1 || district.id !== -1 || !Array.isArray(ids) || ids.length !== 1) return null;
     const id = Game.Combat.getBestDefender({x, y}, commander.id);
@@ -30,6 +32,7 @@
         !["FORMATION_CLASS_LAND_COMBAT", "FORMATION_CLASS_NAVAL"].includes(GameInfo.Units.lookup(u.type)?.FormationClass) ||
         u.location?.x !== x || u.location?.y !== y || !Number.isFinite(u.Health?.damage) || !Number.isFinite(u.Health.maxDamage) ||
         u.Health.damage < 0 || u.Health.damage >= u.Health.maxDamage) return null;
+    if (naval&&(GameInfo.Units.lookup(u.type)?.Domain!=="DOMAIN_SEA"||GameplayMap.isWater(x,y)!==true))return null;
     if (kind === "melee" && (GameInfo.Units.lookup(u.type)?.Domain !== "DOMAIN_LAND" || GameplayMap.isWater(x, y) !== false)) return null;
     return u;
   }
@@ -45,30 +48,32 @@
       for (const id of ids) packed.add(`${id.id}:${id.type}`);
     }
     if (typeof player.Armies?.getUnitReinforcementCommanderId !== "function") return null;
-    const roles = kind === "ranged" ? ["UNIT_CLASS_RANGED"] : ["UNIT_CLASS_INFANTRY", "UNIT_CLASS_CAVALRY"];
+    const roles = naval?[melee?"UNIT_CLASS_LIGHT":"UNIT_CLASS_HEAVY"]:kind === "ranged" ? ["UNIT_CLASS_RANGED"] : ["UNIT_CLASS_INFANTRY", "UNIT_CLASS_CAVALRY"];
     const candidates = owned.filter(u => !u.isCommanderUnit && u.isOnMap === true && u.isDead !== true && u.operationQueueSize === 0 &&
-      u.isEmbarked === false && valid(u.location) && GameInfo.Units.lookup(u.type)?.Domain === "DOMAIN_LAND" &&
-      GameInfo.Units.lookup(u.type)?.FormationClass === "FORMATION_CLASS_LAND_COMBAT" &&
+      u.isEmbarked === false && valid(u.location) && GameInfo.Units.lookup(u.type)?.Domain === (naval?"DOMAIN_SEA":"DOMAIN_LAND") &&
+      GameInfo.Units.lookup(u.type)?.FormationClass === (naval?"FORMATION_CLASS_NAVAL":"FORMATION_CLASS_LAND_COMBAT") &&
+      (!naval||GameplayMap.isWater(u.location.x,u.location.y)===true&&GameplayMap.getRevealedState(playerId,u.location.x,u.location.y)===RevealedStates.VISIBLE) &&
       GameInfo.TypeTags.filter(t => t.Type === GameInfo.Units.lookup(u.type)?.UnitType && roles.includes(t.Tag)).length > 0 &&
       u.Combat?.isCombat === true &&
       u.Combat.canAttack === true && Number.isInteger(u.Combat.attacksRemaining) && u.Combat.attacksRemaining > 0 &&
-      (kind === "melee" || u.Combat.rangedStrength > 0 || u.Combat.bombardStrength > 0) && Number.isFinite(u.Movement?.movementMovesRemaining) && u.Movement.movementMovesRemaining > 0 &&
+      (melee || naval || u.Combat.rangedStrength > 0 || u.Combat.bombardStrength > 0) && Number.isFinite(u.Movement?.movementMovesRemaining) && u.Movement.movementMovesRemaining > 0 &&
       radius.includes(GameplayMap.getIndexFromLocation(u.location)) && !packed.has(`${u.id.id}:${u.id.type}`) &&
       player.Armies.getUnitReinforcementCommanderId(u.id, playerId) === -1);
     const eligible = [];
     for (const u of candidates) {
       const args = {X: x, Y: y};
-      if (kind === "melee") {
+      if (melee) {
         const targets = Units.getReachableTargets(u.id);
         if (!Array.isArray(targets)) return null;
         if (!targets.includes(GameplayMap.getIndexFromLocation({x, y}))) continue;
         // Do not let a coordinated command hide movement paths or future orders.
-        if (GameplayMap.getPlotDistance(u.location.x, u.location.y, x, y) !== 1 || !Number.isInteger(UnitOperationMoveModifiers.ATTACK)) return null;
-        args.Modifiers = UnitOperationMoveModifiers.ATTACK;
-        if (Game.Combat.testAttackInto(u.id, args) !== CombatTypes.COMBAT_MELEE) continue;
+        if (GameplayMap.getPlotDistance(u.location.x, u.location.y, x, y) !== 1) return null;
+        if(!naval){if(!Number.isInteger(UnitOperationMoveModifiers.ATTACK))return null;args.Modifiers = UnitOperationMoveModifiers.ATTACK;
+          if (Game.Combat.testAttackInto(u.id, args) !== CombatTypes.COMBAT_MELEE) continue;}
       }
-      const operation = kind === "ranged" ? UnitOperationTypes.RANGE_ATTACK : UnitOperationTypes.MOVE_TO;
-      if (Game.UnitOperations.canStart(u.id, operation, args, false)?.Success !== true) continue;
+      const operation = naval?"UNITOPERATION_NAVAL_ATTACK":kind === "ranged" ? UnitOperationTypes.RANGE_ATTACK : UnitOperationTypes.MOVE_TO;
+      const check=Game.UnitOperations.canStart(u.id, operation, args, false);
+      if (check?.Success !== true||check.RequiresConfirmation===true) continue;
       eligible.push({unit_id: u.id.id, component_type: u.id.type, unit_type: u.type, before_attacks: u.Combat.attacksRemaining,
         location: {x: u.location.x, y: u.location.y}, moves: u.Movement.movementMovesRemaining});
     }
@@ -79,9 +84,9 @@
   const before = {turn: Game.turn, age: Game.age, playerId, unitId: commanderId, unitType: commander.type, componentType: commander.id.type,
     location: {...commander.location}, moves: commander.Movement.movementMovesRemaining, participants: eligible,
     targetType: enemy.type, targetComponentType: enemy.id.type, targetDamage: enemy.Health.damage};
-  const command = kind === "ranged" ? "UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED" : "UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE", args = {X: x, Y: y};
+  const command = naval?melee?"UNITCOMMAND_FOCUSED_ATTACK_SEA_MELEE":"UNITCOMMAND_FOCUSED_ATTACK_SEA_RANGED":kind === "ranged" ? "UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED" : "UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE", args = {X: x, Y: y};
   const picker = Game.UnitCommands.canStart(commander.id, command, {}, false);
-  if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation({x, y}))) return reject("Target is not offered by the exact native focused land attack", picker?.FailureReasons ?? []);
+  if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation({x, y}))) return reject("Target is not offered by the exact native focused land/naval attack", picker?.FailureReasons ?? []);
   const check = Game.UnitCommands.canStart(commander.id, command, args, false);
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native focused attack is blocked or requires confirmation", check?.FailureReasons ?? []);
   const fresh = target();
@@ -94,7 +99,14 @@
   const verificationArguments = {unit_id: commanderId, attacker_component_type: commander.id.type, attacker_type: commander.type,
     before_attacks: 1, participants: eligible, target_player: targetPlayer, target_unit_id: targetId, target_component_type: before.targetComponentType,
     target_type: before.targetType, before_target_damage: before.targetDamage, x, y};
-  Game.UnitCommands.sendRequest(commander.id, command, args);
-  return {status: "submitted", before, expected: {unitId: commanderId, targetPlayer, targetUnitId: targetId, attackObserved: true}, verificationArguments,
-    verificationScope: "At least one captured participant consumes an attack/is lost plus observed primary-target damage/departure. Native splash/other side effects are possible and not fully verified; engine chooses participants, not per-unit selection"};
+  if(observe){
+    if(typeof combatObserver==="undefined")return reject("Fixed grouped-combat observer unavailable");
+    const actors=eligible.map(p=>({owner:playerId,id:p.unit_id,type:p.component_type})),baseline=combatObserver.capture(playerId,x,y,observationRadius,actors);
+    if(!baseline?.some(u=>u.owner===targetPlayer&&u.instanceId===targetId&&u.componentType===before.targetComponentType))return reject("Bounded grouped-combat observation baseline unavailable");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||JSON.stringify(participants())!==JSON.stringify(eligible)||target()?.Health.damage!==before.targetDamage)return reject("Group combat changed during observation capture");
+    try{verificationArguments.observation_token=combatObserver.start(playerId,actors,baseline,15000);}catch(error){return reject("Native grouped combat observation unavailable");}
+  }
+  try{Game.UnitCommands.sendRequest(commander.id, command, args);}catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
+  return {status: "submitted", before, expected: {unitId: commanderId, targetPlayer, targetUnitId: targetId, attackObserved: true,...(observe?{observationQuiescent:true}:{})}, verificationArguments,
+    verificationScope: "At least one captured participant consumes an attack/is lost plus observed primary-target damage/departure. Optional bounded observation waits500ms without a captured event, not proof of complete global effects. Native splash/other side effects remain partially observed; engine chooses participants, not per-unit selection"};
 })()

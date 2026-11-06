@@ -24,7 +24,7 @@ async def run_script(
         raise ValueError("Civ VII queries must be bundled JavaScript files")
 
     script = script_path.read_text(encoding="utf-8")
-    if script_name in {"attack_unit.js", "unit_attack_state.js"}:
+    if script_name in {"attack_unit.js", "unit_attack_state.js", "army_attack.js"}:
         # Fixed internal prelude, never caller-selected or arbitrary JavaScript.
         helper = (ROOT / "combat_observation.js").read_text(encoding="utf-8")
         script = f"((combatObserver) => {{ return {script}\n}})({helper})"

@@ -207,6 +207,20 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def observed_army_attack(commander_id: StrictInt, kind: Literal["ranged", "melee"], target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """One existing fixed land focused attack with bounded multi-attacker effect observation."""
+    if any(type(v) is not int or v<0 for v in (commander_id,target_player,target_unit_id,x,y,expected_turn)) or kind not in ("ranged","melee"):
+        raise ValueError("Exact land commander, ranged/melee group kind, hostile field target and expected turn required")
+    return await _execute_and_verify("army_attack.js",{"commander_id":commander_id,"attack_kind":kind,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn,"observe_effects":True,"observation_radius":1},"unit_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def fleet_attack(commander_id: StrictInt, role: Literal["heavy", "light"], target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """One native Heavy/Light focused naval command with captured deployed participants and observations."""
+    if any(type(v) is not int or v<0 for v in (commander_id,target_player,target_unit_id,x,y,expected_turn)) or role not in ("heavy","light"):
+        raise ValueError("Exact fleet commander, Heavy/Light role, visible hostile ship and expected turn required")
+    return await _execute_and_verify("army_attack.js",{"commander_id":commander_id,"attack_kind":"sea_ranged" if role=="heavy" else "sea_melee","target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn,"observe_effects":True,"observation_radius":1},"unit_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def peace_city_action(target_player_id: StrictInt, city_owner: StrictInt, city_id: StrictInt, x: StrictInt, y: StrictInt, action: Literal["add", "remove", "propose", "accept", "reject"], deal_token: StrictStr, max_gold_cost: StrictFloat, max_influence_cost: StrictFloat, expected_turn: StrictInt, item_token: StrictStr | None = None, item_id: StrictInt | None = None) -> dict[str, Any]:
     """One explicitly identified visible city OFFER concession edit or peace negotiation step."""
     if (any(type(v) is not int or v<0 for v in (target_player_id,city_owner,city_id,x,y,expected_turn)) or action not in ("add","remove","propose","accept","reject") or not isinstance(deal_token,str) or not deal_token or len(deal_token)>100000 or

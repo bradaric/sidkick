@@ -654,6 +654,35 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
 - Native enum-only own-unit/captive/technology deal offers returned empty; Great
   Work offers returned2 and still need assessment/implementation, not declared
   unavailable merely because the current peace UI lacks their editors.
+- `17c28ef`: exact city concessions. Great Work negotiation assessment found a real
+  binding blocker: the2 own offers have the same complete own property list and
+  byte-identical serialization, no work index/identity or hidden prototype accessor.
+  Cannot safely distinguish one work by native offer or bind a typed request to it;
+  no array-order guess/opaque write submitted. This is an implementation/API identity
+  blocker, not a positive-execution-only gap or completed Great Work concession.
+- Heavy/Light Fleet focused attacks implemented through fixed native SEA_RANGED/
+  SEA_MELEE commands, exact Heavy/Light role tags, ready deployed known participants
+  in native radius and individual NAVAL_ATTACK permission. Light ships must already
+  be adjacent/native-reachable. No district/stack/civilian/landing/capture/new war.
+  Bounded observer now attributes to captured attacker lists, not commander ID;
+  explicit observed land-group wrapper uses the same existing land-role guards.
+- Heavy test Fleet131073 unpacked3 captured Dreadnoughts normally; only movement
+  restored. Native Heavy command against test5308476 returned primary57 damage
+  while its second captured shot was still resolving. Later target departed and
+  two ships spent; original observer closed too early, so no kill claim or repeat.
+  Fixed observed verification to require500ms without a captured native event before
+  closure/success (within15 seconds). Quiet is not full/global-effect proof.
+- Distinct native Light command from new test Fleet7536731 used Ironclads7405657/
+  7471194 against fresh5374013: both attacks consumed, damage0→65, retaliation30/24,
+  two native Combat events, quiet544ms. Earlier Fleet131073 could not command those
+  tiles outside its actual radius; no request was sent from it for Light combat.
+  A distinct Heavy command with previously unspent4259882 against5374013 then
+  confirmed native kill with quiet568ms. No attack/HP counters forced or old request
+  repeated. Existing ships retained; all3 test Dreadnoughts now deployed/spent.
+- Distinct native observed land Focus Fire from test Commander7602268 with Field
+  Guns7667805/7733342 dealt47 to5439550 `(21,17)`, both attacks consumed, two native
+  events and quiet533ms. Synthetic creation only. 240 Python / 434 Node pass;
+  tools24/118 including94 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -661,7 +690,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
-| Military transport | Broader travel/transport variants remain to assess. Squadron establishment/packed relocation, aircraft transfers, grouped Ground Attack, Fighter Sweep and Carpet Bomb implemented/live-verified. Single-aircraft carrier missions and packed-army ocean travel live-verified. Multi-aircraft Ground Attack/fortified district bombing cases fixture-tested. |
+| Military transport | Broader travel/transport variants remain to assess. Heavy/Light Fleet focused commands and observed land-group attacks now native-verified. Squadron establishment/packed relocation, aircraft transfers and air missions implemented/live-verified. Packed-army ocean travel verified. Some multi-aircraft/fortified bomb cases fixture-only. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
 | Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |

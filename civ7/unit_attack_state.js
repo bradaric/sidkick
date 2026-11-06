@@ -67,9 +67,11 @@
       sourceMovementSpent, sourceAttackSpent, packingPreserved, movesRemaining: currentMoves ?? null, attacksRemaining: attacks,
       abilityAttackObserved: sourceStayed && attacker.operationQueueSize === 0 && packingPreserved && (sourceMovementSpent || sourceAttackSpent) && targetEffect};
   }
-  const combatObservation=queryArguments.observation_token&&typeof combatObserver!=="undefined"?combatObserver.read(queryArguments.observation_token,consumed&&(targetLeftTile===true||targetDamage!=null&&targetDamage>beforeDamage)):null;
+  let combatObservation=queryArguments.observation_token&&typeof combatObserver!=="undefined"?combatObserver.read(queryArguments.observation_token):null;
+  const observationQuiescent=Boolean(combatObservation?.available&&combatObservation.quiescent&&consumed&&(targetLeftTile===true||targetDamage!=null&&targetDamage>beforeDamage));
+  if(observationQuiescent)combatObservation=combatObserver.read(queryArguments.observation_token,true);
   const killConfirmed=combatObservation?.available===true&&combatObservation.nativeKills.some(e=>e.unitKilled.owner===targetPlayer&&e.unitKilled.id===targetUnitId&&e.unitKilled.type===targetComponentType)?true:null;
-  return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId,killConfirmed,...(combatObservation?{combatObservation}:{}),
+  return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId,killConfirmed,...(combatObservation?{combatObservation,observationQuiescent}:{}),
     attackerPresent: Boolean(attacker), attacksRemaining: attacks, attackConsumedOrAttackerLost: consumed, consumedUnitIds,
     participantObservations, allCapturedParticipantsConsumed: participantObservations ? participantObservations.every(p => p.attackConsumedOrLost) : null,
     targetDamage, targetLeftTile, attackObserved: consumed && (targetLeftTile === true || (targetDamage != null && targetDamage > beforeDamage)),

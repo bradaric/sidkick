@@ -114,6 +114,6 @@
   }
   try{Game.UnitOperations.sendRequest(unit.id, operation, args);}
   catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
-  return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, attackObserved: true}, verificationArguments,
+  return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, attackObserved: true,...(observe?{observationQuiescent:true}:{})}, verificationArguments,
     verificationScope: observe?"Attack consumption/loss plus primary effect, with captured visible-unit health deltas/departures and exact native local-attack kill attributions. Unknown departures are not kills. Observation is bounded, not complete hidden/out-of-radius/interception/global effect accounting":"Attack consumed/attacker lost plus visible primary-target damage or departure; not a damage forecast, kill or capture claim. Native splash and other side effects may affect additional units and are not fully verified"};
 })()

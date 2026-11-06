@@ -1600,6 +1600,18 @@ Live native offer read and cooldown rejection only; give/receive execution fixtu
 no settlement transferred. All24 read-only tools passed real stdio MCP calls.
 **238 Python / 431 Node pass; tools24/116 (92 actions).**
 
+`attack_civ7_fleet` adds fixed Heavy/Light focused naval commands with exact role,
+radius, ready deployed participant and native target checks. `observe_civ7_army_attack`
+adds bounded group evidence to existing land commands. Observed actions now wait a
+500ms captured-event quiet window before closing; quiet is not full-effect proof.
+Native Light pair dealt65/retaliation30+24, then a distinct Heavy strike confirmed
+the kill. Observed two-Field-Gun land Focus Fire dealt47 and consumed both attacks.
+First Heavy test exposed early observation closure; fixed, never repeated or claimed
+as a confirmed kill. Native effects, labelled setup, no HP/attack counter forcing.
+Great Work deal offers remain API-blocked: two identical identity-free objects,
+no safe per-work selection; no opaque or array-order write attempted.
+**240 Python / 434 Node pass; tools24/118 (94 actions).**
+
 ## One-shot export
 
 ```powershell

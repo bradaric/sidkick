@@ -29,3 +29,9 @@ test('unmet/invisible identities never enter capture and observer overflow/expir
  const r=f.api.read(token);assert.equal(r.overflow,true);assert.equal(r.nativeCombats.length,64);assert.equal(r.capturedSetFullyObserved,false);assert.equal(f.listeners.Combat.length,0);
  const next=f.api.start(0,f.id(0,10),f.baseline,15000);f.ctx.__sidkickCombatObservation.expires=0;assert.equal(f.api.read(next).closed,true);assert.equal(f.listeners.Combat.length,0);
 });
+test('one grouped action attributes events only to its captured list of local attackers',()=>{
+ const f=fixture();f.units.push({id:f.id(0,11),type:100,location:{x:2,y:2},Health:{damage:0,maxDamage:100}});
+ const actors=[f.id(0,10),f.id(0,11)],baseline=f.api.capture(0,3,3,1,actors),token=f.api.start(0,actors,baseline,15000);
+ f.emit('UnitKilledInCombat',{unitKiller:f.id(0,11),unitKilled:f.id(1,20)});
+ assert.equal(f.api.read(token,true).units.find(u=>u.instanceId===20).killConfirmed,true);
+});

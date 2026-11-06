@@ -29,8 +29,8 @@ function run(o = {}, script = 'attack_unit.js') {
     target_component_type: 26, target_type: 200, before_target_damage: 0, ...o.args};
   const context = {queryArguments: args, UI: {isInGame: () => true},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false}, Players: {get: () => player},
-    GameInfo: {TypeTags: [{Type: 'UNIT_RANGED', Tag: o.meleeRole ?? (o.siegeOnly ? 'UNIT_CLASS_SIEGE' : 'UNIT_CLASS_RANGED')}],
-       Units: {lookup: type => ({UnitType: type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: type === 200 && o.shoreLandTarget ? 'DOMAIN_LAND' : o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+    GameInfo: {TypeTags: [{Type: 'UNIT_RANGED', Tag: o.navalGroup?o.lightNaval?'UNIT_CLASS_LIGHT':'UNIT_CLASS_HEAVY':o.meleeRole ?? (o.siegeOnly ? 'UNIT_CLASS_SIEGE' : 'UNIT_CLASS_RANGED')}],
+       Units: {lookup: type => ({UnitType: type===300&&o.navalGroup?'UNIT_FLEET_COMMANDER':type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: type === 200 && o.shoreLandTarget ? 'DOMAIN_LAND' : o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
        FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : type === 200 && o.shoreLandTarget ? 'FORMATION_CLASS_LAND_COMBAT' : o.sea ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
       getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.tileOwner ?? (o.enemyTile ? 1 : -1),
@@ -64,6 +64,7 @@ function run(o = {}, script = 'attack_unit.js') {
        }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   if(o.observe){
     args.observe_effects=true;args.observation_radius=1;let gone=false;const listeners={};
+    let clock=1000;context.Date={now:()=>clock};context.advanceObservationClock=()=>{clock+=600;};
     context.engine={on:(name,cb)=>{(listeners[name]??=[]).push(cb);return{clear:()=>{listeners[name]=listeners[name].filter(c=>c!==cb);}};}};
     context.MapUnits.getUnits=(x,y)=>x===2&&y===3?[attacker.id]:x===3&&y===3&&!gone?[target.id]:[];
     context.combatObserver=vm.runInNewContext(fs.readFileSync('civ7/combat_observation.js','utf8'),context);
@@ -72,19 +73,24 @@ function run(o = {}, script = 'attack_unit.js') {
       for(const cb of listeners.Combat??[])cb({attacker:attacker.id,defender:target.id});
       if(o.nativeKill){for(const cb of listeners.UnitKilledInCombat??[])cb({unitKiller:attacker.id,unitKilled:target.id});gone=true;}
     };
+    if(o.group)context.Game.UnitCommands.sendRequest=(id,command,args)=>{
+      calls.push({kind:'commandSend',id,command,args});target.Health.damage=30;
+      for(const u of [attacker,...(o.secondParticipant?[second]:[])]){u.Combat.attacksRemaining=0;for(const cb of listeners.Combat??[])cb({attacker:u.id,defender:target.id});}
+    };
   }
   let data;
   if (o.hiddenCentre) context.GameplayMap.getRevealedState = (p, x, y) => x === 4 && y === 4 ? 0 : 2;
   attacker.Combat.rangedStrength = o.noRanged ? 0 : 40;
   try {data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7', script), 'utf8'), context);}
   catch (e) {if (!o.sendThrows) throw e; data = {error: e.message};}
-  let after=null;if(o.observe&&data.status==='submitted'){context.queryArguments=data.verificationArguments;after=vm.runInNewContext(fs.readFileSync('civ7/unit_attack_state.js','utf8'),context);}
+  let after=null;if(o.observe&&data.status==='submitted'){if(!o.deferQuiet)context.advanceObservationClock();context.queryArguments=data.verificationArguments;after=vm.runInNewContext(fs.readFileSync('civ7/unit_attack_state.js','utf8'),context);}
   return JSON.parse(JSON.stringify({data, calls,after}));
 }
 
 test('observed field strikes keep native single submission and attribute primary kill only to the exact kill event',()=>{
  const damaged=run({observe:true});assert.equal(damaged.data.status,'submitted');assert.ok(damaged.data.verificationArguments.observation_token);assert.equal(damaged.after.killConfirmed,null);assert.equal(damaged.after.combatObservation.units.find(u=>u.instanceId===20).damageDelta,30);
  const killed=run({observe:true,nativeKill:true});assert.equal(killed.after.killConfirmed,true);assert.equal(killed.after.combatObservation.closed,true);assert.equal(killed.calls.filter(c=>c.kind==='send').length,1);
+ const inFlight=run({observe:true,deferQuiet:true});assert.equal(inFlight.after.attackObserved,true);assert.equal(inFlight.after.observationQuiescent,false);assert.equal(inFlight.after.combatObservation.closed,false,'first primary damage must not close event capture while native group effects may still resolve');
 });
 
 test('single melee/ranged unit attacks bind explicit hostile component and fixed native arguments', () => {
@@ -96,6 +102,18 @@ test('single melee/ranged unit attacks bind explicit hostile component and fixed
     assert.equal(data.expected.attackObserved, true);
     assert.equal(data.verificationArguments.before_target_damage, 0);
   }
+});
+
+test('fleet focused attacks use exact Heavy/Light naval roles, deployed radius members and native NAVAL_ATTACK eligibility',()=>{
+ for(const lightNaval of [false,true]){
+  const o={group:true,sea:true,navalGroup:true,lightNaval,args:{attack_kind:lightNaval?'sea_melee':'sea_ranged'}};
+  const r=run(o,'army_attack.js');assert.equal(r.data.status,'submitted');assert.equal(r.calls.at(-1).command,lightNaval?'UNITCOMMAND_FOCUSED_ATTACK_SEA_MELEE':'UNITCOMMAND_FOCUSED_ATTACK_SEA_RANGED');
+  assert.equal(r.calls.some(c=>c.kind==='check'&&c.operation==='UNITOPERATION_NAVAL_ATTACK'),true);
+  for(const extra of [{sea:false},{packedGroup:true},{distant:true,lightNaval:true},{outsideRadius:true}])assert.equal(run({...o,...extra},'army_attack.js').data.status,'rejected');
+ }
+});
+test('observed land group attack captures multiple actual participant events and waits for quiet readback',()=>{
+ const r=run({group:true,secondParticipant:true,observe:true},'army_attack.js');assert.equal(r.data.status,'submitted');assert.equal(r.data.expected.observationQuiescent,true);assert.equal(r.after.observationQuiescent,true);assert.equal(r.after.combatObservation.nativeCombats.length,2);assert.equal(r.after.allCapturedParticipantsConsumed,true);assert.equal(r.calls.filter(c=>c.kind==='commandSend').length,1);
 });
 
 test('army combat readback distinguishes primary effect from complete participant consumption', () => {
