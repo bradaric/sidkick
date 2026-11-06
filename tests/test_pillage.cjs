@@ -11,15 +11,16 @@ function run(o = {}, script = 'pillage_tile.js') {
   const baseline = [{owner: 1, instanceId: 20, componentType: 2, type: 200, complete: true, damaged: false}];
   const ctx = {queryArguments: {unit_id: 10, target_player: 1, x: 3, y: 3, target_token: JSON.stringify(baseline), expected_turn: 62,
       unit_type: 100, component_type: 26, before_moves: 2, baseline_constructibles: baseline,
-      ...(o.coastal ? {kind: 'coastal', source_location: {x: 2, y: 3}} : {}), ...o.args},
+      ...(o.coastal ? {kind: 'coastal', source_location: {x: 2, y: 3}} : {}),
+      ...(o.route ? {kind:'route',target_token:'{"routeType":400}',before_route_type:400} : {}), ...o.args},
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => Boolean(o.sent)},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => [unit]},
       Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 30 : -1},
       Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace}, Treasury: {goldBalance: 1000}})},
-    GameInfo: {Units: {lookup: () => ({Domain: o.sea || o.coastal ? 'DOMAIN_SEA' : 'DOMAIN_LAND', FormationClass: o.coastal ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
+    GameInfo: {Routes:{lookup:n=>n===400?{RouteType:'ROUTE_TEST'}:null},Units: {lookup: () => ({Domain: o.sea || o.coastal ? 'DOMAIN_SEA' : 'DOMAIN_LAND', FormationClass: o.coastal ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
       getOwner: () => o.ownTile ? 0 : 1, getIndexFromLocation: l => l.x + l.y * 10,
-      getPlotDistance: () => o.distant ? 2 : 1, isWater: x => x === 2}, RevealedStates: {VISIBLE: 2},
+      getRouteType:()=>o.routeGone?-1:o.changedRoute?401:400,getPlotDistance: () => o.distant ? 2 : 1, isWater: x => x === 2}, RevealedStates: {VISIBLE: 2},
     MapUnits: {getUnits: () => o.stacked ? [unit.id, id(1, 11)] : o.coastal ? [] : [unit.id]},
     MapCities: {getCity: () => id(1, 90, 1)}, Cities: {get: () => ({owner: 1, location: o.centre ? {x: 3, y: 3} : {x: 4, y: 4}})},
     MapConstructibles: {getConstructibles: () => o.gone ? [] : [building.id]},
@@ -27,7 +28,7 @@ function run(o = {}, script = 'pillage_tile.js') {
     Game: {turn: 62, age: 42, UnitOperations: {canStart: (id, operation, args, exclusion) => {
       calls.push({kind: 'check', id, operation, args, exclusion}); if (o.changed) ctx.Game.turn++;
       if (o.changedTarget) building.type++;
-      return {Success: !o.blocked, Plots: o.notOffered ? [] : [33], RequiresConfirmation: Boolean(o.confirm)};
+      return {Success: !o.blocked, ...(o.noPlots?{}:{Plots: o.notOffered ? [] : [33]}), RequiresConfirmation: Boolean(o.confirm)};
     }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   let data;
   try {data = vm.runInNewContext(fs.readFileSync(`civ7/${script}`, 'utf8'), ctx);}
@@ -39,6 +40,16 @@ test('pillage binds an exact occupied hostile tile and complete constructible to
   const {data, calls} = run(); assert.equal(data.status, 'submitted'); assert.equal(data.expected.pillageObserved, true);
   assert.deepEqual(calls.at(-1), {kind: 'send', id: {owner: 0, id: 10, type: 26}, operation: 'UNITOPERATION_PILLAGE', args: {X: 3, Y: 3}});
   assert.equal(run({sendThrows: true}).calls.filter(c => c.kind === 'send').length, 1);
+});
+
+test('route pillage binds a separate route token and observes route departure, never improvement damage',()=>{
+ const r=run({route:true,gone:true});assert.equal(r.data.status,'submitted');assert.equal(r.calls.at(-1).operation,'UNITOPERATION_PILLAGE_ROUTE');
+ assert.equal(r.calls.filter(c=>c.kind==='read').length,0);
+ assert.equal(run({route:true,noPlots:true}).data.status,'submitted','native current-tile route check can omit plot lists');
+ assert.equal(run({noPlots:true}).data.status,'rejected','constructible pillage picker remains unchanged');
+ assert.equal(run({route:true,spent:true,routeGone:true},'pillage_state.js').data.routePillageObserved,true);
+ for(const o of [{spent:false,routeGone:true},{spent:true,damaged:true},{spent:true,routeGone:true,hidden:true}])assert.equal(run({route:true,...o},'pillage_state.js').data.routePillageObserved,false);
+ for(const o of [{changedRoute:true},{routeGone:true},{stacked:true},{centre:true},{peace:true},{notOffered:true}])assert.equal(run({route:true,...o}).data.status,'rejected');
 });
 
 test('pillage refuses stale target tokens, civilians, cities, shared tiles and changed/native-blocked context', () => {

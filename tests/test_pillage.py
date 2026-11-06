@@ -8,6 +8,14 @@ from sidkick.server import create_server
 
 
 class PillageTests(unittest.IsolatedAsyncioTestCase):
+    async def test_route_pillage_is_separate_fixed_intent(self):
+        self.assertTrue(callable(getattr(actions,'pillage_route',None)))
+        with patch('civ7.actions.run_script',new_callable=AsyncMock,return_value={'status':'rejected'})as run:
+            await actions.pillage_route(10,1,3,3,'{"routeType":400}',62)
+        self.assertEqual(run.await_args.args,('pillage_tile.js',{'unit_id':10,'target_player':1,'x':3,'y':3,'target_token':'{"routeType":400}','expected_turn':62,'kind':'route'}))
+        self.assertNotIn('pillage_civ7_route',{t.name for t in create_server()._tool_manager.list_tools()})
+        self.assertIn('pillage_civ7_route',{t.name for t in create_server(enable_writes=True)._tool_manager.list_tools()})
+
     async def test_coastal_raid_uses_fixed_kind_and_opt_in_tool(self):
         self.assertTrue(callable(getattr(actions, 'coastal_raid', None)))
         args = {'unit_id': 10, 'target_player': 1, 'x': 3, 'y': 3, 'target_token': '[]', 'expected_turn': 62, 'kind': 'coastal'}

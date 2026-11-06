@@ -48,6 +48,7 @@ from civ7.actions import (
     archive_great_work,
     declare_war,
     start_hostile_diplomatic_project,
+    pillage_route,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -264,6 +265,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="pillage_civ7_route",title="Pillage exact occupied Civ VII enemy route",
+            description=("CHANGE GAME STATE: fixed native PILLAGE_ROUTE under exact ready owned land combat "
+                         "unit_id, target_player, x/y, combat-options routePillage.targetToken as target_token "
+                         "and expected_turn. Requires visible existing met-war enemy non-centre tile occupied "
+                         "only by this unpacked/nonreinforcing unit, known visible owning centre elsewhere, "
+                         "fresh exact route identity and native offered/selected permission. Verifies movement "
+                         "spend, stable unit location and visible route type change/departure, not loot, "
+                         "improvement damage, capture or future connectivity. One submission,15-second readback; "
+                         "no retry, new war or turn advancement."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(pillage_route)
         server.tool(
             name="declare_civ7_war",title="Declare Civ VII surprise or formal war",
             description=("CHANGE GAME STATE: explicit native DECLARE_WAR against exact met major target_player_id, "

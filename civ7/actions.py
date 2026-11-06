@@ -594,6 +594,13 @@ async def air_attack_unit(unit_id: StrictInt, target_player: StrictInt, target_u
     }, "air_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def pillage_route(unit_id: StrictInt, target_player: StrictInt, x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Pillage an exact fresh visible enemy route under the current land combat unit."""
+    if any(type(v) is not int or v<0 for v in (unit_id,target_player,x,y,expected_turn)) or not isinstance(target_token,str) or not target_token or len(target_token)>100000:
+        raise ValueError("Exact owned pillager, enemy route tile/token and expected turn required")
+    return await _execute_and_verify("pillage_tile.js",{"unit_id":unit_id,"target_player":target_player,"x":x,"y":y,"target_token":target_token,"expected_turn":expected_turn,"kind":"route"},"pillage_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def coastal_raid(unit_id: StrictInt, target_player: StrictInt, x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Raid one adjacent empty enemy coastal land tile with the fixed native naval operation."""
     if (any(type(v) is not int or v < 0 for v in (unit_id, target_player, x, y, expected_turn)) or

@@ -1416,6 +1416,13 @@ espionage using native offered quotes. Infiltration80 and Hinder Research81 agai
 Franklin4 started and verified, spending210 Influence, leaving174.82421875. No
 completion/secrecy claim or turn. **216 Python / 396 Node pass; tools23/92 (69 actions).**
 
+`pillage_civ7_route` binds fixed native PILLAGE_ROUTE to a token-bound occupied
+visible enemy non-centre tile. Readback requires movement spend and changed route
+type, not just an accepted request. Live2818084 spent2 movement but the route type
+did not change: **outcome unknown, never retried**. Native road-vs-trade-route effect
+semantics remain unresolved; no destruction/loot claim. Fixtures pass.
+**217 Python / 397 Node pass; tools23/93 (70 actions).**
+
 ## One-shot export
 
 ```powershell

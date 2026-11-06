@@ -108,6 +108,9 @@
   const reportedModifiers = attacker.Combat?.combatModifiers;
   const attackerDef = GameInfo.Units.lookup(attacker.type);
   let pillage = null;
+  const routeType = typeof GameplayMap.getRouteType === "function" ? GameplayMap.getRouteType(x,y) : null;
+  const routePillage = Number.isInteger(routeType) && GameInfo.Routes?.lookup(routeType) ? {routeType,targetToken:JSON.stringify({routeType}),
+    scope:"Visible route only; native route-pillage eligibility separately action-checked"} : null;
   if (typeof MapConstructibles !== "undefined" && typeof Constructibles !== "undefined") {
     const ids = MapConstructibles.getConstructibles(x, y);
     const constructibles = Array.isArray(ids) ? ids.map(id => {
@@ -136,7 +139,7 @@
       },
       reportedModifiers: reportedModifiers ? Object.fromEntries(modifierKeys.map(key => [key, reportedModifiers[key] ?? null])) : null
     },
-    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack, focusedLandMeleeAttack, overrun, pillage,
+    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack, focusedLandMeleeAttack, overrun, pillage, routePillage,
     contextualStrength: null,
     expectedDamageToAttacker: null, expectedDamageToDefender: null, outcome: null,
     note: "Visible hostile target and read-only operation/commander-command checks only. Strengths, local reported modifiers and terrain definition values are separate evidence, not contextual totals or a damage simulation. Commander availability requires this target in the native plot list; no other plots are returned. No asynchronous simulation or attack request is issued"

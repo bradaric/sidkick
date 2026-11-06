@@ -336,13 +336,26 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   normally and new owned events verified, spending120+90 Influence (174.82421875
   left). No infiltration/research-denial completion or secrecy claim.
 - 216 Python / 396 Node pass; tools23/92 including69 actions.
+- `d76bc0d`: war/hostile projects. Fixed current-tile PILLAGE_ROUTE wrapper and
+  fixtures added with fresh visible route token, occupied enemy non-centre tile,
+  exact unit/war/packing checks, stable source and readback requiring movement
+  spend plus changed/departed route type. Native current-tile route checks return
+  Success without Plots on this build; only this mode permits absent Plots, while
+  an explicit empty/excluding list still rejects. Land/coastal picker gates unchanged.
+- Field Gun2818084 `(18,19)` first rejected without submission for that absent
+  list, then one actual typed route operation submitted. Outcome UNKNOWN: movement
+  2→0 and queue0 but route type220465392 remained unchanged through15-second and
+  later readbacks. Never retried. No route destruction/loot/connectivity effect
+  claimed. Native operation uses UNIT_PLUNDERTRADE sound; road-vs-trade-route
+  semantics/effect visibility remain unresolved, not a positive native success.
+- 217 Python / 397 Node pass; tools23/93 including70 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 
 | Group 1 implementation still needed | Current boundary |
 |---|---|
-| Combat/capture and hostile diplomacy | Occupation/capture decisions, route pillage and peace/deals remain unimplemented. Enemy-field melee, naval shore fire/raids, explicit war declaration and capped no-secondary sanctions/espionage are implemented. |
+| Combat/capture and hostile diplomacy | Occupation/capture decisions and peace/deals remain unimplemented. Route operation wrapper/fixtures implemented, native route-effect semantics unresolved after one unknown submission. Enemy-field melee, naval shore fire/raids, explicit war declaration and capped no-secondary sanctions/espionage are implemented. |
 | Military transport | Air membership/squadron/carrier missions and transfers, army naval transport, packed shores and broader travel remain unimplemented. City rebase and single-aircraft city-base field strikes work. |
 | Construction/resources | Factory reassignment rules remain unimplemented. Advanced Wonder/repair/overbuild/improvement queue intents are implemented; completion/repair positive cases are separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
