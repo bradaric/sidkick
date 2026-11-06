@@ -472,6 +472,15 @@ async def attack_unit(
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def commander_attack(commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Use the fixed direct commander ability against one exact adjacent field target."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, target_player, target_unit_id, x, y, expected_turn)):
+        raise ValueError("Exact commander, hostile identity/tile and expected turn are required")
+    return await _execute_and_verify("commander_attack.js", {
+        "commander_id": commander_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y, "expected_turn": expected_turn,
+    }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def naval_attack_unit(
     unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:

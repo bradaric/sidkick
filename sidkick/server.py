@@ -29,6 +29,7 @@ from civ7.actions import (
     unassign_resource,
     swap_resources,
     edit_production_queue,
+    commander_attack,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -245,6 +246,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="attack_civ7_commander", title="Use Civ VII direct commander attack",
+            description=("CHANGE GAME STATE: exact native COMMANDER_ATTACK/Heroic Assault from deployed "
+                         "commander_id against exact wartime target_player/target_unit_id at adjacent x/y "
+                         "with fresh expected_turn. Requires mobile unqueued unembarked land/sea commander, "
+                         "known source packed membership, one visible hostile same-domain combat unit on an "
+                         "own/unowned non-district field, and exact native offered/selected ability permission. "
+                         "Native eligibility controls promotion/charge prerequisites. No inferred damage, "
+                         "civilian/stack/district/city targets, enemy territory, packed-unit attacks, war or "
+                         "turn advancement. Verifies commander movement/attack spend plus primary-target "
+                         "damage/departure and stable source location/membership; not numeric ability-charge "
+                         "accounting, a kill or complete splash proof. Submits once; polls read-only for "
+                         "15 seconds and never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(commander_attack)
         server.tool(
             name="edit_civ7_production_queue", title="Edit one Civ VII production queue",
             description=("CHANGE GAME STATE: cancel one queued order or swap two adjacent orders in exact "

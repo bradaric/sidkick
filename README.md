@@ -1203,6 +1203,23 @@ swapped only those tails and cancelled both. Every edit verified and the exact
 original queue token was restored; no original order, Gold or turn changed.
 **194 Python / 359 Node tests pass; write mode73 tools (50 actions), default23 unchanged.**
 
+#### Direct commander Heroic Assault
+
+`attack_civ7_commander(commander_id, target_player, target_unit_id, x, y,
+expected_turn)` uses fixed native COMMANDER_ATTACK against an exact adjacent
+visible same-domain combat unit on an own/unowned non-district field in an existing
+met war. Native permission controls ability eligibility. Requires ready deployed
+unqueued unembarked commander and known packed membership. It does not attack with
+packed members, enter enemy territory, capture or advance turns. Readback requires
+source movement/attack spend, primary-target damage/departure and stable source
+location/membership; not numeric charge accounting, kills or full splash proof.
+
+Live MCP: commander3997707 dealt40 damage to Cuirassier2687012, movement3→2 and
+attacks1→0 with all three packed members preserved. Synthetic prerequisites were
++1000 XP followed by checked Bastion/Duty promotions, and restoration of the old
+1HP test defender to full health. No attack/ability effect was debug-forced.
+**197 Python / 361 Node tests pass; write mode74 tools (51 actions), default23 unchanged.**
+
 ## One-shot export
 
 ```powershell

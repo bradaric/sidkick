@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 
 function run({ visible = true, unitVisible = true, met = true, atWar = true, district = false, packed = false,
-  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false } = {}) {
+  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false, selectedCommanderBlocked = false } = {}) {
   const script = path.join(__dirname, '../civ7/combat.js');
   assert.ok(fs.existsSync(script), 'bundled combat evidence query exists');
   const attacker = { id: { owner: 0, id: 7, type: 26 }, type: 'ARCHER', owner: 0, location: packed ? { x: -1, y: -1 } : { x: 0, y: 0 },
@@ -47,14 +47,14 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
     } }, UnitCommands: { canStart: (id, command, args, shown) => {
       assert.equal(packed, false); assert.equal(id.owner, 0); assert.equal(id.id, 7); assert.equal(shown, false);
       if (command === 'UNITCOMMAND_COMMANDER_ATTACK') {
-        commandQueries++; assert.equal(Object.keys(args).length, 0);
+        commandQueries++;
       } else {
         assert.ok(['UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED', 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE', 'UNITCOMMAND_ARMY_OVERRUN'].includes(command));
         if (command === 'UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED') focusedQueries++;
         else if (command === 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE') meleeQueries++; else overrunQueries++;
         if (Object.keys(args).length) assert.deepEqual(JSON.parse(JSON.stringify(args)), {X: 1, Y: 0});
       }
-      return { Success: commandAllowed, FailureReasons: commandAllowed ? [] : ['No eligible army units'],
+      return { Success: commandAllowed && !(selectedCommanderBlocked && command === 'UNITCOMMAND_COMMANDER_ATTACK' && Object.keys(args).length), FailureReasons: commandAllowed ? [] : ['No eligible army units'],
         Plots: commanderTarget ? [1, 999] : [999], Modifiers: [{ secret: 999 }] };
     } } },
   });
@@ -137,11 +137,13 @@ test('visible target terrain reports definition modifiers without adding them in
 test('commander attack has its own permission and requires the visible target in native plots', () => {
   const { data, queries, commandQueries } = run({ commander: true, canAttack: false });
   assert.equal(queries, 0, 'a commander command must not require a regular attack check');
-  assert.equal(commandQueries, 1);
+  assert.equal(commandQueries, 2);
   assert.ok(data.commanderAttack, 'distinct commander attack evidence is exported');
   assert.equal(data.commanderAttack.operationAllowed, true);
   assert.equal(data.commanderAttack.targetInNativePlots, true);
   assert.equal(data.commanderAttack.availableNow, true);
+  assert.equal(data.commanderAttack.selectedTargetAllowed, true);
+  assert.equal(run({commander: true, selectedCommanderBlocked: true}).data.commanderAttack.availableNow, false);
   assert.equal(run({ commander: true, district: true, canAttack: false }).data.commanderAttack?.availableNow, true);
   assert.equal(run({ commander: true, commanderTarget: false }).data.commanderAttack?.availableNow, false);
   const blocked = run({ commander: true, commandAllowed: false }).data.commanderAttack;

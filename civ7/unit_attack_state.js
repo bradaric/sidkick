@@ -42,6 +42,25 @@
       }
     }
   }
+  if (queryArguments.commander_attack === true) {
+    const {before_moves: moves, commander_before_attacks: oldAttacks, baseline_army_id: armyId,
+      baseline_packed_unit_ids: baseline, commander_location: location} = queryArguments;
+    if (!attacker || attacker.isCommanderUnit !== true || queryArguments.participants !== undefined || !Number.isFinite(moves) || moves <= 0 ||
+        !Number.isInteger(armyId) || armyId < 0 || !Array.isArray(baseline) || baseline.some(id => !Number.isInteger(id) || id < 0) || new Set(baseline).size !== baseline.length ||
+        ![location?.x, location?.y].every(v => Number.isInteger(v) && v >= 0)) throw Error("Invalid captured commander ability baseline");
+    const army = Armies.get(attacker.armyId), identity = army?.getCommanderId?.(), ids = army?.getUnitIds?.();
+    if (army?.owner !== playerId || army.localId !== armyId || identity?.owner !== playerId || identity.id !== unitId || identity.type !== componentType ||
+        !Array.isArray(ids) || ids.some(id => id.owner !== playerId || owned.filter(u => u.id.id === id.id && u.id.type === id.type).length !== 1)) throw Error("Commander army identity or membership changed");
+    const packed = ids.map(id => id.id).sort((a, b) => a - b), packingPreserved = JSON.stringify(packed) === JSON.stringify(baseline);
+    const currentMoves = attacker.Movement?.movementMovesRemaining;
+    const sourceMovementSpent = Number.isFinite(currentMoves) && currentMoves >= 0 && currentMoves < moves;
+    const sourceAttackSpent = Number.isInteger(oldAttacks) && oldAttacks >= 0 && Number.isInteger(attacks) && attacks >= 0 && attacks < oldAttacks;
+    const targetEffect = targetLeftTile === true || (targetDamage != null && targetDamage > beforeDamage);
+    const sourceStayed = attacker.isOnMap === true && attacker.isDead !== true && attacker.location?.x === location.x && attacker.location?.y === location.y;
+    return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId, targetDamage, targetLeftTile,
+      sourceMovementSpent, sourceAttackSpent, packingPreserved, movesRemaining: currentMoves ?? null, attacksRemaining: attacks,
+      abilityAttackObserved: sourceStayed && attacker.operationQueueSize === 0 && packingPreserved && (sourceMovementSpent || sourceAttackSpent) && targetEffect};
+  }
   return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId,
     attackerPresent: Boolean(attacker), attacksRemaining: attacks, attackConsumedOrAttackerLost: consumed, consumedUnitIds,
     targetDamage, targetLeftTile, attackObserved: consumed && (targetLeftTile === true || (targetDamage != null && targetDamage > beforeDamage)),

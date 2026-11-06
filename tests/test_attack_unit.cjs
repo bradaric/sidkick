@@ -16,6 +16,7 @@ function run(o = {}, script = 'attack_unit.js') {
     operationQueueSize: o.queuedCommander ? 1 : 0, location: {x: 2, y: 2}, armyId: {owner: 0, id: 30, type: 29},
     isEmbarked: false, Movement: {movementMovesRemaining: 2}, Combat: {attacksRemaining: 1}};
   if (o.movedCommander) {commander.location = {x: 3, y: 3}; commander.Movement.movementMovesRemaining = 0;}
+  if (o.spentCommander) commander.Movement.movementMovesRemaining = 0;
   const second = {...attacker, id: {owner: 0, id: 11, type: 26}, location: {x: 3, y: 2}};
   const player = {isTurnActive: !o.inactive, Units: {getUnits: () => [...(o.deadAttacker ? [] : [attacker]), ...(o.secondParticipant ? [second] : []), ...(o.group ? [commander] : [])]},
     Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 10 : -1},
@@ -36,7 +37,7 @@ function run(o = {}, script = 'attack_unit.js') {
       getDistrict: () => o.undefendedDistrict ? {owner: 1, id: 8, type: 4} : null},
     Cities: {get: () => o.unknownCity ? null : {owner: 1, location: o.cityCentre ? {x: 3, y: 3} : {x: 4, y: 4}}},
     MapUnits: {getUnits: () => o.gone ? [] : o.stacked ? [target.id, {owner: 1, id: 21, type: 26}] : [target.id]},
-    Armies: {get: () => o.unknownArmy ? null : {owner: 0, getCommanderId: () => commander.id, getUnitIds: () => o.packedGroup ? [attacker.id] : []}},
+    Armies: {get: () => o.unknownArmy ? null : {owner: 0, localId: 30, getCommanderId: () => commander.id, getUnitIds: () => o.packedGroup ? [attacker.id] : []}},
     Units: {get: id => {calls.push({kind: 'readTarget', id}); return target;}, getReachableTargets: () => o.unreachable ? [] : [33],
       getCommandRadiusPlots: () => o.outsideRadius ? [] : [32, 23]},
     UnitOperationTypes: {MOVE_TO: 900, RANGE_ATTACK: 901}, UnitOperationMoveModifiers: {ATTACK: 1},
@@ -99,6 +100,30 @@ test('naval attack uses the distinct native naval operation and its offered plot
     {group: true, unknownArmy: true}, {hidden: true}, {peace: true}, {reinforcing: true}]) {
     const result = run({sea: true, args: {kind: 'naval'}, ...o});
     assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('direct commander attack binds native ability target without attacking through packed members', () => {
+  const {data, calls} = run({group: true, packedGroup: true}, 'commander_attack.js');
+  assert.equal(data.status, 'submitted'); assert.equal(data.expected.abilityAttackObserved, true);
+  assert.deepEqual(calls.at(-1), {kind: 'commandSend', id: {owner: 0, id: 30, type: 26}, command: 'UNITCOMMAND_COMMANDER_ATTACK', args: {X: 3, Y: 3}});
+  assert.deepEqual(data.verificationArguments.baseline_packed_unit_ids, [10]);
+  assert.equal(run({group: true, sea: true}, 'commander_attack.js').data.status, 'submitted');
+  for (const o of [{unknownArmy: true}, {spentCommander: true}, {queuedCommander: true}, {hidden: true}, {peace: true}, {enemyTile: true},
+    {stacked: true}, {district: true}, {undefendedDistrict: true}, {civilianDefinition: true}, {commandBlocked: true}, {notOffered: true},
+    {confirm: true}, {changedCommand: true}]) {
+    const result = run({group: true, packedGroup: true, ...o}, 'commander_attack.js');
+    assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'commandSend').length, 0);
+  }
+});
+
+test('commander ability readback requires observed source spend plus primary-target effect and unchanged packing', () => {
+  const args = {unit_id: 30, attacker_type: 300, commander_attack: true, before_moves: 2, commander_before_attacks: 1,
+    baseline_packed_unit_ids: [10], baseline_army_id: 30, commander_location: {x: 2, y: 2}};
+  const good = run({group: true, packedGroup: true, spentCommander: true, damaged: true, args}, 'unit_attack_state.js');
+  assert.equal(good.data.abilityAttackObserved, true); assert.equal(good.data.sourceMovementSpent, true);
+  for (const o of [{spentCommander: false}, {damaged: false}, {packedGroup: false}, {hidden: true}]) {
+    assert.equal(run({group: true, packedGroup: true, spentCommander: true, damaged: true, args, ...o}, 'unit_attack_state.js').data.abilityAttackObserved, false);
   }
 });
 

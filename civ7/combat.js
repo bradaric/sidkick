@@ -62,13 +62,6 @@
   }
   let commanderAttack = null, focusedLandRangedAttack = null, focusedLandMeleeAttack = null, overrun = null;
   if (defender && deployed && attacker.isCommanderUnit) {
-    const result = Game.UnitCommands.canStart(attacker.id, "UNITCOMMAND_COMMANDER_ATTACK", {}, false);
-    const targetInNativePlots = (result?.Plots ?? []).includes(GameplayMap.getIndexFromLocation(location));
-    commanderAttack = {
-      operationAllowed: result ? Boolean(result.Success) : null, targetInNativePlots,
-      availableNow: Boolean(result?.Success) && targetInNativePlots,
-      failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)
-    };
     function focusedCommand(command) {
       const focused = Game.UnitCommands.canStart(attacker.id, command, {}, false);
       const offered = Array.isArray(focused?.Plots) && focused.Plots.includes(GameplayMap.getIndexFromLocation(location));
@@ -78,6 +71,7 @@
         failureReasons: [...(focused?.FailureReasons ?? []), ...(selected?.FailureReasons ?? [])].map(name).filter(Boolean),
         scope: "Engine-selected nearby role-eligible units; primary target only, native splash may affect adjacent enemies"};
     }
+    commanderAttack = {...focusedCommand("UNITCOMMAND_COMMANDER_ATTACK"), scope: "Exact direct commander ability permission; source/target field restrictions remain action-specific"};
     focusedLandRangedAttack = focusedCommand("UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED");
     focusedLandMeleeAttack = focusedCommand("UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE");
     overrun = {...focusedCommand("UNITCOMMAND_ARMY_OVERRUN"),

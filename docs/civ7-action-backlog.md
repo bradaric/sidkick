@@ -65,6 +65,21 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   action verified; final queue token exactly equals the original Scout queue.
   No turn, production progress reset, purchase or Gold change. 194 Python + 359
   Node tests pass; default23 tools, write mode73 including50 actions.
+- Queue edit batch committed as `7026d21`.
+- Direct commander Heroic Assault completed: exact fixed native COMMANDER_ATTACK,
+  adjacent visible same-domain hostile combat unit on own/unowned non-district
+  field, ready unembarked unqueued commander, known captured packed members and
+  exact offered/selected native permission. Packed members need not be deployed,
+  but they do not attack and must remain unchanged. Readback requires observed
+  commander movement/attack spend and primary-target effect; not numeric ability
+  charge accounting or kill/splash proof. Combat query now also checks selected
+  commander-attack permission, not just the offered picker.
+- Synthetic eligibility: +1000 test XP to3997707, checked native Steadfast → Bulwark
+  → Defilade → Resolute and Duty commendation. Restored previously debug-weakened
+  Cuirassier2687012 from1HP to100HP. Actual MCP Heroic Assault then verified damage
+  0→40, source movement3→2 and attacks1→0, stable `(15,18)`/queue0 and packed
+  2621473/3801103/4063242 unchanged. No attack/ability effect forced or turn advanced.
+- 197 Python + 361 Node tests pass; default23 tools, write mode74 including51 actions.
 
 ## Existing baseline
 
@@ -228,7 +243,7 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 | Area | Remaining implementation / verification |
 |---|---|
 | Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
-| More commander abilities | Second Wind and capped all-packed-member upgrades implemented/live-verified (naval upgrade group). Direct/special commander attacks pending. Force March has UI text but no installed command definition, not exposed. |
+| More commander abilities | Second Wind, direct Heroic Assault and capped all-packed-member upgrades live-verified with labelled setup. Other installed variants require their own coverage. Force March lacks an installed command definition and is not exposed. |
 | Military transport and travel | Naval join/leave, full-fleet pack/deploy/movement and empty/packed commander rail live-tested with debug movement setup; city-only aircraft rebase implemented, positive live case pending. Ordinary-unit rail, air membership, fleet/squadron abilities, army naval transport, longer paths, foreign/fog travel and packed shore crossings pending. |
 | Broader warfare | Separate enemy-field ranged and native naval ship attacks implemented (positive live cases pending). City/district attacks, enemy-field melee, occupation/capture, pillage/coastal raids, shore bombardment/air strikes and full splash accounting pending. Other attacks retain own/unowned field boundaries. |
 | Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
