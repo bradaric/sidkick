@@ -8,11 +8,12 @@ function run(o = {}, script = 'mandatory_choice.js') {
   const mode = o.mode ?? 'government', calls = [];
   const notifications = o.notPending ? [] : [{owner: o.foreign ? 1 : 0, id: 9, type: 20}];
   const notificationType = mode === 'resource_review' ? 'NOTIFICATION_ASSIGN_NEW_RESOURCES' :
-    mode === 'policy_review' ? 'NOTIFICATION_TRADITIONS_AVAILABLE' : 'NOTIFICATION_CHOOSE_GOVERNMENT';
+    mode === 'policy_review' ? 'NOTIFICATION_TRADITIONS_AVAILABLE' :
+    mode === 'celebration' ? 'NOTIFICATION_CHOOSE_GOLDEN_AGE' : 'NOTIFICATION_CHOOSE_GOVERNMENT';
   const government = {GovernmentType: 'GOVERNMENT_TEST', $index: 7, $hash: 700};
   const celebration = {GoldenAgeType: 'GOLDEN_AGE_TEST', $hash: 800};
   const culture = {getGovernmentType: () => o.current ? 700 : 701, getGoldenAgeChoices: () => o.notOffered ? [] : [800]};
-  const happiness = {canChoose: () => !o.notPending, isInGoldenAge: () => o.current ?? false,
+  const happiness = {canChoose: () => o.canChoose ?? !o.notPending, isInGoldenAge: () => o.current ?? false,
     getCurrentGoldenAge: () => 800};
   const context = {
     queryArguments: {mode, selection: mode === 'celebration' ? 'GOLDEN_AGE_TEST' : 'GOVERNMENT_TEST', expected_turn: 60, ...o.args},
@@ -65,6 +66,16 @@ test('celebration needs canChoose plus exact offered ID and submits the UI hash'
     assert.equal(run({mode: 'celebration', ...o}).data.status, 'rejected');
   }
   assert.equal(run({mode: 'celebration', notPending: true, current: true}).data.status, 'already_active');
+});
+
+test('a real local celebration notification remains pending even when active and canChoose is false', () => {
+  const o = {mode: 'celebration', canChoose: false, current: true};
+  assert.equal(run(o).data.status, 'submitted');
+  assert.equal(run(o, 'mandatory_choice_state.js').data.celebrationPending, true);
+  for (const invalid of [{dismissed: true}, {expired: true}, {foreign: true}]) {
+    assert.equal(run({...o, ...invalid}).data.status, 'already_active');
+    assert.equal(run({...o, ...invalid}, 'mandatory_choice_state.js').data.celebrationPending, false);
+  }
 });
 
 test('resource review only acknowledges a pending resource review with the exact native command', () => {

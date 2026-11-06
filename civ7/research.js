@@ -308,7 +308,13 @@
   let celebration = null;
   if (happiness) {
     const active = happiness.isInGoldenAge();
-    const choicePending = typeof happiness.canChoose === "function" ? happiness.canChoose() ?? null : null;
+    const notificationPending = (Game.Notifications.getIdsForPlayer(id) ?? []).some(notificationId => {
+      if (notificationId.owner !== id) return false;
+      const notification = Game.Notifications.find(notificationId);
+      return notification && !notification.Dismissed && !notification.Expired &&
+        Game.Notifications.getTypeName(Game.Notifications.getType(notificationId)) === "NOTIFICATION_CHOOSE_GOLDEN_AGE";
+    });
+    const choicePending = notificationPending || (typeof happiness.canChoose === "function" ? happiness.canChoose() ?? null : null);
     celebration = {
       active, choicePending, durationTurns: celebrationDuration,
       remainingTurns: active ? happiness.getGoldenAgeTurnsLeft() ?? null : null,
@@ -322,7 +328,7 @@
           availableNow: choicePending === true && Boolean(result?.Success),
           failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
       }).filter(Boolean),
-      note: "Current native picker choices, including extra choices. Availability requires Happiness.canChoose and native permission; a definition benefit is not a marginal-yield forecast"
+      note: "Current native picker choices, including extra choices. Availability requires a pending local celebration notification or Happiness.canChoose, plus native permission; an active/default celebration alone is not proof a pending choice was resolved. A definition benefit is not a marginal-yield forecast"
     };
   }
 

@@ -148,3 +148,40 @@ introduce an arbitrary operation dispatcher or change persistent client config.
   verified response SUPPORT and exact Influence 564.82421875 → 384.82421875.
   Independent diplomacy read confirmed. Accept/reject fixture-only. Still T62;
   no further end-turn or One More Turn calls, anomaly remains unresolved.
+
+## Renewed Playground implementation, 2026-11-06
+
+User renewed authorization to cover as much remaining functionality as practical.
+Continue focused, tested batches without routine checkpoints; report real gaps.
+Priorities: correct celebration readiness; add promotions/upgrades and military
+logistics/control; make informational/campaign prompts reusable; investigate
+turn advancement before relying on unattended progression. Preserve the reviewed
+morning state in a separate native save before further game mutations.
+
+Morning inspection/actions before this implementation batch:
+- User confirmed all five Roskilde checks (city, Fishing Quay, Harbor queue,
+  improved/assigned Pearls, two Scouts).
+- Normal One More Turn button enabled extended mode and closed the victory
+  screen at T62 without advancing. Normal Lobster Volcano Continue dismissed its
+  cinematic, also without advancing.
+- Native UI acknowledged espionage/advisor reports. Genuine celebration prompt
+  existed with active celebration and canChoose=false; normal offered Science
+  confirmation cleared it, completed Combustion II and created an ordinary slot.
+  This proves a readiness bug in both typed action and readout, not successful
+  typed celebration coverage. Fix from this evidence; never replace native getters.
+- Mass Production II selected, Harbor queued in Roskilde, Pearls 1063 assigned
+  to Copan and Sugar 1885 to Kyiv. Typed resource review positively verified.
+  New ordinary slot filled with Levies after explicit Divine Right removal,
+  as requested by user for military testing. Other cards unchanged.
+- Final morning preflight: T62, extended=true, native blocker NONE, no ready
+  units/population/narrative decisions or open review panels. Informational
+  notifications remain. No turn advanced in the morning action sequence.
+- Celebration readiness fixed in action, targeted verifier and research readout:
+  a live owned non-dismissed/non-expired CHOOSE_GOLDEN_AGE notification is pending
+  even when active/default celebration exists and canChoose=false. Native offered
+  choice and exact permission checks remain mandatory. Regression reproduced the
+  observed bug; 141 Python + 289 Node tests passed. Current post-choice native
+  no-op verified without awarding the bonus again. Positive fixed typed submission
+  still needs another genuine pending case.
+- Reviewed morning state preserved in separate save
+  `Sidkick_Playground_ReviewedMorning_T62_1793948595702`, RESULT_OK, no overwrite.

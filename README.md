@@ -668,6 +668,21 @@ read confirmed the response. Accept/reject have fixture coverage, not positive
 live execution. No additional turn was advanced or post-victory continuation
 requested; the previously observed turn-boundary anomaly remains unresolved.
 
+#### Celebration readiness correction (2026-11-06)
+
+Morning UI verification found a genuine CHOOSE_GOLDEN_AGE prompt while
+`Happiness.canChoose()` was false and a default/current celebration was active.
+The native picker still offered and accepted the Science choice, clearing its
+notification, completing Combustion II and adding an ordinary policy slot. This
+was normal UI execution, not positive typed-handler coverage. The action,
+targeted verifier and readout now accept an owned, live celebration notification
+as pending evidence, alongside the native canChoose flag. Active/current selection
+alone never proves that a pending choice was resolved. Exact offered-choice and
+native permission checks remain required; foreign, expired or dismissed
+notifications cannot authorize a choice. **141 Python and 289 Node tests pass.**
+The already-completed choice was a verified no-op with the corrected handler;
+another pending case is needed for positive typed live coverage.
+
 ## One-shot export
 
 ```powershell

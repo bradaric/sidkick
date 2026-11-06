@@ -31,7 +31,7 @@
     args = {GovernmentType: def.$index, Action: PlayerOperationParameters.Activate};
     expected = {government: selection, governmentPending: false};
   } else if (mode === "celebration") {
-    pending = () => player.Happiness?.canChoose() === true;
+    pending = () => hasNotification("NOTIFICATION_CHOOSE_GOLDEN_AGE") || player.Happiness?.canChoose() === true;
     before.celebrationPending = pending();
     before.celebration = player.Happiness?.isInGoldenAge() === true
       ? GameInfo.GoldenAges.lookup(player.Happiness.getCurrentGoldenAge())?.GoldenAgeType ?? null : null;

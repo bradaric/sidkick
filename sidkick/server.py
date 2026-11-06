@@ -298,7 +298,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         server.tool(
             name="choose_civ7_celebration", title="Choose Civ VII celebration",
             description=("CHANGE GAME STATE: select one exact offered celebration ID with fresh expected_turn. "
-                         "Requires Happiness.canChoose and native permission; cannot start an unearned "
+                         "Requires a pending local celebration notification or Happiness.canChoose, plus "
+                         "native permission; cannot start an unearned "
                          "celebration. Applies the selected benefit immediately and may open policy slots. "
                          "Verifies active celebration and cleared choice, not a yield forecast. Requires "
                          "user authorization; submits once, never retries unknown/cancelled outcomes."),
