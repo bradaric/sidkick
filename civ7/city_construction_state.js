@@ -10,7 +10,8 @@
   if (cities.length !== 1) throw Error("No unique owned settlement matches the submitted city ID");
   const city = cities[0];
   const unit = GameInfo.Units.lookup(item), building = GameInfo.Constructibles.lookup(item), project = GameInfo.Projects.lookup(item);
-  const def = unit?.UnitType === item ? unit : building?.ConstructibleType === item && building.ConstructibleClass === "BUILDING"
+  const advanced = ["wonder", "repair", "overbuild", "improvement"].includes(queryArguments.construction_intent);
+  const def = unit?.UnitType === item ? unit : building?.ConstructibleType === item && (building.ConstructibleClass === "BUILDING" || advanced && ["WONDER", "IMPROVEMENT"].includes(building.ConstructibleClass))
     ? building : mode === "append" && project?.ProjectType === item ? project : null;
   if (!def || !Number.isInteger(def.$hash)) throw Error("Unknown construction item");
   const isBuilding = def === building, isUnit = def === unit;

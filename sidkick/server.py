@@ -38,6 +38,7 @@ from civ7.actions import (
     melee_attack_enemy_field,
     bombard_shore_district,
     naval_attack_land_unit,
+    append_advanced_construction,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -254,6 +255,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="append_civ7_advanced_construction", title="Queue advanced Civ VII construction",
+            description=("CHANGE GAME STATE: append one exact item/settlement/x/y with explicit "
+                         "construction_intent wonder/repair/overbuild/improvement, fresh building-placement "
+                         "targetToken as target_token and expected_turn. Owned visible city tile, exact "
+                         "constructible class, known tile ledger, native offered/selected BUILD/Append and "
+                         "matching intent required. Repair binds one damaged completed instance; overbuild "
+                         "binds one intact old building to the native replacement preview. Wonder/improvement "
+                         "may replace one exact intact rural improvement only with replace_improvement=true "
+                         "and the matching preview/token; otherwise replacement is rejected. This explicitly "
+                         "acknowledges eventual replacement. No purchase, bulk repair or instant completion; verifies only exact "
+                         "queue append/placement and preserved prefix, not completion/yields/Wonder ownership. "
+                         "No turn advancement. One submission, never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(append_advanced_construction)
         server.tool(
             name="naval_attack_civ7_land_unit", title="Fire Civ VII ship at coastal land unit",
             description=("CHANGE GAME STATE: fixed native NAVAL_ATTACK from exact ready deployed naval "

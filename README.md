@@ -1345,6 +1345,17 @@ native offered/selected permission apply; no arbitrary attacks or damage forecas
 Live typed synthetic Tank melee dealt48 damage; Frigate shore fire dealt25. No
 attack/damage effect forced. **208 Python / 378 Node pass; tools23/82 (59 actions).**
 
+`append_civ7_advanced_construction` queues an explicit Wonder/repair/overbuild/
+improvement intent on an exact visible owned city tile. Requires fresh placement
+targetToken, exact native offered/selected Append permission and matching native
+preview or damaged repair instance. Overbuild acknowledges an exact intact old
+building; Wonder/improvement rural replacement additionally needs explicit
+`replace_improvement=true`. No purchase/instant completion or bulk repair.
+Live Copan Eiffel Tower, Obshchina and Brickyard-over-Guildhall queue appends each
+verified, then only new tails cancelled and original Scout queue restored. Repair
+is fixture-only after a native-blocked setup attempt. Completion/effects require
+later turns, not claimed. **209 Python / 381 Node pass; tools23/83 (60 actions).**
+
 ## One-shot export
 
 ```powershell

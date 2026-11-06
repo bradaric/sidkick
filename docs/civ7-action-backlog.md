@@ -230,6 +230,23 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   district gates and primary district effect verification. Positive coastal fortified
   district case unavailable near the test ship; fixture coverage, no shot claimed.
   No Overrun or turn submitted. 208 Python / 378 Node pass; tools23/82,59 actions.
+- `076509b`: enemy-field melee/shore fire. Advanced construction now implemented
+  through one typed append-only intent tool: wonder, repair, overbuild, improvement.
+  Full fresh owned visible tile token, exact city, native preview/repair source,
+  offered/selected BUILD Append and preserved full queue prefix. Explicit
+  replace_improvement=true permits only the exact native-previewed intact rural
+  improvement for Wonder/unique-improvement placement; overbuild binds one intact
+  old building. Default simple construction remains no-repair/no-overbuild.
+- Live typed Copan Eiffel Tower/Obshchina replacements at `(24,12)` and Brickyard
+  over Guildhall `(25,11)` each appended/verified normally, then only their new tail
+  orders were cancelled/verified. Original Scout queue restored exactly; original
+  Monastery at `(24,12)` independently remained intact. No completion/repaired HP/
+  completed overbuild/Wonder ownership claim. Repair intent fixture-tested; no owned
+  damaged case existed. Synthetic enemy Rifleman5111865 at `(24,12)` could not
+  natively pillage it during this local turn, so no setup pillage was submitted.
+- Building-placement readout now includes native offered improvements and fresh
+  visible target tokens; fogged locations have no mutation token. 209 Python / 381
+  Node pass; tools23/83,60 actions; no Gold spend/turn.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

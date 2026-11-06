@@ -183,6 +183,18 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def append_advanced_construction(settlement: StrictStr, item: StrictStr, construction_intent: Literal["wonder", "repair", "overbuild", "improvement"], x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt, replace_improvement: StrictBool = False) -> dict[str, Any]:
+    """Append one explicitly acknowledged advanced placement/repair, never purchase or complete it."""
+    if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item or
+            construction_intent not in ("wonder", "repair", "overbuild", "improvement") or any(type(v) is not int or v < 0 for v in (x, y, expected_turn)) or
+            type(replace_improvement) is not bool or (replace_improvement and construction_intent not in ("wonder", "improvement")) or
+            not isinstance(target_token, str) or not target_token or len(target_token) > 100000):
+        raise ValueError("Exact city, constructible/intent, tile token and expected turn are required")
+    return await _execute_and_verify("advanced_construction.js", {
+        "settlement": settlement.strip(), "item": item, "construction_intent": construction_intent, "x": x, "y": y, "target_token": target_token, "expected_turn": expected_turn, "replace_improvement": replace_improvement,
+    }, "city_construction_state.js")
+
+
 async def edit_production_queue(settlement: StrictStr, queue_token: StrictStr, action: Literal["cancel", "swap"], index: StrictInt, expected_turn: StrictInt, other_index: StrictInt | None = None) -> dict[str, Any]:
     """Cancel one exact queued order or swap adjacent entries using a captured whole-queue token."""
     if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(queue_token, str) or
