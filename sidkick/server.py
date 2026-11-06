@@ -10,6 +10,7 @@ from mcp.types import Icon, ToolAnnotations
 from civ7.actions import (
     attack_unit,
     army_ranged_attack,
+    army_melee_attack,
     join_commander,
     leave_commander,
     acknowledge_agenda,
@@ -231,6 +232,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="melee_attack_civ7_army", title="Order Civ VII coordinated melee attack",
+            description=("CHANGE GAME STATE: native coordinated land melee attack from deployed commander_id "
+                         "against exact target_player/target_unit_id at x/y with fresh expected_turn. Requires "
+                         "an existing war, one visible hostile land combat unit on an own/unowned land field, "
+                         "no district/stack/civilian target, an unpacked unqueued land commander, and ready "
+                         "UNIT_CLASS_INFANTRY/CAVALRY participants in native command radius. Every native-reachable "
+                         "participant must already be adjacent; approach travel is rejected. Requires exact "
+                         "native melee and offered/selected commander-command checks. Engine selects participants; "
+                         "authorization covers all eligible nearby Infantry/Cavalry, which may be damaged/lost. "
+                         "Verifies captured participant attack consumption/loss plus primary-target effect, "
+                         "not a kill or every secondary effect. No war, city capture, future orders or turn "
+                         "advancement. Submits once, polls read-only for 15 seconds; never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(army_melee_attack)
         server.tool(
             name="join_civ7_commander", title="Add one Civ VII unit to commander",
             description=("CHANGE GAME STATE: join exact owned packable land unit_id to commander_id with fresh "
@@ -893,6 +910,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "command check requiring this target in native plots. focusedLandRangedAttack also "
             "checks native offered/selected-target Focus Fire permission; this alone does not "
             "prove eligible Ranged-class participants (siege-only Katyusha is excluded by the action). "
+            "focusedLandMeleeAttack separately checks coordinated-melee command permission; actual "
+            "Infantry/Cavalry participant eligibility and adjacent-only restrictions are enforced by its action. "
             "Reported modifiers are not "
             "applied contextual totals. Damage predictions, contextual strengths and outcomes "
             "are unknown, not simulated. Never attacks, declares war, selects units or invokes "

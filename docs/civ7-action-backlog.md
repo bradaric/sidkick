@@ -40,7 +40,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
 | 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded commander/packed-army movement, pack-all/unpack, individual land join/leave and reinforcement assignment implemented; rail/rebase/transport pending |
-| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged and commander land-ranged Focus Fire field attacks implemented; other items pending |
+| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged, commander Focus Fire and adjacent coordinated land melee implemented; other items pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
 
 Save/load recovery and WMD actions are separately scoped optional extensions.
@@ -129,6 +129,21 @@ then a remaining-task inventory. Existing Playground scope applies; no turn adva
 - 164 Python + 325 Node tests pass. Default23 tools unchanged; write mode59 tools,
   including36 actions. Naval/air membership and greater-than-adjacent joining remain
   unsupported. Original Merchant untouched.
+- Individual membership batch committed as `fc34531`.
+- Coordinated melee: actual Infantry/Cavalry roles, current native radius, captured
+  ready deployed participants, explicit adjacent-only melee eligibility and native
+  offered/selected command checks. Reuses fixed army_attack.js with ranged/melee
+  modes only. Readout exposes separate coordinated-melee permission. Same visible
+  single hostile own/unowned land-field target restrictions, no travel/cities/war.
+- Landship3801103 positioned `(12,17) → (13,18) → (14,18) → (15,18)` through normal
+  typed movement, readiness privately restored. Visible defender Cuirassier2687012
+  privately restored via native Health.restoreUnitHealth (damage57→0) to preserve
+  separate melee/Overrun cases; this is synthetic target-health setup, not healing
+  through turns. Commander3997707 coordinated melee then verified Landship attack
+  1→0 and defender damage0→45. Independent read attackerHP79, defenderHP55. One
+  participant live; multiple participants fixture-only. No extra attack points or
+  turn advancement. 167 Python + 327 Node tests; 60 tools including37 actions in
+  write mode, default23 unchanged.
 
 ## Batch 1: settlement management
 

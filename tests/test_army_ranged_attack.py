@@ -10,14 +10,14 @@ from sidkick.server import create_server
 class ArmyRangedAttackTests(unittest.IsolatedAsyncioTestCase):
     async def test_army_ranged_attack_uses_fixed_command_script_and_captured_participants(self):
         self.assertTrue(callable(getattr(actions, 'army_ranged_attack', None)))
-        args = {'commander_id': 30, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3, 'expected_turn': 62}
+        args = {'commander_id': 30, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3, 'expected_turn': 62, 'attack_kind': 'ranged'}
         before = {'turn': 62, 'age': 42, 'playerId': 0}
         expected = {'unitId': 30, 'attackObserved': True}
         captured = {'unit_id': 30, 'participants': [{'unit_id': 10, 'before_attacks': 1}]}
         with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=[
             {'status': 'submitted', 'before': before, 'expected': expected, 'verificationArguments': captured}, {**before, **expected}]) as run:
             self.assertEqual((await actions.army_ranged_attack(30, 1, 20, 3, 3, 62))['status'], 'verified_applied')
-        self.assertEqual(run.await_args_list[0].args, ('army_ranged_attack.js', args))
+        self.assertEqual(run.await_args_list[0].args, ('army_attack.js', args))
         self.assertEqual(run.await_args_list[1].args, ('unit_attack_state.js', captured))
 
     async def test_army_ranged_tool_is_opt_in_strict_and_mutating(self):

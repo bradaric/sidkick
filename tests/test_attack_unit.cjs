@@ -19,16 +19,17 @@ function run(o = {}, script = 'attack_unit.js') {
   const player = {isTurnActive: !o.inactive, Units: {getUnits: () => [...(o.deadAttacker ? [] : [attacker]), ...(o.secondParticipant ? [second] : []), ...(o.group ? [commander] : [])]},
     Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 10 : -1},
     Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace}};
-  const args = {unit_id: 10, commander_id: 30, target_player: 1, target_unit_id: 20, x: 3, y: 3, kind: 'melee', expected_turn: 62,
+  const args = {unit_id: 10, commander_id: 30, target_player: 1, target_unit_id: 20, x: 3, y: 3, kind: 'melee', attack_kind: 'ranged', expected_turn: 62,
     attacker_component_type: 26, attacker_type: 100, before_attacks: 1, before_has_attacked: false,
     target_component_type: 26, target_type: 200, before_target_damage: 0, ...o.args};
   const context = {queryArguments: args, UI: {isInGame: () => true},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false}, Players: {get: () => player},
-    GameInfo: {TypeTags: [{Type: 'UNIT_RANGED', Tag: o.siegeOnly ? 'UNIT_CLASS_SIEGE' : 'UNIT_CLASS_RANGED'}],
+    GameInfo: {TypeTags: [{Type: 'UNIT_RANGED', Tag: o.meleeRole ?? (o.siegeOnly ? 'UNIT_CLASS_SIEGE' : 'UNIT_CLASS_RANGED')}],
       Units: {lookup: type => ({UnitType: type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: o.air ? 'DOMAIN_AIR' : 'DOMAIN_LAND',
       FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
-      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.enemyTile ? 1 : -1},
+      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.enemyTile ? 1 : -1,
+      isWater: () => o.waterTarget ?? false},
     RevealedStates: {VISIBLE: 2}, Visibility: {isVisible: () => !o.invisible},
     MapUnits: {getUnits: () => o.gone ? [] : o.stacked ? [target.id, {owner: 1, id: 21, type: 26}] : [target.id]},
     Armies: {get: () => o.unknownArmy ? null : {owner: 0, getCommanderId: () => commander.id, getUnitIds: () => o.packedGroup ? [attacker.id] : []}},
@@ -70,7 +71,7 @@ test('single melee/ranged unit attacks bind explicit hostile component and fixed
 });
 
 test('focused ranged army attack binds one visible primary target and captures ready deployed radius units', () => {
-  const {data, calls} = run({group: true}, 'army_ranged_attack.js');
+  const {data, calls} = run({group: true}, 'army_attack.js');
   assert.equal(data.status, 'submitted');
   assert.equal(data.verificationArguments.participants[0].unit_id, 10);
   assert.deepEqual(calls.at(-1), {kind: 'commandSend', id: {owner: 0, id: 30, type: 26},
@@ -82,11 +83,11 @@ test('focused army attack cannot bypass native permission, radius, known members
   for (const o of [{unknownArmy: true}, {packedGroup: true}, {queuedCommander: true}, {outsideRadius: true}, {noRanged: true}, {siegeOnly: true},
     {peace: true}, {hidden: true}, {invisible: true}, {district: true}, {stacked: true}, {civilianDefinition: true}, {enemyTile: true},
     {spent: true}, {commandBlocked: true}, {notOffered: true}, {confirm: true}, {changedCommand: true}, {changedTargetType: true}, {args: {commander_id: true}}]) {
-    const {data, calls} = run({group: true, ...o}, 'army_ranged_attack.js');
+    const {data, calls} = run({group: true, ...o}, 'army_attack.js');
     assert.equal(data.status, 'rejected', JSON.stringify(o));
     assert.equal(calls.filter(c => c.kind === 'commandSend').length, 0);
   }
-  assert.equal(run({group: true, sendThrows: true}, 'army_ranged_attack.js').calls.filter(c => c.kind === 'commandSend').length, 1);
+  assert.equal(run({group: true, sendThrows: true}, 'army_attack.js').calls.filter(c => c.kind === 'commandSend').length, 1);
 });
 
 test('army readback observes actual participant consumption, never commander readiness alone', () => {
@@ -98,13 +99,29 @@ test('army readback observes actual participant consumption, never commander rea
 });
 
 test('focused army command captures multiple eligible participants without issuing per-unit attacks', () => {
-  const {data, calls} = run({group: true, secondParticipant: true}, 'army_ranged_attack.js');
+  const {data, calls} = run({group: true, secondParticipant: true}, 'army_attack.js');
   assert.deepEqual(data.verificationArguments.participants.map(p => p.unit_id), [10, 11]);
   assert.equal(calls.filter(c => c.kind === 'commandSend').length, 1);
   assert.equal(calls.filter(c => c.kind === 'send').length, 0);
   const args = {unit_id: 30, attacker_type: 300, participants: data.verificationArguments.participants};
   const read = run({group: true, secondParticipant: true, spent: true, damaged: true, args}, 'unit_attack_state.js');
   assert.deepEqual(read.data.consumedUnitIds, [10, 11]); assert.equal(read.data.attackObserved, true);
+});
+
+test('coordinated melee uses adjacent native-reachable Infantry/Cavalry participants and fixed selected command', () => {
+  for (const role of ['UNIT_CLASS_INFANTRY', 'UNIT_CLASS_CAVALRY']) {
+    const {data, calls} = run({group: true, meleeRole: role, args: {attack_kind: 'melee'}}, 'army_attack.js');
+    assert.equal(data.status, 'submitted');
+    assert.deepEqual(calls.at(-1), {kind: 'commandSend', id: {owner: 0, id: 30, type: 26},
+      command: 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE', args: {X: 3, Y: 3}});
+    assert.equal(data.verificationArguments.participants[0].unit_id, 10);
+  }
+  for (const o of [{distant: true}, {notMelee: true}, {unreachable: true}, {meleeRole: 'UNIT_CLASS_SIEGE'},
+    {meleeRole: 'UNIT_CLASS_RANGED'}, {waterTarget: true}, {commandBlocked: true}, {hidden: true}, {district: true}, {stacked: true}, {args: {attack_kind: 'raw'}}]) {
+    const {data, calls} = run({group: true, meleeRole: 'UNIT_CLASS_INFANTRY', args: {attack_kind: 'melee'}, ...o}, 'army_attack.js');
+    assert.equal(data.status, 'rejected', JSON.stringify(o));
+    assert.equal(calls.filter(c => c.kind === 'commandSend').length, 0);
+  }
 });
 
 test('attacks cannot declare wars, hit hidden/stacked/district/civilian targets or silently replace the selected defender', () => {

@@ -1,7 +1,7 @@
 (() => {
-  const {commander_id: commanderId, target_player: targetPlayer, target_unit_id: targetId, x, y, expected_turn: expectedTurn} = queryArguments;
+  const {commander_id: commanderId, target_player: targetPlayer, target_unit_id: targetId, x, y, expected_turn: expectedTurn, attack_kind: kind} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (![commanderId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact commander, enemy identity/tile and expected turn are required");
+  if (![commanderId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0) || !["ranged", "melee"].includes(kind)) return reject("Exact commander, enemy identity/tile, supported focused attack and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
   if (!Number.isInteger(playerId) || playerId < 0 || targetPlayer === playerId) return reject("A local player and hostile target are required");
@@ -30,6 +30,7 @@
         !["FORMATION_CLASS_LAND_COMBAT", "FORMATION_CLASS_NAVAL"].includes(GameInfo.Units.lookup(u.type)?.FormationClass) ||
         u.location?.x !== x || u.location?.y !== y || !Number.isFinite(u.Health?.damage) || !Number.isFinite(u.Health.maxDamage) ||
         u.Health.damage < 0 || u.Health.damage >= u.Health.maxDamage) return null;
+    if (kind === "melee" && (GameInfo.Units.lookup(u.type)?.Domain !== "DOMAIN_LAND" || GameplayMap.isWater(x, y) !== false)) return null;
     return u;
   }
   const enemy = target();
@@ -44,27 +45,43 @@
       for (const id of ids) packed.add(`${id.id}:${id.type}`);
     }
     if (typeof player.Armies?.getUnitReinforcementCommanderId !== "function") return null;
-    return owned.filter(u => !u.isCommanderUnit && u.isOnMap === true && u.isDead !== true && u.operationQueueSize === 0 &&
+    const roles = kind === "ranged" ? ["UNIT_CLASS_RANGED"] : ["UNIT_CLASS_INFANTRY", "UNIT_CLASS_CAVALRY"];
+    const candidates = owned.filter(u => !u.isCommanderUnit && u.isOnMap === true && u.isDead !== true && u.operationQueueSize === 0 &&
       u.isEmbarked === false && valid(u.location) && GameInfo.Units.lookup(u.type)?.Domain === "DOMAIN_LAND" &&
       GameInfo.Units.lookup(u.type)?.FormationClass === "FORMATION_CLASS_LAND_COMBAT" &&
-      GameInfo.TypeTags.filter(t => t.Type === GameInfo.Units.lookup(u.type)?.UnitType && t.Tag === "UNIT_CLASS_RANGED").length > 0 &&
+      GameInfo.TypeTags.filter(t => t.Type === GameInfo.Units.lookup(u.type)?.UnitType && roles.includes(t.Tag)).length > 0 &&
       u.Combat?.isCombat === true &&
       u.Combat.canAttack === true && Number.isInteger(u.Combat.attacksRemaining) && u.Combat.attacksRemaining > 0 &&
-      (u.Combat.rangedStrength > 0 || u.Combat.bombardStrength > 0) && Number.isFinite(u.Movement?.movementMovesRemaining) && u.Movement.movementMovesRemaining > 0 &&
+      (kind === "melee" || u.Combat.rangedStrength > 0 || u.Combat.bombardStrength > 0) && Number.isFinite(u.Movement?.movementMovesRemaining) && u.Movement.movementMovesRemaining > 0 &&
       radius.includes(GameplayMap.getIndexFromLocation(u.location)) && !packed.has(`${u.id.id}:${u.id.type}`) &&
-      player.Armies.getUnitReinforcementCommanderId(u.id, playerId) === -1 &&
-      Game.UnitOperations.canStart(u.id, UnitOperationTypes.RANGE_ATTACK, {X: x, Y: y}, false)?.Success === true)
-      .map(u => ({unit_id: u.id.id, component_type: u.id.type, unit_type: u.type, before_attacks: u.Combat.attacksRemaining,
-        location: {x: u.location.x, y: u.location.y}, moves: u.Movement.movementMovesRemaining})).sort((a, b) => a.unit_id - b.unit_id);
+      player.Armies.getUnitReinforcementCommanderId(u.id, playerId) === -1);
+    const eligible = [];
+    for (const u of candidates) {
+      const args = {X: x, Y: y};
+      if (kind === "melee") {
+        const targets = Units.getReachableTargets(u.id);
+        if (!Array.isArray(targets)) return null;
+        if (!targets.includes(GameplayMap.getIndexFromLocation({x, y}))) continue;
+        // Do not let a coordinated command hide movement paths or future orders.
+        if (GameplayMap.getPlotDistance(u.location.x, u.location.y, x, y) !== 1 || !Number.isInteger(UnitOperationMoveModifiers.ATTACK)) return null;
+        args.Modifiers = UnitOperationMoveModifiers.ATTACK;
+        if (Game.Combat.testAttackInto(u.id, args) !== CombatTypes.COMBAT_MELEE) continue;
+      }
+      const operation = kind === "ranged" ? UnitOperationTypes.RANGE_ATTACK : UnitOperationTypes.MOVE_TO;
+      if (Game.UnitOperations.canStart(u.id, operation, args, false)?.Success !== true) continue;
+      eligible.push({unit_id: u.id.id, component_type: u.id.type, unit_type: u.type, before_attacks: u.Combat.attacksRemaining,
+        location: {x: u.location.x, y: u.location.y}, moves: u.Movement.movementMovesRemaining});
+    }
+    return eligible.sort((a, b) => a.unit_id - b.unit_id);
   }
   const eligible = participants();
-  if (!eligible || !eligible.length || eligible.length > 16 || new Set(eligible.map(p => p.unit_id)).size !== eligible.length) return reject("No bounded known deployed ranged participants in native radius");
+  if (!eligible || !eligible.length || eligible.length > 16 || new Set(eligible.map(p => p.unit_id)).size !== eligible.length) return reject("No bounded known deployed role-eligible participants in native radius, or a melee approach would require travel");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId: commanderId, unitType: commander.type, componentType: commander.id.type,
     location: {...commander.location}, moves: commander.Movement.movementMovesRemaining, participants: eligible,
     targetType: enemy.type, targetComponentType: enemy.id.type, targetDamage: enemy.Health.damage};
-  const command = "UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED", args = {X: x, Y: y};
+  const command = kind === "ranged" ? "UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED" : "UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE", args = {X: x, Y: y};
   const picker = Game.UnitCommands.canStart(commander.id, command, {}, false);
-  if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation({x, y}))) return reject("Target is not offered by native focused land-ranged command", picker?.FailureReasons ?? []);
+  if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation({x, y}))) return reject("Target is not offered by the exact native focused land attack", picker?.FailureReasons ?? []);
   const check = Game.UnitCommands.canStart(commander.id, command, args, false);
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native focused attack is blocked or requires confirmation", check?.FailureReasons ?? []);
   const fresh = target();

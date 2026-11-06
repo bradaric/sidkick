@@ -447,9 +447,21 @@ async def army_ranged_attack(
     """Order native focused land-ranged fire; verify captured participant/primary-target effects."""
     if any(type(v) is not int or v < 0 for v in (commander_id, target_player, target_unit_id, x, y, expected_turn)):
         raise ValueError("Exact commander, enemy identity/tile and expected turn are required")
-    return await _execute_and_verify("army_ranged_attack.js", {
+    return await _execute_and_verify("army_attack.js", {
         "commander_id": commander_id, "target_player": target_player, "target_unit_id": target_unit_id,
-        "x": x, "y": y, "expected_turn": expected_turn,
+        "x": x, "y": y, "expected_turn": expected_turn, "attack_kind": "ranged",
+    }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def army_melee_attack(
+    commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Order native coordinated attacks by directly adjacent Infantry/Cavalry participants."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, target_player, target_unit_id, x, y, expected_turn)):
+        raise ValueError("Exact commander, enemy identity/tile and expected turn are required")
+    return await _execute_and_verify("army_attack.js", {
+        "commander_id": commander_id, "target_player": target_player, "target_unit_id": target_unit_id,
+        "x": x, "y": y, "expected_turn": expected_turn, "attack_kind": "melee",
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 

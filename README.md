@@ -939,6 +939,34 @@ checkpoint `Sidkick_Playground_BeforeMembershipMeleeOverrun_T62_1793961086467`
 confirmed RESULT_OK with no overwrite; earlier checkpoints and original Merchant
 remain preserved.
 
+#### Coordinated land melee
+
+`melee_attack_civ7_army(commander_id, target_player, target_unit_id, x, y,
+expected_turn)` uses native `FOCUSED_ATTACK_LAND_MELEE`, with actual Infantry/Cavalry
+tags rather than inferred strength. Participants must be ready, deployed, unpacked,
+nonreinforcing and in native command radius; any native-reachable participant that
+would need an approach path is rejected. This initial family requires participants
+already adjacent and one visible hostile land combat primary target on an own/
+unowned land field. Native offered/selected command and individual melee checks
+remain mandatory. No districts, stacks, civilians, enemy-territory targets, war
+declaration, hidden travel, city capture or turn advancement. Readback proves actual
+captured participant attack consumption/loss plus primary-target damage/departure.
+
+The existing ranged and new melee wrappers share a fixed bundled `army_attack.js`;
+only those two modes are accepted, not arbitrary commands. Combat readout adds
+`focusedLandMeleeAttack` native permission evidence, with actual role/adjacency
+eligibility still enforced by the action.
+
+Live T62: Landship3801103 moved through checked steps `(12,17) → (13,18) → (14,18)
+→ (15,18)`, then commander3997707's typed coordinated attack verified attack1→0
+and Cuirassier2687012 damage0→45. Independent read: attackerHP79, defenderHP55.
+Preconditions were synthetic: privately restored movement and explicit native
+Health.restoreUnitHealth on the already-visible defender (damage57→0) to retain
+separate test cases. No attack points were granted and no turn advanced. One live
+participant was tested; simultaneous multi-participant execution remains fixture-
+only. **167 Python and 327 Node tests pass.** Default23 tools; write mode60 tools
+(37 actions).
+
 ## One-shot export
 
 ```powershell
