@@ -1467,6 +1467,16 @@ no-overwrite checkpoint; original Scout order preserved. This does not prove nor
 production/completion. Synthetic Factory remains. No turn/Gold spend.
 **221 Python / 402 Node pass; tools23/97 (74 actions).**
 
+`assault_civ7_city` explicitly permits adjacent melee/occupation of one exact
+visible empty enemy settlement centre, with native classification/reachability
+and preserved prior city ledger. `resolve_civ7_city_capture` separately keeps or
+starts razing an exact pending owned capture. Decisions exposes IDs/flags/options.
+Three native attacks captured test Town `(23,9)` and keep verified; no damage or
+ownership forced. Separate **debug-depleted** Town `(23,14)` was normally occupied
+and native razing started; completed destruction is turn-deferred. Garrison/stack/
+civilian attacks, full conquest effects and liberation remain outside this family.
+**222 Python / 404 Node pass; tools23/99 (76 actions).**
+
 ## One-shot export
 
 ```powershell

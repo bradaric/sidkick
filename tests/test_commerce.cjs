@@ -120,6 +120,7 @@ test('rail-network membership is independent of station presence and constructio
 
 test('town focus choices check hashed project types, retain requirements and filter connections to owned settlements', () => {
   const town = { id: { owner: 0, id: 10, type: 1 }, owner: 0, name: 'Town', isTown: true, location: { x: 0, y: 0 },
+    isJustConqueredFrom:true,isBeingRazed:false,
     Growth: { growthType: 2, projectType: 404 }, Gold: { getTownUpgradeCost: () => 100 },
     getConnectedCities: () => [{ owner: 0, id: 11, type: 1 }, { owner: 1, id: 99, type: 1 }], getSentFoodPerCity: () => 8 };
   const queued = [{orderType: 0, unitType: 21}];
@@ -130,9 +131,10 @@ test('town focus choices check hashed project types, retain requirements and fil
     Players: { get: () => ({ Cities: { getCities: () => [town, city] }, Units: { getUnits: () => [] }, Treasury: { goldBalance: 300 } }) },
     GameInfo: { Projects: Object.assign([project], { lookup: index => { assert.equal(index, 4); return project; } }), UnitCommands: [] },
     GrowthTypes: { EXPAND: 1, PROJECT: 2 }, ProjectTypes: { NO_PROJECT: -1 },
-    CityOperationTypes: { BUILD: 1 }, CityCommandTypes: { PURCHASE: 2, CHANGE_GROWTH_MODE: 3 }, CityQueryType: { Constructible: 1, Unit: 2 },
+    CityOperationTypes: { BUILD: 1 }, CityCommandTypes: { PURCHASE: 2, CHANGE_GROWTH_MODE: 3, DESTROY:4 }, CityQueryType: { Constructible: 1, Unit: 2 },
     Game: { turn: 108, CityOperations: { canStartQuery: () => [], canStart: () => ({ Success: false }) },
-      CityCommands: { canStartQuery: () => [], canStart: (id, type, args, visible) => {
+       CityCommands: { canStartQuery: () => [], canStart: (id, type, args, visible) => {
+         if(type===4)return{Success:args.Directive===2,FailureReasons:args.Directive===3?['Cannot raze']:[]};
         assert.equal(id.id, 10); assert.equal(type, 3); assert.equal(visible, false);
         if (args.ProjectType == null) return { Success: true, Projects: [4] };
         assert.ok([-1, 404].includes(args.ProjectType), 'use project hash for the specific focus check');
@@ -149,4 +151,7 @@ test('town focus choices check hashed project types, retain requirements and fil
   assert.deepEqual(focus.connectedOwnedSettlements, ['City']);
   assert.equal(focus.reportedFoodPerConnectedCity, 8);
   assert.equal(data.settlements[1].production.queueToken, JSON.stringify(queued));
+  assert.equal(data.settlements[0].cityId,10);
+  assert.equal(data.settlements[0].captureDisposition.pending,true);
+  assert.deepEqual(JSON.parse(JSON.stringify(data.settlements[0].captureDisposition.options)).map(c=>[c.choice,c.availableNow]),[['keep',true],['raze',false]]);
 });

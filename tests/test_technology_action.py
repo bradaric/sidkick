@@ -193,6 +193,8 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "air_attack_civ7_from_commander",
             "cross_civ7_commander_shore",
             "clear_civ7_factory_resources",
+            "assault_civ7_city",
+            "resolve_civ7_city_capture",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

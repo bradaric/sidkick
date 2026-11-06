@@ -139,8 +139,14 @@
       city.id, CityCommandTypes.PURCHASE, CityQueryType.Unit
     ) ?? [];
     const townUpgradeCost = city.isTown ? city.Gold?.getTownUpgradeCost() ?? null : null;
+    const captureOptions=city.isJustConqueredFrom===true&&city.isBeingRazed===false?[['keep',2],['raze',3]].map(([choice,directive])=>{
+      const result=Game.CityCommands.canStart(city.id,CityCommandTypes.DESTROY,{Directive:directive},false);
+      return{choice,availableNow:result?.Success===true&&result.RequiresConfirmation!==true,failureReasons:reasons(result)};
+    }):[];
     return {
+      cityId:city.id.id,
       name: name(city.name),
+      captureDisposition:{pending:typeof city.isJustConqueredFrom==='boolean'?city.isJustConqueredFrom:null,beingRazed:typeof city.isBeingRazed==='boolean'?city.isBeingRazed:null,options:captureOptions},
       status: city.isCapital ? "capital" : city.isTown ? "town" : "city",
       location: {x: city.location.x, y: city.location.y},
       townFocus: townFocus(city),

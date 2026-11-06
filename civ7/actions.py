@@ -207,6 +207,20 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def assault_city(unit_id: StrictInt, target_player: StrictInt, target_city_id: StrictInt, x: StrictInt, y: StrictInt, mode: Literal["melee", "occupy"], expected_turn: StrictInt) -> dict[str, Any]:
+    """Explicit adjacent settlement assault/occupation, never an implicit field-action capture."""
+    if any(type(v) is not int or v<0 for v in (unit_id,target_player,target_city_id,x,y,expected_turn)) or mode not in ("melee","occupy"):
+        raise ValueError("Exact attacker, enemy city/centre, melee/occupy mode and expected turn required")
+    return await _execute_and_verify("assault_city.js",{"unit_id":unit_id,"target_player":target_player,"target_city_id":target_city_id,"x":x,"y":y,"mode":mode,"expected_turn":expected_turn},"city_assault_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def resolve_city_capture(city_id: StrictInt, choice: Literal["keep", "raze"], expected_turn: StrictInt) -> dict[str, Any]:
+    """Resolve one exact currently pending owned capture decision; raze start is not completed destruction."""
+    if any(type(v) is not int or v<0 for v in (city_id,expected_turn)) or choice not in ("keep","raze"):
+        raise ValueError("Exact pending capture city, keep/raze and expected turn required")
+    return await _execute_and_verify("resolve_city_capture.js",{"city_id":city_id,"choice":choice,"expected_turn":expected_turn},"city_capture_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def clear_factory_resources(settlement: StrictStr, resource: StrictStr, target_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Explicit native bulk release of one city's current factory specialization, not atomic reassignment."""
     if (not isinstance(settlement,str) or not settlement.strip() or not isinstance(resource,str) or not resource or not isinstance(target_token,str) or not target_token or len(target_token)>100000 or type(expected_turn) is not int or expected_turn<0):

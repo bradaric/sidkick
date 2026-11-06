@@ -415,13 +415,34 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   After clear, normal Coffee1504 specialization and native Clear both verified.
   Original resource assignments restored exactly; synthetic Factory remains.
 - 221 Python / 402 Node pass; tools23/97 including74 actions. T62/Gold unchanged.
+- `ee15ca8`: factory reset. Explicit adjacent city-centre melee/occupation and
+  separate pending keep/raze handlers implemented with exact owner-qualified city,
+  visible empty centre, native melee/NO_COMBAT classification, reachability and
+  selected permission. Capture verifies one exact new local settlement with prior
+  city identities preserved and arrived/spent attacker; no automatic disposition.
+  Keep consumes pending choice; raze proves start, not future destruction. Owned
+  decisions readout includes cityId, capture/raze flags and native keep/raze options.
+- Synthetic enemy Town851980 `(23,9)` and fresh Tanks6291528/6357065/6422602:
+  three normal native melee attacks damaged centre0→50→94→capture, with no district
+  damage or ownership forced. Third initially native-blocked by synthetic source
+  stacking; earlier spent Tank moved normally to `(23,7)` after labelled movement
+  restoration, then first actual third attack captured local city1245202. Explicit
+  native keep verified pending=false, city retained. No new war/turn.
+- Separate occupation case: too-close `(22,11)` produced no observed city; test
+  Tank6488139 remains `(22,12)`. Distinct synthetic Town983052 `(23,14)` was
+  **debug-damaged to max100** solely to manufacture NO_COMBAT occupation eligibility.
+  Normal native Tank6553676 occupied it, local city1310739 and prior cities preserved.
+  Explicit native raze started, city retained/isBeingRazed=true. Occupation execution
+  and raze start verified; debug damage is not normal assault proof, raze completion
+  remains turn-deferred. Garrison/civilian/stack targets remain outside this family.
+- 222 Python / 404 Node pass; tools23/99 including76 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 
 | Group 1 implementation still needed | Current boundary |
 |---|---|
-| Combat/capture and hostile diplomacy | Occupation/capture decisions and peace/deals remain unimplemented. Route operation wrapper/fixtures implemented, native route-effect semantics unresolved after one unknown submission. Enemy-field melee, naval shore fire/raids, explicit war declaration and capped no-secondary sanctions/espionage are implemented. |
+| Combat/capture and hostile diplomacy | Peace/deals and trade-route plunder remain unimplemented; legacy physical-route operation is absent from loaded rules and now rejects. Empty-centre city melee/occupation and keep/raze implemented/live-verified, garrison/civilian/stack variants remain outside scope. Enemy-field melee, shore fire/raids, explicit war and capped no-secondary sanctions/espionage implemented. |
 | Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |

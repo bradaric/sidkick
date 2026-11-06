@@ -53,6 +53,8 @@ from civ7.actions import (
     air_attack_from_commander,
     cross_commander_shore,
     clear_factory_resources,
+    assault_city,
+    resolve_city_capture,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -269,6 +271,29 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="assault_civ7_city",title="Explicitly assault or occupy Civ VII settlement centre",
+            description=("CHANGE GAME STATE: adjacent land combat unit_id against exact met wartime "
+                         "target_player/target_city_id centre x/y, mode melee/occupy and expected_turn. "
+                         "Explicitly permits city capture. Requires ready unqueued unembarked unpacked/"
+                         "nonreinforcing unit, visible empty enemy centre (no garrison/civilian/stack), "
+                         "native reachable target and exact melee/NO_COMBAT occupation classification plus "
+                         "selected permission. Occupy needs direct current-turn path. Verifies attack/movement "
+                         "consumption plus primary district damage or exact new owned city preserving prior "
+                         "settlements. Capture keep/raze remains separate; no automatic disposition, new war, "
+                         "kill/splash/full conquest accounting or turn advance. One submission,15-second readback; no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(assault_city)
+        server.tool(
+            name="resolve_civ7_city_capture",title="Keep or begin razing captured Civ VII city",
+            description=("CHANGE GAME STATE: exact owned city_id, explicit choice keep/raze and expected_turn. "
+                         "Requires currently visible owned city with unresolved isJustConqueredFrom capture "
+                         "choice, not already razing, and native DESTROY/Directive permission. Keep verifies "
+                         "choice consumed with city retained; raze verifies razing started or immediate city "
+                         "disappearance, not eventual destruction. Razing can destroy settlement assets. "
+                         "No liberation, foreign transfer or turn advance. One submission,15-second readback; no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(resolve_city_capture)
         server.tool(
             name="clear_civ7_factory_resources",title="Clear one Civ VII factory specialization",
             description=("CHANGE GAME STATE: explicit native factory Clear in exact settlement with current "
