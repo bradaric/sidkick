@@ -21,6 +21,7 @@ from civ7.actions import (
     rebase_aircraft,
     naval_attack_unit,
     rail_commander,
+    rail_unit,
     upgrade_army,
     acknowledge_agenda,
     append_city_production,
@@ -241,6 +242,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="rail_civ7_unit", title="Move ordinary Civ VII unit by rail",
+            description=("CHANGE GAME STATE: native MOVE_BY_RAIL for exact owned ordinary land unit_id "
+                         "to x/y with fresh expected_turn. Requires mobile deployed unqueued unembarked, "
+                         "unpacked/nonreinforcing source, visible owned land endpoints, empty destination "
+                         "and exact native offered/selected rail permission. No guessed connection, ordinary "
+                         "walk fallback, commander transport, stacking, capture or turn advancement. Verifies "
+                         "same unit at exact destination with clear queue; no future-turn arrival claim. "
+                         "Submits once, polls read-only for 15 seconds, never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(rail_unit)
         server.tool(
             name="upgrade_civ7_army", title="Upgrade all packed Civ VII army members",
             description=("CHANGE GAME STATE: native UPGRADE_ARMY for exact owned deployed commander_id "

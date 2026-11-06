@@ -1162,6 +1162,16 @@ read-only unchanged.** Native save
 `Sidkick_Playground_AfterGroupUpgrade_T62_1793968151444` confirmed RESULT_OK,
 no overwrite. Still T62; original Merchant unchanged. Earlier checkpoints preserved.
 
+#### Ordinary-unit rail
+
+`rail_civ7_unit(unit_id, x, y, expected_turn)` extends native rail to ordinary
+deployed unpacked/nonreinforcing unqueued land units. Requires unembarked source,
+visible owned land endpoints, empty target and exact native offered/selected rail
+permission; no walking fallback, commander transport or turn advancement.
+Live MCP Rifleman2490373 travelled Copan station `(26,11)` → St. Petersburg station
+`(19,11)`, exact identity and queue0 verified with debug-restored movement.
+**187 Python / 352 Node tests pass; write mode70 tools (47 actions), default23 unchanged.**
+
 ## One-shot export
 
 ```powershell

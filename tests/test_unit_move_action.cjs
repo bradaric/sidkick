@@ -8,6 +8,7 @@ function run(o = {}, script = 'move_unit.js') {
   const calls = [];
   const unit = {id: {owner: o.foreignUnit ? 1 : 0, id: 20, type: 26}, type: 201,
     location: {x: 9, y: 15}, isOnMap: !o.offMap, isCommanderUnit: o.commander ?? false,
+    isEmbarked: o.args?.mode === 'rail' ? false : undefined, operationQueueSize: 0,
     Movement: {movementMovesRemaining: o.moves ?? 3}, ...o.unit};
   if (o.embark || o.disembark) unit.isEmbarked = Boolean(o.disembark);
   if (o.unknownEmbarkation) unit.isEmbarked = undefined;
@@ -25,14 +26,19 @@ function run(o = {}, script = 'move_unit.js') {
       getRevealedState: (id, x) => o.hidden || (o.foggedTarget && x === 10) ? 0 : 2,
       getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: loc => loc.x === 9 ? 1 : 2,
       getLocationFromIndex: index => ({x: index === 1 ? 9 : 10, y: 15}),
-      getOwner: () => o.foreignPlot ? 4 : -1,
+      getOwner: () => o.foreignPlot ? 4 : o.ownedPlot ? 0 : -1,
       isWater: x => o.unknownWater ? undefined : Boolean(o.sea || o.embarked ||
         (o.embark && x === 10) || (o.disembark && x === 9))},
     RevealedStates: {HIDDEN: -1, VISIBLE: 2}, MapUnits: {getUnits: () => occupants},
     Units: {getReachableMovement: () => o.unreachable ? [] : [2], getReachableTargets: () => o.attack ? [2] : [],
       getPathTo: () => ({plots: o.detour ? [1, 3, 2] : o.emptyPath ? [] : [1, 2]})},
     UnitOperationMoveModifiers: {NONE: o.noModifier ? undefined : 0}, UnitOperationTypes: {MOVE_TO: 900}, CombatTypes: {NO_COMBAT: 0},
-    Game: {turn: 59, age: 42, Combat: {testAttackInto: () => o.combat ? 1 : 0}, UnitOperations: {
+    Game: {turn: 59, age: 42, Combat: {testAttackInto: () => o.combat ? 1 : 0}, UnitCommands: {
+      canStart: (id, operation, args, exclusion) => {calls.push({kind: 'railCheck', id, operation, args, exclusion});
+        if (o.changedTurn) context.Game.turn++;
+        return {Success: !o.nativeBlocked, Plots: o.unreachable ? [] : [2], RequiresConfirmation: Boolean(o.confirm)};},
+      sendRequest: (id, operation, args) => calls.push({kind: 'railSend', id, operation, args}),
+    }, UnitOperations: {
       canStart: (id, operation, args, exclusion) => {
         calls.push({kind: 'check', id, operation, args, exclusion});
         if (o.changedTurn) context.Game.turn++;
@@ -125,5 +131,18 @@ test('readback reports the exact owned component, type and actual location witho
 test('readback withholds plausible coordinates after packing or reinforcement, including unknown packing state', () => {
   for (const o of [{packed: true}, {unknownPacking: true}, {reinforcing: true}]) {
     assert.equal(run(o, 'unit_position_state.js').data.location, null);
+  }
+});
+
+test('ordinary-unit rail uses only the exact native rail command and verifies clear-queue arrival', () => {
+  const {data, calls} = run({ownedPlot: true, distant: true, args: {mode: 'rail'}});
+  assert.equal(data.status, 'submitted'); assert.equal(data.expected.queueSize, 0);
+  assert.deepEqual(calls.at(-1), {kind: 'railSend', id: {owner: 0, id: 20, type: 26}, operation: 'UNITCOMMAND_MOVE_BY_RAIL', args: {X: 10, Y: 15}});
+  assert.equal(run({}, 'unit_position_state.js').data.queueSize, 0);
+  for (const o of [{sea: true}, {ownedPlot: false}, {foreignPlot: true}, {packed: true}, {unknownPacking: true}, {reinforcing: true},
+    {occupied: true}, {hidden: true}, {nativeBlocked: true}, {unreachable: true}, {confirm: true}, {changedTurn: true}, {unit: {operationQueueSize: 1}},
+    {unit: {isEmbarked: true}}, {args: {mode: 'raw'}}]) {
+    const r = run({ownedPlot: true, args: {mode: 'rail'}, ...o});
+    assert.equal(r.data.status, 'rejected', JSON.stringify(o)); assert.equal(r.calls.filter(c => c.kind === 'railSend').length, 0);
   }
 });

@@ -1,7 +1,7 @@
 (() => {
-  const {unit_id: unitId, x, y, expected_turn: expectedTurn} = queryArguments;
+  const {unit_id: unitId, x, y, expected_turn: expectedTurn, mode = "step"} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if ([unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0)) return reject("Exact owned unit, adjacent tile and expected turn are required");
+  if (!["step", "rail"].includes(mode) || [unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0)) return reject("Exact owned unit, supported move/tile and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
   if (!Number.isInteger(playerId) || playerId < 0) return reject("No local player");
@@ -33,6 +33,32 @@
   }
   if (typeof player.Armies?.getUnitReinforcementCommanderId !== "function" ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1) return reject("Unit reinforcement state is active or unverified");
+  if (mode === "rail") {
+    const visibleOwnedLand = l => valid(l) && GameplayMap.getRevealedState(playerId, l.x, l.y) === RevealedStates.VISIBLE &&
+      GameplayMap.getOwner(l.x, l.y) === playerId && GameplayMap.isWater(l.x, l.y) === false;
+    if (domain !== "DOMAIN_LAND" || unit.isEmbarked !== false || unit.isOnMap !== true || unit.isDead === true || unit.operationQueueSize !== 0 ||
+        !visibleOwnedLand(unit.location) || !visibleOwnedLand(destination)) return reject("Rail requires an unqueued unembarked land unit and visible owned land endpoints");
+    const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
+      location: {x: unit.location.x, y: unit.location.y}, movesRemaining: unit.Movement.movementMovesRemaining};
+    if (before.location.x === x && before.location.y === y) return {status: "already_active", before};
+    const clear = () => visibleOwnedLand(destination) && Array.isArray(MapUnits.getUnits(x, y)) && MapUnits.getUnits(x, y).length === 0;
+    if (!clear()) return reject("Rail requires an empty destination");
+    const command = "UNITCOMMAND_MOVE_BY_RAIL", args = {X: x, Y: y};
+    const picker = Game.UnitCommands.canStart(unit.id, command, {}, false);
+    if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation(destination))) return reject("Exact destination is not offered by native rail; no ordinary-movement fallback", picker?.FailureReasons ?? []);
+    const check = Game.UnitCommands.canStart(unit.id, command, args, false);
+    if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native rail permission failed or needs confirmation", check?.FailureReasons ?? []);
+    const packingClear = units.filter(u => u.isCommanderUnit).every(c => {
+      const a = Armies.get(c.armyId), ids = a?.owner === playerId ? a.getUnitIds?.() : null;
+      return Array.isArray(ids) && !ids.some(id => sameId(id, unit.id));
+    });
+    if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
+        unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType || unit.isOnMap !== true || unit.operationQueueSize !== 0 ||
+        unit.location.x !== before.location.x || unit.location.y !== before.location.y || unit.Movement.movementMovesRemaining !== before.movesRemaining ||
+        !visibleOwnedLand(unit.location) || !clear() || !packingClear || player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1) return reject("Unit, rail endpoints or game context changed during validation");
+    Game.UnitCommands.sendRequest(unit.id, command, args);
+    return {status: "submitted", before, expected: {unitId, unitType: before.unitType, componentType: before.componentType, location: destination, queueSize: 0}, verificationArguments: {unit_id: unitId}};
+  }
   if (GameplayMap.getPlotDistance(unit.location.x, unit.location.y, x, y) !== 1 ||
       GameplayMap.getRevealedState(playerId, unit.location.x, unit.location.y) !== RevealedStates.VISIBLE ||
       GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE) return reject("Only an adjacent currently visible step is supported");

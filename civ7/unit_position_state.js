@@ -22,5 +22,5 @@
     embarked: typeof unit.isEmbarked === "boolean" ? unit.isEmbarked : null,
     location: deployed && location && Number.isInteger(location.x) && location.x >= 0 &&
       Number.isInteger(location.y) && location.y >= 0 ? {x: location.x, y: location.y} : null,
-    movesRemaining: unit.Movement?.movementMovesRemaining ?? null};
+    movesRemaining: unit.Movement?.movementMovesRemaining ?? null, queueSize: unit.operationQueueSize ?? null};
 })()

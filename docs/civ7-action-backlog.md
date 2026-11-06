@@ -19,6 +19,29 @@ actions, publishing, pushes or destructive Git operations.
   batches separately under the user's standing instruction. No pushes.
 - Report actual results and blockers, not promises about completion time.
 
+### Group 1 completion request
+
+User requested trying to finish all work possible with the current save and
+supported debug setup before expanding turn/state-dependent Group 2. No turns.
+Work through: ordinary-unit rail; direct commander attacks; broader land combat;
+stronger combat observation; military movement/transport; construction/resources;
+diplomacy/choices; civilian/cultural actions; regression/documentation hardening.
+Implementation/fixtures and positive native execution are separate statuses.
+When a live prerequisite cannot be manufactured through supported setup, record
+the exact prerequisite in Group 2 rather than bypassing native eligibility or
+claiming Group 1 complete. Force March remains unavailable in this build.
+
+- Ordinary-unit rail completed: rail_civ7_unit uses exact native offered/selected
+  MOVE_BY_RAIL, known unpacked/nonreinforcing unqueued unembarked land source,
+  visible owned land endpoints and empty target; no walking fallback or inferred
+  connectivity. Actual MCP Rifleman2490373 `(26,11) → (19,11)` verified identity,
+  destination and queue0. Movement setup was synthetic. Separate commander4128776
+  moved to `(25,11)` and the Rifleman individually left onto the station before
+  rail; all other army memberships preserved. Gold2131.33984375 unchanged; T62.
+- Group 1 checkpoint `Sidkick_Playground_BeforeGroupOne_T62_1793974033209`
+  confirmed RESULT_OK/no overwrite. 187 Python + 352 Node tests pass; default23
+  read-only tools, write mode70 tools including47 actions.
+
 ## Existing baseline
 
 At `a410139`: 13 opt-in writes, 23 default read-only tools; 118 Python and 253

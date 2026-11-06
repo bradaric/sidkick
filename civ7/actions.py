@@ -197,6 +197,15 @@ async def move_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_tur
     return await _execute_and_verify("move_unit.js", arguments, "unit_position_state.js")
 
 
+async def rail_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Rail one unpacked ordinary land unit to an exact visible owned native-offered tile."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, x, y, expected_turn)):
+        raise ValueError("An exact owned unit, destination and expected turn are required")
+    return await _execute_and_verify("move_unit.js", {
+        "unit_id": unit_id, "x": x, "y": y, "expected_turn": expected_turn, "mode": "rail",
+    }, "unit_position_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def set_town_focus(settlement: StrictStr, focus: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Select an offered town focus or return to Growing Town."""
     if not isinstance(focus, str) or not focus.strip():

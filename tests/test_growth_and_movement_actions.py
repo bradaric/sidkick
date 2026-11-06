@@ -17,6 +17,10 @@ CASES = [
      {"unit_id": 20, "x": 10, "y": 15, "expected_turn": 59},
      "move_unit.js", "unit_position_state.js", {},
      {"unitId": 20, "unitType": 201, "componentType": 26, "location": {"x": 10, "y": 15}}),
+    ("rail_civ7_unit", "rail_unit", (20, 10, 15, 59),
+     {"unit_id": 20, "x": 10, "y": 15, "expected_turn": 59, "mode": "rail"},
+     "move_unit.js", "unit_position_state.js", {},
+     {"unitId": 20, "unitType": 201, "componentType": 26, "location": {"x": 10, "y": 15}, "queueSize": 0}),
 ]
 BEFORE = {"turn": 59, "age": 42, "playerId": 0}
 
@@ -76,6 +80,7 @@ class GrowthAndMovementTests(unittest.IsolatedAsyncioTestCase):
         normal = {t.name for t in create_server()._tool_manager.list_tools()}
         tools = {t.name: t for t in create_server(enable_writes=True)._tool_manager.list_tools()}
         for name, _, _, args, _, _, _, expected in CASES:
+            args = {k: v for k, v in args.items() if k != "mode"}
             self.assertNotIn(name, normal)
             self.assertIn(name, set(tools))
             self.assertFalse(tools[name].annotations.read_only_hint)
