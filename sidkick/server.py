@@ -62,6 +62,7 @@ from civ7.actions import (
     start_targeted_diplomacy,
     withdraw_project_support,
     establish_air_base,
+    group_air_attack,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -278,6 +279,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="group_civ7_air_attack",title="Execute one Civ VII grouped ground-attack air mission",
+            description=("CHANGE GAME STATE: exact squadron/carrier commander_id, mission land, "
+                         "target_player/target_unit_id at x/y and expected_turn. Requires ready visible "
+                         "owned base on own/unowned tile, carrier on water, complete packed aircraft/army "
+                         "inventory with role-eligible Ground Attacker aircraft and one exact visible enemy land field combat target on own/unowned "
+                         "non-district tile in existing met war. Native focused mission picker/selected "
+                         "permission must allow target. One native command selects aircraft, never a loop "
+                         "of individual strikes. Verifies primary damage/departure and at least one "
+                         "captured aircraft consumption/loss plus preserved exact surviving memberships. "
+                         "Reports some/all aircraft consumption separately; no full interception/splash, "
+                         "kill, Fighter Sweep, district bombing, recharge or turn claim.15-second readback, never retry unknown."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(group_air_attack)
         server.tool(
             name="establish_civ7_air_base",title="Establish exact Civ VII squadron air base",
             description=("CHANGE GAME STATE: fixed installed ESTABLISH_BASE by ready deployed squadron "

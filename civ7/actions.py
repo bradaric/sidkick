@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def group_air_attack(commander_id: StrictInt, mission: Literal["land"], target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """One native grouped ground-attack mission from an exact packed squadron/carrier."""
+    if any(type(v) is not int or v<0 for v in (commander_id,target_player,target_unit_id,x,y,expected_turn)) or mission!="land":
+        raise ValueError("Exact air commander, ground-attack mission, hostile field target and expected turn required")
+    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":mission,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def establish_air_base(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Establish/move an exact squadron base to native-offered empty visible own/unowned land."""
     if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):

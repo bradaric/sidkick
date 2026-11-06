@@ -535,6 +535,22 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   and exact member retention. No aircraft membership/base state forced. Original
   Squadron4522030 retained. 230 Python / 414 Node pass; tools23/106 including83
   actions. T62 unchanged; grouped air missions remain next, not silently deferred.
+- `a2b4800`: squadron base establishment. Native grouped Ground Attack now typed
+  with exact squadron/carrier and visible enemy land field target, existing met war,
+  complete owned army ledger, role-tagged ready packed Ground Attackers and native
+  focused command permission. One command, not repeated individual air attacks.
+  Readback requires primary effect plus at least one captured participant consumption/
+  loss and exact surviving membership. Partial/all captured consumption distinguished.
+- Fresh test Biplanes6750287/6815824 transferred to Squadron5832769; native Ground
+  Attack rejected without write because Fighters instead perform location-based
+  Fighter Sweep. Loaded command description/tags establish that distinction, now
+  enforced by handler/fixtures. Fresh Ground Attacker6881361 transferred normally;
+  second6946898 was not offered at the now-full squadron and remains deployed at
+  Copan. Only movement restored; no attack counters/membership/damage forced.
+  Native grouped Ground Attack with6881361 dealt17 to Rifleman5177402 `(23,15)`,
+  consumed its attack and preserved all army memberships. This live case had one
+  eligible Ground Attacker; multi-participant partial/all cases fixture-verified.
+- 231 Python / 416 Node pass; tools23/107 including84 actions, T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -542,7 +558,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | Concession-bearing deals remain unimplemented; white-peace handlers are native-cooldown blocked. Real native trade plunder implemented/fixture-tested, no eligible current source; legacy physical-route operation absent and rejects. Empty-centre city melee/occupation and keep/raze live-verified, garrison/civilian/stack variants remain outside scope. |
-| Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
+| Military transport | Fighter Sweep, Carpet Bomb and broader movement variants remain. Native squadron establishment/packed relocation, squadron aircraft transfer and grouped Ground Attack implemented/live-verified after establishing base. Single-aircraft carrier missions/transfers and packed-army ocean travel live-verified. Multi-aircraft consumption cases fixture-tested. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
 | Diplomacy/choices | Concession editing, nonzero-penalty/multi-support withdrawal and remaining hostile/mandatory variants remain. Fixed loaded secondary aid/food/raid handlers and sole-own zero-penalty project withdrawal/cancellation implemented; aid/cancellation/levy live-verified. Paid/trial, independent befriending and bonus handlers implemented with unavailable positive cases kept separate. |

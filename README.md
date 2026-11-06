@@ -1539,6 +1539,14 @@ destination; typed4456493 carrier→squadron transfer verified, then typed squad
 relocation `(22,11)→(21,12)` retained that aircraft. Movement setup only was synthetic.
 **230 Python / 414 Node pass; tools23/106 (83 actions).**
 
+`group_civ7_air_attack` executes one native Ground Attack from a squadron/carrier,
+binding role-eligible packed aircraft, visible exact land target and full membership.
+Readback distinguishes some/all consumption and requires primary effect plus exact
+surviving membership. Fighters are not Ground Attackers: their Fighter Sweep is a
+different location mission. Live6881361 dealt17 to5177402 and consumed its attack;
+all armies preserved. One eligible attacker live; multi-aircraft cases fixture-tested.
+**231 Python / 416 Node pass; tools23/107 (84 actions).**
+
 ## One-shot export
 
 ```powershell
