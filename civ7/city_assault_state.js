@@ -13,6 +13,10 @@
   if(visible&&centre?.owner===targetPlayer&&centre.id===cityId&&districtId&&same(MapCities.getDistrict(x,y),districtId)){
     const d=Districts.get(districtId);if(d?.type!==districtType)throw Error("Visible captured centre-district identity changed");if(Number.isFinite(d.getDamage))currentDamage=d.getDamage;
   }
-  return{turn:Game.turn,age:Game.age,playerId,unitId,captured,assaultObserved:captured||Boolean(attackSpent&&Number.isFinite(damage)&&currentDamage!==null&&currentDamage>damage),districtDamage:currentDamage,
+  const assaultObserved=captured||Boolean(attackSpent&&Number.isFinite(damage)&&currentDamage!==null&&currentDamage>damage);
+  let combatObservation=queryArguments.observation_token&&typeof combatObserver!=="undefined"?combatObserver.read(queryArguments.observation_token):null;
+  const observationQuiescent=Boolean(combatObservation?.available&&combatObservation.quiescent&&(mode==="occupy"?captured:assaultObserved));
+  if(observationQuiescent)combatObservation=combatObserver.read(queryArguments.observation_token,true);
+  return{turn:Game.turn,age:Game.age,playerId,unitId,captured,assaultObserved,districtDamage:currentDamage,...(combatObservation?{combatObservation,observationQuiescent}:{}),
     newCity:captured?{id:fresh[0].id,location:fresh[0].location,captureChoicePending:fresh[0].isJustConqueredFrom??null}:null};
 })()

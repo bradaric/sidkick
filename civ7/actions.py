@@ -381,11 +381,11 @@ async def peace_deal_action(target_player_id: StrictInt, action: Literal["prepar
     return await _execute_and_verify("peace_deal_action.js",{"target_player_id":target_player_id,"action":action,"expected_turn":expected_turn,"deal_token":deal_token},"peace_deal_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def assault_city(unit_id: StrictInt, target_player: StrictInt, target_city_id: StrictInt, x: StrictInt, y: StrictInt, mode: Literal["melee", "occupy"], expected_turn: StrictInt) -> dict[str, Any]:
+async def assault_city(unit_id: StrictInt, target_player: StrictInt, target_city_id: StrictInt, x: StrictInt, y: StrictInt, mode: Literal["melee", "occupy"], expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """Explicit adjacent settlement assault/occupation, never an implicit field-action capture."""
-    if any(type(v) is not int or v<0 for v in (unit_id,target_player,target_city_id,x,y,expected_turn)) or mode not in ("melee","occupy"):
+    if type(observe_effects) is not bool or any(type(v) is not int or v<0 for v in (unit_id,target_player,target_city_id,x,y,expected_turn)) or mode not in ("melee","occupy"):
         raise ValueError("Exact attacker, enemy city/centre, melee/occupy mode and expected turn required")
-    return await _execute_and_verify("assault_city.js",{"unit_id":unit_id,"target_player":target_player,"target_city_id":target_city_id,"x":x,"y":y,"mode":mode,"expected_turn":expected_turn},"city_assault_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+    return await _execute_and_verify("assault_city.js",{"unit_id":unit_id,"target_player":target_player,"target_city_id":target_city_id,"x":x,"y":y,"mode":mode,"expected_turn":expected_turn,**({"observe_effects":True} if observe_effects else {})},"city_assault_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
 async def resolve_city_capture(city_id: StrictInt, choice: Literal["keep", "raze"], expected_turn: StrictInt) -> dict[str, Any]:
@@ -853,12 +853,12 @@ async def bombard_district(unit_id: StrictInt, target_player: StrictInt, distric
     }, "district_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def commander_attack(commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+async def commander_attack(commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """Use the fixed direct commander ability against one exact adjacent field target."""
-    if any(type(v) is not int or v < 0 for v in (commander_id, target_player, target_unit_id, x, y, expected_turn)):
+    if type(observe_effects) is not bool or any(type(v) is not int or v < 0 for v in (commander_id, target_player, target_unit_id, x, y, expected_turn)):
         raise ValueError("Exact commander, hostile identity/tile and expected turn are required")
     return await _execute_and_verify("commander_attack.js", {
-        "commander_id": commander_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y, "expected_turn": expected_turn,
+        "commander_id": commander_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y, "expected_turn": expected_turn,**({"observe_effects":True} if observe_effects else {}),
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 

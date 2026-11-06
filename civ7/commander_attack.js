@@ -1,6 +1,8 @@
 (() => {
   const {commander_id: commanderId, target_player: targetPlayer, target_unit_id: targetId, x, y, expected_turn: expectedTurn} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
+  const {observe_effects:observe=false}=queryArguments;
+  if(typeof observe!=="boolean")return reject("Combat observation must be an explicit boolean");
   if (![commanderId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact commander, hostile identity/tile and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
@@ -61,7 +63,14 @@
     commander_attack: true, before_moves: before.moves, commander_before_attacks: before.attacks, baseline_army_id: before.armyId,
     baseline_packed_unit_ids: packed, commander_location: before.location, target_player: targetPlayer, target_unit_id: targetId,
     target_component_type: before.targetComponentType, target_type: before.targetType, before_target_damage: before.targetDamage, x, y};
-  Game.UnitCommands.sendRequest(commander.id, command, args);
-  return {status: "submitted", before, expected: {unitId: commanderId, targetPlayer, targetUnitId: targetId, abilityAttackObserved: true}, verificationArguments,
-    verificationScope: "Commander movement/attack spend plus primary-target damage/departure, stable source location and packed membership; not independent ability-charge accounting, kills or complete splash proof"};
+  if(observe){
+    if(typeof combatObserver==="undefined")return reject("Fixed native combat observer unavailable");
+    const baseline=combatObserver.capture(playerId,x,y,1,commander.id);
+    if(!baseline?.some(u=>u.owner===targetPlayer&&u.instanceId===targetId&&u.componentType===before.targetComponentType))return reject("Bounded visible commander-attack baseline unavailable");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||JSON.stringify(membership())!==JSON.stringify(packed)||commander.Movement.movementMovesRemaining!==before.moves||target()?.Health.damage!==before.targetDamage)return reject("Commander attack changed during observation capture");
+    try{verificationArguments.observation_token=combatObserver.start(playerId,commander.id,baseline,15000);}catch(error){return reject("Native commander-attack observation unavailable");}
+  }
+  try{Game.UnitCommands.sendRequest(commander.id, command, args);}catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
+  return {status: "submitted", before, expected: {unitId: commanderId, targetPlayer, targetUnitId: targetId, abilityAttackObserved: true,...(observe?{observationQuiescent:true}:{})}, verificationArguments,
+    verificationScope: "Commander spend plus primary effect, stable source and packing. Optional bounded visible health/native exact unit kills wait500ms captured-event quiet; not independent ability-charge accounting or complete hidden/global effects"};
 })()

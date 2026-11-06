@@ -1,5 +1,7 @@
 (() => {
   const {unit_id:unitId,target_player:targetPlayer,target_city_id:cityId,x,y,mode,expected_turn:expectedTurn}=queryArguments,reject=(reason,failureReasons=[])=>({status:"rejected",reason,failureReasons});
+  const {observe_effects:observe=false}=queryArguments;
+  if(typeof observe!=="boolean")return reject("Combat observation must be an explicit boolean");
   if(![unitId,targetPlayer,cityId,x,y,expectedTurn].every(v=>Number.isInteger(v)&&v>=0)||!["melee","occupy"].includes(mode))return reject("Exact attacker, wartime city/centre, melee/occupy mode and expected turn required");
   if(!UI.isInGame())return reject("Load a save first");
   const playerId=GameContext.localPlayerID,player=Players.get(playerId);
@@ -34,8 +36,15 @@
   if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||player.isTurnActive!==true||GameContext.hasSentTurnComplete()!==false||player.Diplomacy.isAtWarWith(targetPlayer)!==true||unit.id.owner!==playerId||unit.id.type!==before.componentType||unit.type!==before.unitType||unit.isOnMap!==true||unit.isEmbarked!==false||unit.operationQueueSize!==0||
       unit.location.x!==before.location.x||unit.location.y!==before.location.y||unit.Movement.movementMovesRemaining!==before.moves||unit.Combat.attacksRemaining!==before.attacks||!packingClear()||JSON.stringify(target())!==JSON.stringify(captured)||
       JSON.stringify(player.Cities.getCities().filter(c=>c.id.owner===playerId).map(c=>({owner:c.id.owner,id:c.id.id,type:c.id.type})).sort((a,b)=>a.id-b.id))!==JSON.stringify(baselineCities))return reject("Attacker, centre/district, owned settlement ledger or context changed during validation");
-  Game.UnitOperations.sendRequest(unit.id,UnitOperationTypes.MOVE_TO,args);
-  return{status:"submitted",before,expected:{unitId,...(mode==="occupy"?{captured:true}:{assaultObserved:true})},verificationArguments:{unit_id:unitId,unit_type:unit.type,component_type:unit.id.type,before_attacks:before.attacks,before_moves:before.moves,
-    target_player:targetPlayer,target_city_id:cityId,x,y,mode,baseline_cities:baselineCities,district_id:captured.district?.id??null,district_type:captured.district?.type??null,before_district_damage:captured.district?.damage??null},
-    verificationScope:"Explicit settlement assault/occupation: attack or movement consumption plus primary centre-district damage or exact new owned settlement preserving prior cities. Capture disposition remains a separate keep/raze choice; no garrison/civilian/kill/splash or full conquest effect accounting"};
+  const verificationArguments={unit_id:unitId,unit_type:unit.type,component_type:unit.id.type,before_attacks:before.attacks,before_moves:before.moves,
+    target_player:targetPlayer,target_city_id:cityId,x,y,mode,baseline_cities:baselineCities,district_id:captured.district?.id??null,district_type:captured.district?.type??null,before_district_damage:captured.district?.damage??null};
+  if(observe){
+    if(typeof combatObserver==="undefined")return reject("Fixed native combat observer unavailable");
+    const baseline=combatObserver.capture(playerId,x,y,1,unit.id);if(!baseline)return reject("Bounded visible settlement-assault baseline unavailable");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||unit.Combat.attacksRemaining!==before.attacks||JSON.stringify(target())!==JSON.stringify(captured)||!packingClear())return reject("Settlement assault changed during observation capture");
+    try{verificationArguments.observation_token=combatObserver.start(playerId,unit.id,baseline,15000);}catch(error){return reject("Native settlement-assault observation unavailable");}
+  }
+  try{Game.UnitOperations.sendRequest(unit.id,UnitOperationTypes.MOVE_TO,args);}catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
+  return{status:"submitted",before,expected:{unitId,...(mode==="occupy"?{captured:true}:{assaultObserved:true}),...(observe?{observationQuiescent:true}:{})},verificationArguments,
+    verificationScope:"Explicit empty-centre assault/occupation and owned-city ledger proof. Optional bounded visible-unit health/native attribution waits500ms captured-event quiet, not full hidden/conquest effects. Capture disposition remains a separate keep/raze choice; no automatic decision"};
 })()

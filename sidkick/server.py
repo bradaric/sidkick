@@ -616,7 +616,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "selected permission. Occupy needs direct current-turn path. Verifies attack/movement "
                          "consumption plus primary district damage or exact new owned city preserving prior "
                          "settlements. Capture keep/raze remains separate; no automatic disposition, new war, "
-                         "kill/splash/full conquest accounting or turn advance. One submission,15-second readback; no retry."),
+                         "full conquest accounting or turn advance. Optional observe_effects=true adds bounded "
+                         "visible-unit health/native attribution and500ms captured-event quiet, never automatic "
+                         "keep/raze or full hidden effects. One submission,15-second readback; no retry."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(assault_city)
         server.tool(
@@ -958,7 +960,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "civilian/stack/district/city targets, enemy territory, packed-unit attacks, war or "
                          "turn advancement. Verifies commander movement/attack spend plus primary-target "
                          "damage/departure and stable source location/membership; not numeric ability-charge "
-                         "accounting, a kill or complete splash proof. Submits once; polls read-only for "
+                         "accounting or complete splash proof. Optional observe_effects=true adds bounded "
+                         "visible health/native exact unit-kill evidence and500ms captured-event quiet, not "
+                         "complete hidden/global effects. Submits once; polls read-only for "
                          "15 seconds and never retries unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,

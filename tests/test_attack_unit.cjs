@@ -15,7 +15,7 @@ function run(o = {}, script = 'attack_unit.js') {
   const district = {id: {owner: 1, id: 99, type: 4}, owner: 1, type: 500, location: {x: 3, y: 3}, getMaxDamage: 100, getDamage: o.damaged ? 30 : 0};
   const commander = {id: {owner: 0, id: 30, type: 26}, type: 300, isOnMap: true, isCommanderUnit: true,
     operationQueueSize: o.queuedCommander ? 1 : 0, location: {x: 2, y: 2}, armyId: {owner: 0, id: 30, type: 29},
-    isEmbarked: false, Movement: {movementMovesRemaining: 2}, Combat: {attacksRemaining: 1}};
+    isEmbarked: false, Health:{damage:0,maxDamage:100},Movement: {movementMovesRemaining: 2}, Combat: {attacksRemaining: 1}};
   if (o.movedCommander) {commander.location = {x: 3, y: 3}; commander.Movement.movementMovesRemaining = 0;}
   if (o.spentCommander) commander.Movement.movementMovesRemaining = 0;
   const second = {...attacker, id: {owner: 0, id: 11, type: 26}, location: {x: 3, y: 2}};
@@ -75,7 +75,7 @@ function run(o = {}, script = 'attack_unit.js') {
     };
     if(o.group)context.Game.UnitCommands.sendRequest=(id,command,args)=>{
       calls.push({kind:'commandSend',id,command,args});target.Health.damage=30;
-      for(const u of [attacker,...(o.secondParticipant?[second]:[])]){u.Combat.attacksRemaining=0;for(const cb of listeners.Combat??[])cb({attacker:u.id,defender:target.id});}
+      for(const u of script==='commander_attack.js'?[commander]:[attacker,...(o.secondParticipant?[second]:[])]){u.Combat.attacksRemaining=0;u.Movement.movementMovesRemaining--;for(const cb of listeners.Combat??[])cb({attacker:u.id,defender:target.id});}
     };
   }
   let data;
@@ -96,6 +96,10 @@ test('observed district bombardment keeps primary district accounting separate f
  const base={observe:true,district:true,enemyTile:true,args:{district_id:99}};
  const r=run(base,'ranged_district_attack.js');assert.equal(r.data.status,'submitted');assert.equal(r.data.expected.observationQuiescent,true);assert.equal(r.after.districtAttackObserved,true);assert.equal(r.after.observationQuiescent,true);assert.equal(r.after.combatObservation.units.find(u=>u.instanceId===20).damageDelta,30);assert.equal(r.after.districtDamage,30);assert.equal(r.after.districtDestroyed,null);
  const early=run({...base,deferQuiet:true},'ranged_district_attack.js');assert.equal(early.after.observationQuiescent,false);assert.equal(early.after.combatObservation.closed,false);
+});
+test('observed direct commander ability attributes source events while retaining its independent membership/spend guard',()=>{
+ const r=run({observe:true,group:true},'commander_attack.js');assert.equal(r.data.status,'submitted');assert.equal(r.after.abilityAttackObserved,true);assert.equal(r.after.observationQuiescent,true);assert.equal(r.after.combatObservation.nativeCombats[0].attacker.id,30);assert.equal(r.after.packingPreserved,true);
+ const early=run({observe:true,group:true,deferQuiet:true},'commander_attack.js');assert.equal(early.after.observationQuiescent,false);
 });
 
 test('single melee/ranged unit attacks bind explicit hostile component and fixed native arguments', () => {

@@ -1671,6 +1671,14 @@ setup labelled; no damage/eligibility forced. Fortified naval attempts rejected
 before submission, no fallback. Full hidden/global effects remain unclaimed.
 **247 Python / 447 Node pass; tool counts unchanged.**
 
+Direct commander and empty-centre settlement assault/occupation also accept
+`observe_effects=true`; no relaxed guards or automatic keep/raze. Native observed
+Heroic Assault dealt40 with stable source/membership after labelled XP/promotions/
+movement setup. Observed capture is fixture-tested only: no eligible empty revealed
+centre, and one Tuner Town setup produced no city; no assault or retry submitted.
+Separate BeforeObservedCapture T62 checkpoint confirmed RESULT_OK.
+**248 Python / 449 Node pass; tool counts unchanged.**
+
 ## One-shot export
 
 ```powershell

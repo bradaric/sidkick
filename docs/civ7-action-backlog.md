@@ -799,6 +799,24 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   beside that labelled test ship, but both native naval/ranged pickers rejected.
   No bombardment request, range/HP override or fallback submitted; not a normal
   naval source-placement proof.247 Python /447 Node pass; counts unchanged.
+- `f43158c`: district observation/native splash checks. Existing direct commander
+  Heroic Assault and empty-centre settlement assault/occupation now accept optional
+  strict `observe_effects=true`. Source/target/membership/city-ledger guards unchanged;
+  same bounded visible-unit health/native exact kill evidence and500ms captured-event
+  quiet. Captured settlement ownership is still independently proven and keep/raze
+  separate; neither visible disappearance nor optional observation implies full
+  conquest/global effects. Observer integration no longer unimplemented here.
+- Native observed Commander7602268 used normal typed Steadfast→Bulwark→Defilade→
+  Resolute→Duty after labelled1000XP. Initial spent movement rejected before any
+  attack; after only Commander movement restoration, native Heroic Assault dealt
+ 40 to5505087 `(21,17)` (damage21→61), source/packing stable, quiet503ms, exact native
+  Combat event. No attack counter/ability effect forced; not a recharge proof.
+- Observed assault/capture option fixture-tested, not yet positive native. Current
+  revealed enemy4 centres all contain units; one separate Tuner CITY setup at empty
+  unowned `(16,13)` produced no observed city/district even after bounded wait. No
+  city assault, forced HP depletion or setup retry followed. Separate
+  `Sidkick_Playground_BeforeObservedCapture_T62_1794000415164` confirmed RESULT_OK
+  before setup.248 Python /449 Node pass; counts unchanged, still T62.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -818,8 +836,8 @@ combat cases. Multi-participant Focus Fire and coordinated melee now have positi
 synthetic native execution, no longer fixture-only. Bounded independent kill/visible
 collateral accounting exists for explicit observed field/land-group/fleet/air
 strikes, with positive native kill/retaliation/splash evidence, plus optional district
-bombardment observation. Direct-commander/capture observation integration remains
-implementation work; full hidden/
+bombardment/direct-commander/capture observation. Optional observed capture positive
+execution still needs an eligible empty centre; full hidden/
 global effects are not promised.
 
 ## Existing baseline
