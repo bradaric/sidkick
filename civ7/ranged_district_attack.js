@@ -1,7 +1,7 @@
 (() => {
-  const {unit_id: unitId, target_player: targetPlayer, district_id: districtId, x, y, expected_turn: expectedTurn} = queryArguments;
+  const {unit_id: unitId, target_player: targetPlayer, district_id: districtId, x, y, expected_turn: expectedTurn, domain = "DOMAIN_LAND"} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (![unitId, targetPlayer, districtId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact attacker, hostile district identity/tile and expected turn are required");
+  if (!["DOMAIN_LAND", "DOMAIN_SEA"].includes(domain) || ![unitId, targetPlayer, districtId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact attacker, hostile district identity/tile, supported domain and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
   if (!Number.isInteger(playerId) || playerId < 0 || !player || targetPlayer === playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
@@ -11,10 +11,11 @@
   const unit = matches[0], def = GameInfo.Units.lookup(unit.type);
   const valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) && l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();
   if (unit.isOnMap !== true || unit.isDead === true || unit.isCommanderUnit || unit.isEmbarked !== false || unit.operationQueueSize !== 0 ||
-      def?.Domain !== "DOMAIN_LAND" || def.FormationClass !== "FORMATION_CLASS_LAND_COMBAT" || !valid(unit.location) || !valid({x, y}) ||
+      def?.Domain !== domain || def.FormationClass !== (domain === "DOMAIN_LAND" ? "FORMATION_CLASS_LAND_COMBAT" : "FORMATION_CLASS_NAVAL") || !valid(unit.location) || !valid({x, y}) ||
       GameplayMap.getRevealedState(playerId, unit.location.x, unit.location.y) !== RevealedStates.VISIBLE || unit.Combat?.isCombat !== true || unit.Combat.canAttack !== true ||
       !Number.isInteger(unit.Combat.attacksRemaining) || unit.Combat.attacksRemaining <= 0 || !(unit.Combat.rangedStrength > 0 || unit.Combat.bombardStrength > 0) ||
       !Number.isFinite(unit.Movement?.movementMovesRemaining) || unit.Movement.movementMovesRemaining <= 0) return reject("A ready deployed unqueued unembarked land ranged/siege combat unit is required");
+  if (domain === "DOMAIN_SEA" && (GameplayMap.isWater(unit.location.x, unit.location.y) !== true || GameplayMap.isWater(x, y) !== false)) return reject("Naval shore bombardment requires water source and land district target");
   function packingClear() {
     for (const c of owned.filter(u => u.isCommanderUnit)) {
       const a = typeof Armies !== "undefined" ? Armies.get(c.armyId) : null, ids = a?.owner === playerId ? a.getUnitIds?.() : null;
@@ -39,17 +40,18 @@
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
     location: {x: unit.location.x, y: unit.location.y}, moves: unit.Movement.movementMovesRemaining, attacks: unit.Combat.attacksRemaining,
     districtType: district.type, districtComponentType: district.id.type, districtDamage: district.getDamage, districtMaxDamage: district.getMaxDamage};
-  const operation = UnitOperationTypes.RANGE_ATTACK, args = {X: x, Y: y};
+  const operation = domain === "DOMAIN_SEA" ? "UNITOPERATION_NAVAL_ATTACK" : UnitOperationTypes.RANGE_ATTACK, args = {X: x, Y: y};
   const picker = Game.UnitOperations.canStart(unit.id, operation, {}, false), plot = GameplayMap.getIndexFromLocation({x, y});
   const index = Array.isArray(picker?.Plots) ? picker.Plots.indexOf(plot) : -1;
-  if (picker?.Success !== true || index < 0 || !Array.isArray(picker.Modifiers) || picker.Modifiers.length !== picker.Plots.length ||
-      ![OperationPlotModifiers.TARGET, OperationPlotModifiers.INDIRECT].filter(Number.isInteger).includes(picker.Modifiers[index])) return reject("Exact district is not an attackable native ranged-picker plot");
+  if (picker?.Success !== true || index < 0 || (domain === "DOMAIN_LAND" && (!Array.isArray(picker.Modifiers) || picker.Modifiers.length !== picker.Plots.length ||
+      ![OperationPlotModifiers.TARGET, OperationPlotModifiers.INDIRECT].filter(Number.isInteger).includes(picker.Modifiers[index])))) return reject("Exact district is not an attackable native picker plot");
   const check = Game.UnitOperations.canStart(unit.id, operation, args, false);
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native district ranged attack failed or needs confirmation", check?.FailureReasons ?? []);
   const fresh = target();
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
       player.Diplomacy.isAtWarWith(targetPlayer) !== true || unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType ||
       unit.isOnMap !== true || unit.operationQueueSize !== 0 || unit.isEmbarked !== false || unit.location.x !== before.location.x || unit.location.y !== before.location.y ||
+      (domain === "DOMAIN_SEA" && (GameplayMap.isWater(unit.location.x, unit.location.y) !== true || GameplayMap.isWater(x, y) !== false)) ||
       unit.Combat.canAttack !== true || unit.Combat.attacksRemaining !== before.attacks || unit.Movement.movementMovesRemaining !== before.moves || !packingClear() ||
       !fresh || fresh.type !== before.districtType || fresh.id.type !== before.districtComponentType || fresh.getDamage !== before.districtDamage || fresh.getMaxDamage !== before.districtMaxDamage) return reject("Attacker, district, packing or context changed during validation");
   const verificationArguments = {unit_id: unitId, attacker_type: before.unitType, attacker_component_type: before.componentType, before_attacks: before.attacks,

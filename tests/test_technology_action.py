@@ -175,6 +175,9 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "pillage_civ7_tile",
             "air_attack_civ7_unit",
             "coastal_raid_civ7_tile",
+            "melee_attack_civ7_enemy_field",
+            "bombard_civ7_shore_district",
+            "naval_attack_civ7_land_unit",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

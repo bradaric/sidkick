@@ -481,6 +481,35 @@ async def attack_unit(
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def naval_attack_land_unit(unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Fixed native naval fire on an exact enemy-owned coastal land field defender."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, target_unit_id, x, y, expected_turn)):
+        raise ValueError("Exact naval attacker, wartime field defender/tile and expected turn are required")
+    return await _execute_and_verify("attack_unit.js", {
+        "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
+        "expected_turn": expected_turn, "kind": "shore", "target_territory": "enemy_field",
+    }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def melee_attack_enemy_field(unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Adjacent melee against an exact enemy-owned non-centre/non-district field defender."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, target_unit_id, x, y, expected_turn)):
+        raise ValueError("Exact attacker, wartime field defender/tile and expected turn are required")
+    return await _execute_and_verify("attack_unit.js", {
+        "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
+        "expected_turn": expected_turn, "kind": "melee", "target_territory": "enemy_field",
+    }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def bombard_shore_district(unit_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Ranged naval attack from water against an exact visible hostile land district."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, district_id, x, y, expected_turn)):
+        raise ValueError("Exact naval attacker, wartime land district/tile and expected turn are required")
+    return await _execute_and_verify("ranged_district_attack.js", {
+        "unit_id": unit_id, "target_player": target_player, "district_id": district_id, "x": x, "y": y, "expected_turn": expected_turn, "domain": "DOMAIN_SEA",
+    }, "district_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def air_attack_unit(unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Strike one exact visible field combat target from a captured owned city Aerodrome."""
     if any(type(v) is not int or v < 0 for v in (unit_id, target_player, target_unit_id, x, y, expected_turn)):

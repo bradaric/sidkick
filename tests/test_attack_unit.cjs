@@ -30,11 +30,11 @@ function run(o = {}, script = 'attack_unit.js') {
   const context = {queryArguments: args, UI: {isInGame: () => true},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false}, Players: {get: () => player},
     GameInfo: {TypeTags: [{Type: 'UNIT_RANGED', Tag: o.meleeRole ?? (o.siegeOnly ? 'UNIT_CLASS_SIEGE' : 'UNIT_CLASS_RANGED')}],
-      Units: {lookup: type => ({UnitType: type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
-      FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : o.sea ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
+       Units: {lookup: type => ({UnitType: type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: type === 200 && o.shoreLandTarget ? 'DOMAIN_LAND' : o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+       FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : type === 200 && o.shoreLandTarget ? 'FORMATION_CLASS_LAND_COMBAT' : o.sea ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
       getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.tileOwner ?? (o.enemyTile ? 1 : -1),
-      isWater: () => o.waterTarget ?? o.sea ?? false},
+      isWater: x => o.shoreSource ? x === 2 : o.waterTarget ?? o.sea ?? false},
     RevealedStates: {VISIBLE: 2}, Visibility: {isVisible: () => !o.invisible},
     MapCities: {getCity: () => o.noCity ? null : {owner: 1, id: 9, type: 1},
       getDistrict: () => o.district && !o.districtGone ? district.id : o.undefendedDistrict ? {owner: 1, id: 8, type: 4} : null},
@@ -99,11 +99,14 @@ test('explicit enemy-field ranged mode allows only positively classified visible
   assert.equal(data.before.targetTerritory, 'enemy_field');
   for (const o of [{district: true}, {undefendedDistrict: true}, {cityCentre: true}, {unknownCity: true}, {noCity: true}, {hiddenCentre: true},
     {tileOwner: 2}, {enemyTile: false}, {stacked: true}, {hidden: true}, {peace: true}, {civilianDefinition: true},
-    {args: {...args, kind: 'melee'}}, {args: {...args, target_territory: 'arbitrary'}}]) {
+    {args: {...args, target_territory: 'arbitrary'}}]) {
     const result = run({enemyTile: true, args, ...o});
     assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
   }
   assert.equal(run({enemyTile: true, args: {kind: 'ranged'}}).data.status, 'rejected', 'default boundary is unchanged');
+  const melee = run({enemyTile: true, args: {...args, kind: 'melee'}});
+  assert.equal(melee.data.status, 'submitted'); assert.equal(melee.calls.at(-1).args.Modifiers, 1);
+  assert.equal(run({enemyTile: true, district: true, args: {...args, kind: 'melee'}}).data.status, 'rejected');
 });
 
 test('naval attack uses the distinct native naval operation and its offered plots without ranged modifiers', () => {
@@ -116,6 +119,17 @@ test('naval attack uses the distinct native naval operation and its offered plot
     {group: true, unknownArmy: true}, {hidden: true}, {peace: true}, {reinforcing: true}]) {
     const result = run({sea: true, args: {kind: 'naval'}, ...o});
     assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('explicit shore fire uses NAVAL_ATTACK on one positively classified land field target, never enters the tile', () => {
+  const opts = {sea: true, shoreSource: true, shoreLandTarget: true, enemyTile: true, noModifiers: true,
+    args: {kind: 'shore', target_territory: 'enemy_field'}};
+  const r = run(opts); assert.equal(r.data.status, 'submitted');
+  assert.deepEqual(r.calls.at(-1).args, {X: 3, Y: 3}); assert.equal(r.calls.at(-1).operation, 'UNITOPERATION_NAVAL_ATTACK');
+  assert.equal(run({...opts, undefendedDistrict: true}).data.status, 'submitted', 'shore fire may hit a unit in a non-defensible district, never its centre');
+  for (const o of [{district: true}, {cityCentre: true}, {stacked: true}, {shoreLandTarget: false}, {shoreSource: false}, {hiddenCentre: true}]) {
+    assert.equal(run({...opts, ...o}).data.status, 'rejected');
   }
 });
 
@@ -153,6 +167,13 @@ test('ranged district attack binds the exact native defensible district even whe
     const r = run({district: true, enemyTile: true, args, ...o}, 'ranged_district_attack.js');
     assert.equal(r.data.status, 'rejected', JSON.stringify(o)); assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
   }
+});
+
+test('naval district bombardment uses native NAVAL_ATTACK from water to land, never ranged fallback', () => {
+  const r = run({sea: true, shoreSource: true, district: true, enemyTile: true, args: {district_id: 99, domain: 'DOMAIN_SEA'}}, 'ranged_district_attack.js');
+  assert.equal(r.data.status, 'submitted'); assert.equal(r.calls.at(-1).operation, 'UNITOPERATION_NAVAL_ATTACK');
+  const blocked = run({sea: true, district: true, enemyTile: true, args: {district_id: 99, domain: 'DOMAIN_SEA'}}, 'ranged_district_attack.js');
+  assert.equal(blocked.data.status, 'rejected');
 });
 
 test('district readback needs an actual attack spend and visible damage/departure; never reads a hidden/departed district', () => {

@@ -8,6 +8,15 @@ from sidkick.server import create_server
 
 
 class NavalAttackTests(unittest.IsolatedAsyncioTestCase):
+    async def test_shore_field_fire_uses_a_fixed_separate_kind(self):
+        self.assertTrue(callable(getattr(actions, 'naval_attack_land_unit', None)))
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value={'status': 'rejected'}) as run:
+            await actions.naval_attack_land_unit(10, 1, 20, 3, 3, 62)
+        self.assertEqual(run.await_args.args, ('attack_unit.js', {'unit_id': 10, 'target_player': 1, 'target_unit_id': 20,
+            'x': 3, 'y': 3, 'expected_turn': 62, 'kind': 'shore', 'target_territory': 'enemy_field'}))
+        self.assertNotIn('naval_attack_civ7_land_unit', {t.name for t in create_server()._tool_manager.list_tools()})
+        self.assertIn('naval_attack_civ7_land_unit', {t.name for t in create_server(enable_writes=True)._tool_manager.list_tools()})
+
     async def test_naval_attack_submits_once_and_uses_existing_exact_combat_readback(self):
         self.assertTrue(callable(getattr(actions, 'naval_attack_unit', None)))
         args = {'unit_id': 10, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3, 'expected_turn': 62, 'kind': 'naval'}

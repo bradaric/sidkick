@@ -35,6 +35,9 @@ from civ7.actions import (
     pillage_tile,
     air_attack_unit,
     coastal_raid,
+    melee_attack_enemy_field,
+    bombard_shore_district,
+    naval_attack_land_unit,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -251,6 +254,46 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="naval_attack_civ7_land_unit", title="Fire Civ VII ship at coastal land unit",
+            description=("CHANGE GAME STATE: fixed native NAVAL_ATTACK from exact ready deployed naval "
+                         "combat unit_id on water against exact target_player/target_unit_id on visible "
+                         "enemy-owned non-centre, non-defensible land tile x/y with fresh expected_turn. Existing met war, "
+                         "known unpacked/nonreinforcing source, one exact visible land combat defender, "
+                         "visible owning centre elsewhere and native offered/selected permission required. "
+                         "Non-defensible district unit targets allowed; no landing, district/city entry, "
+                         "capture, civilian/stack target or new war. Verifies "
+                         "attack consumption/loss plus primary-target damage/departure, not kill/full splash. "
+                         "One submission,15-second readback, no unknown retry or turn advancement."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(naval_attack_land_unit)
+        server.tool(
+            name="melee_attack_civ7_enemy_field", title="Melee attack on Civ VII enemy field",
+            description=("CHANGE GAME STATE: adjacent native MOVE_TO/ATTACK by exact owned unit_id "
+                         "against exact target_player/target_unit_id at visible enemy-owned x/y with fresh "
+                         "expected_turn. Existing met war, ready deployed unqueued unpacked/nonreinforcing "
+                         "combat unit, unique visible defender, native reachable/tested melee target and "
+                         "selected permission required. Positively excludes districts and visible owning "
+                         "city centre; no capture, civilian/stack target or new war. Attacker may enter "
+                         "the field, take damage or die. Verifies attack consumption/loss and primary-target "
+                         "damage/departure, not a kill/full splash. One submission,15-second readback, no "
+                         "unknown/cancelled retry or turn advancement."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(melee_attack_enemy_field)
+        server.tool(
+            name="bombard_civ7_shore_district", title="Bombard Civ VII district from sea",
+            description=("CHANGE GAME STATE: fixed native NAVAL_ATTACK by exact deployed naval combat "
+                         "unit_id on water against exact visible hostile land target_player/district_id "
+                         "at x/y with fresh expected_turn. Same ready/known-membership and native offered/"
+                         "selected checks as district bombardment. Existing met war only. Verifies attack "
+                         "consumption/loss plus primary district damage/departure; garrison/retaliation/"
+                         "splash not completely verified. No landing/capture, air strike, new war or turn "
+                         "advancement. One submission,15-second readback, never retry unknown/cancelled."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(bombard_shore_district)
         server.tool(
             name="coastal_raid_civ7_tile", title="Raid one Civ VII coastal tile",
             description=("CHANGE GAME STATE: native COASTAL_RAID by exact mobile deployed naval combat "

@@ -217,6 +217,19 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   movement3→0, damaged=false→true, Gold unchanged. Live typed Python action (not
   MCP transport in this case); no damage effect forced. 205 Python / 376 Node pass;
   tools23/79 including56 actions. Still T62.
+- `2a7c0e0`: coastal raids. Enemy-field melee and native naval shore fire now
+  implemented. Synthetic Tank5308474 `(17,21)` normally attacked Rifleman4653101
+  `(17,20)`: attack1→0, damage21→69 (48 new damage). Native Frigate5242937
+  `(18,23)` fired NAVAL_ATTACK at Rifleman4980791 `(19,23)`: attack1→0, damage0→25.
+  Shore fire permits a non-defensible district's exact unit but positively excludes
+  the visible owning centre/defensible districts, stacks and civilians. No landing.
+  Initial broader district exclusion was diagnosed from rural-tile evidence and
+  narrowed only for non-entering native shore fire; ordinary/field melee gates stay.
+- Separate naval defensible-land-district bombardment implemented with native
+  NAVAL_ATTACK (not RANGE_ATTACK, which native ships reject). Exact offered/selected
+  district gates and primary district effect verification. Positive coastal fortified
+  district case unavailable near the test ship; fixture coverage, no shot claimed.
+  No Overrun or turn submitted. 208 Python / 378 Node pass; tools23/82,59 actions.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

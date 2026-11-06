@@ -1335,6 +1335,16 @@ new constructible damage/departure; no loot/healing, landing or capture claim.
 Live typed Python synthetic Frigate5242937 raided existing Woodcutter3538997:
 movement3→0 and damaged=false→true. **205 Python / 376 Node pass; tools23/79.**
 
+`melee_attack_civ7_enemy_field` adds exact adjacent melee on enemy-owned non-centre/
+non-district fields; no city capture. `naval_attack_civ7_land_unit` adds fixed native
+NAVAL_ATTACK at one visible enemy-owned non-centre/non-defensible land combat
+target, including rural districts, without landing. `bombard_civ7_shore_district`
+uses separate exact defensible-land-district native naval targeting; positive
+coastal fortified-district execution remains fixture-only. Existing war and fixed
+native offered/selected permission apply; no arbitrary attacks or damage forecasts.
+Live typed synthetic Tank melee dealt48 damage; Frigate shore fire dealt25. No
+attack/damage effect forced. **208 Python / 378 Node pass; tools23/82 (59 actions).**
+
 ## One-shot export
 
 ```powershell

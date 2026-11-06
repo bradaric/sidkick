@@ -8,6 +8,15 @@ from sidkick.server import create_server
 
 
 class DistrictAttackTests(unittest.IsolatedAsyncioTestCase):
+    async def test_shore_bombardment_uses_separate_fixed_naval_scope(self):
+        self.assertTrue(callable(getattr(actions, 'bombard_shore_district', None)))
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value={'status': 'rejected'}) as run:
+            await actions.bombard_shore_district(10, 1, 99, 3, 3, 62)
+        self.assertEqual(run.await_args.args, ('ranged_district_attack.js', {'unit_id': 10, 'target_player': 1, 'district_id': 99, 'x': 3, 'y': 3,
+            'expected_turn': 62, 'domain': 'DOMAIN_SEA'}))
+        self.assertNotIn('bombard_civ7_shore_district', {t.name for t in create_server()._tool_manager.list_tools()})
+        self.assertIn('bombard_civ7_shore_district', {t.name for t in create_server(enable_writes=True)._tool_manager.list_tools()})
+
     async def test_bombard_district_uses_fixed_ranged_submission_and_exact_district_readback(self):
         self.assertTrue(callable(getattr(actions, 'bombard_district', None)))
         args = {'unit_id': 10, 'target_player': 1, 'district_id': 99, 'x': 3, 'y': 3, 'expected_turn': 62}
