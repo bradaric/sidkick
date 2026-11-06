@@ -9,12 +9,20 @@ test('combat readout exposes visible constructible pillage token without requiri
   assert.equal(data.pillage.targetToken, JSON.stringify([{owner: 1, instanceId: 20, componentType: 2, type: 200, complete: true, damaged: false}]));
 });
 
+test('stationed city-Aerodrome aircraft can inspect an exact visible target without pretending to be deployed', () => {
+  const {data, queries} = run({packed: true, cityAirSource: true});
+  assert.equal(data.attacker.readiness.deployed, false); assert.equal(data.attacker.stationedAirBase.commanderId, 30);
+  assert.equal(data.defender.instanceId, 8); assert.equal(queries, 1); assert.equal(data.options[0].kind, 'air');
+  const unknown = run({packed: true, cityAirSource: true, unknownAirMembership: true});
+  assert.equal(unknown.data.attacker.stationedAirBase, null); assert.equal(unknown.data.defender, null); assert.equal(unknown.queries, 0);
+});
+
 function run({ visible = true, unitVisible = true, met = true, atWar = true, district = false, packed = false,
-  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false, selectedCommanderBlocked = false, pillageEvidence = false } = {}) {
+  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false, selectedCommanderBlocked = false, pillageEvidence = false, cityAirSource = false, unknownAirMembership = false } = {}) {
   const script = path.join(__dirname, '../civ7/combat.js');
   assert.ok(fs.existsSync(script), 'bundled combat evidence query exists');
   const attacker = { id: { owner: 0, id: 7, type: 26 }, type: 'ARCHER', owner: 0, location: packed ? { x: -1, y: -1 } : { x: 0, y: 0 },
-    isCommanderUnit: commander, isFortified: missingState ? undefined : true, isEmbarked: false,
+    isCommanderUnit: commander, isOnMap: !packed, isFortified: missingState ? undefined : true, isEmbarked: false, armyId: {owner: 0, id: 40, type: 29},
     Movement: { movementMovesRemaining: 1, hasMoved: true },
     Combat: { isCombat: true, canAttack, rangedStrength: 30, bombardStrength: 0, getMeleeStrength: () => 20,
       attacksRemaining: missingState ? undefined : 1, maxNumAttacks: 2, attackRange: 3, antiAirStrength: 4,
@@ -28,10 +36,13 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
   let queries = 0, commandQueries = 0, focusedQueries = 0, meleeQueries = 0, overrunQueries = 0;
   const data = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
     queryArguments: { unit_id: 7, x: 1, y: 0 }, UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
-    Players: { get: id => id === 0 ? { Units: { getUnits: () => [attacker] }, Diplomacy: { hasMet: () => met, isAtWarWith: () => atWar } }
+    Players: { get: id => id === 0 ? { Units: { getUnits: () => [attacker, ...(cityAirSource ? [{id: {owner: 0, id: 30, type: 26}, type: 'AERODROME',
+        isCommanderUnit: true, isAerodromeCommander: true, isOnMap: true, armyId: {owner: 0, id: 40, type: 29}, location: {x: 0, y: 0}}] : [])] },
+      Cities: {getCities: () => [{id: {owner: 0, id: 7, type: 1}, location: {x: 0, y: 0}}]}, Diplomacy: { hasMet: () => met, isAtWarWith: () => atWar } }
       : { civilizationFullName: 'Known enemy' } },
+    Armies: {get: () => ({owner: 0, localId: 40, getCommanderId: () => ({owner: 0, id: 30, type: 26}), getUnitIds: () => unknownAirMembership ? null : [attacker.id]})},
     GameplayMap: { getGridWidth: () => 2, getGridHeight: () => 1, getRevealedState: () => visible ? 2 : 1,
-      getIndexFromLocation: location => location.x,
+      getIndexFromLocation: location => location.x, getOwner: () => 0,
       getTerrainType: (x, y) => { assert.ok(visible); assert.equal(x, 1); return 'HILLS'; },
       getFeatureType: () => 'FOREST', getBiomeType: () => 'TEMPERATE' },
     RevealedStates: { VISIBLE: 2 }, Visibility: { isVisible: () => unitVisible },
@@ -39,14 +50,14 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
       Constructibles: {getByComponentID: () => ({type: 200, complete: true, damaged: false})}} : {}),
     Units: { get: () => { assert.ok(unitVisible, 'invisible defenders are never inspected'); return defender; } },
     Districts: { get: () => defender },
-    GameInfo: { Units: { lookup: type => ({ UnitType: type, Name: type }) }, Districts: { lookup: () => ({ Name: 'Fortified district' }) },
+    GameInfo: { Units: { lookup: type => ({ UnitType: type, Name: type, Domain: cityAirSource ? 'DOMAIN_AIR' : 'DOMAIN_LAND' }) }, Districts: { lookup: () => ({ Name: 'Fortified district' }) },
       Terrains: { lookup: () => ({ TerrainType: 'HILLS', Name: 'Hills', DefenseModifier: 3 }) },
       Features: { lookup: () => ({ FeatureType: 'FOREST', Name: 'Forest', DefenseModifier: 2 }) },
       Biomes: { lookup: () => ({ BiomeType: 'TEMPERATE', Name: 'Temperate' }) } },
     UnitOperationTypes: { MOVE_TO: 'MOVE', RANGE_ATTACK: 'RANGED' }, UnitOperationMoveModifiers: { ATTACK: 1 },
     Game: { turn: 109, Combat: {
-      getDefensibleDistrict: () => { assert.ok(visible); assert.equal(packed, false); return district ? defenderId : { owner: -1, id: -1 }; },
-      getBestDefender: () => { assert.ok(visible); assert.equal(packed, false); return defenderId; },
+      getDefensibleDistrict: () => { assert.ok(visible); assert.ok(!packed || cityAirSource); return district ? defenderId : { owner: -1, id: -1 }; },
+      getBestDefender: () => { assert.ok(visible); assert.ok(!packed || cityAirSource); return defenderId; },
       simulateAttackAsync: () => { throw Error('Stateful preview requests are forbidden'); },
     }, UnitOperations: { canStart: (id, op, args, shown) => {
       queries++; assert.equal(id.owner, 0); assert.equal(args.X, 1); assert.equal(args.Y, 0); assert.equal(shown, false);

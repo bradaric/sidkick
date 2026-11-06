@@ -33,6 +33,7 @@ from civ7.actions import (
     advance_unit,
     bombard_district,
     pillage_tile,
+    air_attack_unit,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -249,6 +250,23 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="air_attack_civ7_unit", title="Strike one Civ VII unit from city Aerodrome",
+            description=("CHANGE GAME STATE: native AIR_ATTACK by exact owned aircraft unit_id stationed "
+                         "in one captured visible owned city Aerodrome against exact wartime target_player/"
+                         "target_unit_id at visible x/y with fresh expected_turn. Requires ready unqueued "
+                         "nonreinforcing aircraft, complete known owned army membership, a single hostile "
+                         "land/sea combat target on own/unowned non-district field and exact native offered/"
+                         "selected permission. Verifies aircraft attack consumption/loss plus primary-target "
+                         "damage/departure, surviving source-base identity and preservation of every other "
+                         "packed member. No standalone deployed, squadron/carrier or district/city strike, "
+                         "enemy territory, air-to-air, nuclear mission, new war or turn advancement. Native "
+                         "retaliation/interception/splash can occur but is not completely verified; no kill "
+                         "or mission-recharge claim. Submits once; polls read-only for15 seconds, never retries "
+                         "unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(air_attack_unit)
         server.tool(
             name="pillage_civ7_tile", title="Pillage occupied Civ VII enemy tile",
             description=("CHANGE GAME STATE: native constructible pillage by exact unit_id already on "

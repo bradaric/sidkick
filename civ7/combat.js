@@ -14,6 +14,21 @@
   const deployed = Number.isInteger(attacker.location?.x) && Number.isInteger(attacker.location?.y) &&
     attacker.location.x >= 0 && attacker.location.y >= 0 &&
     attacker.location.x < GameplayMap.getGridWidth() && attacker.location.y < GameplayMap.getGridHeight();
+  let stationedAirBase = null;
+  if (!deployed && attacker.isOnMap === false && GameInfo.Units.lookup(attacker.type)?.Domain === "DOMAIN_AIR" && typeof Armies !== "undefined") {
+    const bases = player.Units.getUnits().filter(u => u.id.owner === id && u.isAerodromeCommander === true && u.isOnMap === true &&
+      u.armyId?.owner === id && u.armyId.id === attacker.armyId?.id && u.armyId.type === attacker.armyId?.type);
+    if (bases.length === 1) {
+      const base = bases[0], l = base.location, army = Armies.get(base.armyId), commander = army?.getCommanderId?.(), members = army?.getUnitIds?.();
+      if (Number.isInteger(l?.x) && Number.isInteger(l?.y) && l.x >= 0 && l.y >= 0 && l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight() &&
+          GameplayMap.getRevealedState(id, l.x, l.y) === RevealedStates.VISIBLE && GameplayMap.getOwner(l.x, l.y) === id &&
+          army?.owner === id && army.localId === base.armyId.id && commander?.owner === id && commander.id === base.id.id && commander.type === base.id.type &&
+          Array.isArray(members) && members.filter(m => m.owner === id && m.id === attacker.id.id && m.type === attacker.id.type).length === 1) {
+        const cities = player.Cities.getCities().filter(c => c.id.owner === id && c.location?.x === l.x && c.location?.y === l.y);
+        if (cities.length === 1) stationedAirBase = {commanderId: base.id.id, cityId: cities[0].id.id, location: {x: l.x, y: l.y}};
+      }
+    }
+  }
   const name = key => key ? Locale.compose(key) : null;
   const location = {x, y};
   const hostile = componentId => Number.isInteger(componentId?.owner) && componentId.owner >= 0 &&
@@ -22,7 +37,7 @@
     ranged: unit.Combat.rangedStrength, bombard: unit.Combat.bombardStrength} : null;
   const health = unit => unit.Health ? {current: unit.Health.maxDamage - unit.Health.damage, maximum: unit.Health.maxDamage} : null;
   let defender = null;
-  const districtId = deployed ? Game.Combat.getDefensibleDistrict(location) : null;
+  const districtId = deployed || stationedAirBase ? Game.Combat.getDefensibleDistrict(location) : null;
   if (hostile(districtId)) {
     const district = Districts.get(districtId);
     if (district) defender = {
@@ -33,7 +48,7 @@
         ? {current: district.getMaxDamage - district.getDamage, maximum: district.getMaxDamage} : null,
       strength: null
     };
-  } else if (deployed) {
+  } else if (deployed || stationedAirBase) {
     const defenderId = Game.Combat.getBestDefender(location, attacker.id);
     if (hostile(defenderId) && Visibility.isVisible(id, defenderId)) {
       const unit = Units.get(defenderId);
@@ -54,6 +69,7 @@
       {kind: "air", operation: "UNITOPERATION_AIR_ATTACK"}
     ];
     for (const attack of attacks) {
+      if (!deployed && stationedAirBase && attack.kind !== "air") continue;
       const args = {X: x, Y: y};
       if (attack.modifiers != null) args.Modifiers = attack.modifiers;
       const result = Game.UnitOperations.canStart(attacker.id, attack.operation, args, false);
@@ -106,7 +122,7 @@
   }
   return {
     turn: Game.turn,
-    attacker: {instanceId: attacker.id.id, name: name(attacker.name ?? attackerDef?.Name),
+    attacker: {instanceId: attacker.id.id, name: name(attacker.name ?? attackerDef?.Name), stationedAirBase,
       health: health(attacker), strength: strength(attacker), canAttack: Boolean(attacker.Combat?.canAttack),
       readiness: {
         deployed, attacksRemaining: attacker.Combat?.attacksRemaining ?? null,

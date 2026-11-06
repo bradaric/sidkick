@@ -1304,6 +1304,29 @@ submission. Live Tank5177400 deployment at65536's origin restored the original
 Rifleman-only packed army with every other membership preserved. Naval-origin
 deployment is fixture-only. **202 Python / 371 Node tests pass; tools23/77.**
 
+#### Air strikes from city Aerodromes
+
+`air_attack_civ7_unit(unit_id, target_player, target_unit_id, x, y, expected_turn)`
+uses fixed native AIR_ATTACK from a ready aircraft stationed in one captured
+visible owned city Aerodrome. The target must be one exact visible hostile land/
+sea combat unit on an own/unowned non-district field in an existing met war, with
+exact native offered/selected permission. Full own army membership is captured.
+Readback requires aircraft attack spend/loss, primary-target damage/departure and
+preservation of the source city/base and every surviving packed member. No carrier/
+squadron, deployed-source, district, enemy-territory, air-to-air or nuclear mission;
+no kill, full retaliation/interception/splash or recharge claim.
+
+Live MCP synthetic Biplane4456493 struck Frigate4718629 from Copan Aerodrome4653104:
+attack1→0, target damage31→51 (20 new damage), source/other membership preserved.
+Movement setup was synthetic, firing/damage were normal native execution. Combat
+options recognizes a captured city base without pretending the plane is deployed.
+**204 Python / 375 Node tests pass; tools23/78 (55 actions).**
+
+Progress save `Sidkick_Playground_GroupOneProgressAirPillage_T62_1793979550612`
+confirmed RESULT_OK/no overwrite; original Merchant remains100HP at `(18,20)`.
+No turn advanced, Gold2131.33984375 unchanged. Group 1 is still incomplete; see the
+backlog's remaining implementation/verification split. Group 2 turns remain deferred.
+
 ## One-shot export
 
 ```powershell

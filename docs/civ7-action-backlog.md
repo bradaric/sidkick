@@ -181,6 +181,46 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   restored to just packed Rifleman3080232; reinforcement3932172 untouched. Naval
   origin variant is fixture-tested, not positively live-tested in this batch.
 - 202 Python + 371 Node tests pass; tools unchanged23/77 including54 actions.
+- Origin deployment committed as `455ba35`.
+- City-Aerodrome air strikes implemented: ready exact stationed aircraft, captured
+  visible owned city/base and full unique army ledger, one exact visible hostile
+  land/sea combat target on own/unowned non-district field, existing met war and
+  exact native AIR_ATTACK offered/selected permission. No standalone deployed,
+  carrier/squadron, enemy-territory, air-to-air or district/nuclear strike. Verifies
+  aircraft attack consumption/loss and primary-target damage/departure, source city/
+  base identity and precisely preserved surviving membership (only lost attacker
+  may depart). Full interception/retaliation/splash and kills remain unverified.
+- Actual MCP synthetic Biplane4456493, stationed in Copan Aerodrome4653104, fired
+  normally at synthetic Frigate4718629 `(31,14)`: attack1→0 and damage31→51 (20
+  new damage), all source/other memberships preserved. Movement setup synthetic;
+  no attack/damage effect forced. Combat-options now recognizes a captured city
+  Aerodrome source without falsely calling the aircraft deployed; unknown source
+  membership still suppresses packed-source target checks.
+- 204 Python + 375 Node tests pass; default23 tools, write mode78 including55 actions.
+- Progress checkpoint `Sidkick_Playground_GroupOneProgressAirPillage_T62_1793979550612`
+  confirmed RESULT_OK/no overwrite. T62 active/sent=false, Gold2131.33984375,
+  original Merchant3473432 `(18,20)`/100HP untouched. This is not a Group 1
+  completion checkpoint; implementation families remain below.
+
+### Remaining split after the military/construction batches
+
+**Group 1 is not complete.** Do not relabel unimplemented features as verification
+blockers or start Group 2 turns simply because these completed batches passed.
+
+| Group 1 implementation still needed | Current boundary |
+|---|---|
+| Combat/capture and hostile diplomacy | Enemy-field melee, occupation/capture decisions, naval shore fire/coastal raids, route pillage, war/peace and espionage remain unimplemented. District bombardment is ranged-only. |
+| Military transport | Air membership/squadron/carrier missions and transfers, army naval transport, packed shores and broader travel remain unimplemented. City rebase and single-aircraft city-base field strikes work. |
+| Construction/resources | Wonders, repairs, overbuilding, unique improvements and factory reassignment rules remain unimplemented. Atomic resource swaps are implemented but lack a live eligible pair. |
+| Civilian/cultural/religious | Found/resettle, Merchant roads, archaeology, pantheons/religion/beliefs/spread, Great People and Great Work swaps/archive remain unimplemented. Original Merchant must stay untouched. |
+| Diplomacy/choices | Project cancellation, independent befriending, city-state bonuses/levies, secondary targets/deals, paid/trial narrative and remaining hostile/mandatory variants remain unimplemented. |
+
+Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
+recharge/completion, unattended turns and Age transitions; positive native Overrun
+and live atomic-swap eligibility; natural-use verification for debug-created air/
+combat cases. Multi-participant Focus Fire and coordinated melee now have positive
+synthetic native execution, no longer fixture-only. Full independent kill/splash
+accounting still needs implementation as well as live verification.
 
 ## Existing baseline
 
@@ -343,10 +383,10 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 
 | Area | Remaining implementation / verification |
 |---|---|
-| Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
+| Immediate military verification | Positive native Overrun remains unavailable. Two-participant Focus Fire/coordinated melee now live-verified with synthetic setup; natural readiness, reinforcement arrival, HP recovery and post-attack packed movement through normal turns remain deferred. |
 | More commander abilities | Second Wind, direct Heroic Assault and capped all-packed-member upgrades live-verified with labelled setup. Other installed variants require their own coverage. Force March lacks an installed command definition and is not exposed. |
-| Military transport and travel | Naval join/leave, full-fleet pack/deploy/movement and empty/packed commander rail live-tested with debug movement setup; city-only aircraft rebase implemented, positive live case pending. Ordinary-unit rail, air membership, fleet/squadron abilities, army naval transport, longer paths, foreign/fog travel and packed shore crossings pending. |
-| Broader warfare | Separate enemy-field ranged and native naval ship attacks implemented (positive live cases pending). City/district attacks, enemy-field melee, occupation/capture, pillage/coastal raids, shore bombardment/air strikes and full splash accounting pending. Other attacks retain own/unowned field boundaries. |
+| Military transport and travel | Land/naval individual membership, full-fleet pack/deploy/movement, ordinary/commander rail and city-Aerodrome aircraft rebase live-tested with labelled setup. Air membership, fleet/squadron abilities, army naval transport, longer paths, foreign/fog travel and packed shore crossings pending. |
+| Broader warfare | Enemy-field ranged, native naval shots, Heroic Assault, district ranged bombardment, constructible pillage and single aircraft city-base field strikes live-verified with labelled setup. Enemy-field melee, capture/occupation, route pillage/coastal raids, shore bombardment and full kill/splash accounting remain unimplemented. Other attacks retain own/unowned field boundaries. |
 | Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
 | Civilian/cultural/religious actions | Found/resettle, Merchant roads, archaeology excavation/research, religion/pantheon/beliefs/spread, Great People, Great Work swaps/archive. Direct Merchant routes and non-swap Great Work relocation already exist. |
 | Construction/resources | Wonders, repairs/overbuilding/unique improvements, queue cancellation/reordering, resource unassignment/swaps and advanced factory workflows. Existing production append and capped purchases remain bounded. |
