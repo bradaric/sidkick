@@ -1,8 +1,9 @@
 (() => {
-  const {mode, commander_id: commanderId, x, y, expected_turn: expectedTurn} = queryArguments;
+  const {mode, commander_id: commanderId, x, y, expected_turn: expectedTurn, max_steps: maxSteps = 1} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["pack", "unpack"].includes(mode) || ![commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
-      (mode === "unpack" && ![x, y].every(v => Number.isInteger(v) && v >= 0))) return reject("An owned commander, supported action, native deployment plot and expected turn are required");
+  if (!["pack", "unpack", "move"].includes(mode) || ![commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
+      (["unpack", "move"].includes(mode) && ![x, y].every(v => Number.isInteger(v) && v >= 0)) ||
+      (mode === "move" && (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 8))) return reject("An owned commander, supported action/tile, bounded step cap and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
   if (!Number.isInteger(playerId) || playerId < 0) return reject("No local player");
@@ -28,6 +29,50 @@
   if (members === null) return reject("Packed membership is unverified");
   const before = {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type,
     componentType: commander.id.type, packedUnitIds: members};
+  if (mode === "move") {
+    const valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) &&
+      l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();
+    const domain = GameInfo.Units.lookup(commander.type)?.Domain, destination = {x, y}, source = commander.location;
+    if (!valid(source) || !valid(destination) || !["DOMAIN_LAND", "DOMAIN_SEA"].includes(domain) ||
+        !Number.isFinite(commander.Movement?.movementMovesRemaining) || commander.Movement.movementMovesRemaining <= 0 ||
+        GameplayMap.getRevealedState(playerId, source.x, source.y) !== RevealedStates.VISIBLE) return reject("A mobile deployed land/sea commander with visible source/destination is required");
+    const water = GameplayMap.isWater(source.x, source.y);
+    if (typeof water !== "boolean" || (domain === "DOMAIN_SEA" && !water)) return reject("Commander source terrain is unverified");
+    const path = Units.getPathTo(commander.id, destination);
+    if (!Array.isArray(path?.plots) || path.plots.length < 2 || path.plots.length > maxSteps + 1 ||
+        new Set(path.plots).size !== path.plots.length || path.plots.some(i => !Number.isInteger(i) || i < 0 || i >= GameplayMap.getGridWidth() * GameplayMap.getGridHeight()) ||
+        !Array.isArray(path.turns) || path.turns.length !== path.plots.length || path.turns.some(t => t !== 1)) return reject("A bounded current-turn native path is required; no future-turn orders");
+    const locations = path.plots.map(i => GameplayMap.getLocationFromIndex(i));
+    if (locations.some(l => !valid(l)) || locations[0].x !== source.x || locations[0].y !== source.y ||
+        locations.at(-1).x !== x || locations.at(-1).y !== y) return reject("Native path endpoints do not match the requested move");
+    const reachable = Units.getReachableMovement(commander.id), attacks = Units.getReachableTargets(commander.id);
+    if (!Array.isArray(reachable) || !Array.isArray(attacks) || !Number.isInteger(UnitOperationMoveModifiers.NONE)) return reject("Native movement/attack evidence is unavailable");
+    const clear = l => GameplayMap.getRevealedState(playerId, l.x, l.y) === RevealedStates.VISIBLE &&
+      [-1, playerId].includes(GameplayMap.getOwner(l.x, l.y)) && GameplayMap.isWater(l.x, l.y) === water &&
+      Array.isArray(MapUnits.getUnits(l.x, l.y)) && MapUnits.getUnits(l.x, l.y).length === 0;
+    for (let i = 1; i < locations.length; i++) {
+      const l = locations[i], previous = locations[i - 1];
+      if (!clear(l) || GameplayMap.getPlotDistance(previous.x, previous.y, l.x, l.y) !== 1 ||
+          !reachable.includes(path.plots[i]) || attacks.includes(path.plots[i]) ||
+          Game.Combat.testAttackInto(commander.id, {X: l.x, Y: l.y, Modifiers: UnitOperationMoveModifiers.NONE}) !== CombatTypes.NO_COMBAT) return reject("Every path edge must be visible, empty, owned/unowned, same-terrain and noncombat");
+    }
+    before.location = {x: source.x, y: source.y};
+    before.movesRemaining = commander.Movement.movementMovesRemaining;
+    const args = {X: x, Y: y, Modifiers: UnitOperationMoveModifiers.NONE};
+    const check = Game.UnitOperations.canStart(commander.id, UnitOperationTypes.MOVE_TO, args, false);
+    if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native commander movement check failed", check?.FailureReasons ?? []);
+    if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true ||
+        GameContext.hasSentTurnComplete() !== false || commander.id.owner !== playerId || commander.type !== before.commanderType ||
+        commander.isOnMap !== true || commander.operationQueueSize !== 0 || commander.location.x !== before.location.x || commander.location.y !== before.location.y ||
+        commander.Movement.movementMovesRemaining !== before.movesRemaining || JSON.stringify(membership()) !== JSON.stringify(members) ||
+        !locations.slice(1).every(clear)) return reject("Commander, packed membership, path or game context changed during validation");
+    const verificationArguments = {mode, commander_id: commanderId, component_type: commander.id.type,
+      baseline_packed_unit_ids: members, baseline_unit_ids: baselineIds};
+    Game.UnitOperations.sendRequest(commander.id, UnitOperationTypes.MOVE_TO, args);
+    return {status: "submitted", before, expected: {commanderId, commanderType: before.commanderType,
+      componentType: before.componentType, location: destination, packedUnitIds: members}, verificationArguments,
+      path: locations.map(l => ({x: l.x, y: l.y}))};
+  }
   const operation = mode === "pack" ? "UNITCOMMAND_PACK_ARMY" : "UNITCOMMAND_UNPACK_ARMY";
   let args = {X: -9999, Y: -9999, UnitAbilityType: -1};
   if (mode === "unpack") {

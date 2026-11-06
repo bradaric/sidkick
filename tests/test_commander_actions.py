@@ -9,6 +9,7 @@ from sidkick.server import create_server
 CASES = [
     ('pack_civ7_commander', 'pack_commander', (10, 62), {'mode': 'pack', 'commander_id': 10, 'expected_turn': 62}, 'packObserved'),
     ('unpack_civ7_commander', 'unpack_commander', (10, 2, 3, 62), {'mode': 'unpack', 'commander_id': 10, 'x': 2, 'y': 3, 'expected_turn': 62}, 'unpackObserved'),
+    ('move_civ7_commander', 'move_commander', (10, 2, 3, 62), {'mode': 'move', 'commander_id': 10, 'x': 2, 'y': 3, 'expected_turn': 62, 'max_steps': 1}, 'moveObserved'),
 ]
 
 

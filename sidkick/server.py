@@ -21,6 +21,7 @@ from civ7.actions import (
     end_turn,
     move_great_work,
     move_unit,
+    move_commander,
     pack_commander,
     place_population,
     promote_unit,
@@ -227,6 +228,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="move_civ7_commander", title="Move Civ VII commander and packed army",
+            description=("CHANGE GAME STATE: move an owned deployed unqueued commander_id and all its packed "
+                         "members to x/y with fresh expected_turn and explicit max_steps (default1, maximum8). "
+                         "Requires known owner-qualified army membership, positive movement, a native "
+                         "current-turn path with every edge reachable, visible, empty, owned/unowned, "
+                         "same land/water terrain and noncombat. Uses fixed MOVE_TO/NONE, not an attack/war "
+                         "helper. No shore transitions, foreign territory, occupied tiles, future-turn orders "
+                         "or turn advancement. Verifies exact commander position and unchanged packed "
+                         "membership. Requires authorization for moving the whole packed army; submits once "
+                         "and polls read-only for up to 15 seconds, never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(move_commander)
         server.tool(
             name="attack_civ7_unit", title="Attack one visible Civ VII enemy unit",
             description=("CHANGE GAME STATE: one melee/ranged attack by owned deployed unqueued noncommander "

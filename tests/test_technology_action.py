@@ -153,6 +153,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "pack_civ7_commander", "unpack_civ7_commander",
             "reinforce_civ7_unit",
             "attack_civ7_unit",
+            "move_civ7_commander",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

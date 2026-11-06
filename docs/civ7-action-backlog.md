@@ -39,7 +39,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
-| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Pack-nearby, owned-plot unpack and reinforcement assignment implemented; other items pending |
+| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded commander/packed-army movement, pack-nearby, owned-plot unpack and reinforcement assignment implemented; other items pending |
 | 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged field attacks implemented; other items pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
 
@@ -66,6 +66,15 @@ New checkpoint `Sidkick_Playground_BeforeArmyCombat_T62_1793956687710` saved wit
   other generic actions retain two seconds. Delayed-read regression failed before
   the fix; 158 Python + 312 Node tests passed. Longer-window positive submission
   still needs a distinct target/attacker case; this shot was not resubmitted.
+- Combat-window fix committed as `8b15846`.
+- Commander/packed-army current-turn travel: max_steps1–8, every native path edge
+  reachable/visible/empty/own-unowned/same-terrain/noncombat, no future-turn queue.
+  Exact commander destination and packed IDs verified. 158 Python + 315 Node tests.
+  Commander65536 moved empty `(28,30) → (28,29) → (29,29)` and returned via two
+  edges. Typed pack collected Rifleman3080232; typed two-edge carriage to `(29,29)`
+  verified `[3080232]` unchanged and independent logistics confirmed. Private
+  movement restoration manufactured readiness; no turn advanced. Army remains
+  packed there, with reinforcement3932172 still assigned (arrival untested).
 
 ## Batch 1: settlement management
 

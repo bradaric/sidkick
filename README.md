@@ -845,6 +845,25 @@ continues. Current sandbox checkpoint:
 Manual user checks confirmed T62 after war Continue, both Landships and Cuirassier
 87/100. Original morning and pre-war saves remain preserved.
 
+#### Bounded commander and packed-army movement
+
+`move_civ7_commander(commander_id, x, y, expected_turn, max_steps=1)` accepts a
+native current-turn path of at most the explicitly capped number of edges (1–8).
+Every edge must be reachable, visible, empty, own/unowned, on unchanged land/water
+terrain and explicitly noncombat. It rejects queued/off-map commanders, unknown
+or foreign army membership, shore crossings, foreign territory and future-turn
+orders. One fixed MOVE_TO/NONE request is followed by up to 15 seconds of read-only
+verification of commander identity, destination and exact preserved packed IDs.
+Authorization covers the commander and **all** packed members, not a selected subset.
+
+Default remains 23 read-only tools; write mode has 56 tools (33 actions).
+**158 Python and 315 Node tests pass.** Native commander65536 moved empty over two
+edges `(28,30) → (28,29) → (29,29)` and returned. It packed Rifleman3080232, then
+repeated the two-edge move with `[3080232]` preserved; independent logistics read
+confirmed location and membership. Movement was privately restored for the tests;
+no turn refresh or advancement is claimed. The packed army currently remains at
+`(29,29)`, and reinforcement3932172 still targets this army (arrival untested).
+
 ## One-shot export
 
 ```powershell
