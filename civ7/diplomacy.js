@@ -133,6 +133,8 @@
     if (ui?.actionID !== event.uniqueID || ui.initialPlayer !== event.initialPlayer || ui.targetPlayer !== localId || !Array.isArray(ui.responseList)) return null;
     const supportedAction = ["DIPLOMACY_ACTION_OPEN_BORDERS", "DIPLOMACY_ACTION_RESEARCH_COLLABORATION",
       "DIPLOMACY_ACTION_CULTURAL_EXCHANGE", "DIPLOMACY_ACTION_LOCAL_FESTIVALS"].includes(event.actionTypeName);
+    const hostileAction=["DIPLOMACY_ACTION_DENOUNCE","DIPLOMACY_ACTION_DENOUNCE_MILITARY_PRESENCE","DIPLOMACY_ACTION_SABOTAGE_TREASURY","DIPLOMACY_ACTION_SABOTAGE_MORALE",
+      "DIPLOMACY_ACTION_SABOTAGE_RESEARCH","DIPLOMACY_ACTION_SABOTAGE_CIVIC_STUDY","DIPLOMACY_ACTION_SABOTAGE_MILITARY_PRODUCTION","DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION"].includes(event.actionTypeName);
     const responseKeys = new Map([[responseTypes.DIPLOMACY_RESPONSE_ACCEPT, "accept"],
       [responseTypes.DIPLOMACY_RESPONSE_SUPPORT, "support"], [responseTypes.DIPLOMACY_RESPONSE_REJECT, "reject"]]);
     return ui.responseList.filter(row => responseKeys.has(row.responseType)).map(row => {
@@ -141,7 +143,7 @@
         {ID: event.uniqueID, Type: row.responseType}, false);
       return {response: responseKeys.get(row.responseType), name: name(row.responseName), description: name(row.responseDescription),
         quotedInfluenceCost: cost, availableNow: row.canSelect === true && cost != null && result?.Success === true,
-        operationAllowed: result ? result.Success === true : null, supportedByWriteTool: supportedAction && cost != null,
+        operationAllowed: result ? result.Success === true : null, supportedByWriteTool: (supportedAction||hostileAction) && cost != null,...(hostileAction?{responseTool:"respond_civ7_hostile_project"}:{}),
         failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
     });
   }

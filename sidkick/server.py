@@ -81,6 +81,7 @@ from civ7.actions import (
     support_own_war,
     manage_alliance,
     activate_commander_great_person,
+    respond_hostile_diplomatic_project,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -298,6 +299,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="respond_civ7_hostile_project",title="Respond to one revealed incoming Civ VII sanction",
+            description=("CHANGE GAME STATE: exact incoming action_id, native offered accept/support/reject "
+                         "response, max_influence_cost and expected_turn. Separate hostile intent for revealed "
+                         "ongoing Denounce/military-presence or treasury/morale/research/civic/military/food "
+                         "sanctions from a met peaceful major. Native response list must offer the exact "
+                         "unanswered choice with a known cost/canSelect; no guessing from canStart alone. "
+                         "Verifies same event response, exact Influence debit, stable Gold/peace/alliance. "
+                         "Relationships/cooldowns and continuing sanction effects may change and are not fully "
+                         "verified. No hidden espionage attribution, war/deal response, turn or retry.15-second readback."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(respond_hostile_diplomatic_project)
         server.tool(
             name="activate_civ7_commander_great_person",title="Activate concrete Civ VII Army Commander Great Person",
             description=("CHANGE GAME STATE: exact owned GP unit_id, co-located commander_id Army Commander, "

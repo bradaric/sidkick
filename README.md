@@ -1714,6 +1714,14 @@ healing semantics remain unproven; no turn advanced or healing result forced.
 New Morelos T62 save confirmed RESULT_OK; original Merchant/balances/alliance intact.
 **252 Python / 455 Node pass; tool counts unchanged.**
 
+`respond_civ7_hostile_project` handles exact revealed incoming sanctions separately
+from cooperative replies, with native offered response/cap, exact Influence debit
+and stable Gold/peace/alliance checks. Positive execution remains fixture-only:
+one synthetic incoming setup produced no visible event; no reply or retry followed.
+First-meet remains unimplemented: native permission is true even without a pending
+choice, so a permission-only handler would be unsafe.
+**253 Python / 456 Node pass; tools24/127 (103 actions).**
+
 ## One-shot export
 
 ```powershell

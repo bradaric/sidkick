@@ -701,6 +701,13 @@ async def choose_narrative(
     }, "narrative_state.js")
 
 
+async def respond_hostile_diplomatic_project(action_id: StrictInt, response: Literal["accept", "support", "reject"], max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Respond to one exact revealed incoming sanction; never infer a pending choice from native permission alone."""
+    if any(type(v) is not int or v<0 for v in (action_id,expected_turn)) or response not in ("accept","support","reject") or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0:
+        raise ValueError("Exact incoming sanction event, response, finite Influence cap and expected turn required")
+    return await _execute_and_verify("respond_diplomatic_project.js",{"action_id":action_id,"response":response,"max_influence_cost":max_influence_cost,"expected_turn":expected_turn,"hostile":True},"diplomatic_response_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def respond_diplomatic_project(
     action_id: StrictInt, response: Literal["accept", "support", "reject"], max_influence_cost: StrictFloat, expected_turn: StrictInt,
 ) -> dict[str, Any]:

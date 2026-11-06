@@ -903,6 +903,28 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   `Sidkick_Playground_GroupOneMorelos_T62_1794003553486` confirmed RESULT_OK, no
   overwrite. Merchant3473432 `(18,20)`/100HP, Gold2081.33984375,
   Influence54.82421875 and alliance1 independently intact; still T62.
+- `8c270bd`: Morelos primary/wider health. Incoming revealed hostile-sanction replies
+  implemented as a separate intent, not a relaxed cooperative response tool. Fixed
+  Denounce/military-presence and treasury/morale/research/civic/military/food sanction
+  types only; exact ongoing revealed local incoming event, no prior response, met
+  peaceful major, exact unique native response/canSelect/cost/cap/permission. Rejects
+  confirmations and context/quote/balance/diplomacy changes; verifies recorded reply,
+  exact own Influence debit, Gold unchanged and peace/alliance retained. Does not
+  infer continuing sanction, relationship/cooldown or hidden espionage consequences.
+  Read-only response options identify the separate hostile tool.
+- Native wrapper rejects known cooperative event67 before a write. One labelled
+  synthetic Denounce setup from met nonallied3 to0 had native offered status and
+  quote175 / permission=true, but produced no revealed new incoming event even
+  after bounded wait. Setup outcome/spending not verified (the setup label alone
+  is not spending evidence); no reply or repeated setup submitted. Positive hostile
+  reply remains unavailable; fixture coverage is not live execution proof.
+- First-meet investigation: native getFirstMeetResponseCostAndRelDelta yields
+  friendly20/+20, neutral0/0, unfriendly20/-20. Native response canStart returns true
+  for already-met3 with no pending session notifications, so permission cannot prove
+  a real first-meet choice. No greeting submitted, generic permission-only handler
+  intentionally not implemented. Need actual pending notification/session evidence
+  before safely binding a reusable first-meet response; still implementation work.
+- 253 Python /456 Node pass; tools24/127 including103 actions, T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -913,7 +935,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Observed Sweep and fortified Carpet Bomb now verified; fortified naval positive remains native-blocked. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Santa Anna promotion and Morelos primary/wider-owned healing effect accounting implemented/native-verified with labelled synthetic prerequisites. Other effect-specific GP profiles remain unimplemented, not verification-only. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
-| Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel and five Modern espionage variants now implemented; current eligibility blocks positive tests. Own-war support, capped cancellation/2→1 withdrawal verified. First-meet/other unimplemented mandatory variants must remain distinct from paid/trial/independent/bonus positive gaps. |
+| Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel, five Modern espionage variants and explicit revealed hostile-sanction replies implemented; eligibility blocks positive tests. Own-war support/capped withdrawal verified. First-meet still needs a pending-choice binding (native permission alone is permissive); other mandatory variants remain distinct from paid/trial/independent/bonus verification gaps. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

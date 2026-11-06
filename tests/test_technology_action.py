@@ -220,6 +220,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "support_civ7_own_war",
             "manage_civ7_alliance",
             "activate_civ7_commander_great_person",
+            "respond_civ7_hostile_project",
             "travel_civ7_unit",
         })
         tool = enabled["select_civ7_technology"]
