@@ -1428,6 +1428,15 @@ legacy UI source/permissive canStart. An installed-definition gate now rejects i
 without submission. The active build instead defines PLUNDER_TRADE_ROUTE as a
 command; its trade-route semantics are a separate target. No second legacy request.
 
+`transfer_civ7_aircraft` binds one exact aircraft to a unique owned native-offered
+Aerodrome/squadron/carrier destination. Verifies off-map stationing, exact membership
+delta across all owned armies, clear queue and stable health. City rebase also
+accepts a proven carrier/squadron source. Co-located air commanders reject rather
+than guess. Live4456493 transferred Copan→test Carrier5767185→Copan, both journeys
+verified; isolated test squadron was not natively offered, no transfer submitted.
+Movement restoration was synthetic setup; membership/effects were not forced.
+**218 Python / 398 Node pass; tools23/94 (71 actions).**
+
 ## One-shot export
 
 ```powershell

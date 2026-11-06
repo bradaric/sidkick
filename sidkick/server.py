@@ -49,6 +49,7 @@ from civ7.actions import (
     declare_war,
     start_hostile_diplomatic_project,
     pillage_route,
+    transfer_aircraft,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -265,6 +266,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="transfer_civ7_aircraft",title="Transfer one Civ VII aircraft to an air commander",
+            description=("CHANGE GAME STATE: fixed native REBASE by exact aircraft unit_id into exact owned "
+                         "target_commander_id Aerodrome/squadron/carrier with expected_turn. Requires unique "
+                         "visible deployed unqueued air commander at destination, carrier on water, own/unowned "
+                         "tile and exact native offered/selected permission. Source may be one captured base, "
+                         "squadron or carrier, or deployed aircraft. Captures every owned army and verifies "
+                         "off-map stationing, exact source/destination membership delta, clear queue and stable "
+                         "health while preserving all other members. Rejects multiple air commanders sharing "
+                         "the target tile rather than guessing native selection. No air mission, new war, "
+                         "commander/squadron movement or turn advancement. One submission,15-second readback; no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(transfer_aircraft)
         server.tool(
             name="pillage_civ7_route",title="Pillage exact occupied Civ VII enemy route",
             description=("CHANGE GAME STATE: fixed native PILLAGE_ROUTE under exact ready owned land combat "
@@ -641,8 +655,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "target_city_id with fresh expected_turn. Initial scope is a currently visible owned "
                          "city centre offered by native REBASE; native selected-target permission controls "
                          "range/capacity. Requires unqueued nonreinforcing aircraft, deployed or stationed in "
-                         "one captured visible owned city Aerodrome, and complete known own army membership. "
-                         "No commander rebasing, carrier/squadron transfer, foreign "
+                          "one captured visible owned Aerodrome/squadron/carrier, and complete known own army membership. "
+                          "No commander rebasing, carrier/squadron destination (use transfer tool), foreign "
                          "bases, hidden destinations, automatic unpack or turn advancement. Verifies the same "
                          "aircraft arrived or normally stationed in the captured destination Aerodrome, "
                          "with clear queue, stable health, precise source/destination member delta and all "

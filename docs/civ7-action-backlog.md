@@ -355,6 +355,19 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Added an installed-definition gate: legacy route requests now reject before any
   submission. The single unknown was never repeated. Physical route destruction is
   unsupported here; real trade plunder remains a separate implementation target.
+- `3a81ce6`: legacy route installed-definition guard. Aircraft transfers implemented
+  via exact native REBASE into unique owned Aerodrome/squadron/carrier identities,
+  visible own/unowned location and water carrier, native offered/selected permission,
+  known source stationing and full owned army membership preservation. City rebase
+  now also accepts a proven carrier/squadron source. Off-map target stationing and
+  the exact membership delta, stable health/clear queue are required.
+- Native Biplane4456493 Copan Aerodrome4653104 → synthetic Carrier5767185 `(27,13)`
+  verified, then a distinct native carrier→Copan return verified original base
+  membership restored. Plane movement restored only as labelled synthetic setup,
+  never membership/damage. Isolated Squadron5832769 `(25,12)` was not a native
+  rebase destination; strict picker rejected with no aircraft transfer sent.
+  Squadron transfer guards/readback fixture-tested, positive native case unavailable.
+- 218 Python / 398 Node pass; tools23/94 including71 actions. Still T62.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -362,7 +375,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | Occupation/capture decisions and peace/deals remain unimplemented. Route operation wrapper/fixtures implemented, native route-effect semantics unresolved after one unknown submission. Enemy-field melee, naval shore fire/raids, explicit war declaration and capped no-secondary sanctions/espionage are implemented. |
-| Military transport | Air membership/squadron/carrier missions and transfers, army naval transport, packed shores and broader travel remain unimplemented. City rebase and single-aircraft city-base field strikes work. |
+| Military transport | Squadron/carrier missions, whole-squadron travel, army naval transport, packed shores and broader travel remain unimplemented. Exact single-aircraft base/carrier/squadron transfer guards implemented; carrier transfer/return verified, squadron target not natively offered in test setup. |
 | Construction/resources | Factory reassignment rules remain unimplemented. Advanced Wonder/repair/overbuild/improvement queue intents are implemented; completion/repair positive cases are separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
 | Diplomacy/choices | Project cancellation, city-state levies, secondary targets/deals, paid/trial narrative and remaining hostile/mandatory variants remain unimplemented. Independent befriending and pending bonus choices implemented, positive live cases unavailable. |

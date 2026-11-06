@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def transfer_aircraft(unit_id: StrictInt, target_commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Rebase one aircraft into an exact unique owned Aerodrome, squadron or carrier."""
+    if any(type(v) is not int or v<0 for v in (unit_id,target_commander_id,expected_turn)) or unit_id==target_commander_id:
+        raise ValueError("Distinct owned aircraft/air-commander IDs and expected turn required")
+    return await _execute_and_verify("rebase_unit.js",{"unit_id":unit_id,"target_commander_id":target_commander_id,"expected_turn":expected_turn},"unit_rebase_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def archive_great_work(great_work_index: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Archive one exact owned displayed Great Work while preserving the full owned work ledger."""
     if any(type(v) is not int or v<0 for v in (great_work_index,expected_turn)):
