@@ -8,7 +8,8 @@
       "DIPLOMACY_ACTION_CS_BOLSTER_MILITARY", "DIPLOMACY_ACTION_CS_INCORPORATE", "DIPLOMACY_ACTION_CS_LEVY_UNIT"] : kind === "independent" ? ["DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN"] : kind === "hostile" ? [
         "DIPLOMACY_ACTION_DENOUNCE", "DIPLOMACY_ACTION_DENOUNCE_MILITARY_PRESENCE", "DIPLOMACY_ACTION_SABOTAGE_TREASURY", "DIPLOMACY_ACTION_SABOTAGE_MORALE",
         "DIPLOMACY_ACTION_SABOTAGE_RESEARCH", "DIPLOMACY_ACTION_SABOTAGE_CIVIC_STUDY", "DIPLOMACY_ACTION_SABOTAGE_MILITARY_PRODUCTION", "DIPLOMACY_ACTION_COUNTER_SPY",
-        "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC", "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION"] : kind === "targeted-major" ? ["DIPLOMACY_ACTION_SEND_GOLD","DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION"] : kind === "targeted-independent" ? ["DIPLOMACY_ACTION_INCITE_RAID"] : [];
+         "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC", "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION",
+         "DIPLOMACY_ACTION_ESPIONAGE_FAKE_ARTIFACTS", "DIPLOMACY_ACTION_ESPIONAGE_INFILTRATE_ENEMY_POSITIONS", "DIPLOMACY_ACTION_ESPIONAGE_SABOTAGE_SPACE_PROGRAM"] : kind === "targeted-major" ? ["DIPLOMACY_ACTION_SEND_GOLD","DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION","DIPLOMACY_ACTION_ESPIONAGE_SABOTAGE_SHIPPING","DIPLOMACY_ACTION_ESPIONAGE_IDEOLOGICAL_REVOLT"] : kind === "targeted-independent" ? ["DIPLOMACY_ACTION_INCITE_RAID"] : [];
   const targeted=["targeted-major","targeted-independent"].includes(kind),aid=targeted&&action==="DIPLOMACY_ACTION_SEND_GOLD";
   if (!allowed.includes(action) || !Number.isInteger(targetId) || targetId < 0 ||
       typeof maximumCost !== "number" || !Number.isFinite(maximumCost) || maximumCost < 0 ||
@@ -72,7 +73,7 @@
     const c=Cities.get(id);return c?.owner===owner&&c.id?.owner===owner&&c.id.id===value&&c.id.type===id.type&&c.location?.x===x&&c.location?.y===y;
   }
   if(targeted){
-    secondaryParameter=aid?"Amount2":action==="DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION"?"City":"Player3";
+    secondaryParameter=aid?"Amount2":kind==="targeted-major"?"City":"Player3";
     const options=project.targetList2.filter(t=>t.parameterName===secondaryParameter&&t.targetID===queryArguments.secondary_value);
     if(primary[0].costYieldD!==0||options.length!==1)return reject("One exact secondary choice and known zero primary cost required; no guessed total quote");
     selected=options[0];if(!secondaryValid())return reject("Secondary amount/city/player identity, visibility, alliance or Gold cap is unverified");

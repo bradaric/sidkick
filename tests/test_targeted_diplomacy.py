@@ -3,6 +3,13 @@ from unittest.mock import AsyncMock,patch
 from civ7 import actions
 from sidkick.server import create_server
 class TargetedDiplomacyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_modern_hostile_settlement_aliases_keep_exact_visible_owner_qualified_city_guards(self):
+        for alias,action in [('sabotage_shipping','DIPLOMACY_ACTION_ESPIONAGE_SABOTAGE_SHIPPING'),('ideological_revolt','DIPLOMACY_ACTION_ESPIONAGE_IDEOLOGICAL_REVOLT')]:
+            with patch('civ7.actions.run_script',new_callable=AsyncMock,return_value={'status':'rejected'})as run:
+                await actions.start_targeted_diplomacy(3,alias,55,60.0,62,secondary_owner=3,x=3,y=3)
+            self.assertEqual(run.await_args.args[1]['action'],action);self.assertEqual(run.await_args.args[1]['target_kind'],'targeted-major')
+            with self.assertRaises(ValueError):await actions.start_targeted_diplomacy(3,alias,55,60.0,62)
+
     async def test_targeted_actions_are_fixed_aliases_with_explicit_secondary_identity_and_caps(self):
         self.assertTrue(callable(getattr(actions,'start_targeted_diplomacy',None)))
         with patch('civ7.actions.run_script',new_callable=AsyncMock,return_value={'status':'rejected'})as run:

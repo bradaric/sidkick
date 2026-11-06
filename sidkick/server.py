@@ -553,16 +553,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         )(withdraw_project_support)
         server.tool(
             name="start_civ7_targeted_diplomacy",title="Start exact secondary-target Civ VII diplomacy",
-            description=("CHANGE GAME STATE: fixed action send_gold/hinder_food/incite_raid for exact "
+            description=("CHANGE GAME STATE: fixed action send_gold/hinder_food/incite_raid/"
+                         "sabotage_shipping/ideological_revolt for exact "
                          "target_player_id, native offered secondary_value, max_influence_cost and "
                          "expected_turn. Requires known zero primary cost, exact secondary quote/cap, "
                          "native offered pair and selected permission. Aid requires allied major and "
                          "max_gold_cost covering the exact offered Gold amount; verifies own exact debits, "
-                         "not foreign private treasury. Hinder food additionally requires secondary_owner "
+                         "not foreign private treasury. City actions hinder_food, sabotage_shipping and "
+                         "ideological_revolt additionally require secondary_owner "
                          "equal to primary, exact offered city ID and currently visible centre x/y; no "
                          "foreign inventory scan. Incite raid targets a met/discovered independent power "
                          "and exact offered met-major victim. Project readback proves one new owned event, "
-                         "not completed raid/food effects. No arbitrary parameters, new war or turn advance. "
+                         "not completed raid/food/shipping/revolt effects. No arbitrary parameters, new war or turn advance. "
                          "One submission; never retry unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(start_targeted_diplomacy)
@@ -724,7 +726,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             description=("CHANGE GAME STATE: one exact offered fixed sanction/espionage action against met major "
                          "target_player_id with max_influence_cost and expected_turn. Supports denouncement, "
                          "military-presence denouncement, treasury/morale/research/civic/military-production "
-                         "sabotage, counterspy, military sabotage/infiltration and tech/civic theft. Native "
+                         "sabotage, counterspy, military sabotage/infiltration, tech/civic theft and Modern "
+                         "fake-artifacts/enemy-position infiltration/space-program sabotage. Native "
                          "offered primary-target quote, sufficient Influence and selected permission required, "
                          "including wartime only if native allows. No secondary targets, arbitrary action, war "
                          "declaration or hidden foreign inventory reads. Verifies one new locally initiated "

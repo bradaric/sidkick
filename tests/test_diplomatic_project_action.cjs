@@ -94,7 +94,7 @@ test('major project start uses selected-target cost and exact quick-start UI arg
 });
 
 test('fixed secondary diplomacy binds offered amount/visible qualified city/met raid victim with zero primary quote',()=>{
- for(const [kind,action,parameter]of[['targeted-major','DIPLOMACY_ACTION_SEND_GOLD','Amount2'],['targeted-major','DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION','City'],['targeted-independent','DIPLOMACY_ACTION_INCITE_RAID','Player3']]){
+  for(const [kind,action,parameter]of[['targeted-major','DIPLOMACY_ACTION_SEND_GOLD','Amount2'],['targeted-major','DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION','City'],['targeted-major','DIPLOMACY_ACTION_ESPIONAGE_SABOTAGE_SHIPPING','City'],['targeted-major','DIPLOMACY_ACTION_ESPIONAGE_IDEOLOGICAL_REVOLT','City'],['targeted-independent','DIPLOMACY_ACTION_INCITE_RAID','Player3']]){
   const r=run({kind,action,targeted:parameter,cost:0,secondaryType:9,secondaryCost:0});assert.equal(r.data.status,'submitted',action);assert.equal(r.calls.at(-1).args[parameter],parameter==='City'?55:parameter==='Amount2'?100:4);
  }
  const opts={kind:'targeted-major',action:'DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION',targeted:'City',cost:0,secondaryType:9};
@@ -129,7 +129,8 @@ test('independent befriending binds one met/discovered power to its native offer
 
 test('explicit hostile project family supports fixed sanctions and espionage including during an existing war',()=>{
   for(const action of ['DIPLOMACY_ACTION_DENOUNCE','DIPLOMACY_ACTION_SABOTAGE_TREASURY','DIPLOMACY_ACTION_COUNTER_SPY',
-    'DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH','DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC','DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION','DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE']){
+    'DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH','DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC','DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION','DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE',
+    'DIPLOMACY_ACTION_ESPIONAGE_FAKE_ARTIFACTS','DIPLOMACY_ACTION_ESPIONAGE_INFILTRATE_ENEMY_POSITIONS','DIPLOMACY_ACTION_ESPIONAGE_SABOTAGE_SPACE_PROGRAM']){
     const r=run({kind:'hostile',action,atWar:true});assert.equal(r.data.status,'submitted');assert.equal(r.calls.at(-1).operation,77);
   }
   for(const o of [{action:'DIPLOMACY_ACTION_DECLARE_WAR'},{action:'DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION',secondary:true}])

@@ -347,14 +347,15 @@ async def withdraw_project_support(event_id: StrictInt, target_player_id: Strict
     return await _execute_and_verify("withdraw_project_support.js",{"event_id":event_id,"target_player_id":target_player_id,"expected_turn":expected_turn},"project_withdrawal_state.js")
 
 
-async def start_targeted_diplomacy(target_player_id: StrictInt, action: Literal["send_gold", "hinder_food", "incite_raid"], secondary_value: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt, max_gold_cost: StrictFloat = 0.0, secondary_owner: StrictInt | None = None, x: StrictInt | None = None, y: StrictInt | None = None) -> dict[str, Any]:
+async def start_targeted_diplomacy(target_player_id: StrictInt, action: Literal["send_gold", "hinder_food", "incite_raid", "sabotage_shipping", "ideological_revolt"], secondary_value: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt, max_gold_cost: StrictFloat = 0.0, secondary_owner: StrictInt | None = None, x: StrictInt | None = None, y: StrictInt | None = None) -> dict[str, Any]:
     """One fixed paired-secondary diplomatic action with visible qualified city/player or capped aid amount."""
-    if (any(type(v) is not int or v<0 for v in (target_player_id,secondary_value,expected_turn)) or action not in ("send_gold","hinder_food","incite_raid") or
+    city_action=action in ("hinder_food","sabotage_shipping","ideological_revolt")
+    if (any(type(v) is not int or v<0 for v in (target_player_id,secondary_value,expected_turn)) or action not in ("send_gold","hinder_food","incite_raid","sabotage_shipping","ideological_revolt") or
             any(type(v) not in (int,float) or not math.isfinite(v) or v<0 for v in (max_influence_cost,max_gold_cost)) or
-            (action=="hinder_food" and (secondary_owner!=target_player_id or any(type(v) is not int or v<0 for v in (secondary_owner,x,y)))) or
-            (action!="hinder_food" and any(v is not None for v in (secondary_owner,x,y)))):
+            (city_action and (secondary_owner!=target_player_id or any(type(v) is not int or v<0 for v in (secondary_owner,x,y)))) or
+            (not city_action and any(v is not None for v in (secondary_owner,x,y)))):
         raise ValueError("Supported action, exact secondary identity/visible city coordinates, finite caps and expected turn required")
-    native={"send_gold":"DIPLOMACY_ACTION_SEND_GOLD","hinder_food":"DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION","incite_raid":"DIPLOMACY_ACTION_INCITE_RAID"}[action]
+    native={"send_gold":"DIPLOMACY_ACTION_SEND_GOLD","hinder_food":"DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION","incite_raid":"DIPLOMACY_ACTION_INCITE_RAID","sabotage_shipping":"DIPLOMACY_ACTION_ESPIONAGE_SABOTAGE_SHIPPING","ideological_revolt":"DIPLOMACY_ACTION_ESPIONAGE_IDEOLOGICAL_REVOLT"}[action]
     args={"target_kind":"targeted-independent" if action=="incite_raid" else "targeted-major","target_player_id":target_player_id,"action":native,"secondary_value":secondary_value,"max_influence_cost":max_influence_cost,"expected_turn":expected_turn,"max_gold_cost":max_gold_cost,"secondary_owner":secondary_owner,"x":x,"y":y}
     return await _execute_and_verify("start_diplomatic_project.js",args,"diplomatic_aid_state.js" if action=="send_gold" else "diplomatic_project_state.js")
 

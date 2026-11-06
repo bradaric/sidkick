@@ -1687,6 +1687,14 @@ fixture-tested, not positive native. Real stdio MCP:125 opt-in tools, all24 defa
 read-only tools called successfully.
 **249 Python / 451 Node pass; tools24/125 (101 actions).**
 
+Existing hostile/targeted tools now cover loaded Modern Fake Artifacts, enemy-position
+infiltration, space-program sabotage, and exact visible-city shipping sabotage/
+ideological revolt. Same native offers/caps and owner-qualified guards; extended
+withdrawal recognises them. All five currently report native “Action not unlocked”;
+no starts or unlock bypass. The earlier synthetic Great Merchant was a placeholder,
+not a representative positive-eligibility test for proper unique Great People.
+**250 Python / 452 Node pass; tool counts unchanged.**
+
 ## One-shot export
 
 ```powershell

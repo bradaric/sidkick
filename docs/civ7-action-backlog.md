@@ -834,6 +834,23 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   failures traced to fixture returning undefined instead of native boolean false
   for peace; fixture corrected, guard not weakened.249 Python /451 Node pass;
   tools24/125 including101 actions, T62 unchanged.
+- `db4bfe4`: explicit alliances. Remaining installed Modern espionage variants
+  implemented in existing fixed families, based on age-modern diplomacy-actions.xml:
+  Fake Artifacts / Infiltrate Enemy Positions / Sabotage Space Program have no
+  secondary; Sabotage Shipping / Ideological Revolt require a settlement. The latter
+  use exact owner-qualified visible-centre aliases and known zero primary quote,
+  exact selected secondary cost/cap, never hidden-city scan or guessed total.
+  Extended capped own-project withdrawal recognises all five, retaining default
+  list/penalty behavior and third-party abandonment guards.
+- Native local UI returns all five as PROJECT_NOT_UNLOCKED/-2, "Action not unlocked".
+  Fake Artifacts wrapper rejects before submission. No definition-only eligibility,
+  raw secondary fallback, unlock/turn override or project completion claimed.
+  250 Python /452 Node pass; counts unchanged.
+- Great Person investigation correction: synthetic5636159 is the ability-free
+  `UNIT_GREAT_MERCHANT` placeholder (literal untranslated name, no abilities and no
+  activation picker). It is not evidence that proper loaded Great People cannot
+  activate. Concrete unique-person definitions are present; investigate those
+  before classifying this family's positive verification as unavailable.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
