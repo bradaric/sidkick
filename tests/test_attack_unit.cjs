@@ -14,7 +14,8 @@ function run(o = {}, script = 'attack_unit.js') {
     location: {x: 3, y: 3}, Health: {damage: o.damaged ? 30 : 0, maxDamage: 100}, Combat: {isCombat: !o.civilian}};
   const commander = {id: {owner: 0, id: 30, type: 26}, type: 300, isOnMap: true, isCommanderUnit: true,
     operationQueueSize: o.queuedCommander ? 1 : 0, location: {x: 2, y: 2}, armyId: {owner: 0, id: 30, type: 29},
-    Movement: {movementMovesRemaining: 2}, Combat: {attacksRemaining: 1}};
+    isEmbarked: false, Movement: {movementMovesRemaining: 2}, Combat: {attacksRemaining: 1}};
+  if (o.movedCommander) {commander.location = {x: 3, y: 3}; commander.Movement.movementMovesRemaining = 0;}
   const second = {...attacker, id: {owner: 0, id: 11, type: 26}, location: {x: 3, y: 2}};
   const player = {isTurnActive: !o.inactive, Units: {getUnits: () => [...(o.deadAttacker ? [] : [attacker]), ...(o.secondParticipant ? [second] : []), ...(o.group ? [commander] : [])]},
     Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 10 : -1},
@@ -70,6 +71,38 @@ test('single melee/ranged unit attacks bind explicit hostile component and fixed
   }
 });
 
+test('packed land army Overrun uses exact offered target and native weaker-target permission, not guessed odds', () => {
+  const {data, calls} = run({group: true, packedGroup: true}, 'army_overrun.js');
+  assert.equal(data.status, 'submitted');
+  assert.deepEqual(calls.at(-1), {kind: 'commandSend', id: {owner: 0, id: 30, type: 26},
+    command: 'UNITCOMMAND_ARMY_OVERRUN', args: {X: 3, Y: 3}});
+  assert.equal(data.expected.overrunObserved, true);
+  assert.deepEqual(data.verificationArguments.baseline_packed_unit_ids, [10]);
+});
+
+test('Overrun rejects unpacked, nonadjacent, hidden, nonhostile, civilian/stack/district and native-disallowed targets', () => {
+  for (const o of [{packedGroup: false}, {unknownArmy: true}, {distant: true}, {waterTarget: true}, {queuedCommander: true},
+    {hidden: true}, {invisible: true}, {peace: true}, {district: true}, {stacked: true}, {civilianDefinition: true},
+    {enemyTile: true}, {commandBlocked: true}, {notOffered: true}, {confirm: true}, {changedCommand: true},
+    {args: {commander_id: true}}]) {
+    const {data, calls} = run({group: true, packedGroup: true, ...o}, 'army_overrun.js');
+    assert.equal(data.status, 'rejected', JSON.stringify(o)); assert.equal(calls.filter(c => c.kind === 'commandSend').length, 0);
+  }
+  assert.equal(run({group: true, packedGroup: true, sendThrows: true}, 'army_overrun.js').calls.filter(c => c.kind === 'commandSend').length, 1);
+});
+
+test('Overrun readback requires target departure, commander arrival, movement spent and unchanged packed membership', () => {
+  const args = {mode: 'overrun', commander_id: 30, component_type: 26, baseline_packed_unit_ids: [10], baseline_unit_ids: [10, 30],
+    target_player: 1, target_unit_id: 20, target_component_type: 26, x: 3, y: 3, before_moves: 2};
+  const good = run({group: true, packedGroup: true, movedCommander: true, gone: true, args}, 'commander_action_state.js');
+  assert.equal(good.data.overrunObserved, true); assert.equal(good.data.killConfirmed, null);
+  for (const o of [{gone: false}, {movedCommander: false}, {packedGroup: false}, {hidden: true}]) {
+    const read = run({group: true, packedGroup: true, movedCommander: true, gone: true, args, ...o}, 'commander_action_state.js');
+    assert.equal(read.data.overrunObserved, false, JSON.stringify(o));
+    assert.equal(read.calls.filter(c => c.kind === 'readTarget').length, 0, 'never look up a departed/hidden target');
+  }
+});
+
 test('focused ranged army attack binds one visible primary target and captures ready deployed radius units', () => {
   const {data, calls} = run({group: true}, 'army_attack.js');
   assert.equal(data.status, 'submitted');
@@ -110,11 +143,12 @@ test('focused army command captures multiple eligible participants without issui
 
 test('coordinated melee uses adjacent native-reachable Infantry/Cavalry participants and fixed selected command', () => {
   for (const role of ['UNIT_CLASS_INFANTRY', 'UNIT_CLASS_CAVALRY']) {
-    const {data, calls} = run({group: true, meleeRole: role, args: {attack_kind: 'melee'}}, 'army_attack.js');
+    const {data, calls} = run({group: true, meleeRole: role, secondParticipant: true, args: {attack_kind: 'melee'}}, 'army_attack.js');
     assert.equal(data.status, 'submitted');
     assert.deepEqual(calls.at(-1), {kind: 'commandSend', id: {owner: 0, id: 30, type: 26},
       command: 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE', args: {X: 3, Y: 3}});
     assert.equal(data.verificationArguments.participants[0].unit_id, 10);
+    assert.deepEqual(data.verificationArguments.participants.map(p => p.unit_id), [10, 11]);
   }
   for (const o of [{distant: true}, {notMelee: true}, {unreachable: true}, {meleeRole: 'UNIT_CLASS_SIEGE'},
     {meleeRole: 'UNIT_CLASS_RANGED'}, {waterTarget: true}, {commandBlocked: true}, {hidden: true}, {district: true}, {stacked: true}, {args: {attack_kind: 'raw'}}]) {

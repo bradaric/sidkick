@@ -11,6 +11,7 @@ from civ7.actions import (
     attack_unit,
     army_ranged_attack,
     army_melee_attack,
+    army_overrun,
     join_commander,
     leave_commander,
     acknowledge_agenda,
@@ -232,6 +233,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="overrun_civ7_unit", title="Overrun one Civ VII enemy with packed army",
+            description=("CHANGE GAME STATE: native Overrun from exact commander_id against exact target_player/"
+                         "target_unit_id on adjacent x/y with fresh expected_turn. Requires a mobile deployed "
+                         "unqueued land commander with verified packed land combat members and one visible "
+                         "hostile land combat target on an own/unowned land field. Exact native offered/selected "
+                         "Overrun permission alone determines whether the target is weak enough; no odds, "
+                         "strength threshold or damage is estimated. No civilians, stacks, districts, foreign "
+                         "territory, war declaration, unpacking or turn advancement. May destroy the target. "
+                         "Verifies target departure from the still-visible tile, commander arrival/movement "
+                         "spend and unchanged packed membership, not independent kill statistics or hidden state. "
+                         "Requires authorization for the whole packed-army action; submits once, polls read-only "
+                         "for 15 seconds and never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(army_overrun)
         server.tool(
             name="melee_attack_civ7_army", title="Order Civ VII coordinated melee attack",
             description=("CHANGE GAME STATE: native coordinated land melee attack from deployed commander_id "
@@ -912,6 +929,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "prove eligible Ranged-class participants (siege-only Katyusha is excluded by the action). "
             "focusedLandMeleeAttack separately checks coordinated-melee command permission; actual "
             "Infantry/Cavalry participant eligibility and adjacent-only restrictions are enforced by its action. "
+            "overrun checks exact native offered/selected Overrun permission without inferring strength odds; "
+            "packed-army and field-target restrictions remain action-specific. "
             "Reported modifiers are not "
             "applied contextual totals. Damage predictions, contextual strengths and outcomes "
             "are unknown, not simulated. Never attacks, declares war, selects units or invokes "

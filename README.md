@@ -967,6 +967,40 @@ participant was tested; simultaneous multi-participant execution remains fixture
 only. **167 Python and 327 Node tests pass.** Default23 tools; write mode60 tools
 (37 actions).
 
+#### Native-gated packed-army Overrun
+
+`overrun_civ7_unit(commander_id, target_player, target_unit_id, x, y,
+expected_turn)` accepts only the exact native offered/selected Overrun command for
+an adjacent visible hostile land combat unit on an own/unowned land field. It
+requires an owned mobile deployed unqueued land commander with verified packed
+combat members. Strength thresholds and odds are never guessed; native rejection
+always stops submission. No civilians, stacks, districts, enemy territory, war
+declaration, automatic unpacking or turn advancement is supported.
+
+Readback requires the target to leave a still-visible tile, commander arrival and
+movement spend, and unchanged packed membership. It never follows a departed
+enemy into hidden state or calls that an independently confirmed kill. Combat
+readout includes exact native `overrun` permission evidence.
+
+**Positive Overrun execution is not live-verified.** Native eligibility rejected
+the post-melee55HP defender, then also rejected an explicit private1HP setup and
+a full four-combat-unit packed army, with `Insufficient Strength Difference`.
+The handler was never allowed to send an Overrun request; no check was bypassed.
+Positive execution/readback is fixture-tested. The full test army remains packed
+in commander3997707 at `(15,18)` with Landship3801103, Field Gun2818084 and
+Katyushas2621473/4063242. This also live-tested preserving existing members during
+individual joins. A separate post-attack packed return move did not resolve and
+was explicitly cancelled, not repeated; natural-readiness coverage remains open.
+
+**170 Python and 331 Node tests pass.** Default23 read-only tools; write mode61
+tools (38 actions). Still T62 with no turn advancement; Gold4731.33984375 and the
+original Merchant unchanged. See [the remaining-task inventory](docs/civ7-action-backlog.md#remaining-work-after-these-requested-batches-2026-11-06)
+for implementation gaps versus live-verification gaps.
+Final native save `Sidkick_Playground_AfterMembershipMeleeOverrun_T62_1793962725991`
+confirmed RESULT_OK with no overwrite. Front commander's queue is empty; earlier
+reviewed checkpoints remain preserved. The synthetic Overrun test defender remains
+at1HP; no Overrun was forced through its native rejection.
+
 ## One-shot export
 
 ```powershell

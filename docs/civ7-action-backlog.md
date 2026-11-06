@@ -35,13 +35,13 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
 | 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group, zero-cost non-trial narrative and cooperative project responses implemented; paid/trial/hostile/deal responses pending |
 | 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders, promotions, capped upgrades and adjacent shores implemented; extended travel pending |
-| 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
+| 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; 59 → 60 verified, 60 → 62 anomaly unresolved; further turns deferred by user |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
 | 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded commander/packed-army movement, pack-all/unpack, individual land join/leave and reinforcement assignment implemented; rail/rebase/transport pending |
-| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged, commander Focus Fire and adjacent coordinated land melee implemented; other items pending |
-| 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
+| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged, commander Focus Fire/coordinated melee and native-gated Overrun implemented; positive Overrun live test blocked |
+| 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | One More Turn tested through UI only; reusable boundary actions pending |
 
 Save/load recovery and WMD actions are separately scoped optional extensions.
 Not every native/DLC action ID is confirmed usable in the current ruleset.
@@ -144,6 +144,52 @@ then a remaining-task inventory. Existing Playground scope applies; no turn adva
   participant live; multiple participants fixture-only. No extra attack points or
   turn advancement. 167 Python + 327 Node tests; 60 tools including37 actions in
   write mode, default23 unchanged.
+- Coordinated-melee batch committed as `da44e19`.
+- Overrun: fixed native UNITCOMMAND_ARMY_OVERRUN command, explicit
+  adjacent visible hostile land combat target, verified packed combat members,
+  exact native offered/selected permission. No guessed odds/strength threshold,
+  civilian/stack/district/foreign-territory targets or automatic unpacking. Verifier
+  requires still-visible target departure, commander arrival and movement spend,
+  with exact preserved packed membership; independent kill statistics stay unknown.
+- Positive Overrun execution remains fixture-only. Live native gate rejected the
+  post-melee55HP defender as Insufficient Strength Difference. Private native
+  Health.damageUnit(54) reduced that already-visible defender to1HP as synthetic
+  eligibility setup; the native gate still rejected. A full four-unit packed army
+  was then assembled through typed individual joins, preserving all other armies:
+  Landship3801103, Field Gun2818084, Katyushas4063242/2621473 in commander3997707
+  at `(15,18)`. Native Overrun still rejected, including through actual MCP. No
+  Overrun request was submitted to the engine and no native gate was bypassed.
+- A debug-restored post-attack packed return move `(15,18) → (15,17)` returned
+  unknown and remained queued. Read-only inspection found no arrival; the exact
+  test order was explicitly cancelled and queue0 verified, never resubmitted.
+  Cause/natural-turn readiness remain unverified, not a confirmed normal-use bug.
+- 170 Python + 331 Node tests pass; default23 read-only tools, write mode61 tools
+  including38 actions. Still T62, no turn advanced, Gold4731.33984375 unchanged.
+  Original Merchant untouched; earlier checkpoints remain preserved.
+- Final native save `Sidkick_Playground_AfterMembershipMeleeOverrun_T62_1793962725991`
+  confirmed RESULT_OK, no overwrite. Readback: T62 active/sent=false, front commander
+  at `(15,18)` with all four packed members and queue0, debug test defenderHP1,
+  Gold4731.33984375, original Merchant `(18,20)`/HP100 unchanged.
+
+## Remaining work after these requested batches (2026-11-06)
+
+Implementation exists for individual land join/leave, adjacent coordinated land
+melee and native-gated packed-army Overrun. Join/leave and coordinated melee have
+positive live coverage under labelled movement/target-health prerequisites;
+Overrun does not yet have positive live coverage. Do not conflate those statuses.
+
+| Area | Remaining implementation / verification |
+|---|---|
+| Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
+| More commander abilities | Force March, Second Wind, capped upgrade-all, direct/special commander attacks where natively offered; native quoted costs and full affected-unit verification. |
+| Military transport and travel | Naval/air individual membership and fleet/squadron commands, army naval transport, rail and rebase writes; longer ordinary-unit paths, safe fog exploration/foreign travel, and shore crossings for packed commanders. |
+| Broader warfare | Enemy-territory and city/district attacks, occupation/capture choices, pillage/coastal raids, naval/air strikes; complete splash/secondary-effect accounting. Current attacks are bounded own/unowned field actions. |
+| Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
+| Civilian/cultural/religious actions | Found/resettle, Merchant roads, archaeology excavation/research, religion/pantheon/beliefs/spread, Great People, Great Work swaps/archive. Direct Merchant routes and non-swap Great Work relocation already exist. |
+| Construction/resources | Wonders, repairs/overbuilding/unique improvements, queue cancellation/reordering, resource unassignment/swaps and advanced factory workflows. Existing production append and capped purchases remain bounded. |
+| Choices and verification gaps | Positive fixed typed celebration and government choices, crisis-card/healing-through-turn cases, linked/crisis narratives, paid/trial choices, cooperative accept/reject variants; reusable informational/cinematic review actions. No debug prerequisite is evidence of naturally earned eligibility. |
+| Campaign progression | Revisit historical60→62 anomaly when permitted; verify subsequent single-turn boundaries, repeat unattended progression and blocker handling; reusable post-victory and Age-transition civilization/legacy/Dedication/carry-over actions. |
+| Separately scoped optional work | Typed save/load recovery and WMD actions. Private native test saves are not reusable action-tool coverage. |
 
 ## Batch 1: settlement management
 

@@ -60,7 +60,7 @@
         failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)});
     }
   }
-  let commanderAttack = null, focusedLandRangedAttack = null, focusedLandMeleeAttack = null;
+  let commanderAttack = null, focusedLandRangedAttack = null, focusedLandMeleeAttack = null, overrun = null;
   if (defender && deployed && attacker.isCommanderUnit) {
     const result = Game.UnitCommands.canStart(attacker.id, "UNITCOMMAND_COMMANDER_ATTACK", {}, false);
     const targetInNativePlots = (result?.Plots ?? []).includes(GameplayMap.getIndexFromLocation(location));
@@ -80,6 +80,8 @@
     }
     focusedLandRangedAttack = focusedCommand("UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED");
     focusedLandMeleeAttack = focusedCommand("UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE");
+    overrun = {...focusedCommand("UNITCOMMAND_ARMY_OVERRUN"),
+      scope: "Packed army; native weaker-target eligibility only, no inferred strength threshold or kill forecast"};
   }
   const terrain = GameInfo.Terrains.lookup(GameplayMap.getTerrainType(x, y));
   const feature = GameInfo.Features.lookup(GameplayMap.getFeatureType(x, y));
@@ -110,7 +112,7 @@
       },
       reportedModifiers: reportedModifiers ? Object.fromEntries(modifierKeys.map(key => [key, reportedModifiers[key] ?? null])) : null
     },
-    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack, focusedLandMeleeAttack,
+    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack, focusedLandMeleeAttack, overrun,
     contextualStrength: null,
     expectedDamageToAttacker: null, expectedDamageToDefender: null, outcome: null,
     note: "Visible hostile target and read-only operation/commander-command checks only. Strengths, local reported modifiers and terrain definition values are separate evidence, not contextual totals or a damage simulation. Commander availability requires this target in the native plot list; no other plots are returned. No asynchronous simulation or attack request is issued"

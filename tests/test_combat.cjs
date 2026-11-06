@@ -20,7 +20,7 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
   const defenderId = { owner: 1, id: 8, type: district ? 4 : 26 };
   const defender = { id: defenderId, owner: 1, type: 'DEFENDER', location: { x: 1, y: 0 }, getMaxDamage: 100, getDamage: 10,
     Health: { maxDamage: 100, damage: 10 }, Combat: { getMeleeStrength: () => 25, rangedStrength: 0, bombardStrength: 0 } };
-  let queries = 0, commandQueries = 0, focusedQueries = 0, meleeQueries = 0;
+  let queries = 0, commandQueries = 0, focusedQueries = 0, meleeQueries = 0, overrunQueries = 0;
   const data = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
     queryArguments: { unit_id: 7, x: 1, y: 0 }, UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
     Players: { get: id => id === 0 ? { Units: { getUnits: () => [attacker] }, Diplomacy: { hasMet: () => met, isAtWarWith: () => atWar } }
@@ -49,15 +49,16 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
       if (command === 'UNITCOMMAND_COMMANDER_ATTACK') {
         commandQueries++; assert.equal(Object.keys(args).length, 0);
       } else {
-        assert.ok(['UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED', 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE'].includes(command));
-        if (command === 'UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED') focusedQueries++; else meleeQueries++;
+        assert.ok(['UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED', 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE', 'UNITCOMMAND_ARMY_OVERRUN'].includes(command));
+        if (command === 'UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED') focusedQueries++;
+        else if (command === 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE') meleeQueries++; else overrunQueries++;
         if (Object.keys(args).length) assert.deepEqual(JSON.parse(JSON.stringify(args)), {X: 1, Y: 0});
       }
       return { Success: commandAllowed, FailureReasons: commandAllowed ? [] : ['No eligible army units'],
         Plots: commanderTarget ? [1, 999] : [999], Modifiers: [{ secret: 999 }] };
     } } },
   });
-  return { data: JSON.parse(JSON.stringify(data)), queries, commandQueries, focusedQueries, meleeQueries };
+  return { data: JSON.parse(JSON.stringify(data)), queries, commandQueries, focusedQueries, meleeQueries, overrunQueries };
 }
 
 test('combat evidence exposes observable strength and native attack eligibility but never invents damage', () => {
@@ -173,6 +174,14 @@ test('coordinated melee readout checks the separate offered and selected command
   assert.equal(data.focusedLandMeleeAttack.availableNow, true); assert.equal(meleeQueries, 2);
   assert.equal(run({commander: true, commanderTarget: false}).data.focusedLandMeleeAttack.availableNow, false);
   assert.equal(run({commander: true, unitVisible: false}).meleeQueries, 0);
+});
+
+test('Overrun readout uses native offered/selected permission without guessing a strength threshold', () => {
+  const {data, overrunQueries} = run({commander: true});
+  assert.equal(data.overrun.availableNow, true); assert.equal(overrunQueries, 2);
+  assert.equal(run({commander: true, commandAllowed: false}).data.overrun.availableNow, false);
+  assert.equal(run({commander: true, commanderTarget: false}).data.overrun.availableNow, false);
+  assert.equal(run({commander: true, unitVisible: false}).overrunQueries, 0);
 });
 
 function promotions({ canPromote = true, canEarn = true, allowed = true } = {}) {
