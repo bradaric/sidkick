@@ -183,6 +183,19 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def edit_production_queue(settlement: StrictStr, queue_token: StrictStr, action: Literal["cancel", "swap"], index: StrictInt, expected_turn: StrictInt, other_index: StrictInt | None = None) -> dict[str, Any]:
+    """Cancel one exact queued order or swap adjacent entries using a captured whole-queue token."""
+    if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(queue_token, str) or
+            not queue_token or len(queue_token) > 100000 or action not in ("cancel", "swap") or
+            any(type(v) is not int or v < 0 for v in (index, expected_turn)) or
+            (action == "cancel" and other_index is not None) or
+            (action == "swap" and (type(other_index) is not int or other_index < 0 or abs(index - other_index) != 1))):
+        raise ValueError("An exact settlement/queue token, supported edit indices and expected turn are required")
+    return await _execute_and_verify("edit_production_queue.js", {
+        "settlement": settlement.strip(), "queue_token": queue_token, "action": action, "index": index, "other_index": other_index, "expected_turn": expected_turn,
+    }, "production_queue_state.js")
+
+
 async def establish_trade_route(
     unit_id: StrictInt, target_player_id: StrictInt, target_city_id: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:

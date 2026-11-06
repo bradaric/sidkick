@@ -28,6 +28,7 @@ from civ7.actions import (
     assign_resource,
     unassign_resource,
     swap_resources,
+    edit_production_queue,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -244,6 +245,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="edit_civ7_production_queue", title="Edit one Civ VII production queue",
+            description=("CHANGE GAME STATE: cancel one queued order or swap two adjacent orders in exact "
+                         "owned city settlement. Supply production.queueToken from fresh available-decisions "
+                         "readout, action cancel/swap, zero-based index, other_index only for swap, and "
+                         "expected_turn. Requires exact whole-queue token match, at most64 entries and native "
+                         "BUILD RemoveAt/Swap permission. Rejects stale indices/tokens and confirmations. "
+                         "Verifies the complete resulting ordered queue with every other order preserved. "
+                         "Cancellation can affect active production or reserved placements; no refund or "
+                         "invested-progress retention is promised. No replacement, multi-step reorder, town "
+                         "focus change or turn advancement. Submits once; never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(edit_production_queue)
         server.tool(
             name="swap_civ7_resources", title="Swap two assigned Civ VII resources",
             description=("CHANGE GAME STATE: atomically exchange first_resource_instance/first_off_map and "

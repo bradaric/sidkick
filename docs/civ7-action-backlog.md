@@ -54,6 +54,17 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   atomic swap execution is a Group 2 eligible-pair gap, not bypassed or claimed.
   Roskilde's original slot restored; Gold/T62 unchanged.
 - 191 Python + 356 Node tests pass; default23 tools, write mode72 including49 actions.
+- Resource mutation batch committed as `9c739fc`.
+- Production queue cancellation/adjacent reordering completed. Fresh available-
+  decisions production.queue/queueToken expose exact current entries. Typed edit
+  requires the full opaque token plus exact indices; fixed native BUILD RemoveAt/
+  Swap only, max64 entries, rejects stale tokens/confirmations. Full ordered queue
+  readback preserves every untouched entry; no refund/progress-retention promise.
+- Live MCP appended disposable Merchant/Settler orders behind Copan's existing
+  Scout, swapped indices1/2 and cancelled only those two appended orders. Each
+  action verified; final queue token exactly equals the original Scout queue.
+  No turn, production progress reset, purchase or Gold change. 194 Python + 359
+  Node tests pass; default23 tools, write mode73 including50 actions.
 
 ## Existing baseline
 
@@ -70,13 +81,13 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
 | 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group, zero-cost non-trial narrative and cooperative project responses implemented; paid/trial/hostile/deal responses pending |
-| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders, promotions, capped upgrades and adjacent shores implemented; extended travel pending |
+| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders, promotions/upgrades, ordinary rail and adjacent shores implemented; extended travel pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; 59 → 60 verified, 60 → 62 anomaly unresolved; further turns deferred by user |
-| 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
+| 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Queue cancellation/adjacent reorder and resource unassignment/swaps implemented; other items pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
-| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded commander/packed-army movement, pack-all/unpack, individual land join/leave and reinforcement assignment implemented; rail/rebase/transport pending |
-| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged, commander Focus Fire/coordinated melee and native-gated Overrun implemented; positive Overrun live test blocked |
+| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded land/fleet movement, pack/unpack, land/naval membership, reinforcement assignment and rail implemented; city-only rebase fixture-tested; further air/transport pending |
+| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged, Focus Fire/coordinated melee, native Overrun, enemy-field ranged and naval attack implemented; last three lack positive live coverage |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | One More Turn tested through UI only; reusable boundary actions pending |
 
 Save/load recovery and WMD actions are separately scoped optional extensions.

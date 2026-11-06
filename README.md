@@ -1188,6 +1188,21 @@ was rejected, and a bounded read-only search found no eligible tested pair with6
 No rejected swap request was submitted or replaced with a non-atomic workaround.
 **191 Python / 356 Node tests pass; write mode72 tools (49 actions), default23 unchanged.**
 
+#### Exact production-queue edits
+
+`edit_civ7_production_queue(settlement, queue_token, action, index, expected_turn,
+other_index=None)` supports cancel or one adjacent swap using native BUILD
+RemoveAt/Swap. Supply the exact `production.queueToken` from available-decisions;
+the token is compared, never evaluated. Queues are bounded to64 entries and stale
+indices/tokens or confirmations are rejected. Readback verifies the entire ordered
+queue. Cancellation may affect active production/reservations; no refund or
+invested-progress retention is promised. No multi-step reorder or turn advancement.
+
+Live MCP appended two disposable tail orders behind Copan's existing Scout,
+swapped only those tails and cancelled both. Every edit verified and the exact
+original queue token was restored; no original order, Gold or turn changed.
+**194 Python / 359 Node tests pass; write mode73 tools (50 actions), default23 unchanged.**
+
 ## One-shot export
 
 ```powershell

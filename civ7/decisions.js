@@ -124,6 +124,8 @@
   }
 
   function settlement(city) {
+    const rawQueue = typeof city.BuildQueue?.getQueue === "function" ? city.BuildQueue.getQueue() : null;
+    const queue = Array.isArray(rawQueue) ? JSON.parse(JSON.stringify(rawQueue)) : null;
     const buildConstructibles = Game.CityOperations.canStartQuery(
       city.id, CityOperationTypes.BUILD, CityQueryType.Constructible
     ) ?? [];
@@ -147,6 +149,7 @@
         affordable: townUpgradeCost == null ? null : player.Treasury.goldBalance >= townUpgradeCost
       } : null,
       production: {
+        queue, queueToken: queue ? JSON.stringify(queue) : null,
         constructibles: buildConstructibles.map(entry => constructibleChoice(city, entry, false)).filter(Boolean),
         units: buildUnits.map(entry => unitChoice(city, entry, false)).filter(Boolean),
         projects: [...GameInfo.Projects].map(def => projectChoice(city, def)).filter(Boolean)

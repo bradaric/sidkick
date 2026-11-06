@@ -122,7 +122,8 @@ test('town focus choices check hashed project types, retain requirements and fil
   const town = { id: { owner: 0, id: 10, type: 1 }, owner: 0, name: 'Town', isTown: true, location: { x: 0, y: 0 },
     Growth: { growthType: 2, projectType: 404 }, Gold: { getTownUpgradeCost: () => 100 },
     getConnectedCities: () => [{ owner: 0, id: 11, type: 1 }, { owner: 1, id: 99, type: 1 }], getSentFoodPerCity: () => 8 };
-  const city = { id: { owner: 0, id: 11, type: 1 }, name: 'City', isTown: false, location: { x: 1, y: 0 } };
+  const queued = [{orderType: 0, unitType: 21}];
+  const city = { id: { owner: 0, id: 11, type: 1 }, name: 'City', isTown: false, location: { x: 1, y: 0 }, BuildQueue: {getQueue: () => queued} };
   const project = { $index: 4, $hash: 404, ProjectType: 'FISHING', Name: 'Fishing', Description: '+food', TownOnly: true, PrereqPopulation: 7 };
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/decisions.js'), 'utf8'), {
     UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
@@ -147,4 +148,5 @@ test('town focus choices check hashed project types, retain requirements and fil
   assert.equal(focus.options[1].netYieldChange, null);
   assert.deepEqual(focus.connectedOwnedSettlements, ['City']);
   assert.equal(focus.reportedFoodPerConnectedCity, 8);
+  assert.equal(data.settlements[1].production.queueToken, JSON.stringify(queued));
 });
