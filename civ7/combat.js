@@ -26,7 +26,8 @@
   if (hostile(districtId)) {
     const district = Districts.get(districtId);
     if (district) defender = {
-      kind: "district", name: name(GameInfo.Districts.lookup(district.type)?.Name),
+      kind: "district", ownerId: districtId.owner, instanceId: districtId.id, componentType: districtId.type,
+      name: name(GameInfo.Districts.lookup(district.type)?.Name),
       civilization: name(Players.get(district.owner)?.civilizationFullName),
       health: Number.isFinite(district.getMaxDamage) && Number.isFinite(district.getDamage)
         ? {current: district.getMaxDamage - district.getDamage, maximum: district.getMaxDamage} : null,

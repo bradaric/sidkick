@@ -94,6 +94,17 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   normal native permission (movement2→1, attack1 retained). No additional attack
   points granted; native district-ranged permission toward `(18,21)` is now offered.
 - 197 Python + 362 Node tests pass; default23 tools, write mode75 including52 actions.
+- Wartime advance committed as `0a984d3`.
+- Ranged defensible-district attack completed: exact visible met wartime district
+  component/location, remaining HP, ready unpacked/nonreinforcing land ranged/siege
+  attacker and native attackable picker/selected permission. Ranged only, no entry/
+  capture. Native district can contain a hostile garrison; only primary district
+  effect plus attack spend/loss is verified, not complete garrison/retaliation/splash.
+  Combat-options now exposes exact hostile district owner/instance/component IDs.
+- Actual MCP Field Gun2818084 at `(18,19)` attacked Franklin city-centre district
+  196610 at `(18,21)`: attack1→0, district damage0→10. No district HP was forced.
+  Original Merchant remains separate; no turn advanced.
+- 200 Python + 364 Node tests pass; default23 tools, write mode76 including53 actions.
 
 ## Existing baseline
 

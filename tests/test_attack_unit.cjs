@@ -12,6 +12,7 @@ function run(o = {}, script = 'attack_unit.js') {
     Combat: {isCombat: true, canAttack: !o.spent, attacksRemaining: o.spent ? 0 : 1, hasAttacked: o.spent ?? false}};
   const target = {id: {owner: 1, id: 20, type: 26}, type: 200, isOnMap: true, isCommanderUnit: false,
     location: {x: 3, y: 3}, Health: {damage: o.damaged ? 30 : 0, maxDamage: 100}, Combat: {isCombat: !o.civilian}};
+  const district = {id: {owner: 1, id: 99, type: 4}, owner: 1, type: 500, location: {x: 3, y: 3}, getMaxDamage: 100, getDamage: o.damaged ? 30 : 0};
   const commander = {id: {owner: 0, id: 30, type: 26}, type: 300, isOnMap: true, isCommanderUnit: true,
     operationQueueSize: o.queuedCommander ? 1 : 0, location: {x: 2, y: 2}, armyId: {owner: 0, id: 30, type: 29},
     isEmbarked: false, Movement: {movementMovesRemaining: 2}, Combat: {attacksRemaining: 1}};
@@ -34,7 +35,8 @@ function run(o = {}, script = 'attack_unit.js') {
       isWater: () => o.waterTarget ?? o.sea ?? false},
     RevealedStates: {VISIBLE: 2}, Visibility: {isVisible: () => !o.invisible},
     MapCities: {getCity: () => o.noCity ? null : {owner: 1, id: 9, type: 1},
-      getDistrict: () => o.undefendedDistrict ? {owner: 1, id: 8, type: 4} : null},
+      getDistrict: () => o.district && !o.districtGone ? district.id : o.undefendedDistrict ? {owner: 1, id: 8, type: 4} : null},
+    Districts: {get: id => {calls.push({kind: 'readDistrict', id}); return district;}},
     Cities: {get: () => o.unknownCity ? null : {owner: 1, location: o.cityCentre ? {x: 3, y: 3} : {x: 4, y: 4}}},
     MapUnits: {getUnits: () => o.gone ? [] : o.stacked ? [target.id, {owner: 1, id: 21, type: 26}] : [target.id]},
     Armies: {get: () => o.unknownArmy ? null : {owner: 0, localId: 30, getCommanderId: () => commander.id, getUnitIds: () => o.packedGroup ? [attacker.id] : []}},
@@ -43,7 +45,7 @@ function run(o = {}, script = 'attack_unit.js') {
     UnitOperationTypes: {MOVE_TO: 900, RANGE_ATTACK: 901}, UnitOperationMoveModifiers: {ATTACK: 1},
     CombatTypes: {COMBAT_MELEE: 11, NO_COMBAT: -1}, OperationPlotModifiers: {NONE: 0, TARGET: 9, BLOCKED: 8},
     Game: {turn: 62, age: 42, Combat: {getBestDefender: () => o.wrongDefender ? {...target.id, id: 99} : target.id,
-      getDefensibleDistrict: () => o.district ? {owner: 1, id: 99, type: 12} : {owner: -1, id: -1, type: 0},
+      getDefensibleDistrict: () => o.district ? district.id : {owner: -1, id: -1, type: 0},
       testAttackInto: () => o.notMelee ? -1 : 11}, UnitCommands: {canStart: (id, command, args, exclusion) => {
         calls.push({kind: 'commandCheck', id, command, args, exclusion});
         if (o.changedCommand) context.Game.turn++;
@@ -54,6 +56,7 @@ function run(o = {}, script = 'attack_unit.js') {
         calls.push({kind: 'check', id, operation, args, exclusion});
         if (o.changed) context.Game.turn++;
         if (o.changedTarget) target.Health.damage++;
+        if (o.changedDistrict) district.getDamage++;
         return {Success: !o.blocked, RequiresConfirmation: o.confirm ?? false,
           Plots: o.unreachable ? [] : [33], ...(o.noModifiers ? {} : {Modifiers: [o.blockedPlot ? 8 : 9]})};
       }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
@@ -125,6 +128,27 @@ test('commander ability readback requires observed source spend plus primary-tar
   for (const o of [{spentCommander: false}, {damaged: false}, {packedGroup: false}, {hidden: true}]) {
     assert.equal(run({group: true, packedGroup: true, spentCommander: true, damaged: true, args, ...o}, 'unit_attack_state.js').data.abilityAttackObserved, false);
   }
+});
+
+test('ranged district attack binds the exact native defensible district even when a hostile garrison is present', () => {
+  const args = {district_id: 99};
+  const {data, calls} = run({district: true, enemyTile: true, args}, 'ranged_district_attack.js');
+  assert.equal(data.status, 'submitted'); assert.equal(data.expected.districtAttackObserved, true);
+  assert.deepEqual(calls.at(-1), {kind: 'send', id: {owner: 0, id: 10, type: 26}, operation: 901, args: {X: 3, Y: 3}});
+  for (const o of [{hidden: true}, {peace: true}, {district: false}, {enemyTile: false}, {spent: true}, {air: true}, {sea: true},
+    {blocked: true}, {blockedPlot: true}, {unreachable: true}, {confirm: true}, {changedDistrict: true}, {args: {district_id: 100}}, {group: true, packedGroup: true}]) {
+    const r = run({district: true, enemyTile: true, args, ...o}, 'ranged_district_attack.js');
+    assert.equal(r.data.status, 'rejected', JSON.stringify(o)); assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('district readback needs an actual attack spend and visible damage/departure; never reads a hidden/departed district', () => {
+  const args = {district_id: 99, district_component_type: 4, district_type: 500, before_district_damage: 0};
+  const r = run({district: true, spent: true, damaged: true, args}, 'district_attack_state.js');
+  assert.equal(r.data.districtAttackObserved, true);
+  for (const o of [{spent: false}, {damaged: false}, {hidden: true}]) assert.equal(run({district: true, spent: true, damaged: true, args, ...o}, 'district_attack_state.js').data.districtAttackObserved, false);
+  const gone = run({district: true, districtGone: true, spent: true, args}, 'district_attack_state.js');
+  assert.equal(gone.data.districtAttackObserved, true); assert.equal(gone.calls.filter(c => c.kind === 'readDistrict').length, 0);
 });
 
 test('packed land army Overrun uses exact offered target and native weaker-target permission, not guessed odds', () => {

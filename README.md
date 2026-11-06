@@ -1234,6 +1234,21 @@ exact identity/unembarked/queue0 verified, movement2→1 and attack1 retained. A
 used checked steps and private movement restoration, not extra attack points.
 **197 Python / 362 Node tests pass; write mode75 tools (52 actions), default23 unchanged.**
 
+#### Ranged city/district bombardment
+
+`bombard_civ7_district(unit_id, target_player, district_id, x, y, expected_turn)`
+uses land ranged/siege fire against one exact visible hostile defensible district
+with remaining HP, existing met war and native attackable picker/selected permission.
+Requires a ready deployed unqueued unembarked unpacked/nonreinforcing attacker.
+Combat-options exposes the district owner/instance/component identity. Garrisoned
+districts are supported; only primary district damage/departure and attacker attack
+spend/loss are verified, not full garrison/retaliation/splash effects. No entry,
+capture, destruction claim, naval/air strike, new war or turn advancement.
+
+Live MCP Field Gun2818084 fired from `(18,19)` at city-centre district196610 on
+`(18,21)`: attack1→0 and district damage0→10, with no debug district damage.
+**200 Python / 364 Node tests pass; write mode76 tools (53 actions), default23 unchanged.**
+
 ## One-shot export
 
 ```powershell

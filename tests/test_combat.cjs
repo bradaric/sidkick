@@ -92,6 +92,7 @@ test('invisible units, unmet owners and non-hostile targets are not exposed or o
 test('visible enemy districts use observable health without fabricating a district strength', () => {
   const { data } = run({ district: true });
   assert.equal(data.defender.kind, 'district');
+  assert.equal(data.defender.ownerId, 1); assert.equal(data.defender.instanceId, 8); assert.equal(data.defender.componentType, 4);
   assert.equal(data.defender.health.current, 90);
   assert.equal(data.defender.strength, null);
 });

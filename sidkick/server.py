@@ -31,6 +31,7 @@ from civ7.actions import (
     edit_production_queue,
     commander_attack,
     advance_unit,
+    bombard_district,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -247,6 +248,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="bombard_civ7_district", title="Ranged attack on Civ VII hostile district",
+            description=("CHANGE GAME STATE: one land ranged/siege attack by exact owned unit_id against "
+                         "exact wartime target_player/district_id at visible x/y with fresh expected_turn. "
+                         "District identity is available from combat-options defender when kind=district. "
+                         "Requires ready deployed unqueued unembarked unpacked/nonreinforcing attacker, "
+                         "the exact native defensible district with remaining HP on enemy-owned territory, "
+                         "and native attackable ranged-picker/selected permission. Native hostile garrison/"
+                         "retaliation/secondary effects may occur; verifies only attacker attack consumption/"
+                         "loss and primary district damage/departure. No damage forecast, city entry/capture, "
+                         "destruction claim, naval/air bombardment, war declaration or turn advancement. "
+                         "Submits once, polls read-only for 15 seconds, never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(bombard_district)
         server.tool(
             name="advance_civ7_unit", title="Advance Civ VII combat unit into enemy field",
             description=("CHANGE GAME STATE: move exact owned ordinary land/sea combat unit_id one adjacent "
