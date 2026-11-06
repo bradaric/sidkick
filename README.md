@@ -1092,6 +1092,23 @@ no overwrite. Still T62; Gold and original Merchant unchanged. Fleet commander
 at `(46,30)` is empty, and all five nearby combat ships are deployed with queue0
 and HP100. Other land armies retain their members.
 
+#### Native naval attacks
+
+`naval_attack_civ7_unit(unit_id, target_player, target_unit_id, x, y, expected_turn)`
+uses the distinct native `UNITOPERATION_NAVAL_ATTACK` picker and selected check.
+Initial scope is a ready deployed unqueued unpacked nonreinforcing naval combat
+ship against one exact visible hostile naval combat ship on an own/unowned
+non-district water tile, in an existing met war. Native naval offered plots do not
+need the generic ranged picker's Modifiers. Existing land attack behavior is unchanged.
+No shore bombardment, civilian/stack/district/city targets, enemy territory, new war
+or turn advancement. Verification retains primary-target attack consumption/loss
+plus visible damage/departure, not kills or complete splash effects.
+
+**Positive naval fire is fixture-only.** Restoring Dreadnought3407900's movement
+did not produce native targets; actual MCP type rejection was tested on a land
+target, not represented as firing coverage. **184 Python / 342 Node tests pass;
+write mode67 tools (44 actions), default23 read-only tools unchanged.**
+
 ## One-shot export
 
 ```powershell

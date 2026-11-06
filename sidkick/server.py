@@ -19,6 +19,7 @@ from civ7.actions import (
     join_fleet,
     leave_fleet,
     rebase_aircraft,
+    naval_attack_unit,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -238,6 +239,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="naval_attack_civ7_unit", title="Attack Civ VII enemy combat ship",
+            description=("CHANGE GAME STATE: one exact native NAVAL_ATTACK by owned unit_id against exact "
+                         "wartime target_player/target_unit_id at visible x/y with fresh expected_turn. Both "
+                         "must be deployed naval combat ships on water; source must be ready, unqueued, "
+                         "unpacked and nonreinforcing. Target must be alone on an own/unowned non-district "
+                         "water tile. Requires exact native naval offered-plot and selected-target permission, "
+                         "not generic RANGE_ATTACK or guessed range. No civilians, stacks, shore bombardment, "
+                         "city/district attacks, enemy territory, war declaration or turn advancement. "
+                         "Verifies captured attack consumption/loss plus primary-target damage/departure; "
+                         "not kill statistics or complete secondary effects. Submits once, polls read-only "
+                         "for 15 seconds and never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(naval_attack_unit)
         server.tool(
             name="rebase_civ7_aircraft", title="Rebase Civ VII aircraft to owned city",
             description=("CHANGE GAME STATE: rebase exact owned deployed aircraft unit_id to exact owned "

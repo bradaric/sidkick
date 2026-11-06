@@ -26,11 +26,11 @@ function run(o = {}, script = 'attack_unit.js') {
   const context = {queryArguments: args, UI: {isInGame: () => true},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false}, Players: {get: () => player},
     GameInfo: {TypeTags: [{Type: 'UNIT_RANGED', Tag: o.meleeRole ?? (o.siegeOnly ? 'UNIT_CLASS_SIEGE' : 'UNIT_CLASS_RANGED')}],
-      Units: {lookup: type => ({UnitType: type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: o.air ? 'DOMAIN_AIR' : 'DOMAIN_LAND',
-      FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_LAND_COMBAT'})}},
+      Units: {lookup: type => ({UnitType: type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+      FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : o.sea ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
       getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.tileOwner ?? (o.enemyTile ? 1 : -1),
-      isWater: () => o.waterTarget ?? false},
+      isWater: () => o.waterTarget ?? o.sea ?? false},
     RevealedStates: {VISIBLE: 2}, Visibility: {isVisible: () => !o.invisible},
     MapCities: {getCity: () => o.noCity ? null : {owner: 1, id: 9, type: 1},
       getDistrict: () => o.undefendedDistrict ? {owner: 1, id: 8, type: 4} : null},
@@ -54,7 +54,7 @@ function run(o = {}, script = 'attack_unit.js') {
         if (o.changed) context.Game.turn++;
         if (o.changedTarget) target.Health.damage++;
         return {Success: !o.blocked, RequiresConfirmation: o.confirm ?? false,
-          Plots: o.unreachable ? [] : [33], Modifiers: [o.blockedPlot ? 8 : 9]};
+          Plots: o.unreachable ? [] : [33], ...(o.noModifiers ? {} : {Modifiers: [o.blockedPlot ? 8 : 9]})};
       }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   let data;
   if (o.hiddenCentre) context.GameplayMap.getRevealedState = (p, x, y) => x === 4 && y === 4 ? 0 : 2;
@@ -87,6 +87,19 @@ test('explicit enemy-field ranged mode allows only positively classified visible
     assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
   }
   assert.equal(run({enemyTile: true, args: {kind: 'ranged'}}).data.status, 'rejected', 'default boundary is unchanged');
+});
+
+test('naval attack uses the distinct native naval operation and its offered plots without ranged modifiers', () => {
+  const {data, calls} = run({sea: true, noModifiers: true, args: {kind: 'naval'}});
+  assert.equal(data.status, 'submitted');
+  assert.deepEqual(calls.at(-1), {kind: 'send', id: {owner: 0, id: 10, type: 26}, operation: 'UNITOPERATION_NAVAL_ATTACK', args: {X: 3, Y: 3}});
+  assert.equal(data.verificationArguments.before_attacks, 1);
+  for (const o of [{sea: false}, {waterTarget: false}, {spent: true}, {blocked: true}, {unreachable: true}, {confirm: true},
+    {stacked: true}, {district: true}, {enemyTile: true}, {civilianDefinition: true}, {group: true, packedGroup: true},
+    {group: true, unknownArmy: true}, {hidden: true}, {peace: true}, {reinforcing: true}]) {
+    const result = run({sea: true, args: {kind: 'naval'}, ...o});
+    assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
+  }
 });
 
 test('packed land army Overrun uses exact offered target and native weaker-target permission, not guessed odds', () => {

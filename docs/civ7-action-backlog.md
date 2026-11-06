@@ -183,7 +183,7 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 | Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
 | More commander abilities | Second Wind implemented/live-verified with debug-earned Valor; capped upgrade-all and direct/special commander attacks pending. Force March has UI text but no installed command definition, not exposed. |
 | Military transport and travel | Individual naval join/leave, full-fleet pack/deploy and packed-fleet movement live-tested with debug movement setup; city-only aircraft rebase implemented, positive live case pending. Air membership, fleet/squadron combat abilities, army naval transport, rail, longer unit paths, foreign/fog travel and packed shore crossings pending. |
-| Broader warfare | Separate ranged-only enemy-field action implemented (positive live case pending). City/district attacks, enemy-field melee, occupation/capture, pillage/coastal raids, naval/air strikes and complete splash/secondary accounting still pending. Other attacks retain own/unowned field boundaries. |
+| Broader warfare | Separate enemy-field ranged and native naval ship attacks implemented (positive live cases pending). City/district attacks, enemy-field melee, occupation/capture, pillage/coastal raids, shore bombardment/air strikes and full splash accounting pending. Other attacks retain own/unowned field boundaries. |
 | Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
 | Civilian/cultural/religious actions | Found/resettle, Merchant roads, archaeology excavation/research, religion/pantheon/beliefs/spread, Great People, Great Work swaps/archive. Direct Merchant routes and non-swap Great Work relocation already exist. |
 | Construction/resources | Wonders, repairs/overbuilding/unique improvements, queue cancellation/reordering, resource unassignment/swaps and advanced factory workflows. Existing production append and capped purchases remain bounded. |
@@ -299,6 +299,31 @@ Turn advancement remains deferred; original Merchant and reviewed saves preserve
   no overwrite. T62 active/sent=false, Gold4731.33984375 unchanged. Fleet commander
   `(46,30)` empty/queue0; five nearby combat ships deployed/queue0/HP100. Both
   land armies retain their original members; original Merchant `(18,20)`/HP100.
+
+## Naval attacks and rail continuation, 2026-11-06
+
+Existing Playground authorization covers continued naval/rail work; turn advancement
+remains deferred. Priorities: fixed native naval attacks, checked commander rail travel.
+- Checkpoint `Sidkick_Playground_BeforeNavalAttackRail_T62_1793967011654` confirmed
+  RESULT_OK, no overwrite; prior checkpoints preserved.
+- Added naval_attack_civ7_unit using fixed native UNITOPERATION_NAVAL_ATTACK, not
+  generic ranged fire. Requires ready unpacked unqueued nonreinforcing naval combat
+  ship on water, one exact visible hostile naval combat ship on an own/unowned
+  non-district water tile, existing met war and exact native offered/selected checks.
+  Native naval picker uses its offered Plots, not generic ranged Modifiers. Existing
+  melee/ranged wrappers remain unchanged. No land targets, shore bombardment,
+  civilians, stacks, districts, cities, foreign territory, wars or turn advancement.
+- Positive naval fire remains fixture-only. Existing Dreadnought3407900 at `(32,14)`
+  had movement privately restored (attack1 unchanged); native NAVAL_ATTACK still
+  returned Success=false/no plots. Actual MCP rejected a deliberately selected land
+  target before request; this is a live guard only, not firing coverage.
+- 184 Python + 342 Node tests pass; default23 read-only tools unchanged, write
+  mode67 tools including44 actions.
+- Separate rail setup: normally purchased commander4128776 in St. Petersburg
+  `(19,9)` with exact native2000Gold quote/cap, purchase verified and queue preserved.
+  Gold4731.33984375→2731.33984375. Copan native purchase quote was blocked because
+  its per-turn purchase was already used; no request submitted there. Stations in Copan,
+  Bàakʼ and St. Petersburg; no station purchase/debug construction was necessary.
 
 ## Batch 1: settlement management
 

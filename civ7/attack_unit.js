@@ -3,7 +3,7 @@
     target_territory: territory = "own_unowned"} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
   if (![unitId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
-      !["melee", "ranged"].includes(kind) || !["own_unowned", "enemy_field"].includes(territory) ||
+      !["melee", "ranged", "naval"].includes(kind) || !["own_unowned", "enemy_field"].includes(territory) ||
       (territory === "enemy_field" && kind !== "ranged")) return reject("Exact owned attacker, hostile target identity/tile, supported kind/territory and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
@@ -22,6 +22,9 @@
       !["DOMAIN_LAND", "DOMAIN_SEA"].includes(GameInfo.Units.lookup(unit.type)?.Domain) || !valid(unit.location) || !valid(location) ||
       unit.Combat?.isCombat !== true || unit.Combat.canAttack !== true || !Number.isInteger(unit.Combat.attacksRemaining) ||
       unit.Combat.attacksRemaining <= 0 || !Number.isFinite(unit.Movement?.movementMovesRemaining) || unit.Movement.movementMovesRemaining <= 0) return reject("A ready deployed unqueued land/sea noncommander, not embarked, is required");
+  if (kind === "naval" && (GameInfo.Units.lookup(unit.type)?.Domain !== "DOMAIN_SEA" ||
+      GameInfo.Units.lookup(unit.type)?.FormationClass !== "FORMATION_CLASS_NAVAL" || typeof GameplayMap.isWater !== "function" ||
+      GameplayMap.isWater(unit.location.x, unit.location.y) !== true)) return reject("Native naval attacks require a naval combat ship on water");
   for (const commander of owned.filter(u => u.isCommanderUnit)) {
     const army = typeof Armies !== "undefined" ? Armies.get(commander.armyId) : null;
     const ids = army?.owner === playerId && typeof army.getUnitIds === "function" ? army.getUnitIds() : null;
@@ -33,6 +36,8 @@
   function target() {
     if (GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE ||
         GameplayMap.getRevealedState(playerId, unit.location.x, unit.location.y) !== RevealedStates.VISIBLE) return null;
+    if (kind === "naval" && (GameplayMap.isWater(x, y) !== true || typeof MapCities === "undefined" ||
+        typeof MapCities.getDistrict !== "function" || MapCities.getDistrict(x, y) !== null)) return null;
     const owner = GameplayMap.getOwner(x, y);
     if (territory === "own_unowned") {
       if (![playerId, -1].includes(owner)) return null;
@@ -54,6 +59,8 @@
     if (!Array.isArray(ids) || ids.length !== 1 || !same(ids[0], defender) || defender?.owner !== targetPlayer ||
         defender.id !== targetId || !Number.isInteger(defender.type) || defender.type < 0 || Visibility.isVisible(playerId, defender) !== true) return null;
     const enemy = Units.get(defender);
+    if (kind === "naval" && (!enemy || GameInfo.Units.lookup(enemy.type)?.Domain !== "DOMAIN_SEA" ||
+        GameInfo.Units.lookup(enemy.type)?.FormationClass !== "FORMATION_CLASS_NAVAL")) return null;
     if (!enemy || !same(enemy.id, defender) || !combatFormation(enemy) || enemy.Combat?.isCombat !== true || enemy.isCommanderUnit || enemy.isOnMap !== true ||
         enemy.isDead === true || enemy.location?.x !== x || enemy.location?.y !== y ||
         !Number.isFinite(enemy.Health?.damage) || !Number.isFinite(enemy.Health.maxDamage) ||
@@ -67,7 +74,7 @@
     attacks: unit.Combat.attacksRemaining, hasAttacked: unit.Combat.hasAttacked ?? null,
     targetPlayer, targetUnitId: targetId, targetType: enemy.type, targetComponentType: enemy.id.type, targetDamage: enemy.Health.damage, targetTerritory: territory};
   const args = {X: x, Y: y}, plot = GameplayMap.getIndexFromLocation(location);
-  const operation = kind === "melee" ? UnitOperationTypes.MOVE_TO : UnitOperationTypes.RANGE_ATTACK;
+  const operation = kind === "melee" ? UnitOperationTypes.MOVE_TO : kind === "naval" ? "UNITOPERATION_NAVAL_ATTACK" : UnitOperationTypes.RANGE_ATTACK;
   if (kind === "melee") {
     if (!Number.isInteger(UnitOperationMoveModifiers.ATTACK) || GameplayMap.getPlotDistance(unit.location.x, unit.location.y, x, y) !== 1 ||
         !Units.getReachableTargets(unit.id)?.includes(plot)) return reject("Melee requires a directly adjacent native attack target");
@@ -76,8 +83,8 @@
   } else {
     const picker = Game.UnitOperations.canStart(unit.id, operation, {}, false);
     const index = Array.isArray(picker?.Plots) ? picker.Plots.indexOf(plot) : -1;
-    if (picker?.Success !== true || index < 0 || !Array.isArray(picker.Modifiers) || picker.Modifiers.length !== picker.Plots.length ||
-        ![OperationPlotModifiers.TARGET, OperationPlotModifiers.INDIRECT].filter(Number.isInteger).includes(picker.Modifiers[index])) return reject("Target is not an attackable native ranged-picker plot");
+    if (picker?.Success !== true || index < 0 || (kind === "ranged" && (!Array.isArray(picker.Modifiers) || picker.Modifiers.length !== picker.Plots.length ||
+        ![OperationPlotModifiers.TARGET, OperationPlotModifiers.INDIRECT].filter(Number.isInteger).includes(picker.Modifiers[index])))) return reject("Target is not offered as attackable by the exact native picker");
   }
   const check = Game.UnitOperations.canStart(unit.id, operation, args, false);
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native attack is blocked or requires an unsupported confirmation", check?.FailureReasons ?? []);
