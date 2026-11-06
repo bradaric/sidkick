@@ -1679,6 +1679,14 @@ centre, and one Tuner Town setup produced no city; no assault or retry submitted
 Separate BeforeObservedCapture T62 checkpoint confirmed RESULT_OK.
 **248 Python / 449 Node pass; tool counts unchanged.**
 
+`manage_civ7_alliance` provides separate native form/cancel intents with zero-cost
+offer/zero-definition-penalty guards, bilateral flag and known-war/balance readback.
+Native candidate3 is blocked by an alliance with our war opponent; existing
+alliance1 preserved via verified no-op. Typed formation/cancellation effects remain
+fixture-tested, not positive native. Real stdio MCP:125 opt-in tools, all24 default
+read-only tools called successfully.
+**249 Python / 451 Node pass; tools24/125 (101 actions).**
+
 ## One-shot export
 
 ```powershell

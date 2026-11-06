@@ -817,6 +817,23 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   city assault, forced HP depletion or setup retry followed. Separate
   `Sidkick_Playground_BeforeObservedCapture_T62_1794000415164` confirmed RESULT_OK
   before setup.248 Python /449 Node pass; counts unchanged, still T62.
+- `73d8759`: direct/capture observation integration. Explicit alliance form/cancel
+  now implemented as separate typed native intents. Formation requires exact unique
+  runtime zero-cost offer/fixed FORM_ALLIANCE operation; cancellation requires
+  installed known zero cancel/unsupport definition penalties, no nonzero runtime
+  quote/confirmation. Bilateral flags/pending-deal/peace checked; readback proves
+  both flags, unchanged own balances and captured known local wars. Access, projects,
+  relationships and broader diplomatic consequences may change and are not fully
+  accounted for; no forced eligibility or rollback.
+- Native formation3 blocked because that counterpart allies with our wartime enemy
+  Ashoka; wrapper rejected before mutation. Formation1 returns already_active,
+  preserving existing alliance. Cancellation deliberately not submitted just to
+  destroy that baseline; form/cancel effects fixture-tested, not live verified by
+  these typed handlers. Real opt-in stdio MCP exposed125 tools and returned the
+  expected no-op; all24 read-only tools called successfully. Initial alliance Node
+  failures traced to fixture returning undefined instead of native boolean false
+  for peace; fixture corrected, guard not weakened.249 Python /451 Node pass;
+  tools24/125 including101 actions, T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

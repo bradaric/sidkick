@@ -79,6 +79,7 @@ from civ7.actions import (
     airdrop_infantry_group,
     travel_unit,
     support_own_war,
+    manage_alliance,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -296,6 +297,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="manage_civ7_alliance",title="Form or explicitly cancel a native Civ VII alliance",
+            description=("CHANGE GAME STATE: exact peaceful met-major target_player_id, action form/cancel "
+                         "and expected_turn. Bilateral flags must agree; no pending deal. Form requires one "
+                         "exact native zero-Influence-cost offered alliance and fixed FORM_ALLIANCE permission. "
+                         "Cancel separately requires known zero native definition penalties and CANCEL_ALLIANCE "
+                         "permission, not a paid-penalty quote. Rejects confirmations/nonzero quoted currency "
+                         "costs. Verifies both flags, unchanged Gold/Influence and captured known local wars. "
+                         "Access, relationships, projects and diplomatic cascades may change and are not fully "
+                         "accounted for. No eligibility override, implicit cancellation, turn or retry.15-second readback."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(manage_alliance)
         server.tool(
             name="support_civ7_own_war",title="Add one native Civ VII support token to own war side",
             description=("CHANGE GAME STATE: exact ongoing own-war event_id, met-major target_player_id, "

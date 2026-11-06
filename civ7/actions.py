@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def manage_alliance(target_player_id: StrictInt, action: Literal["form", "cancel"], expected_turn: StrictInt) -> dict[str, Any]:
+    """Form a native zero-cost alliance or explicitly cancel one with zero definition penalties."""
+    if any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or action not in ("form","cancel"):
+        raise ValueError("Exact known counterpart, form/cancel intent and expected turn required")
+    return await _execute_and_verify("alliance_action.js",{"target_player_id":target_player_id,"action":action,"expected_turn":expected_turn},"alliance_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def support_own_war(event_id: StrictInt, target_player_id: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
     """Add exactly one native runtime-priced support token to own side of an exact ongoing war."""
     if any(type(v) is not int or v<0 for v in (event_id,target_player_id,expected_turn)) or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0:
