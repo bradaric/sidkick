@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def establish_air_base(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Establish/move an exact squadron base to native-offered empty visible own/unowned land."""
+    if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):
+        raise ValueError("Exact squadron, destination and expected turn required")
+    return await _execute_and_verify("commander_action.js",{"mode":"air_base","commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn},"commander_action_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def withdraw_project_support(event_id: StrictInt, target_player_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Withdraw the sole local token from one exact supported zero-definition-penalty own project."""
     if any(type(v) is not int or v<0 for v in (event_id,target_player_id,expected_turn)):

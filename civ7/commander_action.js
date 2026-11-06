@@ -1,8 +1,8 @@
 (() => {
   const {mode, commander_id: commanderId, x, y, expected_turn: expectedTurn, max_steps: maxSteps = 1} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["pack", "unpack", "move", "rail", "shore"].includes(mode) || ![commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
-      (["unpack", "move", "rail", "shore"].includes(mode) && ![x, y].every(v => Number.isInteger(v) && v >= 0)) ||
+  if (!["pack", "unpack", "move", "rail", "shore", "air_base"].includes(mode) || ![commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
+      (["unpack", "move", "rail", "shore", "air_base"].includes(mode) && ![x, y].every(v => Number.isInteger(v) && v >= 0)) ||
       (mode === "move" && (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 8))) return reject("An owned commander, supported action/tile, bounded step cap and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
@@ -29,6 +29,26 @@
   if (members === null) return reject("Packed membership is unverified");
   const before = {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type,
     componentType: commander.id.type, packedUnitIds: members};
+  if (mode === "air_base") {
+    const operation="UNITOPERATION_ESTABLISH_BASE",destination={x,y},valid=l=>l&&[l.x,l.y].every(v=>Number.isInteger(v)&&v>=0)&&l.x<GameplayMap.getGridWidth()&&l.y<GameplayMap.getGridHeight();
+    const visible=l=>valid(l)&&GameplayMap.getRevealedState(playerId,l.x,l.y)===RevealedStates.VISIBLE;
+    if(GameInfo.UnitOperations.lookup(operation)?.OperationType!==operation||GameInfo.Units.lookup(commander.type)?.UnitType!=="UNIT_SQUADRON_COMMANDER"||commander.isDead===true||!visible(commander.location)||!visible(destination)||
+        !Number.isFinite(commander.Movement?.movementMovesRemaining)||commander.Movement.movementMovesRemaining<=0||!Number.isFinite(commander.Health?.damage)||commander.Health.damage<0||!Number.isInteger(commander.armyId?.type)||commander.armyId.owner!==playerId)return reject("Installed base operation and ready visible exact squadron required");
+    const clear=()=>visible(destination)&&[-1,playerId].includes(GameplayMap.getOwner(x,y))&&GameplayMap.isWater(x,y)===false&&Array.isArray(MapUnits.getUnits(x,y))&&MapUnits.getUnits(x,y).length===0&&Array.isArray(MapConstructibles.getConstructibles(x,y))&&MapConstructibles.getConstructibles(x,y).length===0;
+    if(!clear())return reject("Air base destination must be visible empty own/unowned land without constructibles");
+    before.location={x:commander.location.x,y:commander.location.y};before.movesRemaining=commander.Movement.movementMovesRemaining;before.damage=commander.Health.damage;
+    before.armyId={owner:commander.armyId.owner,id:commander.armyId.id,type:commander.armyId.type};
+    const picker=Game.UnitOperations.canStart(commander.id,operation,{},false),args={X:x,Y:y};
+    if(picker?.Success!==true||!Array.isArray(picker.Plots)||!picker.Plots.includes(GameplayMap.getIndexFromLocation(destination)))return reject("Exact destination not offered for native air-base establishment",picker?.FailureReasons??[]);
+    const check=Game.UnitOperations.canStart(commander.id,operation,args,false);
+    if(check?.Success!==true||check.RequiresConfirmation===true)return reject("Native air-base establishment failed or requires confirmation",check?.FailureReasons??[]);
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||player.isTurnActive!==true||GameContext.hasSentTurnComplete()!==false||commander.id.owner!==playerId||commander.id.type!==before.componentType||commander.type!==before.commanderType||commander.isOnMap!==true||commander.isDead===true||commander.operationQueueSize!==0||
+        commander.location.x!==before.location.x||commander.location.y!==before.location.y||commander.Movement.movementMovesRemaining!==before.movesRemaining||commander.Health.damage!==before.damage||JSON.stringify({owner:commander.armyId.owner,id:commander.armyId.id,type:commander.armyId.type})!==JSON.stringify(before.armyId)||JSON.stringify(membership())!==JSON.stringify(members)||!clear())return reject("Squadron, source membership, destination or context changed during validation");
+    const verificationArguments={mode,commander_id:commanderId,component_type:before.componentType,baseline_packed_unit_ids:members,baseline_unit_ids:baselineIds,destination,before_moves:before.movesRemaining,before_damage:before.damage,army_id:before.armyId.id,army_component_type:before.armyId.type};
+    Game.UnitOperations.sendRequest(commander.id,operation,args);
+    return{status:"submitted",before,expected:{commanderId,commanderType:before.commanderType,componentType:before.componentType,establishmentObserved:true},verificationArguments,
+      verificationScope:"Exact squadron base-operation arrival, movement consumption, stable health/army identity and packed membership, clear queue and preserved owned-unit IDs. Native aircraft eligibility checked separately; no invented base flag, construction/recharge or turn claim"};
+  }
   if (mode === "rail") {
     const valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) &&
       l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();

@@ -61,6 +61,7 @@ from civ7.actions import (
     choose_extended_narrative,
     start_targeted_diplomacy,
     withdraw_project_support,
+    establish_air_base,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -277,6 +278,17 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="establish_civ7_air_base",title="Establish exact Civ VII squadron air base",
+            description=("CHANGE GAME STATE: fixed installed ESTABLISH_BASE by ready deployed squadron "
+                         "commander_id at exact native-offered x/y with expected_turn. Visible empty "
+                         "own/unowned land without constructibles only, exact selected native permission "
+                         "without confirmation. Verifies arrival, movement spend, clear queue, stable health/"
+                         "army identity, unchanged packed members and owned-unit IDs. May move packed aircraft; "
+                         "not an invented established flag, aircraft recharge, construction or future mission "
+                         "eligibility claim. One submission,15-second readback; no new war, turn advance or retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(establish_air_base)
         server.tool(
             name="withdraw_civ7_project_support",title="Withdraw sole own support from zero-penalty Civ VII project",
             description=("CHANGE GAME STATE: native UNSUPPORT_DIPLOMATIC_ACTION for exact own active "

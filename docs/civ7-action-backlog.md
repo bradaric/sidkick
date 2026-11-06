@@ -522,6 +522,19 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   isProjectCanceled=true immediately, no forced cancellation/turn. Original native
   event and supporter data established exact eligibility before submission.
 - 229 Python / 412 Node pass; tools23/105 including82 actions. T62 unchanged.
+- `dd61f6c`: zero-penalty project withdrawal. Squadron ESTABLISH_BASE now typed,
+  with installed-definition/unique squadron identity, native offered/selected checks,
+  empty visible own/unowned land without constructibles and captured packed members.
+  Verifies exact arrival, movement consumption, stable health/army identity, clear
+  queue, preserved membership/owned IDs; no invented established flag or recharge.
+  Targeted logistics exposes only the matching filtered native base choices.
+- Private native shape probe moved empty test Squadron5832769 `(25,12)→(22,11)`;
+  fresh aircraft picker then offered its tile, unlike the unestablished squadron.
+  Typed carrier→squadron transfer of4456493 verified. Only test movement restored;
+  typed distinct base relocation `(22,11)→(21,12)` carrying4456493 verified all guards
+  and exact member retention. No aircraft membership/base state forced. Original
+  Squadron4522030 retained. 230 Python / 414 Node pass; tools23/106 including83
+  actions. T62 unchanged; grouped air missions remain next, not silently deferred.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

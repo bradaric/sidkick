@@ -6,7 +6,7 @@
   if (!player) throw Error("No local player");
   const {mode, commander_id: commanderId, component_type: componentType,
     baseline_packed_unit_ids: baselinePacked, baseline_unit_ids: baselineOwned} = queryArguments;
-  if (!["pack", "unpack", "move", "rail", "overrun", "shore"].includes(mode) || ![commanderId, componentType].every(v => Number.isInteger(v) && v >= 0) ||
+  if (!["pack", "unpack", "move", "rail", "overrun", "shore", "air_base"].includes(mode) || ![commanderId, componentType].every(v => Number.isInteger(v) && v >= 0) ||
       ![baselinePacked, baselineOwned].every(a => Array.isArray(a) && a.every(v => Number.isInteger(v) && v >= 0) && new Set(a).size === a.length) ||
       !baselineOwned.includes(commanderId) || baselinePacked.some(id => id === commanderId || !baselineOwned.includes(id))) throw Error("Invalid submitted commander baseline");
   const owned = player.Units.getUnits().filter(u => u.id.owner === playerId), matches = owned.filter(u => u.id.id === commanderId && u.id.type === componentType);
@@ -35,7 +35,16 @@
       Number.isFinite(commander.Movement?.movementMovesRemaining) && commander.Movement.movementMovesRemaining >= 0 && commander.Movement.movementMovesRemaining < moves &&
       JSON.stringify(packed) === JSON.stringify([...baselinePacked].sort((a, b) => a - b));
   }
-  return {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type, componentType,
+  let establishmentObserved=false;
+  if(mode==="air_base"){
+    const {destination,before_moves:moves,before_damage:damage,army_id:armyId,army_component_type:armyType}=queryArguments;
+    if(![destination?.x,destination?.y,armyId,armyType].every(v=>Number.isInteger(v)&&v>=0)||!Number.isFinite(moves)||moves<=0||!Number.isFinite(damage))throw Error("Invalid captured air-base establishment");
+    establishmentObserved=GameInfo.Units.lookup(commander.type)?.UnitType==="UNIT_SQUADRON_COMMANDER"&&commander.isOnMap===true&&commander.isDead!==true&&commander.operationQueueSize===0&&commander.location?.x===destination.x&&commander.location?.y===destination.y&&
+      commander.Health?.damage===damage&&commander.armyId?.owner===playerId&&commander.armyId.id===armyId&&commander.armyId.type===armyType&&Number.isFinite(commander.Movement?.movementMovesRemaining)&&commander.Movement.movementMovesRemaining>=0&&commander.Movement.movementMovesRemaining<moves&&
+      GameplayMap.getRevealedState(playerId,destination.x,destination.y)===RevealedStates.VISIBLE&&GameplayMap.isWater(destination.x,destination.y)===false&&[-1,playerId].includes(GameplayMap.getOwner(destination.x,destination.y))&&
+      JSON.stringify(packed)===JSON.stringify([...baselinePacked].sort((a,b)=>a-b))&&owned.length===baselineOwned.length&&baselineOwned.every(id=>owned.some(u=>u.id.id===id));
+  }
+  return {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type, componentType,establishmentObserved,
     embarked:typeof commander.isEmbarked === "boolean" ? commander.isEmbarked : null,
     location: commander.isOnMap === true && Number.isInteger(commander.location?.x) && commander.location.x >= 0 &&
       Number.isInteger(commander.location?.y) && commander.location.y >= 0 ? {x: commander.location.x, y: commander.location.y} : null,

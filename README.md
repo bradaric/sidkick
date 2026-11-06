@@ -1531,6 +1531,14 @@ Native Infiltration80 canceled immediately and own support became0; Hinder Resea
 penalty10 rejected without submission. No forced effects or turn advancement.
 **229 Python / 412 Node pass; tools23/105 (82 actions).**
 
+`establish_civ7_air_base` uses native offered/selected ESTABLISH_BASE on empty
+visible own/unowned land. Verifies squadron arrival, movement spend, stable health/
+army identity, clear queue and preserved packed members/owned IDs. Logistics exposes
+filtered base choices. Native establishment made test5832769 an offered aircraft
+destination; typed4456493 carrier→squadron transfer verified, then typed squadron
+relocation `(22,11)→(21,12)` retained that aircraft. Movement setup only was synthetic.
+**230 Python / 414 Node pass; tools23/106 (83 actions).**
+
 ## One-shot export
 
 ```powershell

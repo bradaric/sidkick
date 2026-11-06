@@ -63,6 +63,18 @@
     selectedUnit = {...describe(unit), deployed: deployed(unit),
       rebase: def?.Domain === "DOMAIN_AIR" ? transport(unit, "UNITOPERATION_REBASE") : null,
       reinforceArmy: def?.Packable && !unit.isCommanderUnit ? transport(unit, "UNITOPERATION_REINFORCE_ARMY") : null};
+    if(def?.UnitType==="UNIT_SQUADRON_COMMANDER"&&unit.isCommanderUnit&&deployed(unit)){
+      const operation="UNITOPERATION_ESTABLISH_BASE",picker=Game.UnitOperations.canStart(unit.id,operation,{},false),options=[];
+      for(const index of [...new Set(picker?.Plots??[])]){
+        if(!Number.isInteger(index)||index<0||index>=width*height)continue;
+        const l=GameplayMap.getLocationFromIndex(index);
+        if(!valid(l)||GameplayMap.getRevealedState(id,l.x,l.y)!==RevealedStates.VISIBLE||![-1,id].includes(GameplayMap.getOwner(l.x,l.y))||GameplayMap.isWater(l.x,l.y)!==false||
+            !Array.isArray(MapUnits.getUnits(l.x,l.y))||MapUnits.getUnits(l.x,l.y).length||!Array.isArray(MapConstructibles.getConstructibles(l.x,l.y))||MapConstructibles.getConstructibles(l.x,l.y).length)continue;
+        const check=Game.UnitOperations.canStart(unit.id,operation,{X:l.x,Y:l.y},false);
+        options.push({location:{x:l.x,y:l.y},availableNow:picker?.Success===true&&check?.Success===true&&check.RequiresConfirmation!==true&&unit.operationQueueSize===0&&unit.Movement?.movementMovesRemaining>0,failureReasons:(check?.FailureReasons??[]).map(name).filter(Boolean)});
+      }
+      selectedUnit.establishBase={operationAllowed:picker?.Success===true,options,failureReasons:(picker?.FailureReasons??[]).map(name).filter(Boolean)};
+    }
     if (unit.isCommanderUnit && deployed(unit) && typeof Game.UnitCommands?.canStart === "function") {
       const pack = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_PACK_ARMY", {X: -9999, Y: -9999, UnitAbilityType: -1}, false);
       const unpack = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_UNPACK_ARMY", {}, false);
