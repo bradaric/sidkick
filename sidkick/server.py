@@ -78,6 +78,7 @@ from civ7.actions import (
     airdrop_infantry,
     airdrop_infantry_group,
     travel_unit,
+    support_own_war,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -295,6 +296,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="support_civ7_own_war",title="Add one native Civ VII support token to own war side",
+            description=("CHANGE GAME STATE: exact ongoing own-war event_id, met-major target_player_id, "
+                         "max_influence_cost and expected_turn. Own initial/defending side derived from exact "
+                         "revealed war identity; never third-party backing or changing sides. Uses runtime "
+                         "getInfluenceForNextSupport quote, known native local/met support and opposition "
+                         "counters, and exact SUPPORT_DIPLOMATIC_ACTION permission. Verifies one own-side "
+                         "token increment, every other captured known count unchanged, exact Influence debit "
+                         "and Gold stable. Not complete war-strength/yield/relationship/unmet inventory "
+                         "accounting. One request,15-second readback; no peace, new war, turn or retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(support_own_war)
         server.tool(
             name="airdrop_civ7_infantry_group",title="Airdrop exact complete Civ VII Infantry payload",
             description=("CHANGE GAME STATE: exact complete2–7 packed Infantry unit_ids, promoted Airborne "

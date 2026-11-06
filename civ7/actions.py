@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def support_own_war(event_id: StrictInt, target_player_id: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Add exactly one native runtime-priced support token to own side of an exact ongoing war."""
+    if any(type(v) is not int or v<0 for v in (event_id,target_player_id,expected_turn)) or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0:
+        raise ValueError("Exact own-war event/counterpart, finite Influence cap and expected turn required")
+    return await _execute_and_verify("support_war.js",{"event_id":event_id,"target_player_id":target_player_id,"max_influence_cost":max_influence_cost,"expected_turn":expected_turn},"war_support_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def airdrop_infantry_group(unit_ids: list[StrictInt], commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Drop one exact complete2–7 Infantry payload into an entirely safe native landing footprint."""
     if not isinstance(unit_ids,list) or not 2<=len(unit_ids)<=7 or any(type(v) is not int or v<0 for v in unit_ids) or len(set(unit_ids))!=len(unit_ids) or any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)) or commander_id in unit_ids:

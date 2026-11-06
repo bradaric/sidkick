@@ -1654,6 +1654,14 @@ drop to `(17,14)`/`(16,14)` verified after a separately labelled schema probe.
 Creation/readiness prerequisites only, no landing effects forced or turns advanced.
 **245 Python / 443 Node pass; tools24/123 (99 actions).**
 
+`support_civ7_own_war` buys exactly one native-quoted token on the local side of
+an exact ongoing war. Verifies token increment, other known counts, exact Influence
+debit and stable Gold/war; never backs a third-party war or infers strength effects.
+Native war78 support0→1 cost180; cap179 rejected. Labelled180 Influence budget fully
+spent, original54.82421875 balance retained; next quote270. New separate MassAirTravel
+T62 save confirmed RESULT_OK before this test.
+**246 Python / 446 Node pass; tools24/124 (100 actions).**
+
 ## One-shot export
 
 ```powershell

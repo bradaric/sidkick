@@ -146,6 +146,17 @@
     });
   }
 
+  function ownWarSupport(event){
+    if(!['DIPLOMACY_ACTION_DECLARE_WAR','DIPLOMACY_ACTION_DECLARE_FORMAL_WAR'].includes(event.actionTypeName)||event.hidden!==false||event.revealed!==true||event.failed!==false||event.gameTurnEnd!==-1||
+        ![event.initialPlayer,event.targetPlayer].includes(localId)||typeof Game.Diplomacy.getInfluenceForNextSupport!=="function"||typeof Game.Diplomacy.getNumSupportEnvoysForPlayer!=="function"||typeof Game.Diplomacy.getNumOpposeEnvoysForPlayer!=="function")return null;
+    const initial=event.initialPlayer===localId,targetId=initial?event.targetPlayer:event.initialPlayer;
+    if(diplomacy.hasMet(targetId)!==true||diplomacy.isAtWarWith(targetId)!==true)return null;
+    const cost=nonnegative(Game.Diplomacy.getInfluenceForNextSupport(event.uniqueID,localId,initial)),count=initial?Game.Diplomacy.getNumSupportEnvoysForPlayer(event.uniqueID,localId):Game.Diplomacy.getNumOpposeEnvoysForPlayer(event.uniqueID,localId);
+    const check=Game.PlayerOperations.canStart(localId,PlayerOperationTypes.SUPPORT_DIPLOMATIC_ACTION,{ID:event.uniqueID,Type:DiplomacyTokenTypes.DIPLOMACY_TOKEN_GLOBAL,Amount:1,SubType:initial},false);
+    return{side:initial?'initial':'target',targetPlayerId:targetId,ownTokens:Number.isInteger(count)&&count>=0?count:null,quotedInfluenceCost:cost,availableNow:cost!==null&&check?.Success===true&&check.RequiresConfirmation!==true&&check.InsufficientFunds!==true,
+      failureReasons:(check?.FailureReasons??[]).map(name).filter(Boolean),scope:'One token on own side only, not inferred war strength/yields or third-party backing'};
+  }
+
   function ongoingActions(otherId) {
     return (Game.Diplomacy.getPlayerEvents(otherId) ?? [])
       .filter(action => {
@@ -171,6 +182,7 @@
           support: finite(action.support),
           response: action.responseType === responseTypes.INVALID_RESPONSE ? null : responseNames[action.responseType] ?? null,
           responseOptions: responseOptions(action),
+          ownWarSupport:ownWarSupport(action),
           terms: terms(action.actionType ?? action.actionTypeName),
           activeStage: stage ? {id: stage.stageType ?? null, previouslyEntered: stage.previouslyEntered ?? null,
             effects: (stage.stageModifiers ?? []).map(effect => ({description: name(effect.description), available: effect.available ?? null}))} : null,

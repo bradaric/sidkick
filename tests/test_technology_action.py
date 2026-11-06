@@ -217,6 +217,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "leave_civ7_airlift",
             "airdrop_civ7_infantry",
             "airdrop_civ7_infantry_group",
+            "support_civ7_own_war",
             "travel_civ7_unit",
         })
         tool = enabled["select_civ7_technology"]

@@ -759,6 +759,22 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   health/landing/membership forced. Test aircraft8061027 was normally transferred
   to Carrier5767185 to free base capacity, with its spent attack retained.
   245 Python /443 Node pass; tools24/123 including99 actions, T62 unchanged.
+- `42cae6a`: mass Infantry drop. Explicit own-side war support now uses exact
+  revealed ongoing local war/event/counterpart, native next-support Influence quote
+  and fixed SUPPORT_DIPLOMATIC_ACTION one-token side arguments. Cannot back another
+  war or the enemy side. Captures local/met support/opposition counters only (never
+  unmet player state), verifies chosen increment, all other captured counts, exact
+  Influence debit and unchanged Gold with war retained. Strength/yields/global
+  diplomatic consequences are not inferred. Diplomacy readout exposes side/count,
+  runtime next quote and native availability.
+- Native war78 support0→1 verified at exact180 Influence debit after labelled
+ 180 disposable Influence grant; cap179 rejected without request. Final balance
+  back to original54.82421875 without any forced cleanup. Next native quote rose
+  to270 and unaffordable, war82 still0/quote180. Defender-side argument/readback
+  fixture-tested; current save has only local-initiated wars. Separate checkpoint
+  `Sidkick_Playground_GroupOneMassAirTravel_T62_1793999240784` confirmed RESULT_OK
+  before support budget setup, no overwrite.246 Python /446 Node pass; tools24/124
+  including100 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
