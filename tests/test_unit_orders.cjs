@@ -59,3 +59,15 @@ test('skip settles into HOLD with no queue and retains its remaining movement', 
   assert.equal(data.orderActive,true);assert.equal(data.movesRemaining,3);assert.equal(calls.length,0);
   assert.equal(run({activity:6,args:{order:'skip'}}).data.status,'already_active');
 });
+
+test('exhausted unit can hold an exact queued healing order without already being in HEAL activity', () => {
+  const o = {activity: 6, queue: 1, operation: 13, args: {order: 'heal'}};
+  const read = run(o, 'unit_order_state.js');
+  assert.equal(read.data.orderActive, true); assert.equal(read.data.healingQueued, true); assert.equal(read.calls.length, 0);
+  const again = run(o); assert.equal(again.data.status, 'already_active'); assert.equal(again.calls.length, 0);
+  for (const invalid of [{queue: 0}, {operation: 14}, {operation: -1}]) {
+    const read = run({...o, ...invalid}, 'unit_order_state.js');
+    assert.equal(read.data.orderActive, false, JSON.stringify(invalid));
+    assert.equal(read.data.healingQueued, false);
+  }
+});

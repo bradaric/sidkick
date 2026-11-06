@@ -905,6 +905,18 @@ Default23 read-only tools; write mode57 tools (34 actions). **161 Python and 320
 tests pass.** Still T62. Enemy-territory/city attacks, coordinated melee, naval/air
 commands and reinforcement arrival remain outside this verified batch.
 
+#### Queued healing after combat
+
+The real damaged Cuirassier1245202 accepted `REST_UNTIL_HEALED` at zero movement,
+but settled into **HOLD with that exact operation queued**, not HEAL/OPERATION.
+The original readback therefore returned unknown. The action/no-op check and
+verifier now recognize HOLD only when a positive queue contains that exact current
+healing operation; HOLD alone, an empty queue or a different operation never prove
+healing. Readback exposes `healingQueued`. The original request was confirmed
+read-only; the corrected handler returned `already_active` without resubmitting.
+Health remains87/100: queued-order verification is not health restoration.
+**161 Python and 321 Node tests pass.** No turn advanced.
+
 ## One-shot export
 
 ```powershell

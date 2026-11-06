@@ -101,6 +101,15 @@ New checkpoint `Sidkick_Playground_BeforeArmyCombat_T62_1793956687710` saved wit
   native state is HOLD with one exact REST_UNTIL_HEALED operation queued andHP87.
   Existing verifier only accepts HEAL/OPERATION activity; this is a concrete queued-
   order recognition bug to correct separately, not proof of restored health.
+- Focus Fire batch committed as `3722d44`.
+- Queued-heal correction: actual HOLD + exact REST_UNTIL_HEALED + positive queue
+  recognized both by no-op detection and readback; other HOLD/empty/different-op
+  cases remain negative. Original Cuirassier1245202 submission independently
+  confirmed orderActive/healingQueued; corrected handler returned already_active
+  without any second command. HP remains87, not restored. Reproducing regression
+  failed before the fix; 161 Python + 321 Node tests pass. Still T62, no advance.
+- End-of-drill save `Sidkick_Playground_AfterArmyCombat_T62_1793960375680`
+  confirmed RESULT_OK, no overwrite. Earlier reviewed/pre-war checkpoints remain.
 
 ## Batch 1: settlement management
 

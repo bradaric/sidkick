@@ -16,7 +16,7 @@
   const unit = units[0], activity = unit.activityType, operation = unit.getOperationType(0), queue = unit.operationQueueSize;
   if (!Number.isInteger(activity) || !Number.isInteger(operation) || !Number.isInteger(queue) || queue < 0) return reject("Unit order state is unverified");
   const active = order === "sleep" ? activity === UnitActivityTypes.SLEEP : order === "heal" ?
-    activity === UnitActivityTypes.HEAL || (activity === UnitActivityTypes.OPERATION && operation === UnitOperationTypes.REST_UNTIL_HEALED) :
+    activity === UnitActivityTypes.HEAL || ((activity === UnitActivityTypes.OPERATION || (activity === UnitActivityTypes.HOLD && queue > 0)) && operation === UnitOperationTypes.REST_UNTIL_HEALED) :
     order === "alert" ? activity === UnitActivityTypes.SENTRY || (activity === UnitActivityTypes.OPERATION && operation === UnitOperationTypes.ALERT) :
     order === "wake" || order === "cancel" ? [UnitActivityTypes.AWAKE, UnitActivityTypes.NONE].includes(activity) && queue === 0 :
     order === "skip" && activity === UnitActivityTypes.HOLD && queue === 0 ? true :

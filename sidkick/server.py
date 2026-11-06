@@ -442,8 +442,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="set_civ7_unit_order", title="Set Civ VII unit order",
             description=("CHANGE GAME STATE: set one owned on-map unit_id to skip, sleep, wake, fortify, heal, "
                          "alert or cancel using fresh expected_turn. Fixed non-target native operations only; "
-                         "no attacks, travel, disbanding or raw operation strings. An existing queued order "
-                         "requires explicit cancel/wake first. Verifies native activity/current operation, "
+                         "no attacks, travel, disbanding or raw operation strings. A different queued order "
+                         "requires explicit cancel/wake first. Verifies native activity/current operation; "
+                         "heal also recognizes HOLD with an exact queued REST_UNTIL_HEALED order, "
                          "not eventual healing or a future fortification bonus. Requires user authorization; "
                          "submits once and never retries unknown/cancelled calls."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
