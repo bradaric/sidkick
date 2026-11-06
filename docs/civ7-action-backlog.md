@@ -39,7 +39,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
-| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Pack-nearby and owned-plot unpack implemented; other items pending |
+| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Pack-nearby, owned-plot unpack and reinforcement assignment implemented; other items pending |
 | 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
 
@@ -215,3 +215,11 @@ Morning inspection/actions before this implementation batch:
   verified independently. Movement was debug-restored (synthetic readiness).
   Initiative preserved one native post-unpack movement point, and ordinary typed
   land move `(28,30) → (27,30)` verified. No turn advanced; still T62.
+- Commander batch committed as `216c182`.
+- Reinforcement: 153 Python + 307 Node tests. Native offered/selected plot to an
+  exact owned commander/army, no packed/queued/redirected source, assignment-only
+  readback and native ETA, no arrival promise. Normal purchased Copan Rifleman
+  3932172 cost1085 Gold; native reinforcement blocked at zero movement. Private
+  debug restored movement; typed reinforcement then verified army65536 assignment,
+  native ETA9; independent logistics matched. Synthetic readiness, arrival untested.
+  Gold6921.33984375, still T62, no turn advance. Original Merchant remains untouched.

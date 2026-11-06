@@ -24,6 +24,7 @@ from civ7.actions import (
     place_population,
     promote_unit,
     purchase_city_item,
+    reinforce_unit,
     review_resources,
     review_policies,
     respond_diplomatic_project,
@@ -225,6 +226,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="reinforce_civ7_unit", title="Send Civ VII unit to commander",
+            description=("CHANGE GAME STATE: send owned deployed packable unit_id as reinforcement to exact "
+                         "owned deployed commander_id with fresh expected_turn. Requires no queued/packed or "
+                         "existing different reinforcement assignment, a visible owned target plot offered "
+                         "by native REINFORCE_ARMY, and exact selected-plot permission (including full movement). "
+                         "Unit may leave the map while travelling. Verifies the native target-army assignment "
+                         "and returns native ETA when available; does not claim arrival, safe future travel or "
+                         "automatic turn progression. No purchase, redirect, attack or raw operation support. "
+                         "Requires user authorization; submits once, never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(reinforce_unit)
         server.tool(
             name="pack_civ7_commander", title="Pack nearby Civ VII units into commander",
             description=("CHANGE GAME STATE: issue native PACK_ARMY for one owned deployed unqueued commander_id "
@@ -751,7 +765,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Read owned commander/carrier/squadron/aerodrome capacities and packed-unit membership, "
             "air units, reinforcement assignments/native arrival quotes and WMD stockpile counts. "
             "Optional unit_id from get_civ7_units checks one owned unit's native rebase/reinforce "
-             "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
+            "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
             "withholds destinations, not native permission. A selected deployed commander also "
             "reports native pack-nearby permission and exact checked unpack destinations restricted "
             "to currently visible owned plots. Unknown commander membership "

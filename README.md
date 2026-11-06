@@ -755,6 +755,27 @@ land step `(28,30) → (27,30)`. Commander/member movement was debug-restored be
 the test; normal native action execution is distinguished from synthetic movement
 readiness. Initiative came from the prior synthetic-XP test. No turn advanced.
 
+#### Reinforcement assignments
+
+`reinforce_civ7_unit(unit_id, commander_id, expected_turn)` starts native travel
+for a deployed packable non-commander to a specific owned deployed unqueued
+commander on a currently visible owned plot. It requires known own packed
+membership, no existing different reinforcement assignment, a native offered
+destination and exact selected-plot permission (including full movement). It
+does not recruit, redirect, advance a turn or predict a safe route. The unit may
+leave the map; readback verifies its owner-qualified native assignment to the
+captured army and reports a native ETA when available, **not completed arrival**.
+
+Default remains 23 read-only tools; write mode has 54 tools (31 actions).
+**153 Python and 307 Node tests pass.** Live T62: a separate test Rifleman was
+normally purchased in Copan for 1085 Gold under the native quote/cap, creating
+3932172. Native reinforcement correctly rejected its zero movement. After private
+debug restoration of full movement, the typed operation assigned it to commander
+65536's army and returned `verified_applied`, native ETA 9. Independent logistics
+read confirmed the same assignment with location withheld while travelling.
+Readiness was synthetic; arrival has not been tested. Gold is 6921.33984375;
+the original reviewed checkpoint remains separate. No turn advanced.
+
 ## One-shot export
 
 ```powershell

@@ -389,6 +389,15 @@ async def unpack_commander(commander_id: StrictInt, x: StrictInt, y: StrictInt, 
     }, "commander_action_state.js")
 
 
+async def reinforce_unit(unit_id: StrictInt, commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Start native travel to one owned commander's army and verify assignment, not arrival."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, commander_id, expected_turn)) or unit_id == commander_id:
+        raise ValueError("Distinct owned unit/commander IDs and expected turn are required")
+    return await _execute_and_verify("reinforce_unit.js", {
+        "unit_id": unit_id, "commander_id": commander_id, "expected_turn": expected_turn,
+    }, "reinforcement_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,
