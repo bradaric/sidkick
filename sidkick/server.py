@@ -80,6 +80,7 @@ from civ7.actions import (
     travel_unit,
     support_own_war,
     manage_alliance,
+    activate_commander_great_person,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -297,6 +298,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="activate_civ7_commander_great_person",title="Activate concrete Civ VII Army Commander Great Person",
+            description=("CHANGE GAME STATE: exact owned Santa Anna unit_id (UNIT_REVOLUCIONARIO_SANTA_ANNA), "
+                         "co-located commander_id Army Commander and expected_turn. Requires one unambiguous "
+                         "visible own/unowned land Army target, known unpacked/nonreinforcing state, unqueued "
+                         "source/target, zero target XP remainder and exact native English five-promotion "
+                         "quote/permission, no nonzero quoted cost. Verifies GP retirement, target level and "
+                         "available promotion points +5, zero XP remainder, unchanged target health/location, "
+                         "other owned unit identities/armies/balances. Does not select promotions or fully "
+                         "account for all trait/secondary effects. No placeholder/other-person substitution, "
+                         "turn or retry;15-second readback."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(activate_commander_great_person)
         server.tool(
             name="manage_civ7_alliance",title="Form or explicitly cancel a native Civ VII alliance",
             description=("CHANGE GAME STATE: exact peaceful met-major target_player_id, action form/cancel "

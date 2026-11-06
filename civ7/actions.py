@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def activate_commander_great_person(unit_id: StrictInt, commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Activate concrete Santa Anna on one exact co-located Army Commander and prove five promotion levels/points."""
+    if any(type(v) is not int or v<0 for v in (unit_id,commander_id,expected_turn)) or unit_id==commander_id:
+        raise ValueError("Distinct exact owned concrete Great Person/Army Commander IDs and expected turn required")
+    return await _execute_and_verify("activate_commander_great_person.js",{"unit_id":unit_id,"commander_id":commander_id,"expected_turn":expected_turn},"commander_great_person_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def manage_alliance(target_player_id: StrictInt, action: Literal["form", "cancel"], expected_turn: StrictInt) -> dict[str, Any]:
     """Form a native zero-cost alliance or explicitly cancel one with zero definition penalties."""
     if any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or action not in ("form","cancel"):

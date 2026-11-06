@@ -219,6 +219,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "airdrop_civ7_infantry_group",
             "support_civ7_own_war",
             "manage_civ7_alliance",
+            "activate_civ7_commander_great_person",
             "travel_civ7_unit",
         })
         tool = enabled["select_civ7_technology"]

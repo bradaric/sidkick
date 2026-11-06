@@ -1695,6 +1695,15 @@ no starts or unlock bypass. The earlier synthetic Great Merchant was a placehold
 not a representative positive-eligibility test for proper unique Great People.
 **250 Python / 452 Node pass; tool counts unchanged.**
 
+Proper Santa Anna activation now verified natively; its prerequisite is an Army
+Commander on the same tile. `activate_civ7_commander_great_person` binds that exact
+target and proves retirement plus5 levels/available promotion points, with local
+inventory, armies, health and balances preserved. Distinct typed pair verified;
+creation only, no bonus/XP forced. Other effect-specific profiles are separate work.
+Latest MilitaryGreatPerson T62 checkpoint confirmed RESULT_OK; original Merchant,
+Gold2081.33984375, Influence54.82421875 and alliance1 intact.
+**251 Python / 454 Node pass; tools24/126 (102 actions).**
+
 ## One-shot export
 
 ```powershell

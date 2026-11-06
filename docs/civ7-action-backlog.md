@@ -846,11 +846,32 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Fake Artifacts wrapper rejects before submission. No definition-only eligibility,
   raw secondary fallback, unlock/turn override or project completion claimed.
   250 Python /452 Node pass; counts unchanged.
-- Great Person investigation correction: synthetic5636159 is the ability-free
-  `UNIT_GREAT_MERCHANT` placeholder (literal untranslated name, no abilities and no
-  activation picker). It is not evidence that proper loaded Great People cannot
+- Great Person investigation correction: synthetic5636159 is the generic
+  `UNIT_GREAT_MERCHANT` placeholder (literal untranslated name and no native
+  activation profile offered). It is not evidence that proper loaded Great People cannot
   activate. Concrete unique-person definitions are present; investigate those
   before classifying this family's positive verification as unavailable.
+- `7214b5e`: Modern espionage variants. Concrete Santa Anna's native quote identified
+  the actual prerequisite: co-location with an Army Commander, not an ability-list
+  entry. Named Great People can also return an empty getAbilities list. Existing
+  typed local activation8913008 on new Commander8978545 normally retired the GP and
+  changed level0→5 / promotion points0→5 / XP remainder0, creation-only setup.
+- Added exact-target Santa Anna effect handler: one unambiguous co-located Army
+  Commander, full owned unit/membership ledger, installed individual profile with
+  one charge/no currency or scaled costs, native exact English five-promotion quote,
+  zero target XP remainder and normal permission. Verifies retirement, exactly+5
+  levels/available points, zero remainder, unchanged target health/location/queue,
+  preserved other unit identities/memberships and own balances. It does not allocate
+  promotions or claim every trait/secondary consequence; other GP profiles separate.
+- Distinct typed9044082→Commander9109619 at `(26,11)` verified the same five-level/
+  point native effect. First probe pair and placeholder preserved; no XP, retirement,
+  bonus, readiness or membership effect forced. Installed age-modern greatpeople.xml
+  and greatpeople-gameeffects.xml confirm Commander target and grant5 promotions.
+  251 Python /454 Node pass; tools24/126 including102 actions, still T62.
+- Separate checkpoint `Sidkick_Playground_GroupOneMilitaryGreatPerson_T62_1794001918433`
+  confirmed RESULT_OK/no overwrite. Original Merchant3473432 `(18,20)`/100HP,
+  Gold2081.33984375, Influence54.82421875 and alliance1 independently intact. Earlier
+  unsuccessful Town setup remains empty; no delayed capture or setup retry claimed.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -860,8 +881,8 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
 | Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Observed Sweep and fortified Carpet Bomb now verified; fortified naval positive remains native-blocked. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
-| Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
-| Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |
+| Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Proper Great Person activation now positive native, plus exact Santa Anna Commander effect accounting. Other effect-specific GP profiles remain unimplemented, not verification-only. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
+| Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel and five Modern espionage variants now implemented; current eligibility blocks positive tests. Own-war support, capped cancellation/2→1 withdrawal verified. First-meet/other unimplemented mandatory variants must remain distinct from paid/trial/independent/bonus positive gaps. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun
