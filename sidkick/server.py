@@ -32,6 +32,7 @@ from civ7.actions import (
     commander_attack,
     advance_unit,
     bombard_district,
+    pillage_tile,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -248,6 +249,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="pillage_civ7_tile", title="Pillage occupied Civ VII enemy tile",
+            description=("CHANGE GAME STATE: native constructible pillage by exact unit_id already on "
+                         "wartime target_player's visible non-centre x/y. Supply fresh combat-options "
+                         "pillage.targetToken and expected_turn. Requires mobile deployed unqueued unembarked "
+                         "unpacked/nonreinforcing land combat unit, no other units on that tile, a visible "
+                         "owning city centre elsewhere, intact complete constructible, unchanged full tile "
+                         "token and exact offered/selected native PILLAGE permission. Native chooses which "
+                         "building/improvement is damaged; verifies movement spend and visible new damage/"
+                         "departure, not exact loot/healing or complete secondary effects. No city entry, "
+                         "capture, route pillage, coastal raid, war declaration or turn advancement. Submits "
+                         "once, polls read-only for 15 seconds, never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(pillage_tile)
         server.tool(
             name="bombard_civ7_district", title="Ranged attack on Civ VII hostile district",
             description=("CHANGE GAME STATE: one land ranged/siege attack by exact owned unit_id against "

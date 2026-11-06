@@ -4,8 +4,13 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
+test('combat readout exposes visible constructible pillage token without requiring a defender', () => {
+  const {data} = run({pillageEvidence: true, unitVisible: false});
+  assert.equal(data.pillage.targetToken, JSON.stringify([{owner: 1, instanceId: 20, componentType: 2, type: 200, complete: true, damaged: false}]));
+});
+
 function run({ visible = true, unitVisible = true, met = true, atWar = true, district = false, packed = false,
-  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false, selectedCommanderBlocked = false } = {}) {
+  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false, selectedCommanderBlocked = false, pillageEvidence = false } = {}) {
   const script = path.join(__dirname, '../civ7/combat.js');
   assert.ok(fs.existsSync(script), 'bundled combat evidence query exists');
   const attacker = { id: { owner: 0, id: 7, type: 26 }, type: 'ARCHER', owner: 0, location: packed ? { x: -1, y: -1 } : { x: 0, y: 0 },
@@ -30,6 +35,8 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
       getTerrainType: (x, y) => { assert.ok(visible); assert.equal(x, 1); return 'HILLS'; },
       getFeatureType: () => 'FOREST', getBiomeType: () => 'TEMPERATE' },
     RevealedStates: { VISIBLE: 2 }, Visibility: { isVisible: () => unitVisible },
+    ...(pillageEvidence ? {MapConstructibles: {getConstructibles: () => [{owner: 1, id: 20, type: 2}]},
+      Constructibles: {getByComponentID: () => ({type: 200, complete: true, damaged: false})}} : {}),
     Units: { get: () => { assert.ok(unitVisible, 'invisible defenders are never inspected'); return defender; } },
     Districts: { get: () => defender },
     GameInfo: { Units: { lookup: type => ({ UnitType: type, Name: type }) }, Districts: { lookup: () => ({ Name: 'Fortified district' }) },

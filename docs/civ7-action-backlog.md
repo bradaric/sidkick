@@ -125,6 +125,22 @@ claiming Group 1 complete. Force March remains unavailable in this build.
 - Pre-Tuner checkpoint `Sidkick_Playground_GroupOneBeforeTunerCases_T62_1793976618146`
   confirmed RESULT_OK; no overwrite. No turns; Gold2131.33984375 unchanged.
   200 Python + 365 Node tests pass; tools unchanged at23/76 including53 actions.
+- Aerodrome correction committed as `fbe5c44`.
+- Constructible pillaging implemented: exact current tile occupied only by one
+  ready land combat unit, known unpacked/nonreinforcing state, met wartime owner,
+  visible owning centre elsewhere, fresh full constructible token from combat
+  evidence and exact native offered/selected PILLAGE permission. Native chooses
+  the building/improvement. Readback proves movement spent and visible new damage/
+  departure; no exact yield/healing, route-destruction or capture claim.
+- Synthetic Rifleman4718641 at `(16,21)` was correctly rejected because its owning
+  city centre was fogged; no pillage submitted. Distinct synthetic Rifleman4784178
+  at `(18,22)` normally pillaged existing Woodcutter3735608: movement2→0 and
+  damaged=false→true, verified through MCP. No damage effect forced or healing
+  claim. Gold2131.33984375/T62 unchanged; original Merchant remains untouched.
+- Map Tuner IMPROVEMENT and City Tuner CONSTRUCTIBLE farm setup attempts at empty
+  `(19,20)` produced no observed constructible and are not claimed successful.
+  Native unit creation remains supported; do not assume building creation works.
+- 202 Python + 369 Node tests pass; default23 tools, write mode77 including54 actions.
 
 ## Existing baseline
 

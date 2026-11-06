@@ -481,6 +481,16 @@ async def attack_unit(
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def pillage_tile(unit_id: StrictInt, target_player: StrictInt, x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Pillage constructibles on the exact occupied hostile non-centre tile with a fresh token."""
+    if (any(type(v) is not int or v < 0 for v in (unit_id, target_player, x, y, expected_turn)) or
+            not isinstance(target_token, str) or not target_token or len(target_token) > 100000):
+        raise ValueError("Exact unit, wartime tile, constructible token and expected turn are required")
+    return await _execute_and_verify("pillage_tile.js", {
+        "unit_id": unit_id, "target_player": target_player, "x": x, "y": y, "target_token": target_token, "expected_turn": expected_turn,
+    }, "pillage_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def bombard_district(unit_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Ranged-only attack on an exact visible hostile defensible district; never enters/captures."""
     if any(type(v) is not int or v < 0 for v in (unit_id, target_player, district_id, x, y, expected_turn)):

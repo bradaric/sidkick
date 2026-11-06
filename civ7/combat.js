@@ -91,6 +91,19 @@
     "friendlyTerritoryCombatMod", "flankingAttackPercentageModifier", "flankingAttackStrengthModifier", "canMoveAfterAttacking"];
   const reportedModifiers = attacker.Combat?.combatModifiers;
   const attackerDef = GameInfo.Units.lookup(attacker.type);
+  let pillage = null;
+  if (typeof MapConstructibles !== "undefined" && typeof Constructibles !== "undefined") {
+    const ids = MapConstructibles.getConstructibles(x, y);
+    const constructibles = Array.isArray(ids) ? ids.map(id => {
+      const c = Constructibles.getByComponentID(id);
+      return c ? {owner: id.owner, instanceId: id.id, componentType: id.type, type: c.type, complete: c.complete, damaged: c.damaged} : null;
+    }) : null;
+    if (constructibles && constructibles.every(c => c && Number.isInteger(c.type) && typeof c.complete === "boolean" && typeof c.damaged === "boolean")) {
+      constructibles.sort((a, b) => a.instanceId - b.instanceId || a.componentType - b.componentType);
+      pillage = {constructibles, targetToken: JSON.stringify(constructibles),
+        scope: "Visible tile constructibles only; native pillage eligibility is action-checked, not inferred from intact buildings"};
+    }
+  }
   return {
     turn: Game.turn,
     attacker: {instanceId: attacker.id.id, name: name(attacker.name ?? attackerDef?.Name),
@@ -107,7 +120,7 @@
       },
       reportedModifiers: reportedModifiers ? Object.fromEntries(modifierKeys.map(key => [key, reportedModifiers[key] ?? null])) : null
     },
-    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack, focusedLandMeleeAttack, overrun,
+    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack, focusedLandMeleeAttack, overrun, pillage,
     contextualStrength: null,
     expectedDamageToAttacker: null, expectedDamageToDefender: null, outcome: null,
     note: "Visible hostile target and read-only operation/commander-command checks only. Strengths, local reported modifiers and terrain definition values are separate evidence, not contextual totals or a damage simulation. Commander availability requires this target in the native plot list; no other plots are returned. No asynchronous simulation or attack request is issued"

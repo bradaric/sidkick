@@ -1266,6 +1266,22 @@ from St. Petersburg to Copan verified4456493 stationed in4653104 with stable hea
 queue0 and all other armies preserved. Test-plane movement restoration was synthetic.
 **200 Python / 365 Node tests pass; tools unchanged at23/76 (53 actions).**
 
+#### Constructible pillaging
+
+`pillage_civ7_tile(unit_id, target_player, x, y, target_token, expected_turn)` uses
+native PILLAGE on the exact visible wartime non-centre tile already occupied only
+by the selected ready land combat unit. Supply `pillage.targetToken` from combat
+options. Requires known unpacked/nonreinforcing state, a visible owning centre
+elsewhere, fresh full constructible token and exact offered/selected permission.
+Native chooses which building/improvement to damage. Readback proves movement
+spend and visible new constructible damage/departure, not exact loot/healing.
+No capture, route pillage, coastal raid, war declaration or turn advancement.
+
+Live MCP synthetic Rifleman4784178 pillaged existing Woodcutter3735608 on `(18,22)`:
+movement2→0 and damaged=false→true. No forced damage or healing claim. Another
+urban test correctly rejected its fogged owning centre; the original Merchant
+was untouched. **202 Python / 369 Node tests pass; tools23/77 (54 actions).**
+
 ## One-shot export
 
 ```powershell
