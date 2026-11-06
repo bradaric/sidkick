@@ -14,13 +14,13 @@ function run(o = {}, script = 'unit_membership.js') {
   const commanders = [30, 40].map(id => ({id: component(id), type: 300, isCommanderUnit: true, isOnMap: true,
     isFleetCommander: !o.notFleet,Experience:{hasPromotion:()=>!o.unpromoted},Health:{damage:0,maxDamage:100},Movement:{movementMovesRemaining:3},
     operationQueueSize: 0, armyId: {owner: 0, id, type: 29}, location: id === 30 ? {x: 3, y: 3} : {x: o.ambiguous ? 3 : 5, y: o.ambiguous ? 3 : 5}}));
-  const owned = [unit, {id: component(11), type: 100, isOnMap: false}, ...commanders];
+  const owned = [unit, {id: component(11), type:o.aircraftPayload?200:100, isOnMap: false,armyId:commanders[0].armyId,operationQueueSize:0,Health:{damage:o.retainedDamage?1:0,maxDamage:100},Combat:{attacksRemaining:0},Movement:{movementMovesRemaining:0}}, ...commanders];
   const baseline = [{commanderId: 30, commanderType: 300, componentType: 26, armyId: 30,
-    packedUnitIds: mode==='airdrop'?[10]:mode === 'join' ? [11] : [10, 11]},
+    packedUnitIds: mode==='airdrop'?(o.extraAirMember?[10,11]:[10]):mode === 'join' ? [11] : [10, 11]},
     {commanderId: 40, commanderType: 300, componentType: 26, armyId: 40, packedUnitIds: []}];
   const context = {queryArguments: {mode, unit_id: 10, commander_id: 30, expected_turn: 62,
       ...(mode==='airdrop'?{x:2,y:1,airdrop:true}:mode === 'leave' ? {x: o.origin ? 3 : 2, y: 3} : {}), unit_type: 100, component_type: 26,
-      commander_type: 300, commander_component_type: 26, baseline_armies: baseline,...(o.airlift?{air_transport:true}:{}), ...o.args},
+      commander_type: 300, commander_component_type: 26, baseline_armies: baseline,...(o.airlift?{air_transport:true}:{}),...(o.aircraftPayload?{retained_aircraft:[{unitId:11,componentType:26,unitType:200,damage:0,attacks:0,moves:0}]}:{}), ...o.args},
     UI: {isInGame: () => true}, Locale: {compose: x => x}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => o.missing ? owned.slice(1) : owned},
       Cities:{getCities:()=>[{id:{owner:0,id:7,type:1},name:'Target',location:{x:3,y:3}}]},
@@ -28,8 +28,8 @@ function run(o = {}, script = 'unit_membership.js') {
     Armies: {get: id => ({owner: o.foreignArmy ? 1 : 0, localId: id.id,
       getCommanderId: () => component(id.id), getUnitIds: () => o.unknownArmy ? null :
          id.id === 30 ? [...(mode==='airdrop'&&!o.extraAirMember?[]:[component(11)]), ...(packed ? [component(10)] : [])] : []})},
-    GameInfo: {UnitOperations:{lookup:()=>({OperationType:'UNITOPERATION_UNIT_AIR_DROP'})},Terrains:{lookup:()=>({TerrainType:o.river?'TERRAIN_NAVIGABLE_RIVER':'TERRAIN_FLAT'})},TypeTags:[{Type:'UNIT_100',Tag:o.wrongAirRole?'UNIT_CLASS_CAVALRY':'UNIT_CLASS_INFANTRY'}],Constructibles:{lookup:()=>({ConstructibleType:'IMPROVEMENT_TEST',ConstructibleClass:'IMPROVEMENT'})},Units: {lookup: type => ({UnitType:o.airlift&&type===300?'UNIT_SQUADRON_COMMANDER':o.merchant&&type===100?'UNIT_MERCHANT':o.migrant&&type===100?'UNIT_MIGRANT':`UNIT_${type}`,Domain:o.airlift&&type===300?'DOMAIN_AIR': o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
-      FormationClass:o.airlift?'FORMATION_CLASS_LAND_COMBAT': o.civilian ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_NAVAL', Packable: !o.notPackable})}},
+    GameInfo: {UnitOperations:{lookup:()=>({OperationType:'UNITOPERATION_UNIT_AIR_DROP'})},Terrains:{lookup:()=>({TerrainType:o.river?'TERRAIN_NAVIGABLE_RIVER':'TERRAIN_FLAT'})},TypeTags:[{Type:'UNIT_100',Tag:o.wrongAirRole?'UNIT_CLASS_CAVALRY':'UNIT_CLASS_INFANTRY'}],Constructibles:{lookup:()=>({ConstructibleType:'IMPROVEMENT_TEST',ConstructibleClass:'IMPROVEMENT'})},Units: {lookup: type => ({UnitType:o.airlift&&type===300?'UNIT_SQUADRON_COMMANDER':o.merchant&&type===100?'UNIT_MERCHANT':o.migrant&&type===100?'UNIT_MIGRANT':`UNIT_${type}`,Domain:o.aircraftPayload&&type===200?'DOMAIN_AIR':o.airlift&&type===300?'DOMAIN_AIR': o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+      FormationClass:o.aircraftPayload&&type===200?'FORMATION_CLASS_AIR':o.airlift?'FORMATION_CLASS_LAND_COMBAT': o.civilian ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_NAVAL', Packable: !o.notPackable})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getPlotDistance: () => o.distant ? 2 : o.origin ? 0 : 1,
       getIndexFromLocation: l => l.x + l.y * 10, getRevealedState: () => o.hidden ? 0 : 2,
       getLocationFromIndex: i => ({x: i % 10, y: Math.floor(i / 10)}),
@@ -70,6 +70,14 @@ test('single-Infantry Airdrop uses the Squadron operation, not ordinary unit lea
  const r=run({mode:'airdrop',airlift:true,landTile:true});assert.equal(r.data.status,'submitted');assert.deepEqual(r.calls.at(-1),{kind:'send',id:{owner:0,id:30,type:26},command:'UNITOPERATION_UNIT_AIR_DROP',args:{X:2,Y:1}});assert.equal(r.data.expected.packed,false);assert.deepEqual(r.data.expected.location,{x:2,y:1});
  const s=run({mode:'airdrop',airlift:true,landTile:true,applied:true},'unit_membership_state.js').data;assert.deepEqual(s.location,{x:2,y:1});assert.deepEqual(s.commanderLocation,{x:3,y:3});assert.equal(s.unitDamage,0);
  for(const o of [{extraAirMember:true},{unpromoted:true},{occupied:true},{hidden:true},{foreignTile:true},{river:true},{notOffered:true},{changed:true}])assert.equal(run({mode:'airdrop',airlift:true,landTile:true,...o}).data.status,'rejected');
+});
+test('one Infantry can Airdrop while exact stationed aircraft remain packed and unspent',()=>{
+ const r=run({mode:'airdrop',airlift:true,landTile:true,extraAirMember:true,aircraftPayload:true});assert.equal(r.data.status,'submitted');assert.deepEqual(r.data.expected.armies[0].packedUnitIds,[11]);assert.equal(r.data.expected.retainedAircraftPreserved,true);
+ const base={mode:'airdrop',airlift:true,landTile:true,extraAirMember:true,aircraftPayload:true,applied:true};
+ assert.equal(run(base,'unit_membership_state.js').data.retainedAircraftPreserved,true);
+ assert.equal(run({...base,retainedDamage:true},'unit_membership_state.js').data.retainedAircraftPreserved,false);
+ const logistics=run({mode:'airdrop',airlift:true,landTile:true,extraAirMember:true,aircraftPayload:true,args:{unit_id:30}},'logistics.js').data.selectedUnit.airdrop;
+ assert.deepEqual(logistics.payloadUnitIds,[10]);assert.deepEqual(logistics.retainedAircraftIds,[11]);assert.equal(logistics.supportedPayload,true);
 });
 test('selected airlift logistics exposes promoted Infantry membership and exact visible empty landing offers',()=>{
  const join=run({airlift:true,landTile:true},'logistics.js').data.selectedUnit;

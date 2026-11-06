@@ -23,9 +23,16 @@
   if (new Set(armies.map(a => a.commanderId)).size !== armies.length) throw Error("Commander identity is ambiguous");
   const unit = units[0], selected = armies.find(a => a.commanderId === commanderId);
   if (!selected) throw Error("Selected army disappeared");
+  const retained=queryArguments.retained_aircraft;
+  if(retained!==undefined&&(!Array.isArray(retained)||retained.length>16))throw Error("Invalid captured retained aircraft");
+  const retainedAircraftPreserved=retained?.every(p=>{
+    const u=owned.find(u=>u.id.id===p.unitId),c=commanders[0];return u?.id.type===p.componentType&&u.type===p.unitType&&u.isOnMap===false&&u.isDead!==true&&u.operationQueueSize===0&&
+      selected.packedUnitIds.includes(p.unitId)&&u.armyId?.owner===playerId&&u.armyId.id===c.armyId?.id&&u.armyId.type===c.armyId.type&&u.Health?.damage===p.damage&&u.Combat?.attacksRemaining===p.attacks&&u.Movement?.movementMovesRemaining===p.moves;
+  });
   return {turn: Game.turn, age: Game.age, playerId, unitId, unitType, componentType, commanderId, commanderType, commanderComponentType,
     commanderLocation:{x:commanders[0].location?.x,y:commanders[0].location?.y},unitDamage:unit.Health?.damage??null,commanderDamage:commanders[0].Health?.damage??null,
     unitQueueSize:unit.operationQueueSize,commanderQueueSize:commanders[0].operationQueueSize,
+    ...(retained!==undefined?{retainedAircraftPreserved}:{}),
     packed: selected.packedUnitIds.includes(unitId), armies,
     location: !seen.has(unitId) && unit.isOnMap === true && Number.isInteger(unit.location?.x) && unit.location.x >= 0 &&
       Number.isInteger(unit.location?.y) && unit.location.y >= 0 ? {x: unit.location.x, y: unit.location.y} : null};

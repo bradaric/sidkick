@@ -35,12 +35,22 @@
   }
   const baseline = armies(), selected = baseline?.find(a => a.commanderId === commanderId), containing = baseline?.filter(a => a.packedUnitIds.includes(unitId));
   if (!selected || !containing || containing.length > 1) return reject("Owned army identity and complete packed membership must be known");
-  if(airdrop&&(!containing.length||selected.packedUnitIds.length!==1||selected.packedUnitIds[0]!==unitId||unit.isOnMap!==false||
-      !Number.isFinite(unit.Health?.damage)||!Number.isFinite(commander.Health?.damage)))return reject("Airdrop requires exactly one packed Infantry and no other payload; complete health baseline required");
+  function retainedAircraft(){
+    const records=[];for(const id of selected.packedUnitIds.filter(id=>id!==unitId)){
+      const u=owned.find(u=>u.id.id===id),def=u&&GameInfo.Units.lookup(u.type);
+      if(!u||u.isCommanderUnit||u.isDead===true||u.isOnMap!==false||u.operationQueueSize!==0||def?.Domain!=="DOMAIN_AIR"||def.FormationClass!=="FORMATION_CLASS_AIR"||
+          !sameArmy(u.armyId,commander.armyId)||!Number.isFinite(u.Health?.damage)||!Number.isInteger(u.Combat?.attacksRemaining)||u.Combat.attacksRemaining<0||!Number.isFinite(u.Movement?.movementMovesRemaining)||u.Movement.movementMovesRemaining<0)return null;
+      records.push({unitId:id,componentType:u.id.type,unitType:u.type,damage:u.Health.damage,attacks:u.Combat.attacksRemaining,moves:u.Movement.movementMovesRemaining});
+    }return records;
+  }
+  const sameArmy=(a,b)=>a?.owner===playerId&&a.owner===b?.owner&&a.id===b.id&&a.type===b.type;
+  const retained=airdrop?retainedAircraft():null;
+  if(airdrop&&(!containing.length||!selected.packedUnitIds.includes(unitId)||retained===null||selected.packedUnitIds.length>16||unit.isOnMap!==false||
+      !Number.isFinite(unit.Health?.damage)||!Number.isFinite(commander.Health?.damage)))return reject("Airdrop requires exactly one packed Infantry, optionally known stationed aircraft retained unchanged; no other payload");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
     commanderId, commanderType: commander.type, commanderComponentType: commander.id.type, armies: baseline,
     unitLocation: {x: unit.location?.x, y: unit.location?.y}, commanderLocation: {x: commander.location?.x, y: commander.location?.y}};
-  if(airdrop){before.unitDamage=unit.Health.damage;before.commanderDamage=commander.Health.damage;}
+  if(airdrop){before.unitDamage=unit.Health.damage;before.commanderDamage=commander.Health.damage;before.retainedAircraft=retained;}
   if (containing.length && containing[0].commanderId !== commanderId) return reject("Unit is in a different commander; no implicit transfer");
   if (mode === "join" && containing.length) return {status: "already_active", before};
   if (mode === "leave" && !containing.length) return unit.isOnMap === true ? {status: "already_inactive", before} : reject("Unpacked deployment is unverified");
@@ -80,16 +90,16 @@
       commander.location.x !== before.commanderLocation.x || commander.location.y !== before.commanderLocation.y ||
       JSON.stringify(armies()) !== JSON.stringify(baseline) || !visible(destination) || ![-1, playerId].includes(GameplayMap.getOwner(destination.x, destination.y)) ||
       !airLandSafe()||(airTransport&&commander.Experience.hasPromotion("DISCIPLINE_SQUADRON_AIRLIFT_OPERATIONS","PROMOTION_SQUADRON_AIRBORNE_FORCES")!==true)||
-      (airdrop&&(unit.isOnMap!==false||unit.Health.damage!==before.unitDamage||commander.Health.damage!==before.commanderDamage||commander.Movement.movementMovesRemaining<=0))||
+      (airdrop&&(unit.isOnMap!==false||unit.Health.damage!==before.unitDamage||commander.Health.damage!==before.commanderDamage||commander.Movement.movementMovesRemaining<=0||JSON.stringify(retainedAircraft())!==JSON.stringify(retained)))||
       (domain === "DOMAIN_SEA" && (!water(before.commanderLocation) || !water(destination) || (mode === "join" && !water(before.unitLocation)))) ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1 ||
       (mode === "join" ? unit.isOnMap !== true || unit.location.x !== before.unitLocation.x || unit.location.y !== before.unitLocation.y : !deploymentClear())) return reject("Unit, commander, membership, destination or game context changed during validation");
   const expectedArmies = baseline.map(a => ({...a, packedUnitIds: a.commanderId !== commanderId ? a.packedUnitIds :
     mode === "join" ? [...a.packedUnitIds, unitId].sort((a, b) => a - b) : a.packedUnitIds.filter(id => id !== unitId)}));
   const verificationArguments = {unit_id: unitId, commander_id: commanderId, component_type: before.componentType, unit_type: before.unitType,
-    commander_component_type: before.commanderComponentType, commander_type: before.commanderType};
+    commander_component_type: before.commanderComponentType, commander_type: before.commanderType,...(airdrop?{retained_aircraft:retained}:{})};
   api.sendRequest(source.id, command, args);
   return {status: "submitted", before, expected: {unitId, unitType: before.unitType, componentType: before.componentType,
     commanderId, commanderType: before.commanderType, commanderComponentType: before.commanderComponentType, packed: mode === "join", armies: expectedArmies,
-    ...(mode !== "join" ? {location: destination} : {}),...(airdrop?{commanderLocation:before.commanderLocation,unitDamage:before.unitDamage,commanderDamage:before.commanderDamage,unitQueueSize:0,commanderQueueSize:0}:{})}, verificationArguments};
+    ...(mode !== "join" ? {location: destination} : {}),...(airdrop?{commanderLocation:before.commanderLocation,unitDamage:before.unitDamage,commanderDamage:before.commanderDamage,unitQueueSize:0,commanderQueueSize:0,retainedAircraftPreserved:true}:{})}, verificationArguments};
 })()

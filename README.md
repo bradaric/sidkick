@@ -1639,6 +1639,13 @@ Labelled aircraft creation/post-transfer movement only, no HP/mission effects fo
 Observed Sweep/Bomb option fixture-tested, not yet positive native verification.
 **244 Python / 441 Node pass; tool counts unchanged.**
 
+Single-Infantry Airdrop also supports a Squadron holding aircraft: exact aircraft
+health, missions, movement and packed membership must remain unchanged. Native
+`(22,11)→(21,10)` drop preserved all three spent test aircraft. Spent-Squadron attempt
+rejected without a write; labelled Infantry/Squadron movement restoration only.
+Multiple Infantry/other ground payloads still reject.
+**244 Python / 442 Node pass; tool counts unchanged.**
+
 ## One-shot export
 
 ```powershell

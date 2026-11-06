@@ -313,10 +313,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             description=("CHANGE GAME STATE: exact sole packed Infantry unit_id, Airborne Forces Squadron "
                          "commander_id, native offered/selected landing x/y and expected_turn. Requires "
                          "empty currently visible own/unowned flat/hill land, unqueued ready Squadron, "
-                         "full army ledger and no other payload. Executes native UNIT_AIR_DROP once, "
+                         "full army ledger and no other ground payload. Known stationed aircraft may remain "
+                         "packed; verifies their health/mission/movement untouched. Executes native UNIT_AIR_DROP once, "
                          "not per-unit leave or teleport. Verifies exact Infantry landing, other army "
                          "memberships preserved, unchanged Squadron position and both health baselines, "
-                         "no queued orders. No mixed/multiple payloads, combat, foreign/fogged landing, "
+                         "no queued orders. No multiple Infantry/other ground payloads, combat, foreign/fogged landing, "
                          "turn advance or automatic retry;15-second readback."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(airdrop_infantry)

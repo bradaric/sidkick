@@ -208,7 +208,7 @@ async def _city_construction(
 
 
 async def airdrop_infantry(unit_id: StrictInt, commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
-    """Drop exactly one Infantry payload from a promoted Squadron onto an exact native offered land tile."""
+    """Drop exactly one Infantry from a promoted Squadron; captured stationed aircraft stay unchanged."""
     if any(type(v) is not int or v<0 for v in (unit_id,commander_id,x,y,expected_turn)) or unit_id==commander_id:
         raise ValueError("Distinct owned packed Infantry/Squadron IDs, exact landing and expected turn required")
     return await _execute_and_verify("unit_membership.js",{"mode":"airdrop","unit_id":unit_id,"commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn,"air_transport":True},"unit_membership_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)

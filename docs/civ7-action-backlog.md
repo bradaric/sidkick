@@ -733,6 +733,15 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Creation plus post-transfer movement restored only, no attacks/HP/effects forced.
   Optional observed Sweep/Bomb paths fixture-tested; their earlier native execution
   did not test this new observation option.244 Python /441 Node pass; counts unchanged.
+- `351ba65`: opt-in air effects. Single-Infantry Airdrop now permits other stationed
+  aircraft while explicitly capturing/verifying their health, attacks, movement,
+  off-map status and exact packed membership unchanged. Multiple Infantry/other
+  ground payloads still reject; no implicit extra unit deployment. Selected readout
+  separates Infantry payload IDs from retained aircraft IDs. Native test7864416
+  dropped from `(22,11)→(21,10)` while8061027/8126564/8192101 stayed packed/spent/
+  unchanged. Initial spent-Squadron readiness rejected before a write; only test
+  Infantry/Squadron movement restored for setup, aircraft counters untouched.
+  244 Python /442 Node pass; tools24/122 including98 actions, still T62.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -740,7 +749,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
-| Military transport | Mass/mixed Infantry Airdrop remains to assess/implement. Ordinary bounded current-turn travel and explicit peaceful foreign travel now native-verified. Single Infantry Squadron join/leave/Airdrop, fleet/army commands, squadron relocation/air missions and packed-army sea travel verified. Some fortified bomb cases fixture-only. |
+| Military transport | Mass Infantry Airdrop remains to assess/implement; single Infantry with retained aircraft now verified. Ordinary bounded/peaceful travel, Squadron join/leave/Airdrop, fleet/army commands, squadron relocation/air missions and packed-army sea travel verified. Some fortified bomb/observed Sweep-Bomb cases fixture-only. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
 | Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |
