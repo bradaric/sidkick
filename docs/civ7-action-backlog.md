@@ -204,6 +204,20 @@ claiming Group 1 complete. Force March remains unavailable in this build.
 
 ### Remaining split after the military/construction batches
 
+Resumed at the user's explicit request to finish Group 1, retaining the no-turn
+boundary. Complete implementation/fixtures and supported sandbox cases; only
+specific unavailable positive/native or turn-dependent checks belong in Group 2.
+
+- Coastal raids implemented as fixed COASTAL_RAID, distinct from land pillage:
+  mobile deployed naval combat ship on visible water, adjacent empty visible
+  hostile land tile with fresh constructible token, visible owning centre elsewhere,
+  known unpacked/nonreinforcing source and native offered/selected permission.
+  Same primary-damage/movement-spend verification, stable ship origin; no landing.
+  Synthetic Frigate5242937 `(18,23)` normally raided Woodcutter3538997 `(19,23)`:
+  movement3→0, damaged=false→true, Gold unchanged. Live typed Python action (not
+  MCP transport in this case); no damage effect forced. 205 Python / 376 Node pass;
+  tools23/79 including56 actions. Still T62.
+
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 

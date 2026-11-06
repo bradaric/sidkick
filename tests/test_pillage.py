@@ -8,6 +8,16 @@ from sidkick.server import create_server
 
 
 class PillageTests(unittest.IsolatedAsyncioTestCase):
+    async def test_coastal_raid_uses_fixed_kind_and_opt_in_tool(self):
+        self.assertTrue(callable(getattr(actions, 'coastal_raid', None)))
+        args = {'unit_id': 10, 'target_player': 1, 'x': 3, 'y': 3, 'target_token': '[]', 'expected_turn': 62, 'kind': 'coastal'}
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value={'status': 'rejected'}) as run:
+            self.assertEqual((await actions.coastal_raid(10, 1, 3, 3, '[]', 62))['status'], 'rejected')
+        self.assertEqual(run.await_args.args, ('pillage_tile.js', args))
+        self.assertNotIn('coastal_raid_civ7_tile', {t.name for t in create_server()._tool_manager.list_tools()})
+        tool = {t.name: t for t in create_server(enable_writes=True)._tool_manager.list_tools()}.get('coastal_raid_civ7_tile')
+        self.assertIsNotNone(tool); self.assertFalse(tool.annotations.read_only_hint)
+
     async def test_pillage_submits_once_then_verifies_native_damage(self):
         self.assertTrue(callable(getattr(actions, 'pillage_tile', None)))
         args = {'unit_id': 10, 'target_player': 1, 'x': 3, 'y': 3, 'target_token': '[captured]', 'expected_turn': 62}

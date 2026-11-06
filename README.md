@@ -1327,6 +1327,14 @@ confirmed RESULT_OK/no overwrite; original Merchant remains100HP at `(18,20)`.
 No turn advanced, Gold2131.33984375 unchanged. Group 1 is still incomplete; see the
 backlog's remaining implementation/verification split. Group 2 turns remain deferred.
 
+`coastal_raid_civ7_tile` adds fixed native naval raids on an adjacent empty visible
+enemy land tile with a fresh combat-options constructible token. Requires a ready
+unpacked/nonreinforcing ship on water, visible owning centre elsewhere and exact
+native offered/selected permission. Verifies movement spend, stable ship origin and
+new constructible damage/departure; no loot/healing, landing or capture claim.
+Live typed Python synthetic Frigate5242937 raided existing Woodcutter3538997:
+movement3→0 and damaged=false→true. **205 Python / 376 Node pass; tools23/79.**
+
 ## One-shot export
 
 ```powershell

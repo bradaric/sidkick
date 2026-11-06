@@ -34,6 +34,7 @@ from civ7.actions import (
     bombard_district,
     pillage_tile,
     air_attack_unit,
+    coastal_raid,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -250,6 +251,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="coastal_raid_civ7_tile", title="Raid one Civ VII coastal tile",
+            description=("CHANGE GAME STATE: native COASTAL_RAID by exact mobile deployed naval combat "
+                         "unit_id on visible water against adjacent empty visible enemy land x/y, exact "
+                         "target_player, combat-options pillage.targetToken and expected_turn. Requires an "
+                         "existing met war, intact complete constructible, visible owning centre elsewhere, "
+                         "known unpacked/nonreinforcing source and exact native offered/selected permission. "
+                         "Native selects the constructible; verifies source movement spend, unchanged ship "
+                         "location and visible new target damage/departure. No exact loot/healing, centre "
+                         "attack, landing/capture, route pillage, new war or turn advancement. One submission, "
+                         "15-second read-only readback; never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(coastal_raid)
         server.tool(
             name="air_attack_civ7_unit", title="Strike one Civ VII unit from city Aerodrome",
             description=("CHANGE GAME STATE: native AIR_ATTACK by exact owned aircraft unit_id stationed "
