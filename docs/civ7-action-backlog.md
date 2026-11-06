@@ -34,7 +34,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
 | 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group, zero-cost non-trial narrative and cooperative project responses implemented; paid/trial/hostile/deal responses pending |
-| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders and promotions implemented; travel/upgrades pending |
+| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders, promotions and capped upgrades implemented; extended travel pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
@@ -196,3 +196,13 @@ Morning inspection/actions before this implementation batch:
   1310739. The latter now offers Landship, native English quote 200 Gold, with
   target definition index 26. No upgrade submitted yet. A debug create probe for
   Line Infantry produced no observed new unit and is not counted as setup.
+- Promotion batch committed as `a892338`; celebration correction as `550c30f`.
+- Capped unit upgrades: 147 Python + 299 Node tests. Exact English native upgrade
+  quote only, explicit target/cap, fresh native permission and loaded upgrade link.
+  Native replacement-ID behavior was observed and regression-tested: old unit
+  disappears, exactly one new same-tile target excluding baseline inventory, exact
+  Gold spend; unknown/ambiguous results never resubmitted. Cuirassier 1310739 →
+  Landship 3801103 spent 200, initial unknown resolved read-only, no repeat. A
+  distinct Cuirassier 1376276 → Landship 3866637 then verified normally, 200 Gold.
+  Cap199 rejected. Both used debug-restored movement (synthetic readiness); no turn
+  advancement. Gold now 8006.33984375. Reviewed morning checkpoint remains preserved.

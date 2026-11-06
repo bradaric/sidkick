@@ -35,6 +35,7 @@ from civ7.actions import (
     start_city_state_project,
     start_diplomatic_project,
     upgrade_town,
+    upgrade_unit,
 )
 from civ7.player import snapshot
 from civ7.queries import (
@@ -222,6 +223,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="upgrade_civ7_unit", title="Upgrade Civ VII unit",
+            description=("CHANGE GAME STATE: upgrade one owned deployed unqueued unit_id to exact target_unit_type "
+                         "from get_civ7_units.upgrade, with max_gold_cost and fresh expected_turn. Requires a "
+                         "loaded direct upgrade link and native UPGRADE permission. Price is parsed only from "
+                         "the exact observed English native quote; other languages/formats, missing/multiple "
+                         "quotes and changed prices are rejected, never estimated. Checks cap/balance twice "
+                         "and verifies the changed type/Gold spend: either the original unit transforms or "
+                         "disappears with exactly one new target unit on the same tile, excluding baseline units. "
+                         "Spends Gold and may consume movement; no "
+                         "army-wide upgrades. Requires user authorization; submits once, no automatic retry."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(upgrade_unit)
         server.tool(
             name="promote_civ7_unit", title="Promote Civ VII unit",
             description=("CHANGE GAME STATE: spend earned promotion/commendation eligibility on one exact "

@@ -361,6 +361,16 @@ async def promote_unit(unit_id: StrictInt, discipline: StrictStr, promotion: Str
     }, "unit_promotion_state.js")
 
 
+async def upgrade_unit(unit_id: StrictInt, target_unit_type: StrictStr, max_gold_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Upgrade one deployed unit under the exact supported native price and explicit target/cap."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or not isinstance(target_unit_type, str) or not target_unit_type.strip() or \
+            type(max_gold_cost) not in (int, float) or not math.isfinite(max_gold_cost) or max_gold_cost < 0:
+        raise ValueError("An owned unit, target type ID, finite nonnegative Gold cap and expected turn are required")
+    return await _execute_and_verify("upgrade_unit.js", {
+        "unit_id": unit_id, "target_unit_type": target_unit_type.strip(), "max_gold_cost": max_gold_cost, "expected_turn": expected_turn,
+    }, "unit_upgrade_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

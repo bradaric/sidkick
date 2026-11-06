@@ -700,6 +700,35 @@ the private authorized debug setup granted 41 XP (level 2 → 3), not combat-ear
 experience. The reviewed morning state is separately preserved in native save
 `Sidkick_Playground_ReviewedMorning_T62_1793948595702` (RESULT_OK, no overwrite).
 
+#### Capped individual unit upgrades
+
+`upgrade_civ7_unit(unit_id, target_unit_type, max_gold_cost, expected_turn)`
+requires an owned deployed unqueued unit, exact native target and direct loaded
+upgrade link. The native command exposes its price only in AdditionalDescription:
+the tool accepts only the exact observed English `Upgrade to <name>: <integer>
+[icon:YIELD_GOLD] Gold` format, with one description and a safe integer amount.
+Missing, localized, grouped-number, ambiguous or changed quotes are rejected,
+not estimated. Exact native permission/quote is refreshed before submission;
+cap, Gold balance, identity, tile and active turn are checked. The unit readout
+now exposes this target/quote and withholds availability for unsupported prices.
+
+Upgrades can replace the native instance ID. Readback therefore captures all
+pre-existing owned IDs and source tile: it requires either the original unit's
+type to change or its disappearance with exactly one new target unit at that
+tile, plus the exact quoted Gold spend. A transient disappearance is polled,
+not treated as failure; pre-existing target units and ambiguous replacements
+cannot prove success. Unknown outcomes are never resubmitted.
+
+Default remains 23 read-only tools; write mode has 51 tools (28 actions).
+**147 Python and 299 Node tests pass.** Native T62 verification: Cuirassier
+1310739 → Landship 3801103 at `(12,17)`, 200 Gold. The first verifier conservatively
+returned unknown because the ID changed; read-only evidence resolved the effect,
+without repeating the upgrade. A distinct Cuirassier 1376276 → Landship 3866637
+at `(24,18)` then returned `verified_applied` with the corrected verifier, another
+200 Gold. Cap 199 was rejected. Prerequisite movement was restored through the
+authorized private debug API; these are normal native upgrades with synthetic
+movement readiness, not naturally refreshed-turn coverage. No turn advanced.
+
 ## One-shot export
 
 ```powershell
