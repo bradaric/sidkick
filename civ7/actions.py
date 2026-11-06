@@ -6,7 +6,8 @@ from typing import Any, Literal
 
 from pydantic import StrictBool, StrictFloat, StrictInt, StrictStr
 
-from civ7.connection import run_script
+# Every submission/readback uses the loading gate; ordinary queries keep run_script.
+from civ7.connection import run_started_script as run_script
 
 
 # Serialize submission and readback within this process, not across MCP servers.

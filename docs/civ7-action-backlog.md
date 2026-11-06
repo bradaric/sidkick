@@ -19,7 +19,7 @@ actions, publishing, pushes or destructive Git operations.
   batches separately under the user's standing instruction. No pushes.
 - Report actual results and blockers, not promises about completion time.
 
-### Group 1 completion request
+### Original Group 1 completion request
 
 User requested trying to finish all work possible with the current save and
 supported debug setup before expanding turn/state-dependent Group 2. No turns.
@@ -30,6 +30,13 @@ Implementation/fixtures and positive native execution are separate statuses.
 When a live prerequisite cannot be manufactured through supported setup, record
 the exact prerequisite in Group 2 rather than bypassing native eligibility or
 claiming Group 1 complete. Force March remains unavailable in this build.
+
+Scope update, 2026-11-07: user moved work needing additional game-state/debug setup,
+another save or unavailable eligibility to Group 2. Hard installed-build/API limits
+are unsupported, not Group 1 blockers. This supersedes the original setup-work
+priority above, not the recorded evidence or Playground authorization. Deferred
+implementation stays labelled not implemented; moving it does not complete it or
+authorize Group 2 turns. The current closure checklist below is authoritative.
 
 - Ordinary-unit rail completed: rail_civ7_unit uses exact native offered/selected
   MOVE_BY_RAIL, known unpacked/nonreinforcing unqueued unembarked land source,
@@ -1008,27 +1015,53 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Influence337.40234375 and Gold140.1015625.255 Python /462 Node pass;
   all24 default tools freshly passed real stdio calls; opt-in128 including104 actions.
 
-**Group 1 is not complete.** Do not relabel unimplemented features as verification
-blockers or start Group 2 turns simply because these completed batches passed.
+### Current Group 1 closure checklist
 
-| Group 1 implementation still needed | Current boundary |
+User narrowed this on 2026-11-07: **no further game-state setup is required to close
+Group 1**. Unavailable cases do not keep it open indefinitely. **Group 1 is now
+closed under that revised boundary**, with the following no-setup checks completed.
+This does not mean every deferred handler is implemented or every native case verified.
+
+| Group 1 item | Closure evidence |
 |---|---|
-| Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
-| Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Observed Sweep and fortified Carpet Bomb now verified; fortified naval positive remains native-blocked. |
-| Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
-| Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Santa Anna promotion, Morelos primary/wider-owned healing and Villa ability grant implemented/native-verified with labelled synthetic prerequisites. Future Villa combat payouts remain unverified. Other effect-specific GP profiles remain unimplemented. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
-| Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel, Modern espionage and hostile-sanction replies implemented; eligibility blocks positive tests. Own-war support/capped withdrawal verified. First-meet initial profile implemented with GameStarted/PLAYER_MET guards: friendly/neutral native verified; unfriendly effects late observed after Begin, fresh bounded positive still unverified. Inherited first-meet modifiers and other mandatory variants remain separate implementation work. |
+| Loading/readiness safety audit | Completed: all104 registered MCP writers belong to civ7.actions and now use fixed GameStarted-guarded transport for submissions/readbacks, including the separate end-turn path. Guard runs before helpers or bundled bodies, with no extra native request. Loading/missing-readiness fixtures prove zero helper/submission execution; GameStarted submits once. Readback interruption stays UNKNOWN with no resubmission. Ordinary read-only queries retain their existing transport. |
+| Final checks and evidence reconciliation | Completed:260 Python /462 Node pass; final diff checked. All24 default tools passed fresh real stdio calls;128 opt-in tools discovered and safe invalid-token rejection exercised through guarded action transport. Implementation, fixtures, native effects, unknown outcomes and deferred work remain separate below. |
 
-Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
-recharge/completion, unattended turns and Age transitions; positive native Overrun
-and live atomic-swap eligibility; natural-use verification for debug-created air/
-combat cases. Multi-participant Focus Fire and coordinated melee now have positive
-synthetic native execution, no longer fixture-only. Bounded independent kill/visible
-collateral accounting exists for explicit observed field/land-group/fleet/air
-strikes, with positive native kill/retaliation/splash evidence, plus optional district
-bombardment/direct-commander/capture observation. Optional observed capture positive
-execution still needs an eligible empty centre; full hidden/
-global effects are not promised.
+Closeout used code inspection and local fixtures only, without new game-state
+setup, native orders or turns. The existing first-meet live Begin rejection is
+separate evidence; the generic transport envelope was fixture-tested, not another
+manufactured live loading case. Last confirmed game checkpoint remains
+`Sidkick_Playground_MayaFirstMeetGuarded_T1_1794007838230`.
+
+### Group 2 — setup/prerequisite-dependent work, explicitly deferred
+
+These are **not Group 1 blockers**. Group 2 has not been started merely by moving
+the entries here; the no-turn instruction remains active.
+
+| Deferred work | Actual status / prerequisite |
+|---|---|
+| Unit/captive/technology deal variants | Not implemented; current native offer lists are empty. Requires an eligible offer with safe exact identity before implementing/testing its writer. |
+| Additional effect-specific Great People, inherited-modifier/session-only first-meet and remaining mandatory-choice variants | Not implemented where no handler exists. Requires the corresponding source/pending choice; scope must be recorded as exact variants rather than an open-ended "other variants" completion gate. Santa Anna/Morelos/Villa and initial-notice first-meet coverage already implemented. |
+| Peace/alliance/hostile diplomacy and first-meet positive checks | Handlers/fixtures exist. Requires expired peace cooldown, eligible alliance counterpart, unlocked Modern action or an actual revealed incoming sanction. Unfriendly greeting effects were late observed after Begin; fresh GameStarted bounded execution needs a new pending choice or separate test branch. No cooldown/unlock/response bypass counted as native eligibility. |
+| Combat/transport positive checks | Existing guarded handlers need an eligible fortified naval target/source, plunder source, empty centre for optional observed capture, or positive native Overrun eligibility. |
+| Construction/resource positive checks | Existing handlers; requires a damaged repair target, eligible atomic resource pair, or normal factory/production completion. Synthetic factory structure prerequisite already verified separately. |
+| Civilian/religious/story/independent positive checks | Existing handlers where recorded; requires eligible adjacent founding, archaeology, spread-capable source/current-Age definition, pantheon/belief/bonus picker, independent target or actual paid/trial story. Missing eligible cases are verification gaps, not newly implemented functionality. |
+| Villa payouts, natural-use evidence and turn/state-dependent work | Villa ability grant verified, future combat payouts not. Normal readiness/healing, reinforcement arrival, recharge, completion/razing, unattended turns and Age boundaries remain deferred, including investigation of the historical60→62 turn anomaly. Synthetic air/combat setups are not natural-use proof. |
+
+### Unsupported with the installed build/API
+
+- Great Work concessions: not implemented because native offered objects lack a
+  safe per-work identity. Revisit only if the API provides one; no array-order or
+  opaque-identity guess. This is not an unfinished Group 1 handler.
+- Force March: absent from the installed build.
+- Legacy physical-route `UNITOPERATION_PILLAGE_ROUTE`: definition absent despite
+  permissive canStart; guarded wrapper rejects. The separate actual plunder handler
+  exists, with positive eligibility work deferred above.
+
+Full hidden/global combat or conquest effects remain outside the promised bounded
+visible/native-event accounting. Recorded native Focus Fire, fleet/air attacks,
+splash and supported capture effects stay verified as documented above; moving
+unavailable cases does not erase those results or upgrade unknown outcomes.
 
 ## Existing baseline
 

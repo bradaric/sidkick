@@ -19,6 +19,19 @@ async def run_script(
     script_name: str, arguments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute a bundled script once, optionally binding JSON queryArguments."""
+    return await _run_script(script_name, arguments, require_started=False)
+
+
+async def run_started_script(
+    script_name: str, arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Action transport: reject transitional loading before evaluating any bundled code."""
+    return await _run_script(script_name, arguments, require_started=True)
+
+
+async def _run_script(
+    script_name: str, arguments: dict[str, Any] | None, *, require_started: bool,
+) -> dict[str, Any]:
     script_path = (ROOT / script_name).resolve()
     if script_path.parent != ROOT or script_path.suffix != ".js":
         raise ValueError("Civ VII queries must be bundled JavaScript files")
@@ -38,6 +51,18 @@ async def run_script(
         # Parse data rather than interpolating selectors as executable JavaScript.
         encoded = json.dumps(json.dumps(arguments, allow_nan=False))
         script = f"((queryArguments) => {{ return {script}\n}})(JSON.parse({encoded}))"
+    if require_started:
+        # Outermost guard: helpers and action/readback bodies must not run behind Begin.
+        script = (
+            "(() => { if (typeof UI === 'undefined' || typeof UI.isInGame !== 'function' || "
+            "UI.isInGame() !== true || typeof UI.getGameLoadingState !== 'function' || "
+            "typeof UIGameLoadingState === 'undefined' || UIGameLoadingState === null || "
+            "!Number.isInteger(UIGameLoadingState.GameStarted) || "
+            "UI.getGameLoadingState() !== UIGameLoadingState.GameStarted) "
+            "return {status:'rejected',reason:'Finish loading and click Begin first; "
+            "native GameStarted readiness is required'}; return "
+            f"{script}\n}})()"
+        )
 
     marker = "SIDKICK_RESULT:"
     async with asyncio.timeout(12):

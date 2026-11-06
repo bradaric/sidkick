@@ -1747,6 +1747,19 @@ RESULT_OK; friendly+20 state restored, still T1. Other write families' loading g
 were not audited here.
 **255 Python / 462 Node pass; tools24/128 (104 actions); all24 default tools pass real stdio.**
 
+Scope update and closeout, 2026-11-07: **Group 1 is closed under the user's revised
+no-additional-setup boundary.** All104 MCP writers now share a GameStarted gate
+before submissions, readbacks and helper initialization; read-only queries remain
+unchanged. Interrupted verification stays UNKNOWN and never resubmits. No new game
+setup or turns used for this audit. **260 Python /462 Node pass; all24 default tools
+pass fresh real stdio calls; tool counts unchanged.**
+
+Work needing another save, additional game-state/debug setup or missing eligibility
+is explicitly deferred to Group 2, including unimplemented variants as well as
+verification gaps. Hard build/API limitations are unsupported, not Group 1 blockers.
+This does not mark deferred handlers complete or authorize Group 2/turn advancement;
+see the current closure checklist in `docs/civ7-action-backlog.md`.
+
 ## One-shot export
 
 ```powershell
