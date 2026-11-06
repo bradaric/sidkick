@@ -635,17 +635,36 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   probes used distinct Tanks7143509/7209046 against normally damaged5177402; all
   diagnostic listeners cleared, never used as typed-observer verification proof.
 - 237 Python / 427 Node pass; tools23/114 including91 actions. Still T62.
+- `9ec0bec`: bounded field combat effects. Exact single-city OFFER peace concessions
+  now implemented separately from economic-only negotiation: targeted read-only
+  known-counterpart/city-owner/ID/visible-centre query, native offer token and full
+  draft binding. Edit does not send; propose/accept/reject separate. One exact city
+  plus optional existing capped economic lumps; no last-own-settlement concession,
+  unknown city terms, hidden centre metadata or foreign private city inventories.
+  Acceptance verifies recipient centre ownership (including native owner-qualified
+  ID changes), every unaffected own city and agreed own currency deltas. Settlement
+  contents/works/units can transfer/relocate and are explicitly not fully inventoried.
+- Native Copan city-offer token read without draft mutation; write rejected at
+  native peace cooldown before any settlement/draft change. Give/receive, ledger
+  preservation, stale token, hidden/unmet/unsupported terms and last-city guards
+  fixture-tested; positive transfer remains a specific cooldown eligibility gap.
+  All24 default read-only tools discovered and called successfully over real stdio
+  MCP (2025-11-25 protocol). Decisions now supplies cityOwner with cityId for safe
+  targeted checks. 238 Python / 431 Node pass; tools24/116 including92 actions.
+- Native enum-only own-unit/captive/technology deal offers returned empty; Great
+  Work offers returned2 and still need assessment/implementation, not declared
+  unavailable merely because the current peace UI lacks their editors.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 
 | Group 1 implementation still needed | Current boundary |
 |---|---|
-| Combat/capture and hostile diplomacy | White-peace and capped economic concession handlers implemented, native-cooldown blocked. Asset concessions/other transfer variants remain. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent and rejects. Empty-centre city assault/capture decisions live-verified, garrison/civilian/stack variants remain outside scope. |
+| Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
 | Military transport | Broader travel/transport variants remain to assess. Squadron establishment/packed relocation, aircraft transfers, grouped Ground Attack, Fighter Sweep and Carpet Bomb implemented/live-verified. Single-aircraft carrier missions and packed-army ocean travel live-verified. Multi-aircraft Ground Attack/fortified district bombing cases fixture-tested. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
-| Diplomacy/choices | Asset concessions and remaining hostile/mandatory variants remain. Economic concession editing and capped nonzero-penalty/multi-token own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with other supporters deliberately rejects. Fixed secondary handlers present; paid/trial/independent/bonus positive gaps separate. |
+| Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

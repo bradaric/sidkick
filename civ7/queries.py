@@ -9,6 +9,13 @@ async def empire() -> dict[str, Any]:
     return await run_script("empire.js")
 
 
+async def peace_city_offer(target_player_id: int, city_owner: int, city_id: int, x: int, y: int) -> dict[str, Any]:
+    """Read native peace offers only for one exact currently visible owner-qualified centre."""
+    if any(type(v) is not int or v<0 for v in (target_player_id,city_owner,city_id,x,y)):
+        raise ValueError("Exact known counterpart and visible city owner/ID/coordinates required")
+    return await run_script("peace_city_offer.js",{"target_player_id":target_player_id,"city_owner":city_owner,"city_id":city_id,"x":x,"y":y})
+
+
 async def available_decisions() -> dict[str, Any]:
     return await run_script("decisions.js")
 

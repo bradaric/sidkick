@@ -145,6 +145,7 @@
     }):[];
     return {
       cityId:city.id.id,
+      cityOwner:city.id.owner,
       name: name(city.name),
       captureDisposition:{pending:typeof city.isJustConqueredFrom==='boolean'?city.isJustConqueredFrom:null,beingRazed:typeof city.isBeingRazed==='boolean'?city.isBeingRazed:null,options:captureOptions},
       status: city.isCapital ? "capital" : city.isTown ? "town" : "city",

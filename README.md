@@ -1591,6 +1591,15 @@ No HP/kill/counters forced. Nonzero secondary splash fixture-tested only; hidden
 out-of-radius/interception/global effects remain explicitly incomplete.
 **237 Python / 427 Node pass; tools23/114 (91 actions).**
 
+`get_civ7_peace_city_offer` reads only one exact known visible owner-qualified
+centre. `manage_civ7_city_peace_deal` edits or negotiates that explicit native OFFER
+city with full draft/offer tokens, separate acceptance and capped existing economic
+terms. Acceptance verifies recipient centre, unaffected own cities and own currency
+deltas; city contents/units/works are not fully inventoried. Last own city rejects.
+Live native offer read and cooldown rejection only; give/receive execution fixtures,
+no settlement transferred. All24 read-only tools passed real stdio MCP calls.
+**238 Python / 431 Node pass; tools24/116 (92 actions).**
+
 ## One-shot export
 
 ```powershell

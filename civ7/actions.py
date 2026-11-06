@@ -207,6 +207,16 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def peace_city_action(target_player_id: StrictInt, city_owner: StrictInt, city_id: StrictInt, x: StrictInt, y: StrictInt, action: Literal["add", "remove", "propose", "accept", "reject"], deal_token: StrictStr, max_gold_cost: StrictFloat, max_influence_cost: StrictFloat, expected_turn: StrictInt, item_token: StrictStr | None = None, item_id: StrictInt | None = None) -> dict[str, Any]:
+    """One explicitly identified visible city OFFER concession edit or peace negotiation step."""
+    if (any(type(v) is not int or v<0 for v in (target_player_id,city_owner,city_id,x,y,expected_turn)) or action not in ("add","remove","propose","accept","reject") or not isinstance(deal_token,str) or not deal_token or len(deal_token)>100000 or
+            any(type(v) not in (int,float) or not math.isfinite(v) or v<0 for v in (max_gold_cost,max_influence_cost)) or
+            (action=="add" and (not isinstance(item_token,str) or not item_token or len(item_token)>10000)) or (action=="remove" and (type(item_id) is not int or item_id<0)) or
+            (action!="add" and item_token is not None) or (action!="remove" and item_id is not None)):
+        raise ValueError("Exact visible city/counterpart, supported city-peace step/tokens and finite economic caps required")
+    return await _execute_and_verify("peace_city_action.js",{"target_player_id":target_player_id,"city_owner":city_owner,"city_id":city_id,"x":x,"y":y,"action":action,"deal_token":deal_token,"max_gold_cost":max_gold_cost,"max_influence_cost":max_influence_cost,"expected_turn":expected_turn,"item_token":item_token,"item_id":item_id},"peace_city_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def observed_field_attack(unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, kind: Literal["melee", "ranged"], expected_turn: StrictInt, observation_radius: StrictInt = 1) -> dict[str, Any]:
     """One guarded field strike with bounded visible collateral observations and native kill attribution."""
     if any(type(v) is not int or v<0 for v in (unit_id,target_player,target_unit_id,x,y,expected_turn)) or kind not in ("melee","ranged") or type(observation_radius) is not int or not 1<=observation_radius<=3:

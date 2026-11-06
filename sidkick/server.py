@@ -70,6 +70,7 @@ from civ7.actions import (
     spread_foreign_religion,
     withdraw_capped_project_support,
     observed_field_attack,
+    peace_city_action,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -102,6 +103,7 @@ from civ7.actions import (
 )
 from civ7.player import snapshot
 from civ7.queries import (
+    peace_city_offer,
     age_transition,
     archaeology,
     available_decisions,
@@ -286,6 +288,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="manage_civ7_city_peace_deal",title="Edit or negotiate one explicit Civ VII settlement concession",
+            description=("CHANGE GAME STATE: exact target_player_id, city_owner/city_id and visible centre "
+                         "x/y, action add/remove/propose/accept/reject, fresh deal_token, max_gold_cost/"
+                         "max_influence_cost and expected_turn. Add needs native item_token from targeted "
+                         "peace-city offer reader; remove exact item_id. Native existing-war peace eligibility "
+                         "required. One MAKE_PEACE plus one exact OFFER city, optional capped Gold/Influence "
+                         "lumps only. No last-owned-settlement concession or hidden city/private inventory "
+                         "reads. Edits never submit; negotiation/acceptance separate. Acceptance verifies "
+                         "recipient centre, every unaffected own city and agreed own economic deltas. "
+                         "Buildings/works/citizens/units may transfer or relocate and are not fully inventoried. "
+                         "One native write,15-second readback; no automatic acceptance/rollback/turn/retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(peace_city_action)
         server.tool(
             name="observe_civ7_field_attack",title="Attack Civ VII field unit with bounded combat effect observations",
             description=("CHANGE GAME STATE: same fixed guarded melee/ranged field strike for exact unit_id, "
@@ -1762,12 +1778,24 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "and unrelated owners are omitted. No foreign inventory/private yields/queues are read. "
             "Other target types are omitted, so lists are partial and total costs remain "
             "unknown. Incoming hidden/espionage events are not attributed to a leader. Enacted "
-            "peace-deal item terms and working-deal negotiations are unsupported; never changes "
+            "peace-deal item accounting is unsupported; only supported white/economic working-draft "
+            "tokens and native negotiation quotes are exposed. Use targeted peace-city reader "
+            "for a known currently visible city, no foreign city enumeration. Never changes "
             "or sends deals."
         ),
         annotations=read_only,
         structured_output=True,
     )(diplomacy)
+    server.tool(
+        name="get_civ7_peace_city_offer",title="Read exact visible Civ VII peace-city offer",
+        description=("Read native peace OFFER terms only for exact known target_player_id and "
+                     "city_owner/city_id at currently visible centre x/y. Returns matching outgoing "
+                     "offer token and supported incoming/outgoing whole-draft tokens for peace plus "
+                     "one exact city and optional economic lumps. Visibility/owner/centre checked "
+                     "before city metadata; never enumerates foreign cities or private yields, works, "
+                     "population or queues. No draft creation/edit/proposal; native cooldown checked on writes."),
+        annotations=read_only,structured_output=True,
+    )(peace_city_offer)
     server.tool(
         name="get_civ7_city_states",
         title="Get Civ VII city-state and independent diplomacy",

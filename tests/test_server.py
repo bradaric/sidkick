@@ -39,6 +39,7 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_known_world",
                 "get_civ7_victory_progress",
                 "get_civ7_diplomacy",
+                "get_civ7_peace_city_offer",
                 "get_civ7_city_states",
                 "get_civ7_visible_threats",
                 "get_civ7_turn_context",

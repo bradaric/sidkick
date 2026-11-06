@@ -152,6 +152,7 @@ test('town focus choices check hashed project types, retain requirements and fil
   assert.equal(focus.reportedFoodPerConnectedCity, 8);
   assert.equal(data.settlements[1].production.queueToken, JSON.stringify(queued));
   assert.equal(data.settlements[0].cityId,10);
+  assert.equal(data.settlements[0].cityOwner,0);
   assert.equal(data.settlements[0].captureDisposition.pending,true);
   assert.deepEqual(JSON.parse(JSON.stringify(data.settlements[0].captureDisposition.options)).map(c=>[c.choice,c.availableNow]),[['keep',true],['raze',false]]);
 });

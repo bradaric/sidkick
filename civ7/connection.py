@@ -28,6 +28,9 @@ async def run_script(
         # Fixed internal prelude, never caller-selected or arbitrary JavaScript.
         helper = (ROOT / "combat_observation.js").read_text(encoding="utf-8")
         script = f"((combatObserver) => {{ return {script}\n}})({helper})"
+    if script_name in {"peace_city_offer.js", "peace_city_action.js", "peace_city_state.js"}:
+        helper = (ROOT / "peace_city_terms.js").read_text(encoding="utf-8")
+        script = f"((peaceCityTerms) => {{ return {script}\n}})({helper})"
     if arguments is not None:
         # Parse data rather than interpolating selectors as executable JavaScript.
         encoded = json.dumps(json.dumps(arguments, allow_nan=False))
