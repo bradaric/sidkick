@@ -477,6 +477,15 @@ async def army_overrun(
     }, "commander_action_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def grant_second_wind(commander_id: StrictInt, unit_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Grant native Second Wind to one unambiguous deployed land combat recipient."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, unit_id, expected_turn)) or commander_id == unit_id:
+        raise ValueError("Distinct owned commander/recipient IDs and expected turn are required")
+    return await _execute_and_verify("second_wind.js", {
+        "commander_id": commander_id, "unit_id": unit_id, "expected_turn": expected_turn,
+    }, "second_wind_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

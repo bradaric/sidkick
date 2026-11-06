@@ -12,6 +12,7 @@ from civ7.actions import (
     army_ranged_attack,
     army_melee_attack,
     army_overrun,
+    grant_second_wind,
     join_commander,
     leave_commander,
     acknowledge_agenda,
@@ -233,6 +234,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="grant_civ7_second_wind", title="Grant Civ VII Second Wind",
+            description=("CHANGE GAME STATE: grant native Second Wind from exact owned commander_id to "
+                         "exact owned unit_id with fresh expected_turn. Land only; requires a deployed unqueued "
+                         "commander with known packed membership and one deployed unqueued nonreinforcing land "
+                         "combat recipient alone on its visible own/unowned tile. Native offered/selected "
+                         "command permission controls range, ability and charge eligibility. Consumes the "
+                         "commander's native ability charge. Verifies exactly +2 movement/+1 attack to the "
+                         "captured recipient, stable health/location and unchanged source packed membership. "
+                         "No implicit movement, unpacking or turn advancement. Submits once; polls read-only "
+                         "for 15 seconds and never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(grant_second_wind)
         server.tool(
             name="overrun_civ7_unit", title="Overrun one Civ VII enemy with packed army",
             description=("CHANGE GAME STATE: native Overrun from exact commander_id against exact target_player/"
@@ -889,6 +904,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "to currently visible owned plots. A selected packable land unit also reports addToArmy "
             "or removeFromArmy with exact checked nearby-commander or individual deployment options "
             "on empty visible own/unowned leave tiles. Unknown commander membership "
+            "stays unknown. Selected deployed land commanders additionally report secondWind native "
+            "permission and exact unambiguous checked own land-combat recipient options. Unknown membership "
             "withholds deployment checks/locations; a withheld location does not prove packing. "
             "Missing assignment APIs leave reinforcements null; missing arrival getters leave "
             "nativeArrivalTime null. Packed/off-map units are not queried as deployed. "

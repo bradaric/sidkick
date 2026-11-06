@@ -1001,6 +1001,24 @@ confirmed RESULT_OK with no overwrite. Front commander's queue is empty; earlier
 reviewed checkpoints remain preserved. The synthetic Overrun test defender remains
 at1HP; no Overrun was forced through its native rejection.
 
+#### Second Wind
+
+`grant_civ7_second_wind(commander_id, unit_id, expected_turn)` uses exact native
+offered/selected recipient permission. Initial coverage is a deployed unqueued land
+commander and one unqueued nonreinforcing land combat recipient alone on a visible
+own/unowned tile. Native checks control ability/charge/range eligibility. Readback
+proves exactly +2 movement/+1 attack, stable recipient health/location and unchanged
+source packed membership. Selected commander logistics includes `secondWind` options.
+No move, unpack, hidden recipient, naval/air recipient or turn advancement is implied.
+
+Live MCP T62: Field Gun2818084 at `(14,18)` gained movement1→3, attacks0→1;
+commander3997707 retained its other three packed members. Ability eligibility was
+synthetic: +200 XP, then five checked native promotions including Valor. No attack
+points were debug-granted; cooldown/recharge through turns remains untested.
+Force March is not exposed: localization/UI remnants exist but no corresponding
+command definition is installed. **173 Python / 335 Node tests pass; 62 tools
+(39 actions) in write mode, default23 read-only tools unchanged.**
+
 ## One-shot export
 
 ```powershell

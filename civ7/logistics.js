@@ -81,6 +81,27 @@
         failureReasons: (pack?.FailureReasons ?? []).map(name).filter(Boolean)};
       selectedUnit.unpack = {operationAllowed: unpack?.Success === true, options,
         failureReasons: (unpack?.FailureReasons ?? []).map(name).filter(Boolean)};
+      if (def?.Domain === "DOMAIN_LAND") {
+        const command = "UNITCOMMAND_GRANT_SECOND_WIND", wind = Game.UnitCommands.canStart(unit.id, command, {}, false), recipients = [];
+        for (const index of [...new Set(wind?.Plots ?? [])]) {
+          if (!Number.isInteger(index) || index < 0 || index >= width * height) continue;
+          const l = GameplayMap.getLocationFromIndex(index);
+          if (!valid(l) || typeof GameplayMap.getRevealedState !== "function" || typeof RevealedStates === "undefined" ||
+              GameplayMap.getRevealedState(id, l.x, l.y) !== RevealedStates.VISIBLE || typeof GameplayMap.getOwner !== "function" ||
+              ![-1, id].includes(GameplayMap.getOwner(l.x, l.y)) || typeof MapUnits === "undefined") continue;
+          const ids = MapUnits.getUnits(l.x, l.y), target = Array.isArray(ids) && ids.length === 1 && ids[0].owner === id ? byId.get(ids[0].id) : null;
+          if (!target || target.id.type !== ids[0].type || target.isCommanderUnit || !deployed(target) || target.operationQueueSize !== 0 ||
+              target.location.x !== l.x || target.location.y !== l.y || GameInfo.Units.lookup(target.type)?.Domain !== "DOMAIN_LAND" ||
+              GameInfo.Units.lookup(target.type)?.FormationClass !== "FORMATION_CLASS_LAND_COMBAT" || target.Combat?.isCombat !== true ||
+              typeof player.Armies?.getUnitReinforcementCommanderId !== "function" || player.Armies.getUnitReinforcementCommanderId(target.id, id) !== -1) continue;
+          const check = Game.UnitCommands.canStart(unit.id, command, {X: l.x, Y: l.y}, false);
+          recipients.push({unitId: target.id.id, location: {x: l.x, y: l.y}, availableNow: wind?.Success === true && check?.Success === true &&
+            check.RequiresConfirmation !== true && unit.operationQueueSize === 0,
+            failureReasons: (check?.FailureReasons ?? []).map(name).filter(Boolean)});
+        }
+        selectedUnit.secondWind = {operationAllowed: wind?.Success === true, options: recipients,
+          failureReasons: (wind?.FailureReasons ?? []).map(name).filter(Boolean)};
+      }
     }
     if (!unit.isCommanderUnit && def?.Domain === "DOMAIN_LAND" && def.Packable === true && packingKnown && typeof Game.UnitCommands?.canStart === "function") {
       const membershipCommand = packedBy.has(unit.id.id) ? "UNITCOMMAND_REMOVE_FROM_ARMY" : "UNITCOMMAND_ADD_TO_ARMY";

@@ -181,7 +181,7 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 | Area | Remaining implementation / verification |
 |---|---|
 | Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
-| More commander abilities | Force March, Second Wind, capped upgrade-all, direct/special commander attacks where natively offered; native quoted costs and full affected-unit verification. |
+| More commander abilities | Second Wind implemented/live-verified with debug-earned Valor; capped upgrade-all and direct/special commander attacks pending. Force March has UI text but no installed command definition, not exposed. |
 | Military transport and travel | Naval/air individual membership and fleet/squadron commands, army naval transport, rail and rebase writes; longer ordinary-unit paths, safe fog exploration/foreign travel, and shore crossings for packed commanders. |
 | Broader warfare | Enemy-territory and city/district attacks, occupation/capture choices, pillage/coastal raids, naval/air strikes; complete splash/secondary-effect accounting. Current attacks are bounded own/unowned field actions. |
 | Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
@@ -190,6 +190,32 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 | Choices and verification gaps | Positive fixed typed celebration and government choices, crisis-card/healing-through-turn cases, linked/crisis narratives, paid/trial choices, cooperative accept/reject variants; reusable informational/cinematic review actions. No debug prerequisite is evidence of naturally earned eligibility. |
 | Campaign progression | Revisit historical60→62 anomaly when permitted; verify subsequent single-turn boundaries, repeat unattended progression and blocker handling; reusable post-victory and Age-transition civilization/legacy/Dedication/carry-over actions. |
 | Separately scoped optional work | Typed save/load recovery and WMD actions. Private native test saves are not reusable action-tool coverage. |
+
+## Continued commander abilities, 2026-11-06
+
+User authorized continuing without further input within Playground scope. Agreed
+priorities: commander abilities, then broader combat; turn advancement still deferred.
+- Native checkpoint `Sidkick_Playground_BeforeCommanderAbilities_T62_1793964366039`
+  confirmed RESULT_OK, no overwrite; earlier checkpoints preserved.
+- Force March: UI callbacks and localization exist, but GameInfo.UnitCommands has
+  no UNITCOMMAND_FORCE_MARCH definition and no corresponding installed ability.
+  Do not register a speculative action from localization alone.
+- Second Wind: native picker uses the commander ID and exact recipient `{X,Y}`.
+  Added grant_civ7_second_wind with strict commander/recipient/turn identities,
+  single visible own/unowned land-combat recipient tile, no queues/reinforcement,
+  complete known source membership and native offered/selected checks. Readback
+  requires exactly +2 movement/+1 attack with stable health/location and source
+  packed membership. Selected commander logistics lists checked recipient options.
+- Synthetic ability prerequisite: +200 debug XP to front commander3997707, then
+  native checked Initiative → Rout → Shock Tactics → Advancement (points4→0),
+  yielding one commendation; checked Valor consumed commendation1→0 and granted
+  Second Wind. This is not naturally earned combat XP.
+- Field Gun2818084 individually left the commander to `(14,18)` through the typed
+  leave action. Actual MCP Second Wind verified movement1→3 and attacks0→1,
+  stable health/location and packed members2621473/3801103/4063242. Still T62;
+  no turns advanced or attack-point debug grants. Original Merchant preserved.
+- 173 Python + 335 Node tests pass; default23 tools unchanged, write mode62 tools
+  including39 actions. Ability cooldown/recharge through turns not tested.
 
 ## Batch 1: settlement management
 
