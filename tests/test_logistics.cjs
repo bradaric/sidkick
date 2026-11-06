@@ -6,7 +6,7 @@ const {test} = require('node:test');
 
 function run({unitId = null, packed = false, allowed = true, weapons = 0,
   armyState = 'known', reinforcementApi = 'known', visibility = [0, 1, 2],
-  missingVisibilityGetter = false, missingVisibilityEnum = false, offMap = false} = {}) {
+  missingVisibilityGetter = false, missingVisibilityEnum = false, offMap = false, commanderCommands = false} = {}) {
   const script = path.join(__dirname, '../civ7/logistics.js');
   assert.ok(fs.existsSync(script), 'bundled military logistics query exists');
   const calls = [];
@@ -41,9 +41,13 @@ function run({unitId = null, packed = false, allowed = true, weapons = 0,
       WMDs: [{$hash: -20, WeaponType: 'NUCLEAR', Name: 'Nuclear device'}]},
     GameplayMap: {getGridWidth: () => 3, getGridHeight: () => 1,
       getLocationFromIndex: index => {assert.ok(index >= 0 && index < 3); return {x: index, y: 0};},
-      getRevealedState: missingVisibilityGetter ? undefined : (owner, x) => {assert.equal(owner, 0); return visibility[x];}},
+      getRevealedState: missingVisibilityGetter ? undefined : (owner, x) => {assert.equal(owner, 0); return visibility[x];},
+      getOwner: x => x === 1 ? 0 : 1},
     ...(missingVisibilityEnum ? {} : {RevealedStates: {HIDDEN: 0, REVEALED: 1, VISIBLE: 2}}),
-    Game: {turn: 57, UnitOperations: {
+    Game: {turn: 57, ...(commanderCommands ? {UnitCommands: {canStart: (id, command, args, exclusion) => {
+      assert.equal(id.id, 1); assert.equal(exclusion, false); calls.push(command);
+      return {Success: allowed, Plots: [0, 1, 2, 999, -1], FailureReasons: allowed ? [] : ['Blocked']};
+    }, sendRequest: () => {throw Error('No commander write');}}} : {}), UnitOperations: {
       canStart: (id, operation, args, visible) => {
         assert.equal(packed, false, 'packed aircraft are not queried as deployed');
         assert.equal(armyState, 'known', 'unknown packing evidence must suppress transport checks');
@@ -148,4 +152,13 @@ test('off-map aircraft are not checked as deployed even with plausible coordinat
   assert.equal(data.selectedUnit.location, null);
   assert.equal(data.selectedUnit.rebase.operationAllowed, null);
   assert.equal(calls.length, 0);
+});
+
+test('targeted commander readout includes native pack permission and only visible owned checked unpack plots', () => {
+  const {data, calls} = run({unitId: 1, commanderCommands: true, visibility: [0, 2, 2]});
+  assert.ok(data.selectedUnit.pack);
+  assert.equal(data.selectedUnit.pack.operationAllowed, true);
+  assert.deepEqual(data.selectedUnit.unpack.options, [{location: {x: 1, y: 0}, availableNow: true, failureReasons: []}]);
+  assert.deepEqual(calls, ['UNITCOMMAND_PACK_ARMY', 'UNITCOMMAND_UNPACK_ARMY', 'UNITCOMMAND_UNPACK_ARMY']);
+  assert.equal(run({unitId: 1, commanderCommands: true, allowed: false, visibility: [0, 2, 2]}).data.selectedUnit.unpack.options[0].availableNow, false);
 });

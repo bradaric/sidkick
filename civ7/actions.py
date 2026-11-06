@@ -371,6 +371,24 @@ async def upgrade_unit(unit_id: StrictInt, target_unit_type: StrictStr, max_gold
     }, "unit_upgrade_state.js")
 
 
+async def pack_commander(commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Pack all native-eligible nearby friendly units into one commander."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, expected_turn)):
+        raise ValueError("An owned commander ID and expected turn are required")
+    return await _execute_and_verify("commander_action.js", {
+        "mode": "pack", "commander_id": commander_id, "expected_turn": expected_turn,
+    }, "commander_action_state.js")
+
+
+async def unpack_commander(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Deploy packed units using a visible owned native-offered unpack plot."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, x, y, expected_turn)):
+        raise ValueError("An owned commander, deployment tile and expected turn are required")
+    return await _execute_and_verify("commander_action.js", {
+        "mode": "unpack", "commander_id": commander_id, "x": x, "y": y, "expected_turn": expected_turn,
+    }, "commander_action_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

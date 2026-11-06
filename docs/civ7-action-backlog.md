@@ -39,7 +39,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
-| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Pending |
+| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Pack-nearby and owned-plot unpack implemented; other items pending |
 | 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
 
@@ -206,3 +206,12 @@ Morning inspection/actions before this implementation batch:
   distinct Cuirassier 1376276 → Landship 3866637 then verified normally, 200 Gold.
   Cap199 rejected. Both used debug-restored movement (synthetic readiness); no turn
   advancement. Gold now 8006.33984375. Reviewed morning checkpoint remains preserved.
+- Upgrades committed as `7cb608e`.
+- Commander batch: 150 Python + 304 Node tests. Native pack-all-nearby with known
+  owner-qualified commander/army membership; owned-visible native-offered unpack
+  plots and exact selected-plot checks. No raw/per-unit pack dispatcher. Targeted
+  logistics readout exposes both actions' eligibility. Native commander 65536
+  packed Rifleman 3080232, then unpacked at `(28,30)`; complete membership/deployment
+  verified independently. Movement was debug-restored (synthetic readiness).
+  Initiative preserved one native post-unpack movement point, and ordinary typed
+  land move `(28,30) → (27,30)` verified. No turn advanced; still T62.

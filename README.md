@@ -729,6 +729,32 @@ at `(24,18)` then returned `verified_applied` with the corrected verifier, anoth
 authorized private debug API; these are normal native upgrades with synthetic
 movement readiness, not naturally refreshed-turn coverage. No turn advanced.
 
+#### Commander packing and deployment
+
+`pack_civ7_commander(commander_id, expected_turn)` is explicitly the native
+**pack all eligible nearby friendly units** command, including eligible civilians
+where the engine allows it; it is not per-unit selection. It requires a unique
+owned deployed unqueued commander, owner-qualified army identity, known packed
+membership and exact native permission. Readback requires newly packed members
+from the captured own inventory while preserving existing packed members.
+
+`unpack_civ7_commander(commander_id, x, y, expected_turn)` requires a currently
+visible owned plot offered by the native picker, followed by exact selected-plot
+permission. The engine places individual units. Readback requires all captured
+packed members to be deployed and membership empty; partial deployment remains
+unknown and is never automatically repeated. No reinforcement/transport/attacks
+or raw command dispatcher is included. Targeted `get_civ7_military_logistics`
+now exposes pack permission and checked visible-owned unpack options.
+
+Default remains 23 read-only tools; write mode has 53 tools (30 actions).
+**150 Python and 304 Node tests pass.** Native T62 commander 65536 packed Rifleman
+3080232, membership `[] → [3080232]`; typed unpack at `(28,30)` verified membership
+empty and Rifleman deployed. Independent read confirmed `isPacked=false` and one
+movement remaining; the existing typed ordinary movement handler then verified a
+land step `(28,30) → (27,30)`. Commander/member movement was debug-restored before
+the test; normal native action execution is distinguished from synthetic movement
+readiness. Initiative came from the prior synthetic-XP test. No turn advanced.
+
 ## One-shot export
 
 ```powershell

@@ -63,12 +63,31 @@
     selectedUnit = {...describe(unit), deployed: deployed(unit),
       rebase: def?.Domain === "DOMAIN_AIR" ? transport(unit, "UNITOPERATION_REBASE") : null,
       reinforceArmy: def?.Packable && !unit.isCommanderUnit ? transport(unit, "UNITOPERATION_REINFORCE_ARMY") : null};
+    if (unit.isCommanderUnit && deployed(unit) && typeof Game.UnitCommands?.canStart === "function") {
+      const pack = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_PACK_ARMY", {X: -9999, Y: -9999, UnitAbilityType: -1}, false);
+      const unpack = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_UNPACK_ARMY", {}, false);
+      const options = [...new Set(unpack?.Plots ?? [])].filter(index => Number.isInteger(index) && index >= 0 && index < width * height)
+        .map(index => GameplayMap.getLocationFromIndex(index)).filter(location => valid(location) &&
+          typeof GameplayMap.getRevealedState === "function" && typeof RevealedStates !== "undefined" &&
+          GameplayMap.getRevealedState(id, location.x, location.y) === RevealedStates.VISIBLE &&
+          typeof GameplayMap.getOwner === "function" && GameplayMap.getOwner(location.x, location.y) === id)
+        .map(location => {
+          const check = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_UNPACK_ARMY", {X: location.x, Y: location.y}, false);
+          return {location: {x: location.x, y: location.y}, availableNow: check?.Success === true,
+            failureReasons: (check?.FailureReasons ?? []).map(name).filter(Boolean)};
+        });
+      selectedUnit.pack = {operationAllowed: pack?.Success === true,
+        scope: "All native-eligible nearby friendly units, not per-unit selection",
+        failureReasons: (pack?.FailureReasons ?? []).map(name).filter(Boolean)};
+      selectedUnit.unpack = {operationAllowed: unpack?.Success === true, options,
+        failureReasons: (unpack?.FailureReasons ?? []).map(name).filter(Boolean)};
+    }
   }
   const wmdStockpile = GameInfo.WMDs == null || typeof player.WMDs?.getWeaponCount !== "function" ? null
     : [...GameInfo.WMDs].map(def => ({id: def.WeaponType, name: name(def.Name), count: nonnegative(player.WMDs.getWeaponCount(def.$hash))}));
   return {turn: Game.turn, commanders,
     airUnits: owned.filter(unit => GameInfo.Units.lookup(unit.type)?.Domain === "DOMAIN_AIR").map(describe),
     reinforcements, wmdStockpile, selectedUnit,
-    note: "Owned commander/carrier/squadron/aerodrome membership and native capacity only, not inferred free slots or mission range. Missing membership stays null and suppresses deployment checks; a withheld location does not prove packing. Missing reinforcement assignment APIs return null, not an empty inventory; missing arrival getters leave nativeArrivalTime null. Reinforcement arrival is a native quote, not a guaranteed travel forecast. Optional unit_id checks explicitly REVEALED/VISIBLE native REBASE/REINFORCE_ARMY destinations for one owned deployed unit; packed/off-map units are not checked as deployed. Missing/unknown visibility withholds destinations. No hidden destinations, foreign units, launch eligibility, damage, WMD strikes or requests. This separate logistics query is not included in snapshots/exports"
+    note: "Owned commander/carrier/squadron/aerodrome membership and native capacity only, not inferred free slots or mission range. Missing membership stays null and suppresses deployment checks; a withheld location does not prove packing. Missing reinforcement assignment APIs return null, not an empty inventory; missing arrival getters leave nativeArrivalTime null. Reinforcement arrival is a native quote, not a guaranteed travel forecast. Optional unit_id checks explicitly REVEALED/VISIBLE native REBASE/REINFORCE_ARMY destinations for one owned deployed unit; selected deployed commanders additionally report pack-nearby permission and currently visible owned UNPACK_ARMY plots with exact selected-plot checks. Packed/off-map units are not checked as deployed. Missing/unknown visibility withholds destinations. No hidden destinations, foreign units, launch eligibility, damage, WMD strikes or requests. This separate logistics query is not included in snapshots/exports"
   };
 })()

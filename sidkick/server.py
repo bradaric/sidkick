@@ -20,6 +20,7 @@ from civ7.actions import (
     end_turn,
     move_great_work,
     move_unit,
+    pack_commander,
     place_population,
     promote_unit,
     purchase_city_item,
@@ -36,6 +37,7 @@ from civ7.actions import (
     start_diplomatic_project,
     upgrade_town,
     upgrade_unit,
+    unpack_commander,
 )
 from civ7.player import snapshot
 from civ7.queries import (
@@ -223,6 +225,30 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="pack_civ7_commander", title="Pack nearby Civ VII units into commander",
+            description=("CHANGE GAME STATE: issue native PACK_ARMY for one owned deployed unqueued commander_id "
+                         "with fresh expected_turn. This packs ALL currently native-eligible nearby friendly "
+                         "units, potentially including eligible civilians, subject to engine capacity; it is "
+                         "not per-unit selection. Requires verified owned army membership and native permission. "
+                         "Verifies new captured-owned members entered the same army without losing existing "
+                         "members. May consume movement/change unit orders. Requires user authorization for "
+                         "that whole pack-nearby action; submits once, never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(pack_commander)
+        server.tool(
+            name="unpack_civ7_commander", title="Unpack Civ VII commander units",
+            description=("CHANGE GAME STATE: unpack an owned deployed unqueued commander_id at exact x/y with "
+                         "fresh expected_turn. Requires verified packed members, a currently visible owned "
+                         "native-offered deployment plot and exact UNPACK_ARMY permission. Engine chooses "
+                         "individual member placement; not per-unit targeting. Verifies all previously packed "
+                         "members are deployed and membership is empty; partial deployment remains unknown, "
+                         "never auto-retried. No attacks, reinforcement or transport. Requires user authorization; "
+                         "submits once, never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(unpack_commander)
         server.tool(
             name="upgrade_civ7_unit", title="Upgrade Civ VII unit",
             description=("CHANGE GAME STATE: upgrade one owned deployed unqueued unit_id to exact target_unit_type "
@@ -725,8 +751,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Read owned commander/carrier/squadron/aerodrome capacities and packed-unit membership, "
             "air units, reinforcement assignments/native arrival quotes and WMD stockpile counts. "
             "Optional unit_id from get_civ7_units checks one owned unit's native rebase/reinforce "
-            "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
-            "withholds destinations, not native permission. Unknown commander membership "
+             "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
+            "withholds destinations, not native permission. A selected deployed commander also "
+            "reports native pack-nearby permission and exact checked unpack destinations restricted "
+            "to currently visible owned plots. Unknown commander membership "
             "withholds deployment checks/locations; a withheld location does not prove packing. "
             "Missing assignment APIs leave reinforcements null; missing arrival getters leave "
             "nativeArrivalTime null. Packed/off-map units are not queried as deployed. "
