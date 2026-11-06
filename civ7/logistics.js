@@ -82,6 +82,36 @@
       selectedUnit.unpack = {operationAllowed: unpack?.Success === true, options,
         failureReasons: (unpack?.FailureReasons ?? []).map(name).filter(Boolean)};
     }
+    if (!unit.isCommanderUnit && def?.Domain === "DOMAIN_LAND" && def.Packable === true && packingKnown && typeof Game.UnitCommands?.canStart === "function") {
+      const membershipCommand = packedBy.has(unit.id.id) ? "UNITCOMMAND_REMOVE_FROM_ARMY" : "UNITCOMMAND_ADD_TO_ARMY";
+      const leaving = packedBy.has(unit.id.id), commanderId = packedBy.get(unit.id.id) ?? null;
+      const sourceCommander = leaving ? byId.get(commanderId) : null;
+      const applicable = leaving ? sourceCommander && deployed(sourceCommander) : deployed(unit);
+      const result = applicable ? Game.UnitCommands.canStart(unit.id, membershipCommand, {}, false) : null;
+      const options = [];
+      for (const index of [...new Set(result?.Plots ?? [])]) {
+        if (!Number.isInteger(index) || index < 0 || index >= width * height) continue;
+        const l = GameplayMap.getLocationFromIndex(index);
+        if (!valid(l) || typeof GameplayMap.getRevealedState !== "function" || typeof RevealedStates === "undefined" ||
+            GameplayMap.getRevealedState(id, l.x, l.y) !== RevealedStates.VISIBLE || typeof GameplayMap.getOwner !== "function" ||
+            ![-1, id].includes(GameplayMap.getOwner(l.x, l.y))) continue;
+        const targets = leaving ? [sourceCommander] : records.map(r => r.unit).filter(c => deployed(c) &&
+          GameInfo.Units.lookup(c.type)?.Domain === "DOMAIN_LAND" && c.location.x === l.x && c.location.y === l.y);
+        if (targets.length !== 1 || !valid(targets[0].location) || typeof GameplayMap.getPlotDistance !== "function") continue;
+        const c = targets[0];
+        if (leaving) {
+          if (GameplayMap.getPlotDistance(c.location.x, c.location.y, l.x, l.y) !== 1 || typeof MapUnits === "undefined" ||
+              !Array.isArray(MapUnits.getUnits(l.x, l.y)) || MapUnits.getUnits(l.x, l.y).length !== 0) continue;
+        } else if (GameplayMap.getPlotDistance(unit.location.x, unit.location.y, l.x, l.y) > 1) continue;
+        const check = Game.UnitCommands.canStart(unit.id, membershipCommand, {X: l.x, Y: l.y}, false);
+        options.push({commanderId: c.id.id, location: {x: l.x, y: l.y}, availableNow: result?.Success === true && check?.Success === true &&
+          check.RequiresConfirmation !== true && unit.operationQueueSize === 0 && c.operationQueueSize === 0 &&
+          typeof player.Armies?.getUnitReinforcementCommanderId === "function" && player.Armies.getUnitReinforcementCommanderId(unit.id, id) === -1,
+          failureReasons: (check?.FailureReasons ?? []).map(name).filter(Boolean)});
+      }
+      selectedUnit[leaving ? "removeFromArmy" : "addToArmy"] = {commanderId, operationAllowed: result?.Success === true, options,
+        failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
+    }
   }
   const wmdStockpile = GameInfo.WMDs == null || typeof player.WMDs?.getWeaponCount !== "function" ? null
     : [...GameInfo.WMDs].map(def => ({id: def.WeaponType, name: name(def.Name), count: nonnegative(player.WMDs.getWeaponCount(def.$hash))}));

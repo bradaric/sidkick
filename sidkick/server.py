@@ -10,6 +10,8 @@ from mcp.types import Icon, ToolAnnotations
 from civ7.actions import (
     attack_unit,
     army_ranged_attack,
+    join_commander,
+    leave_commander,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -229,6 +231,32 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="join_civ7_commander", title="Add one Civ VII unit to commander",
+            description=("CHANGE GAME STATE: join exact owned packable land unit_id to commander_id with fresh "
+                         "expected_turn. Requires a nearby deployed unqueued nonreinforcing unit, one unambiguous "
+                         "deployed land commander on a visible own/unowned destination, known complete packed "
+                         "membership, native offered plot and exact ADD_TO_ARMY permission. May pack eligible "
+                         "civilians if explicitly selected. No pack-all, implicit transfer from another army, "
+                         "naval/air join or turn advancement. Verifies this unit joined and every other captured "
+                         "army membership is preserved. Requires exact-unit authorization; submits once and "
+                         "polls read-only for 15 seconds, never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(join_commander)
+        server.tool(
+            name="leave_civ7_commander", title="Remove one Civ VII unit from commander",
+            description=("CHANGE GAME STATE: deploy exact packed land unit_id from exact commander_id to x/y "
+                         "with fresh expected_turn. Requires verified owner-qualified membership, no queued or "
+                         "reinforcing source, an adjacent empty visible own/unowned native-offered plot and "
+                         "exact REMOVE_FROM_ARMY permission. Verifies this unit's deployment at the exact tile "
+                         "and complete preservation of all other army memberships. No full-army unpack, "
+                         "implicit transfers, foreign destinations or turn advancement. Requires exact-unit "
+                         "authorization; submits once, polls read-only for 15 seconds and never retries "
+                         "unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(leave_commander)
         server.tool(
             name="ranged_attack_civ7_army", title="Order Civ VII focused land-ranged attack",
             description=("CHANGE GAME STATE: native focused land-ranged fire from deployed commander_id at "
@@ -824,7 +852,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
             "withholds destinations, not native permission. A selected deployed commander also "
             "reports native pack-nearby permission and exact checked unpack destinations restricted "
-            "to currently visible owned plots. Unknown commander membership "
+            "to currently visible owned plots. A selected packable land unit also reports addToArmy "
+            "or removeFromArmy with exact checked nearby-commander or individual deployment options "
+            "on empty visible own/unowned leave tiles. Unknown commander membership "
             "withholds deployment checks/locations; a withheld location does not prove packing. "
             "Missing assignment APIs leave reinforcements null; missing arrival getters leave "
             "nativeArrivalTime null. Packed/off-map units are not queried as deployed. "

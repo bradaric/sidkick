@@ -39,7 +39,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
-| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded commander/packed-army movement, pack-nearby, owned-plot unpack and reinforcement assignment implemented; other items pending |
+| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded commander/packed-army movement, pack-all/unpack, individual land join/leave and reinforcement assignment implemented; rail/rebase/transport pending |
 | 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged and commander land-ranged Focus Fire field attacks implemented; other items pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
 
@@ -110,6 +110,25 @@ New checkpoint `Sidkick_Playground_BeforeArmyCombat_T62_1793956687710` saved wit
   failed before the fix; 161 Python + 321 Node tests pass. Still T62, no advance.
 - End-of-drill save `Sidkick_Playground_AfterArmyCombat_T62_1793960375680`
   confirmed RESULT_OK, no overwrite. Earlier reviewed/pre-war checkpoints remain.
+
+## Individual membership, coordinated melee and Overrun request
+
+User requested completion of individual join/leave, coordinated melee and Overrun,
+then a remaining-task inventory. Existing Playground scope applies; no turn advance.
+- Checkpoint `Sidkick_Playground_BeforeMembershipMeleeOverrun_T62_1793961086467`
+  confirmed RESULT_OK, no overwrite, previous checkpoints preserved.
+- Individual join/leave: explicit unit and commander identities; land only, adjacent
+  visible own/unowned native-offered destinations, no implicit transfer, no queued/
+  reinforcing source, exact command checks. Full own army inventory must match the
+  precise selected-unit membership delta; all other memberships preserved. Targeted
+  logistics exposes addToArmy/removeFromArmy options with exact selected checks.
+- Native Katyusha4063242 joined commander3997707 (`[] → [4063242]`), then left to
+  `(16,17)` (`[4063242] → []`), both verified. Independent inventory in readback
+  preserved Rifleman3080232 in army65536 throughout. Movement privately restored
+  for join/leave eligibility; no attack points granted or turn advanced.
+- 164 Python + 325 Node tests pass. Default23 tools unchanged; write mode59 tools,
+  including36 actions. Naval/air membership and greater-than-adjacent joining remain
+  unsupported. Original Merchant untouched.
 
 ## Batch 1: settlement management
 

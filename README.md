@@ -917,6 +917,28 @@ read-only; the corrected handler returned `already_active` without resubmitting.
 Health remains87/100: queued-order verification is not health restoration.
 **161 Python and 321 Node tests pass.** No turn advanced.
 
+#### Individual land-unit join/leave
+
+`join_civ7_commander(unit_id, commander_id, expected_turn)` packs only the exact
+selected nearby land unit into the exact owned land commander. This is distinct
+from pack-all and distant reinforcement. `leave_civ7_commander(unit_id,
+commander_id, x, y, expected_turn)` deploys only that captured member onto an exact
+adjacent empty visible own/unowned native-offered tile. Both reject queued/
+reinforcing sources, unknown or ambiguous membership, implicit transfers and
+unsupported confirmations. Native capacity/eligibility remains authoritative.
+Readback verifies the complete own army inventory with exactly the requested
+selected-unit change and no unrelated membership changes. Targeted logistics
+exposes `addToArmy`/`removeFromArmy` options and exact selected-command checks.
+
+Live T62: Katyusha4063242 joined commander3997707 and then left back to `(16,17)`;
+both typed actions verified, while Rifleman3080232 remained packed in army65536.
+Movement readiness was privately restored; no extra attack points or turns were
+used. Naval/air membership and nonadjacent joins are excluded. **164 Python and
+325 Node tests pass.** Default23 tools; write mode59 tools (36 actions). New native
+checkpoint `Sidkick_Playground_BeforeMembershipMeleeOverrun_T62_1793961086467`
+confirmed RESULT_OK with no overwrite; earlier checkpoints and original Merchant
+remain preserved.
+
 ## One-shot export
 
 ```powershell

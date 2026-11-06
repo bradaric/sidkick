@@ -423,6 +423,24 @@ async def attack_unit(
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def join_commander(unit_id: StrictInt, commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Add one explicit nearby land unit to an owned commander, preserving other memberships."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, commander_id, expected_turn)) or unit_id == commander_id:
+        raise ValueError("Distinct owned unit/commander IDs and expected turn are required")
+    return await _execute_and_verify("unit_membership.js", {
+        "mode": "join", "unit_id": unit_id, "commander_id": commander_id, "expected_turn": expected_turn,
+    }, "unit_membership_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def leave_commander(unit_id: StrictInt, commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Remove one explicit packed land unit onto a native-offered adjacent empty plot."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, commander_id, x, y, expected_turn)) or unit_id == commander_id:
+        raise ValueError("Distinct owned unit/commander IDs, deployment tile and expected turn are required")
+    return await _execute_and_verify("unit_membership.js", {
+        "mode": "leave", "unit_id": unit_id, "commander_id": commander_id, "x": x, "y": y, "expected_turn": expected_turn,
+    }, "unit_membership_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def army_ranged_attack(
     commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:
