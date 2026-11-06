@@ -1437,6 +1437,16 @@ verified; isolated test squadron was not natively offered, no transfer submitted
 Movement restoration was synthetic setup; membership/effects were not forced.
 **218 Python / 398 Node pass; tools23/94 (71 actions).**
 
+`air_attack_civ7_from_commander` explicitly binds a single aircraft to its captured
+Aerodrome/squadron/carrier and one exact visible own/unowned field target. Existing
+war/native gates, full membership preservation and primary-effect verification
+apply; no grouped mission, district bombing or full interception/splash accounting.
+Live test5898306 from Carrier5767185 dealt16 damage to Frigate4718629, attack1→0.
+Aircraft/base setup and movement readiness were synthetic; attack/damage were native.
+Native carriers also set the squadron flag: definition-first classification now
+enforces carrier water guards in missions and transfers.
+**219 Python / 399 Node pass; tools23/95 (72 actions).**
+
 ## One-shot export
 
 ```powershell

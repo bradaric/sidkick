@@ -36,7 +36,7 @@
   if (!baseline) return reject("Complete owned army membership is unknown");
   function baseInfo(id) {
     const c = player.Units.getUnits().find(u => u.id.owner === playerId && u.id.id === id), a = baseline.find(a => a.commanderId === id);
-    const kind = c?.isAerodromeCommander === true ? "city" : c?.isSquadronCommander === true ? "squadron" : c && GameInfo.Units.lookup(c.type)?.UnitType === "UNIT_CARRIER_COMMANDER" ? "carrier" : null;
+    const kind = c?.isAerodromeCommander === true ? "city" : c && GameInfo.Units.lookup(c.type)?.UnitType === "UNIT_CARRIER_COMMANDER" ? "carrier" : c?.isSquadronCommander === true ? "squadron" : null;
     if (!c || !kind || c.isOnMap !== true || c.isDead === true || c.operationQueueSize !== 0 || !a ||
         !visible(c.location) || ![-1,playerId].includes(GameplayMap.getOwner(c.location.x,c.location.y)) || !Number.isInteger(c.armyId?.type) ||
         c.armyId.owner !== playerId || c.armyId.id !== a.armyId) return null;

@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def air_attack_from_commander(unit_id: StrictInt, source_commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Strike one exact visible field target with aircraft from a captured Aerodrome/squadron/carrier."""
+    if any(type(v) is not int or v<0 for v in (unit_id,source_commander_id,target_player,target_unit_id,x,y,expected_turn)) or unit_id==source_commander_id:
+        raise ValueError("Exact aircraft, captured source commander, hostile field target and expected turn required")
+    return await _execute_and_verify("air_attack_unit.js",{"unit_id":unit_id,"source_commander_id":source_commander_id,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn},"air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def transfer_aircraft(unit_id: StrictInt, target_commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Rebase one aircraft into an exact unique owned Aerodrome, squadron or carrier."""
     if any(type(v) is not int or v<0 for v in (unit_id,target_commander_id,expected_turn)) or unit_id==target_commander_id:

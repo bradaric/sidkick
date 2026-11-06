@@ -11,7 +11,7 @@ function run(o = {}, script = 'rebase_unit.js') {
   const commander = {id: id(30), type: 300, isCommanderUnit: true, operationQueueSize: 0, armyId: {owner: 0, id: 1}};
   const sourceBase = {...commander, id: id(40), armyId: {owner: 0, id: 2, type: 29}, isOnMap: true, isAerodromeCommander: true, location: {x: 2, y: 2}};
   if (o.baseArrival || o.baseTransfer) {commander.isAerodromeCommander = true; commander.isOnMap = true; commander.location = {x: 5, y: 5}; commander.armyId.type = 29;}
-  if(o.transfer){commander.isAerodromeCommander=false;commander.isSquadronCommander=!o.carrier;commander.type=o.carrier?301:300;}
+  if(o.transfer){commander.isAerodromeCommander=false;commander.isSquadronCommander=true;commander.type=o.carrier?301:300;}
   if(o.sourceSquadron){sourceBase.isAerodromeCommander=false;sourceBase.isSquadronCommander=true;}
   if (o.baseTransfer || (o.baseArrival && o.arrived)) {
     aircraft.isOnMap = false; aircraft.location = {x: -9999, y: -9999}; aircraft.armyId = {owner: 0, id: o.arrived ? 1 : 2, type: 29};

@@ -22,10 +22,12 @@
   const spent = !unit || (Number.isInteger(attacks) && attacks >= 0 && attacks < beforeAttacks);
   const expected = baseline.map(a => ({...a, packedUnitIds: unit ? a.packedUnitIds : a.packedUnitIds.filter(id => id !== unitId)}));
   const city = player.Cities.getCities().find(c => c.id.owner === playerId && c.id.id === source.cityId && c.id.type === source.cityComponentType);
-  const sourcePreserved = base?.id.type === source.componentType && base.type === source.commanderType && base.isAerodromeCommander === true && base.isOnMap === true && base.isDead !== true &&
+  const kind = source.kind ?? "city", currentKind = base?.isAerodromeCommander === true ? "city" : base && GameInfo.Units.lookup(base.type)?.UnitType === "UNIT_CARRIER_COMMANDER" ? "carrier" : base?.isSquadronCommander === true ? "squadron" : null;
+  const sourcePreserved = base?.id.type === source.componentType && base.type === source.commanderType && currentKind === kind && base.isOnMap === true && base.isDead !== true && base.operationQueueSize === 0 &&
     base.location?.x === source.location.x && base.location?.y === source.location.y && base.armyId?.owner === playerId && base.armyId.id === source.armyId && base.armyId.type === source.armyComponentType &&
-    city?.location?.x === source.location.x && city?.location?.y === source.location.y && GameplayMap.getRevealedState(playerId, source.location.x, source.location.y) === RevealedStates.VISIBLE &&
-    GameplayMap.getOwner(source.location.x, source.location.y) === playerId && JSON.stringify(records) === JSON.stringify(expected) &&
+    (kind !== "city" || city?.location?.x === source.location.x && city?.location?.y === source.location.y) && GameplayMap.getRevealedState(playerId, source.location.x, source.location.y) === RevealedStates.VISIBLE &&
+    (kind === "city" ? GameplayMap.getOwner(source.location.x,source.location.y) === playerId : [-1,playerId].includes(GameplayMap.getOwner(source.location.x,source.location.y))) &&
+    (kind !== "carrier" || GameplayMap.isWater(source.location.x,source.location.y) === true) && JSON.stringify(records) === JSON.stringify(expected) &&
     (!unit || (unit.isOnMap === false && unit.operationQueueSize === 0 && unit.armyId?.owner === playerId && unit.armyId.id === source.armyId && unit.armyId.type === source.armyComponentType));
   let targetDamage = null, targetLeftTile = null;
   if (player.Diplomacy.hasMet(targetPlayer) === true && GameplayMap.getRevealedState(playerId, x, y) === RevealedStates.VISIBLE) {

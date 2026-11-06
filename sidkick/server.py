@@ -50,6 +50,7 @@ from civ7.actions import (
     start_hostile_diplomatic_project,
     pillage_route,
     transfer_aircraft,
+    air_attack_from_commander,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -266,6 +267,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="air_attack_civ7_from_commander",title="Strike Civ VII field unit from captured air commander",
+            description=("CHANGE GAME STATE: fixed native AIR_ATTACK by exact aircraft unit_id stationed in "
+                         "exact source_commander_id Aerodrome/squadron/carrier, against target_player/"
+                         "target_unit_id at x/y with expected_turn. Requires ready aircraft, visible owned "
+                         "base on own/unowned tile (carrier on water), known full membership and one exact "
+                         "visible enemy land/sea combat target on own/unowned non-district field, existing "
+                         "met war and exact native offered/selected permission. Verifies attack consumption/"
+                         "loss plus primary-target damage/departure and exact surviving base memberships. "
+                         "No district bombing, enemy territory, grouped mission, full interception/splash, "
+                         "kill, recharge, new war or turn claim. One submission,15-second readback; no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(air_attack_from_commander)
         server.tool(
             name="transfer_civ7_aircraft",title="Transfer one Civ VII aircraft to an air commander",
             description=("CHANGE GAME STATE: fixed native REBASE by exact aircraft unit_id into exact owned "

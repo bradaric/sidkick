@@ -368,6 +368,19 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   rebase destination; strict picker rejected with no aircraft transfer sent.
   Squadron transfer guards/readback fixture-tested, positive native case unavailable.
 - 218 Python / 398 Node pass; tools23/94 including71 actions. Still T62.
+- `7143d61`: aircraft transfers. Explicit commander-source single-aircraft field
+  missions now implemented for Aerodrome/squadron/carrier with exact source ID,
+  full membership, native target permission and the same consumption/primary-effect
+  readback. Default earlier air action remains city-base-only. Carrier definition
+  takes precedence over isSquadronCommander, which native carriers also set true;
+  regression fixtures now cover both flags so carrier water guards cannot be skipped.
+- Fresh synthetic Biplane5898306 created deployed at carrier; same-tile rebase was
+  not offered, rejected without request. Distinct normal city stationing then
+  city→carrier journey verified. Movement readiness restored as synthetic setup,
+  attacks unchanged at1. Normal carrier-source AIR_ATTACK at Frigate4718629 `(31,14)`
+  spent attack1→0, damage51→67 (16), exact surviving source membership preserved.
+  Carrier5767185 now holds4456493 and5898306. No interception/splash/kill claim.
+- 219 Python / 399 Node pass; tools23/95 including72 actions, T62/no Gold spend.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

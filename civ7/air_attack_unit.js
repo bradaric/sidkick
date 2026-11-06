@@ -1,7 +1,8 @@
 (() => {
   const {unit_id: unitId, target_player: targetPlayer, target_unit_id: targetId, x, y, expected_turn: expectedTurn} = queryArguments;
+  const sourceCommanderId = queryArguments.source_commander_id, explicitBase = sourceCommanderId !== undefined;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (![unitId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact aircraft, hostile target identity/tile and expected turn are required");
+  if (![unitId, targetPlayer, targetId, x, y, expectedTurn, ...(explicitBase ? [sourceCommanderId] : [])].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact aircraft, hostile target identity/tile, optional source commander and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
   if (!Number.isInteger(playerId) || playerId < 0 || !player || targetPlayer === playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || Game.turn !== expectedTurn ||
@@ -33,13 +34,17 @@
   const baseline = armies(), containing = baseline?.filter(a => a.packedUnitIds.includes(unitId));
   if (!containing || containing.length !== 1) return reject("Complete unique source and other army membership must be known");
   const source = containing[0], base = owned.find(u => u.id.id === source.commanderId);
-  if (base?.isAerodromeCommander !== true || base.isOnMap !== true || base.isDead === true || base.operationQueueSize !== 0 || !visible(base.location) ||
-      GameplayMap.getOwner(base.location.x, base.location.y) !== playerId || base.armyId?.owner !== playerId || base.armyId.id !== source.armyId || !Number.isInteger(base.armyId.type) ||
-      !same(unit.armyId, base.armyId)) return reject("Source must be one visible owned city Aerodrome, not a carrier or squadron");
+  const baseKind = () => base?.isAerodromeCommander === true ? "city" : base && GameInfo.Units.lookup(base.type)?.UnitType === "UNIT_CARRIER_COMMANDER" ? "carrier" : base?.isSquadronCommander === true ? "squadron" : null;
+  const kind = baseKind();
+  const baseLocationValid = () => visible(base.location) && (kind === "city" ? GameplayMap.getOwner(base.location.x,base.location.y) === playerId : [-1,playerId].includes(GameplayMap.getOwner(base.location.x,base.location.y))) &&
+    (kind !== "carrier" || GameplayMap.isWater(base.location.x,base.location.y) === true);
+  if (!kind || (explicitBase ? base?.id.id !== sourceCommanderId : kind !== "city") || base.isOnMap !== true || base.isDead === true || base.operationQueueSize !== 0 || !baseLocationValid() ||
+      base.armyId?.owner !== playerId || base.armyId.id !== source.armyId || !Number.isInteger(base.armyId.type) ||
+      !same(unit.armyId, base.armyId)) return reject("Source must be the exact visible owned captured air base; non-city sources require explicit source_commander_id");
   const cities = player.Cities.getCities().filter(c => c.id.owner === playerId && c.location?.x === base.location.x && c.location?.y === base.location.y);
-  if (cities.length !== 1) return reject("Source Aerodrome must be at one exact owned city centre");
+  if (kind === "city" && cities.length !== 1) return reject("Source Aerodrome must be at one exact owned city centre");
   const sourceBase = {commanderId: base.id.id, commanderType: base.type, componentType: base.id.type, armyId: source.armyId, armyComponentType: base.armyId.type,
-    location: {x: base.location.x, y: base.location.y}, cityId: cities[0].id.id, cityComponentType: cities[0].id.type};
+    location: {x: base.location.x, y: base.location.y}, kind, cityId: kind === "city" ? cities[0].id.id : null, cityComponentType: kind === "city" ? cities[0].id.type : null};
   function target() {
     if (!visible({x, y}) || ![-1, playerId].includes(GameplayMap.getOwner(x, y)) || MapCities.getDistrict(x, y) !== null) return null;
     const district = Game.Combat.getDefensibleDistrict({x, y}), ids = MapUnits.getUnits(x, y), id = Game.Combat.getBestDefender({x, y}, unit.id);
@@ -63,15 +68,15 @@
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
       player.Diplomacy.isAtWarWith(targetPlayer) !== true || unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType || unit.isOnMap !== false || unit.isDead === true ||
       unit.operationQueueSize !== 0 || unit.Combat.canAttack !== true || unit.Combat.attacksRemaining !== before.attacks || unit.Movement.movementMovesRemaining !== before.moves || !same(unit.armyId, base.armyId) ||
-      base.type !== sourceBase.commanderType || base.id.type !== sourceBase.componentType || base.isAerodromeCommander !== true || base.isOnMap !== true || base.isDead === true || base.operationQueueSize !== 0 ||
+      base.type !== sourceBase.commanderType || base.id.type !== sourceBase.componentType || baseKind() !== kind || base.isOnMap !== true || base.isDead === true || base.operationQueueSize !== 0 ||
       base.armyId?.owner !== playerId || base.armyId.id !== sourceBase.armyId || base.armyId.type !== sourceBase.armyComponentType ||
-      base.location.x !== sourceBase.location.x || base.location.y !== sourceBase.location.y || !visible(base.location) || GameplayMap.getOwner(base.location.x, base.location.y) !== playerId ||
-      cities[0].id.owner !== playerId || cities[0].id.id !== sourceBase.cityId || cities[0].id.type !== sourceBase.cityComponentType ||
-      cities[0].location.x !== sourceBase.location.x || cities[0].location.y !== sourceBase.location.y || JSON.stringify(armies()) !== JSON.stringify(baseline) ||
+      base.location.x !== sourceBase.location.x || base.location.y !== sourceBase.location.y || !baseLocationValid() ||
+      (kind === "city" && (cities[0].id.owner !== playerId || cities[0].id.id !== sourceBase.cityId || cities[0].id.type !== sourceBase.cityComponentType ||
+      cities[0].location.x !== sourceBase.location.x || cities[0].location.y !== sourceBase.location.y)) || JSON.stringify(armies()) !== JSON.stringify(baseline) ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1 || !fresh || fresh.type !== before.targetType || fresh.id.type !== before.targetComponentType || fresh.Health.damage !== before.targetDamage) return reject("Aircraft, base, army membership, target or context changed during validation");
   const verificationArguments = {unit_id: unitId, unit_type: before.unitType, component_type: before.componentType, before_attacks: before.attacks, baseline_armies: baseline, source_base: sourceBase,
     target_player: targetPlayer, target_unit_id: targetId, target_type: before.targetType, target_component_type: before.targetComponentType, before_target_damage: before.targetDamage, x, y};
   Game.UnitOperations.sendRequest(unit.id, operation, args);
   return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, airAttackObserved: true}, verificationArguments,
-    verificationScope: "Aircraft attack consumption/loss plus visible primary-target damage/departure and exact surviving city-base membership; no kill, complete retaliation/interception/splash, district strike or mission-recharge claim"};
+    verificationScope: "Aircraft attack consumption/loss plus visible primary-target damage/departure and exact surviving captured-base membership; no kill, complete retaliation/interception/splash, district strike or mission-recharge claim"};
 })()

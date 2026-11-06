@@ -25,7 +25,7 @@
   if (new Set(armies.map(a => a.commanderId)).size !== armies.length) throw Error("Commander identity is ambiguous");
   const unit = units[0], city = cities[0];
   const base = targetBase ? owned.find(u => u.id.id === targetBase.commanderId) : null;
-  const baseKind = base?.isAerodromeCommander === true ? "city" : base?.isSquadronCommander === true ? "squadron" : base && GameInfo.Units.lookup(base.type)?.UnitType === "UNIT_CARRIER_COMMANDER" ? "carrier" : null;
+  const baseKind = base?.isAerodromeCommander === true ? "city" : base && GameInfo.Units.lookup(base.type)?.UnitType === "UNIT_CARRIER_COMMANDER" ? "carrier" : base?.isSquadronCommander === true ? "squadron" : null;
   const stationed = targetBase && base?.id.type === targetBase.componentType && base.type === targetBase.commanderType && baseKind === (targetBase.kind ?? "city") && base.isOnMap === true && base.isDead !== true && base.operationQueueSize === 0 &&
     (!transfer || base.id.id === targetCommanderId) && (baseKind !== "carrier" || GameplayMap.isWater(destination.x,destination.y) === true) &&
     base.location?.x === destination.x && base.location?.y === destination.y && unit.isOnMap === false && unit.armyId?.owner === playerId &&
