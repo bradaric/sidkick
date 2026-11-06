@@ -1523,6 +1523,14 @@ Hinder Food unavailable, no known independent raid source; guards/fixtures cover
 both. Native alliance setup is not a typed alliance-tool capability claim.
 **228 Python / 411 Node pass; tools23/104 (81 actions).**
 
+`withdraw_civ7_project_support` removes one sole local support token from an exact
+supported own active project with known zero cancel/unsupport penalties. No incoming
+projects, wars, other supporters or paid cancellation. Readback distinguishes
+withdrawal, cancellation and scheduled cancellation, with no unexpected net debit.
+Native Infiltration80 canceled immediately and own support became0; Hinder Research81
+penalty10 rejected without submission. No forced effects or turn advancement.
+**229 Python / 412 Node pass; tools23/105 (82 actions).**
+
 ## One-shot export
 
 ```powershell

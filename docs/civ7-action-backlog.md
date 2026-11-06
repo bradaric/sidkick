@@ -510,6 +510,18 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   request. Converted city-state7 rejected as a raid source; no known independent
   source. Positive Hinder Food/raid cases unavailable, fixtures implemented.
 - 228 Python / 411 Node pass; tools23/104 including81 actions. T62 unchanged.
+- `08475f0`: paired-secondary diplomacy. Native sole-own-support withdrawal and
+  zero-definition-penalty project cancellation implemented with exact active own
+  event/counterpart, supported non-war family, one own token/no other supporters,
+  CancelPenalty=UnsupportPenalty=0, fresh balances and native UNSUPPORT permission.
+  No arbitrary response/global support mutation, incoming projects or paid cancel.
+  Readback distinguishes token removed, native canceled and cancellation scheduled,
+  with no unexpected net currency debit; no assumed expiry/refund or full effects.
+- Hinder Research81's CancelPenalty10 rejected without submission. Ordinary native
+  withdrawal of sole Infiltration80 support positively verified ownSupport0 and
+  isProjectCanceled=true immediately, no forced cancellation/turn. Original native
+  event and supporter data established exact eligibility before submission.
+- 229 Python / 412 Node pass; tools23/105 including82 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -520,7 +532,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
-| Diplomacy/choices | Project support withdrawal/cancellation, general secondary targets/concession deals and remaining hostile/mandatory variants remain. Capped paid/acknowledged trial narrative handlers implemented; missing quote/currency rejects and positive active-Age case unavailable. Exact levies live-verified; independent befriending and pending bonus choices implemented, positive live cases unavailable. |
+| Diplomacy/choices | Concession editing, nonzero-penalty/multi-support withdrawal and remaining hostile/mandatory variants remain. Fixed loaded secondary aid/food/raid handlers and sole-own zero-penalty project withdrawal/cancellation implemented; aid/cancellation/levy live-verified. Paid/trial, independent befriending and bonus handlers implemented with unavailable positive cases kept separate. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

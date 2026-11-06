@@ -200,6 +200,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "plunder_civ7_trade_route",
             "choose_civ7_extended_narrative",
             "start_civ7_targeted_diplomacy",
+            "withdraw_civ7_project_support",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

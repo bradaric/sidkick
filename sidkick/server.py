@@ -60,6 +60,7 @@ from civ7.actions import (
     plunder_trade_route,
     choose_extended_narrative,
     start_targeted_diplomacy,
+    withdraw_project_support,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -276,6 +277,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="withdraw_civ7_project_support",title="Withdraw sole own support from zero-penalty Civ VII project",
+            description=("CHANGE GAME STATE: native UNSUPPORT_DIPLOMATIC_ACTION for exact own active "
+                         "event_id/known target_player_id and expected_turn. Requires supported cooperative/"
+                         "city-state/espionage project, one sole local support token, no other supporters, "
+                         "known zero definition CancelPenalty/UnsupportPenalty, known balances and native "
+                         "permission without confirmation/quoted extra cost. No wars, foreign/incoming "
+                         "projects, arbitrary support changes or paid cancellation. Verifies own support "
+                         "removed with no unexpected net currency debit; reports native canceled/scheduled "
+                         "status separately, not assumed immediate cancellation or full refund/effect accounting. "
+                         "One submission, no turn advance or unknown retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(withdraw_project_support)
         server.tool(
             name="start_civ7_targeted_diplomacy",title="Start exact secondary-target Civ VII diplomacy",
             description=("CHANGE GAME STATE: fixed action send_gold/hinder_food/incite_raid for exact "

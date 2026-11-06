@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def withdraw_project_support(event_id: StrictInt, target_player_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Withdraw the sole local token from one exact supported zero-definition-penalty own project."""
+    if any(type(v) is not int or v<0 for v in (event_id,target_player_id,expected_turn)):
+        raise ValueError("Exact own project event/counterpart and expected turn required")
+    return await _execute_and_verify("withdraw_project_support.js",{"event_id":event_id,"target_player_id":target_player_id,"expected_turn":expected_turn},"project_withdrawal_state.js")
+
+
 async def start_targeted_diplomacy(target_player_id: StrictInt, action: Literal["send_gold", "hinder_food", "incite_raid"], secondary_value: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt, max_gold_cost: StrictFloat = 0.0, secondary_owner: StrictInt | None = None, x: StrictInt | None = None, y: StrictInt | None = None) -> dict[str, Any]:
     """One fixed paired-secondary diplomatic action with visible qualified city/player or capped aid amount."""
     if (any(type(v) is not int or v<0 for v in (target_player_id,secondary_value,expected_turn)) or action not in ("send_gold","hinder_food","incite_raid") or
