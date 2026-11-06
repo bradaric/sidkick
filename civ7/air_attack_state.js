@@ -42,7 +42,12 @@
       }
     }
   }
-  return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId: targetId, attackerPresent: Boolean(unit), attacksRemaining: attacks,
+  const applied=Boolean(spent&&sourcePreserved&&(targetLeftTile===true||targetDamage!==null&&targetDamage>beforeDamage));
+  let combatObservation=queryArguments.observation_token&&typeof combatObserver!=="undefined"?combatObserver.read(queryArguments.observation_token):null;
+  const observationQuiescent=Boolean(combatObservation?.available&&combatObservation.quiescent&&applied);
+  if(observationQuiescent)combatObservation=combatObserver.read(queryArguments.observation_token,true);
+  const killConfirmed=combatObservation?.available===true&&combatObservation.nativeKills.some(e=>e.unitKilled.owner===targetPlayer&&e.unitKilled.id===targetId&&e.unitKilled.type===targetComponentType)?true:null;
+  return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId: targetId, attackerPresent: Boolean(unit), attacksRemaining: attacks,killConfirmed,...(combatObservation?{combatObservation,observationQuiescent}:{}),
     sourcePreserved: Boolean(sourcePreserved), targetDamage, targetLeftTile,
-    airAttackObserved: Boolean(spent && sourcePreserved && (targetLeftTile === true || (targetDamage !== null && targetDamage > beforeDamage)))};
+    airAttackObserved: applied};
 })()

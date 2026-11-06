@@ -450,7 +450,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "Fighters, complete army inventory and native offered/selected permission. Native "
                          "chooses scouts/intercepting combat, not a direct attack on a named enemy unit. "
                          "Verifies fighter movement/attack consumption or loss and exact surviving army "
-                         "memberships/stable base, not interception, kill or new visibility gain. One "
+                         "memberships/stable base, not complete interception or new visibility gain. Optional "
+                         "observe_effects=true adds bounded visible-unit health/native exact kill evidence "
+                         "and500ms captured-event quiet; no hidden/interception completeness. One "
                          "submission,15-second readback; no hidden inventory, new war, turn advance or retry."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(sweep_air_location)
@@ -462,8 +464,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "inventory and exact native offered/selected permission required. Verifies primary "
                          "district damage/departure (or newly damaged/departed rural constructible) plus at least one captured Bomber attack consumption/"
                          "loss, stable base and exact surviving memberships. Some/all consumption separate; "
-                         "Rural zero-HP district requires fresh combat-options pillage.targetToken as target_token. No full interception/splash, capture/destruction, recharge or turn claim. One "
-                         "submission,15-second readback; never retry unknown."),
+                         "Rural zero-HP district requires fresh combat-options pillage.targetToken as target_token. No full interception/splash, capture/destruction, recharge or turn claim. "
+                         "Optional observe_effects=true adds bounded visible-unit health/native attribution "
+                         "and500ms captured-event quiet, not complete global effects. One submission,15-second "
+                         "readback; never retry unknown."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(bombard_air_district)
         server.tool(
@@ -476,8 +480,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "permission must allow target. One native command selects aircraft, never a loop "
                          "of individual strikes. Verifies primary damage/departure and at least one "
                          "captured aircraft consumption/loss plus preserved exact surviving memberships. "
-                         "Reports some/all aircraft consumption separately; no full interception/splash, "
-                         "kill, Fighter Sweep, district bombing, recharge or turn claim.15-second readback, never retry unknown."),
+                         "Reports some/all aircraft consumption separately. Optional observe_effects=true "
+                         "adds bounded visible health/native exact kill evidence and500ms captured-event quiet. "
+                         "No full interception/splash, Fighter Sweep, district bombing, recharge or turn claim. "
+                         "15-second readback, never retry unknown."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(group_air_attack)
         server.tool(
@@ -630,7 +636,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "met war and exact native offered/selected permission. Verifies attack consumption/"
                          "loss plus primary-target damage/departure and exact surviving base memberships. "
                          "No district bombing, enemy territory, grouped mission, full interception/splash, "
-                         "kill, recharge, new war or turn claim. One submission,15-second readback; no retry."),
+                         "recharge, new war or turn claim. Optional observe_effects=true adds bounded visible "
+                         "health/native exact kill evidence and500ms captured-event quiet, not complete "
+                         "global effects. One submission,15-second readback; no retry."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(air_attack_from_commander)
         server.tool(
@@ -854,8 +862,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "damage/departure, surviving source-base identity and preservation of every other "
                          "packed member. No standalone deployed, squadron/carrier or district/city strike, "
                          "enemy territory, air-to-air, nuclear mission, new war or turn advancement. Native "
-                         "retaliation/interception/splash can occur but is not completely verified; no kill "
-                         "or mission-recharge claim. Submits once; polls read-only for15 seconds, never retries "
+                         "retaliation/interception/splash can occur but is not completely verified. Optional "
+                         "observe_effects=true adds bounded visible health/native exact kill evidence and500ms "
+                         "captured-event quiet, not complete global effects or mission recharge. Submits once; "
+                         "polls read-only for15 seconds, never retries "
                          "unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,

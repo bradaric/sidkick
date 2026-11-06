@@ -717,6 +717,22 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   native return into player1 `(54,36)` verified; no border access/location forced.
   Synthetic unit creation only for outbound cases, no turns. 243 Python /439 Node
   pass; tools24/122 including98 actions.
+- `c765236`: bounded ordinary/peaceful travel. Existing single-aircraft strike,
+  explicit commander-source strike, Ground Attack, Fighter Sweep and Carpet Bomb
+  now accept optional strict `observe_effects=true` without adding tools or relaxing
+  their native target/role/membership guards. Same fixed bounded observer captures
+  visible health deltas, packed local aircraft health and exact local participant
+  Combat/kill events;500ms captured-event quiet before closure/readback success.
+  District disappearance is not destruction, unseen interception remains unknown.
+- Native observed two-aircraft Ground Attack from test Squadron7798879 used fresh
+  transferred8061027/8126564 to finish normally damaged5439550 at `(21,17)`: both
+  missions consumed, two native events and kill5439550 by8126564, quiet554ms, full
+  surviving memberships/base preserved. Multi-aircraft Ground Attack is now positive
+  native, not fixture-only. Separate newly transferred8192101 individual strike
+  dealt21 to fresh5505087 there, exact event, quiet1972ms and base/membership intact.
+  Creation plus post-transfer movement restored only, no attacks/HP/effects forced.
+  Optional observed Sweep/Bomb paths fixture-tested; their earlier native execution
+  did not test this new observation option.244 Python /441 Node pass; counts unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -734,8 +750,8 @@ recharge/completion, unattended turns and Age transitions; positive native Overr
 and live atomic-swap eligibility; natural-use verification for debug-created air/
 combat cases. Multi-participant Focus Fire and coordinated melee now have positive
 synthetic native execution, no longer fixture-only. Bounded independent kill/visible
-collateral accounting exists for explicit observed field strikes, with positive
-native kill/retaliation evidence. Extending it to other combat families and positive
+collateral accounting exists for explicit observed field/land-group/fleet/air
+strikes, with positive native kill/retaliation evidence. Remaining combat-family integration and positive
 native nonzero splash remain separate implementation/verification work; full hidden/
 global effects are not promised.
 

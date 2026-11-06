@@ -32,6 +32,10 @@
     const ids=MapUnits.getUnits(x,y);if(Array.isArray(ids)){const id=ids.find(id=>id.owner===targetPlayer&&id.id===targetId&&id.type===targetComponent);targetLeftTile=!id;
       if(id&&Visibility.isVisible(playerId,id)===true){const u=Units.get(id);if(u?.type!==targetType)throw Error("Visible primary air-mission target identity changed");if(Number.isFinite(u.Health?.damage))currentDamage=u.Health.damage;}}
   }
-  return{turn:Game.turn,age:Game.age,playerId,groupAirAttackObserved:Boolean(basePreserved&&observations.some(p=>p.attackConsumedOrUnitLost)&&(targetLeftTile===true||constructibleEffect||currentDamage!==null&&currentDamage>damage)),constructibleEffect,
-    sweepObserved:Boolean(sweep&&basePreserved&&observations.some(p=>p.attackConsumedOrUnitLost)&&GameplayMap.getRevealedState(playerId,x,y)===RevealedStates.VISIBLE),participants:observations,allParticipantsConsumed:observations.every(p=>p.attackConsumedOrUnitLost),basePreserved:Boolean(basePreserved),targetLeftTile,targetDamage:currentDamage,killConfirmed:null};
+  const groupAirAttackObserved=Boolean(basePreserved&&observations.some(p=>p.attackConsumedOrUnitLost)&&(targetLeftTile===true||constructibleEffect||currentDamage!==null&&currentDamage>damage)),sweepObserved=Boolean(sweep&&basePreserved&&observations.some(p=>p.attackConsumedOrUnitLost)&&GameplayMap.getRevealedState(playerId,x,y)===RevealedStates.VISIBLE);
+  let combatObservation=queryArguments.observation_token&&typeof combatObserver!=="undefined"?combatObserver.read(queryArguments.observation_token):null;
+  const observationQuiescent=Boolean(combatObservation?.available&&combatObservation.quiescent&&(sweep?sweepObserved:groupAirAttackObserved));
+  if(observationQuiescent)combatObservation=combatObserver.read(queryArguments.observation_token,true);
+  const killConfirmed=!sweep&&!bomb&&combatObservation?.available===true&&combatObservation.nativeKills.some(e=>e.unitKilled.owner===targetPlayer&&e.unitKilled.id===targetId&&e.unitKilled.type===targetComponent)?true:null;
+  return{turn:Game.turn,age:Game.age,playerId,groupAirAttackObserved,constructibleEffect,sweepObserved,participants:observations,allParticipantsConsumed:observations.every(p=>p.attackConsumedOrUnitLost),basePreserved:Boolean(basePreserved),targetLeftTile,targetDamage:currentDamage,killConfirmed,...(combatObservation?{combatObservation,observationQuiescent}:{})};
 })()

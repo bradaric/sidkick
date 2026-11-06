@@ -1,6 +1,8 @@
 (() => {
   const {commander_id:commanderId,mission,target_player:targetPlayer,target_unit_id:targetId,x,y,expected_turn:expectedTurn}=queryArguments,reject=(reason,failureReasons=[])=>({status:"rejected",reason,failureReasons});
   const sweep=mission==="sweep",bomb=mission==="bomb",districtId=queryArguments.district_id;
+  const {observe_effects:observe=false}=queryArguments;
+  if(typeof observe!=="boolean")return reject("Combat observation must be an explicit boolean");
   if(![commanderId,x,y,expectedTurn,...(sweep?[]:[targetPlayer,bomb?districtId:targetId])].every(v=>Number.isInteger(v)&&v>=0)||!["land","sweep","bomb"].includes(mission))return reject("Exact air commander, supported location/land/district mission and expected turn required");
   if(!UI.isInGame())return reject("Load a save first");
   const playerId=GameContext.localPlayerID,player=Players.get(playerId),command=sweep?"UNITCOMMAND_FOCUSED_ATTACK_AIR_TO_AIR":bomb?"UNITCOMMAND_FOCUSED_ATTACK_AIR_BOMB":"UNITCOMMAND_FOCUSED_ATTACK_AIR_TO_LAND";
@@ -62,7 +64,15 @@
   if(picker?.Success!==true||!Array.isArray(picker.Plots)||!picker.Plots.includes(GameplayMap.getIndexFromLocation({x,y})))return reject("Exact target not offered by native grouped air mission",picker?.FailureReasons??[]);
   const check=Game.UnitCommands.canStart(base.id,command,args,false);if(check?.Success!==true||check.RequiresConfirmation===true)return reject("Native grouped air mission failed or requires confirmation",check?.FailureReasons??[]);
   if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||player.isTurnActive!==true||GameContext.hasSentTurnComplete()!==false||!warValid()||!baseValid()||base.type!==source.commanderType||base.id.type!==source.componentType||base.location.x!==source.location.x||base.location.y!==source.location.y||base.armyId.id!==source.armyId||base.armyId.type!==source.armyComponentType||base.Movement.movementMovesRemaining!==before.moves||JSON.stringify(armies())!==JSON.stringify(baseline)||JSON.stringify(participants())!==JSON.stringify(captured)||JSON.stringify(target())!==JSON.stringify(enemy))return reject("Air commander, aircraft, target or context changed during validation");
-  Game.UnitCommands.sendRequest(base.id,command,args);
-  return{status:"submitted",before,expected:{[sweep?"sweepObserved":"groupAirAttackObserved"]:true},verificationArguments:{mission,source,baseline_armies:baseline,participants:captured,...(sweep?{}:{target_player:targetPlayer,...(bomb?{district_id:districtId,baseline_constructibles:enemy.constructibles??null}:{target_unit_id:targetId}),target_type:enemy.type,target_component_type:enemy.componentType,before_target_damage:enemy.damage}),x,y},
-      verificationScope:sweep?"Native Fighter Sweep at exact visible own/unowned location: captured fighter attack/movement consumption or loss plus exact surviving memberships and stable base. No enemy/interception/kill or new visibility gain claimed":"Native selects role-eligible participants in one focused ground-attack/carpet-bomb mission. Primary visible unit/district damage/departure plus at least one captured aircraft attack consumption/loss, exact surviving full army membership and stable base required. Some/all captured consumption reported separately; not full interception, splash, kill, capture, recharge or turn accounting"};
+  const verificationArguments={mission,source,baseline_armies:baseline,participants:captured,...(sweep?{}:{target_player:targetPlayer,...(bomb?{district_id:districtId,baseline_constructibles:enemy.constructibles??null}:{target_unit_id:targetId}),target_type:enemy.type,target_component_type:enemy.componentType,before_target_damage:enemy.damage}),x,y};
+  if(observe){
+    if(typeof combatObserver==="undefined")return reject("Fixed native combat observer unavailable");
+    const actors=captured.map(p=>({owner:playerId,id:p.unitId,type:p.componentType})),units=combatObserver.capture(playerId,x,y,1,actors);
+    if(!units||!sweep&&!bomb&&!units.some(u=>u.owner===targetPlayer&&u.instanceId===targetId&&u.componentType===enemy.componentType))return reject("Bounded visible air-mission baseline unavailable");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||JSON.stringify(armies())!==JSON.stringify(baseline)||JSON.stringify(participants())!==JSON.stringify(captured)||JSON.stringify(target())!==JSON.stringify(enemy))return reject("Air mission changed during observation capture");
+    try{verificationArguments.observation_token=combatObserver.start(playerId,actors,units,15000);}catch(error){return reject("Native grouped air observation unavailable");}
+  }
+  try{Game.UnitCommands.sendRequest(base.id,command,args);}catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
+  return{status:"submitted",before,expected:{[sweep?"sweepObserved":"groupAirAttackObserved"]:true,...(observe?{observationQuiescent:true}:{})},verificationArguments,
+      verificationScope:(sweep?"Native Fighter Sweep: captured fighter consumption/loss plus surviving memberships/stable base, not new visibility gain":"Native focused ground/carpet mission: primary effect plus captured aircraft consumption/loss, surviving full membership and stable base. Some/all consumption separate")+". Optional bounded visible health/native exact kill evidence waits500ms captured-event quiet, not full interception, splash, capture, recharge or global/turn accounting"};
 })()

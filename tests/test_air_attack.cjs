@@ -37,9 +37,20 @@ function run(o = {}, script = 'air_attack_unit.js') {
         return {Success: !o.blocked, Plots: o.notOffered ? [] : [33], RequiresConfirmation: Boolean(o.confirm)};},
         sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   let data;
+  if(o.observe){
+    ctx.queryArguments.observe_effects=true;let clock=1000,gone=false;ctx.Date={now:()=>clock};const listeners={};ctx.engine={on:(name,cb)=>{(listeners[name]??=[]).push(cb);return{clear:()=>{listeners[name]=listeners[name].filter(c=>c!==cb);}};}};
+    ctx.GameplayMap.getPlotDistance=(x,y,a,b)=>Math.max(Math.abs(x-a),Math.abs(y-b));ctx.MapUnits.getUnits=(x,y)=>x===3&&y===3&&!gone?[enemy.id]:[];
+    ctx.combatObserver=vm.runInNewContext(fs.readFileSync('civ7/combat_observation.js','utf8'),ctx);
+    ctx.Game.UnitOperations.sendRequest=(id,operation,args)=>{calls.push({kind:'send',id,operation,args});plane.Combat.attacksRemaining=0;enemy.Health.damage=30;
+      for(const cb of listeners.Combat??[])cb({attacker:plane.id,defender:enemy.id});
+      if(o.nativeKill){for(const cb of listeners.UnitKilledInCombat??[])cb({unitKiller:plane.id,unitKilled:enemy.id});gone=true;}
+      if(!o.deferQuiet)clock+=600;
+    };
+  }
   try {data = vm.runInNewContext(fs.readFileSync(`civ7/${script}`, 'utf8'), ctx);}
   catch (e) {if (!o.sendThrows) throw e; data = {error: e.message};}
-  return JSON.parse(JSON.stringify({data, calls}));
+  let after=null;if(o.observe&&data.status==='submitted'){ctx.queryArguments=data.verificationArguments;after=vm.runInNewContext(fs.readFileSync('civ7/air_attack_state.js','utf8'),ctx);}
+  return JSON.parse(JSON.stringify({data, calls,after}));
 }
 
 test('stationed aircraft uses fixed native AIR_ATTACK with exact source base and field target', () => {
@@ -47,6 +58,10 @@ test('stationed aircraft uses fixed native AIR_ATTACK with exact source base and
   assert.deepEqual(calls.at(-1), {kind: 'send', id: {owner: 0, id: 10, type: 26}, operation: 'UNITOPERATION_AIR_ATTACK', args: {X: 3, Y: 3}});
   assert.deepEqual(data.verificationArguments.baseline_armies[0].packedUnitIds, [10]);
   assert.equal(run({sendThrows: true}).calls.filter(c => c.kind === 'send').length, 1);
+});
+test('observed single-aircraft strike confirms only exact native kill and does not close on first in-flight effect',()=>{
+ const r=run({observe:true,nativeKill:true});assert.equal(r.data.status,'submitted');assert.equal(r.after.killConfirmed,true);assert.equal(r.after.observationQuiescent,true);assert.equal(r.after.combatObservation.closed,true);
+ const f=run({observe:true,deferQuiet:true});assert.equal(f.after.observationQuiescent,false);assert.equal(f.after.combatObservation.closed,false);
 });
 
 test('explicit commander-base air mission supports carrier/squadron sources without relaxing city-only default',()=>{

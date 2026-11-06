@@ -2,6 +2,8 @@
   const {unit_id: unitId, target_player: targetPlayer, target_unit_id: targetId, x, y, expected_turn: expectedTurn} = queryArguments;
   const sourceCommanderId = queryArguments.source_commander_id, explicitBase = sourceCommanderId !== undefined;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
+  const {observe_effects:observe=false}=queryArguments;
+  if(typeof observe!=="boolean")return reject("Combat observation must be an explicit boolean");
   if (![unitId, targetPlayer, targetId, x, y, expectedTurn, ...(explicitBase ? [sourceCommanderId] : [])].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact aircraft, hostile target identity/tile, optional source commander and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
@@ -76,7 +78,14 @@
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1 || !fresh || fresh.type !== before.targetType || fresh.id.type !== before.targetComponentType || fresh.Health.damage !== before.targetDamage) return reject("Aircraft, base, army membership, target or context changed during validation");
   const verificationArguments = {unit_id: unitId, unit_type: before.unitType, component_type: before.componentType, before_attacks: before.attacks, baseline_armies: baseline, source_base: sourceBase,
     target_player: targetPlayer, target_unit_id: targetId, target_type: before.targetType, target_component_type: before.targetComponentType, before_target_damage: before.targetDamage, x, y};
-  Game.UnitOperations.sendRequest(unit.id, operation, args);
-  return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, airAttackObserved: true}, verificationArguments,
-    verificationScope: "Aircraft attack consumption/loss plus visible primary-target damage/departure and exact surviving captured-base membership; no kill, complete retaliation/interception/splash, district strike or mission-recharge claim"};
+  if(observe){
+    if(typeof combatObserver==="undefined")return reject("Fixed native combat observer unavailable");
+    const baseline=combatObserver.capture(playerId,x,y,1,unit.id);
+    if(!baseline?.some(u=>u.owner===targetPlayer&&u.instanceId===targetId&&u.componentType===before.targetComponentType))return reject("Bounded visible air-strike baseline unavailable");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||JSON.stringify(armies())!==JSON.stringify(before.armies)||unit.Combat.attacksRemaining!==before.attacks||target()?.Health.damage!==before.targetDamage)return reject("Air strike changed during observation capture");
+    try{verificationArguments.observation_token=combatObserver.start(playerId,unit.id,baseline,15000);}catch(error){return reject("Native air-strike observation unavailable");}
+  }
+  try{Game.UnitOperations.sendRequest(unit.id, operation, args);}catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
+  return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, airAttackObserved: true,...(observe?{observationQuiescent:true}:{})}, verificationArguments,
+    verificationScope: "Aircraft consumption/loss plus primary effect and surviving base membership. Optional bounded visible health/native exact kill evidence waits500ms captured-event quiet, not full interception/splash/global effects, district strike or mission recharge"};
 })()

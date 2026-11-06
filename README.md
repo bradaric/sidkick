@@ -1630,6 +1630,15 @@ peace and queue0 preserved. Spent-readiness return rejected before submission;
 distinct return used labelled test-ship movement restoration, no turns/access forced.
 **243 Python / 439 Node pass; tools24/122 (98 actions).**
 
+Existing air-strike and grouped air-mission tools accept optional
+`observe_effects=true`: bounded visible/owned-aircraft health changes, exact native
+participant kills and500ms captured-event quiet, never complete hidden interception.
+Native observed two-aircraft Ground Attack confirmed kill5439550 by8126564 with
+both missions spent; separate individual strike dealt21 with memberships intact.
+Labelled aircraft creation/post-transfer movement only, no HP/mission effects forced.
+Observed Sweep/Bomb option fixture-tested, not yet positive native verification.
+**244 Python / 441 Node pass; tool counts unchanged.**
+
 ## One-shot export
 
 ```powershell

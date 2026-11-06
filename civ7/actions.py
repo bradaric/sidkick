@@ -290,25 +290,25 @@ async def peace_concession(target_player_id: StrictInt, action: Literal["add", "
     return await _execute_and_verify("peace_concession.js",{"target_player_id":target_player_id,"action":action,"deal_token":deal_token,"max_gold_cost":max_gold_cost,"max_influence_cost":max_influence_cost,"expected_turn":expected_turn,"item_token":item_token,"item_id":item_id},"peace_concession_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def sweep_air_location(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+async def sweep_air_location(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """One native Fighter Sweep at an exact visible own/unowned location; no invented enemy-unit target."""
-    if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):
-        raise ValueError("Exact air commander, sweep location and expected turn required")
-    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":"sweep","x":x,"y":y,"expected_turn":expected_turn},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+    if type(observe_effects) is not bool or any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):
+        raise ValueError("Exact air commander, sweep location, boolean observation and expected turn required")
+    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":"sweep","x":x,"y":y,"expected_turn":expected_turn,**({"observe_effects":True} if observe_effects else {})},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def bombard_air_district(commander_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, target_token: StrictStr | None = None) -> dict[str, Any]:
+async def bombard_air_district(commander_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, target_token: StrictStr | None = None, observe_effects: StrictBool = False) -> dict[str, Any]:
     """One native Carpet Bomb mission against an exact visible empty enemy district."""
-    if any(type(v) is not int or v<0 for v in (commander_id,target_player,district_id,x,y,expected_turn)) or target_token is not None and (not isinstance(target_token,str) or not target_token or len(target_token)>100000):
+    if type(observe_effects) is not bool or any(type(v) is not int or v<0 for v in (commander_id,target_player,district_id,x,y,expected_turn)) or target_token is not None and (not isinstance(target_token,str) or not target_token or len(target_token)>100000):
         raise ValueError("Exact air commander, hostile district and expected turn required")
-    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":"bomb","target_player":target_player,"district_id":district_id,"x":x,"y":y,"expected_turn":expected_turn,**({"target_token":target_token} if target_token is not None else {})},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":"bomb","target_player":target_player,"district_id":district_id,"x":x,"y":y,"expected_turn":expected_turn,**({"target_token":target_token} if target_token is not None else {}),**({"observe_effects":True} if observe_effects else {})},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def group_air_attack(commander_id: StrictInt, mission: Literal["land"], target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+async def group_air_attack(commander_id: StrictInt, mission: Literal["land"], target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """One native grouped ground-attack mission from an exact packed squadron/carrier."""
-    if any(type(v) is not int or v<0 for v in (commander_id,target_player,target_unit_id,x,y,expected_turn)) or mission!="land":
+    if type(observe_effects) is not bool or any(type(v) is not int or v<0 for v in (commander_id,target_player,target_unit_id,x,y,expected_turn)) or mission!="land":
         raise ValueError("Exact air commander, ground-attack mission, hostile field target and expected turn required")
-    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":mission,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":mission,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn,**({"observe_effects":True} if observe_effects else {})},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
 async def establish_air_base(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
@@ -394,11 +394,11 @@ async def cross_commander_shore(commander_id: StrictInt, x: StrictInt, y: Strict
     return await _execute_and_verify("commander_action.js",{"commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn,"mode":"shore"},"commander_action_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def air_attack_from_commander(unit_id: StrictInt, source_commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+async def air_attack_from_commander(unit_id: StrictInt, source_commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """Strike one exact visible field target with aircraft from a captured Aerodrome/squadron/carrier."""
-    if any(type(v) is not int or v<0 for v in (unit_id,source_commander_id,target_player,target_unit_id,x,y,expected_turn)) or unit_id==source_commander_id:
+    if type(observe_effects) is not bool or any(type(v) is not int or v<0 for v in (unit_id,source_commander_id,target_player,target_unit_id,x,y,expected_turn)) or unit_id==source_commander_id:
         raise ValueError("Exact aircraft, captured source commander, hostile field target and expected turn required")
-    return await _execute_and_verify("air_attack_unit.js",{"unit_id":unit_id,"source_commander_id":source_commander_id,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn},"air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+    return await _execute_and_verify("air_attack_unit.js",{"unit_id":unit_id,"source_commander_id":source_commander_id,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"expected_turn":expected_turn,**({"observe_effects":True} if observe_effects else {})},"air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
 async def transfer_aircraft(unit_id: StrictInt, target_commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
@@ -793,12 +793,12 @@ async def bombard_shore_district(unit_id: StrictInt, target_player: StrictInt, d
     }, "district_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def air_attack_unit(unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+async def air_attack_unit(unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """Strike one exact visible field combat target from a captured owned city Aerodrome."""
-    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, target_unit_id, x, y, expected_turn)):
+    if type(observe_effects) is not bool or any(type(v) is not int or v < 0 for v in (unit_id, target_player, target_unit_id, x, y, expected_turn)):
         raise ValueError("Exact aircraft, hostile target identity/tile and expected turn are required")
     return await _execute_and_verify("air_attack_unit.js", {
-        "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y, "expected_turn": expected_turn,
+        "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y, "expected_turn": expected_turn,**({"observe_effects":True} if observe_effects else {}),
     }, "air_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
