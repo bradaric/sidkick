@@ -11,6 +11,7 @@ function run(o = {}, script = 'unit_membership.js') {
     operationQueueSize: o.queued ? 1 : 0, location: packed ? {x: -9999, y: -9999} : {x: 2, y: 3},
     Movement: {movementMovesRemaining: 2}};
   const commanders = [30, 40].map(id => ({id: component(id), type: 300, isCommanderUnit: true, isOnMap: true,
+    isFleetCommander: !o.notFleet,
     operationQueueSize: 0, armyId: {owner: 0, id, type: 29}, location: id === 30 ? {x: 3, y: 3} : {x: o.ambiguous ? 3 : 5, y: o.ambiguous ? 3 : 5}}));
   const owned = [unit, {id: component(11), type: 100, isOnMap: false}, ...commanders];
   const baseline = [{commanderId: 30, commanderType: 300, componentType: 26, armyId: 30,
@@ -25,11 +26,12 @@ function run(o = {}, script = 'unit_membership.js') {
     Armies: {get: id => ({owner: o.foreignArmy ? 1 : 0, localId: id.id,
       getCommanderId: () => component(id.id), getUnitIds: () => o.unknownArmy ? null :
         id.id === 30 ? [component(11), ...(packed ? [component(10)] : [])] : []})},
-    GameInfo: {Units: {lookup: () => ({Domain: o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND', Packable: !o.notPackable})}},
+    GameInfo: {Units: {lookup: type => ({Domain: o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+      FormationClass: o.civilian ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_NAVAL', Packable: !o.notPackable})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getPlotDistance: () => o.distant ? 2 : 1,
       getIndexFromLocation: l => l.x + l.y * 10, getRevealedState: () => o.hidden ? 0 : 2,
       getLocationFromIndex: i => ({x: i % 10, y: Math.floor(i / 10)}),
-      getOwner: () => o.foreignTile ? 1 : 0}, RevealedStates: {VISIBLE: 2}, MapUnits: {getUnits: () => o.occupied ? [component(99)] : []},
+      getOwner: () => o.foreignTile ? 1 : 0, isWater: () => !o.landTile}, RevealedStates: {VISIBLE: 2}, MapUnits: {getUnits: () => o.occupied ? [component(99)] : []},
     Game: {turn: 62, age: 42, UnitOperations: {canStart: () => ({Success: false, Plots: []})}, UnitCommands: {canStart: (id, command, args, exclusion) => {
       calls.push({kind: 'check', id, command, args, exclusion});
       if (o.changed) context.Game.turn++;
@@ -88,4 +90,25 @@ test('targeted logistics offers exact local commander join and individual leave 
   assert.equal(leave.calls.filter(c => c.kind === 'send').length, 0);
   assert.deepEqual(run({hidden: true}, 'logistics.js').data.selectedUnit.addToArmy.options, []);
   assert.deepEqual(run({mode: 'leave', occupied: true}, 'logistics.js').data.selectedUnit.removeFromArmy.options, []);
+});
+
+test('explicit fleet membership changes one naval combat unit and preserves captured armies', () => {
+  for (const mode of ['join', 'leave']) {
+    const {data, calls} = run({sea: true, mode, args: {domain: 'DOMAIN_SEA'}});
+    assert.equal(data.status, 'submitted'); assert.equal(calls.filter(c => c.kind === 'send').length, 1);
+    assert.deepEqual(data.expected.armies[0].packedUnitIds, mode === 'join' ? [10, 11] : [11]);
+  }
+  for (const mode of ['join', 'leave']) for (const o of [{landTile: true}, {mixedDomain: true}, {civilian: true}, {notFleet: true},
+    {unknownArmy: true}, {occupied: true, mode: 'leave'}, {foreignTile: true}, {args: {domain: 'DOMAIN_AIR'}}]) {
+    const {data, calls} = run({sea: true, mode, args: {domain: 'DOMAIN_SEA'}, ...o});
+    assert.equal(data.status, 'rejected', JSON.stringify({mode, o})); assert.equal(calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('selected naval logistics exposes checked same-domain fleet join/leave only on water', () => {
+  assert.equal(run({sea: true}, 'logistics.js').data.selectedUnit.addToArmy.options[0].commanderId, 30);
+  assert.equal(run({sea: true, mode: 'leave'}, 'logistics.js').data.selectedUnit.removeFromArmy.options[0].availableNow, true);
+  for (const mode of ['join', 'leave']) {
+    assert.deepEqual(run({sea: true, mode, landTile: true}, 'logistics.js').data.selectedUnit[mode === 'join' ? 'addToArmy' : 'removeFromArmy'].options, []);
+  }
 });

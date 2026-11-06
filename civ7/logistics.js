@@ -103,7 +103,8 @@
           failureReasons: (wind?.FailureReasons ?? []).map(name).filter(Boolean)};
       }
     }
-    if (!unit.isCommanderUnit && def?.Domain === "DOMAIN_LAND" && def.Packable === true && packingKnown && typeof Game.UnitCommands?.canStart === "function") {
+    if (!unit.isCommanderUnit && ["DOMAIN_LAND", "DOMAIN_SEA"].includes(def?.Domain) && def.Packable === true && packingKnown && typeof Game.UnitCommands?.canStart === "function" &&
+        (def.Domain !== "DOMAIN_SEA" || def.FormationClass === "FORMATION_CLASS_NAVAL")) {
       const membershipCommand = packedBy.has(unit.id.id) ? "UNITCOMMAND_REMOVE_FROM_ARMY" : "UNITCOMMAND_ADD_TO_ARMY";
       const leaving = packedBy.has(unit.id.id), commanderId = packedBy.get(unit.id.id) ?? null;
       const sourceCommander = leaving ? byId.get(commanderId) : null;
@@ -117,9 +118,13 @@
             GameplayMap.getRevealedState(id, l.x, l.y) !== RevealedStates.VISIBLE || typeof GameplayMap.getOwner !== "function" ||
             ![-1, id].includes(GameplayMap.getOwner(l.x, l.y))) continue;
         const targets = leaving ? [sourceCommander] : records.map(r => r.unit).filter(c => deployed(c) &&
-          GameInfo.Units.lookup(c.type)?.Domain === "DOMAIN_LAND" && c.location.x === l.x && c.location.y === l.y);
+          GameInfo.Units.lookup(c.type)?.Domain === def.Domain && c.location.x === l.x && c.location.y === l.y);
         if (targets.length !== 1 || !valid(targets[0].location) || typeof GameplayMap.getPlotDistance !== "function") continue;
         const c = targets[0];
+        if (GameInfo.Units.lookup(c.type)?.Domain !== def.Domain || (def.Domain === "DOMAIN_SEA" &&
+            (c.isFleetCommander !== true || typeof GameplayMap.isWater !== "function" ||
+              GameplayMap.isWater(c.location.x, c.location.y) !== true || GameplayMap.isWater(l.x, l.y) !== true ||
+              (!leaving && GameplayMap.isWater(unit.location.x, unit.location.y) !== true)))) continue;
         if (leaving) {
           if (GameplayMap.getPlotDistance(c.location.x, c.location.y, l.x, l.y) !== 1 || typeof MapUnits === "undefined" ||
               !Array.isArray(MapUnits.getUnits(l.x, l.y)) || MapUnits.getUnits(l.x, l.y).length !== 0) continue;

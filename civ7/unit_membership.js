@@ -1,7 +1,7 @@
 (() => {
-  const {mode, unit_id: unitId, commander_id: commanderId, x, y, expected_turn: expectedTurn} = queryArguments;
+  const {mode, unit_id: unitId, commander_id: commanderId, x, y, expected_turn: expectedTurn, domain = "DOMAIN_LAND"} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["join", "leave"].includes(mode) || ![unitId, commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
+  if (!["DOMAIN_LAND", "DOMAIN_SEA"].includes(domain) || !["join", "leave"].includes(mode) || ![unitId, commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
       unitId === commanderId || (mode === "leave" && ![x, y].every(v => Number.isInteger(v) && v >= 0))) return reject("Distinct owned unit/commander IDs, supported membership action/tile and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
@@ -10,8 +10,9 @@
   const owned = player.Units.getUnits().filter(u => u.id.owner === playerId), units = owned.filter(u => u.id.id === unitId), commanders = owned.filter(u => u.id.id === commanderId);
   if (units.length !== 1 || commanders.length !== 1) return reject("Unique owned unit and commander identities are required");
   const unit = units[0], commander = commanders[0], def = GameInfo.Units.lookup(unit.type);
-  if (unit.isCommanderUnit || unit.isDead === true || def?.Packable !== true || def.Domain !== "DOMAIN_LAND" || commander.isCommanderUnit !== true ||
-      commander.isOnMap !== true || commander.isDead === true || GameInfo.Units.lookup(commander.type)?.Domain !== "DOMAIN_LAND") return reject("A packable land unit and deployed land commander are required");
+  if (unit.isCommanderUnit || unit.isDead === true || def?.Packable !== true || def.Domain !== domain || commander.isCommanderUnit !== true ||
+      commander.isOnMap !== true || commander.isDead === true || GameInfo.Units.lookup(commander.type)?.Domain !== domain ||
+      (domain === "DOMAIN_SEA" && (commander.isFleetCommander !== true || def.FormationClass !== "FORMATION_CLASS_NAVAL"))) return reject("A packable same-domain unit and deployed commander are required; fleet actions require a naval combat unit and Fleet Commander");
   function armies() {
     if (typeof Armies === "undefined" || typeof Armies.get !== "function") return null;
     const seen = new Set(), records = [];
@@ -40,7 +41,9 @@
   const valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) && l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();
   const destination = mode === "join" ? before.commanderLocation : {x, y};
   const visible = l => valid(l) && GameplayMap.getRevealedState(playerId, l.x, l.y) === RevealedStates.VISIBLE;
+  const water = l => valid(l) && typeof GameplayMap.isWater === "function" && GameplayMap.isWater(l.x, l.y) === true;
   if (!visible(before.commanderLocation) || !visible(destination) || ![-1, playerId].includes(GameplayMap.getOwner(destination.x, destination.y))) return reject("Commander and destination must be currently visible on an own/unowned destination");
+  if (domain === "DOMAIN_SEA" && (!water(before.commanderLocation) || !water(destination) || (mode === "join" && !water(before.unitLocation)))) return reject("Fleet commander, joining ship and deployment destination must be on water");
   if (mode === "join") {
     if (unit.isOnMap !== true || !visible(before.unitLocation) || GameplayMap.getPlotDistance(before.unitLocation.x, before.unitLocation.y, destination.x, destination.y) > 1 ||
         owned.filter(c => c.isCommanderUnit && c.isOnMap === true && c.location?.x === destination.x && c.location?.y === destination.y).length !== 1) return reject("Joining requires a deployed nearby unit and one unambiguous commander on the destination");
@@ -56,6 +59,7 @@
       commander.id.owner !== playerId || commander.id.type !== before.commanderComponentType || commander.type !== before.commanderType || commander.operationQueueSize !== 0 ||
       commander.location.x !== before.commanderLocation.x || commander.location.y !== before.commanderLocation.y ||
       JSON.stringify(armies()) !== JSON.stringify(baseline) || !visible(destination) || ![-1, playerId].includes(GameplayMap.getOwner(destination.x, destination.y)) ||
+      (domain === "DOMAIN_SEA" && (!water(before.commanderLocation) || !water(destination) || (mode === "join" && !water(before.unitLocation)))) ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1 ||
       (mode === "join" ? unit.isOnMap !== true || unit.location.x !== before.unitLocation.x || unit.location.y !== before.unitLocation.y : MapUnits.getUnits(x, y)?.length !== 0)) return reject("Unit, commander, membership, destination or game context changed during validation");
   const expectedArmies = baseline.map(a => ({...a, packedUnitIds: a.commanderId !== commanderId ? a.packedUnitIds :

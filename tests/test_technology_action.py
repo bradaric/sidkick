@@ -160,6 +160,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "overrun_civ7_unit",
             "grant_civ7_second_wind",
             "ranged_attack_civ7_enemy_field",
+            "join_civ7_fleet", "leave_civ7_fleet",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

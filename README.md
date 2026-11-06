@@ -1039,6 +1039,22 @@ no manufactured positive execution is claimed. **176 Python / 336 Node tests
 pass; write mode63 tools (40 actions), default23 read-only tools unchanged.**
 Army-wide upgrades remain pending: no eligible native aggregate quote was available.
 
+#### Individual fleet join/leave
+
+`join_civ7_fleet(unit_id, commander_id, expected_turn)` and
+`leave_civ7_fleet(unit_id, commander_id, x, y, expected_turn)` use exact same-domain
+naval membership. Requires a Fleet Commander, a packable naval combat ship, water
+locations and the existing adjacency/visibility/native offered-and-selected checks.
+Leaving requires an empty adjacent visible own/unowned water tile. All other own
+army memberships must be preserved. Civilian ships, air units, land-unit transport,
+implicit transfers and full-fleet pack/unpack are not covered by these tools.
+Selected naval logistics now reports exact checked join/leave options.
+
+Live T62: Dreadnought3342357 joined Fleet Commander131073 at `(46,30)` then left
+back to its original `(47,30)` water tile, with both land armies unchanged.
+Movement was privately restored; no turns advanced. **176 Python / 338 Node tests
+pass; write mode65 tools (42 actions), default23 read-only tools unchanged.**
+
 ## One-shot export
 
 ```powershell

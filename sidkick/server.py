@@ -16,6 +16,8 @@ from civ7.actions import (
     ranged_attack_enemy_field,
     join_commander,
     leave_commander,
+    join_fleet,
+    leave_fleet,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -235,6 +237,31 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="join_civ7_fleet", title="Add one Civ VII ship to Fleet Commander",
+            description=("CHANGE GAME STATE: join exact owned naval combat unit_id to exact deployed "
+                         "Fleet Commander commander_id with fresh expected_turn. Requires adjacent/same-tile "
+                         "visible water locations, own/unowned commander tile, no queued/reinforcing source, "
+                         "known complete own army inventory and exact native offered/selected ADD_TO_ARMY "
+                         "permission. No pack-all, civilian ships, land/air units or implicit transfers. "
+                         "Verifies this member joined while every other captured army membership is unchanged. "
+                         "No turn advancement; submits once, polls read-only for 15 seconds and never retries "
+                         "unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(join_fleet)
+        server.tool(
+            name="leave_civ7_fleet", title="Deploy one Civ VII ship from fleet",
+            description=("CHANGE GAME STATE: deploy exact packed naval combat unit_id from exact "
+                         "Fleet Commander commander_id to adjacent empty visible own/unowned water x/y "
+                         "with fresh expected_turn. Requires known owner-qualified membership, no queued/"
+                         "reinforcing source and exact native offered/selected REMOVE_FROM_ARMY permission. "
+                         "Verifies exact ship/tile and preservation of every other captured own army member. "
+                         "No full-fleet unpack, land/air membership or turn advancement. Submits once, polls "
+                         "read-only for 15 seconds and never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(leave_fleet)
         server.tool(
             name="ranged_attack_civ7_enemy_field", title="Fire at Civ VII enemy-owned field unit",
             description=("CHANGE GAME STATE: one ranged attack by exact owned unit_id against exact wartime "
@@ -918,7 +945,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
             "withholds destinations, not native permission. A selected deployed commander also "
             "reports native pack-nearby permission and exact checked unpack destinations restricted "
-            "to currently visible owned plots. A selected packable land unit also reports addToArmy "
+            "to currently visible owned plots. A selected packable land unit or naval combat ship also reports addToArmy "
             "or removeFromArmy with exact checked nearby-commander or individual deployment options "
             "on empty visible own/unowned leave tiles. Unknown commander membership "
             "stays unknown. Selected deployed land commanders additionally report secondWind native "

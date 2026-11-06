@@ -9,6 +9,8 @@ from sidkick.server import create_server
 CASES = [
     ('join_civ7_commander', 'join_commander', (10, 30, 62), {'mode': 'join', 'unit_id': 10, 'commander_id': 30, 'expected_turn': 62}),
     ('leave_civ7_commander', 'leave_commander', (10, 30, 2, 3, 62), {'mode': 'leave', 'unit_id': 10, 'commander_id': 30, 'x': 2, 'y': 3, 'expected_turn': 62}),
+    ('join_civ7_fleet', 'join_fleet', (10, 30, 62), {'mode': 'join', 'unit_id': 10, 'commander_id': 30, 'expected_turn': 62, 'domain': 'DOMAIN_SEA'}),
+    ('leave_civ7_fleet', 'leave_fleet', (10, 30, 2, 3, 62), {'mode': 'leave', 'unit_id': 10, 'commander_id': 30, 'x': 2, 'y': 3, 'expected_turn': 62, 'domain': 'DOMAIN_SEA'}),
 ]
 
 
@@ -17,7 +19,7 @@ class MembershipTests(unittest.IsolatedAsyncioTestCase):
         for _, fn, args, arguments in CASES:
             self.assertTrue(callable(getattr(actions, fn, None)))
             before = {'turn': 62, 'age': 42, 'playerId': 0}
-            expected = {'unitId': 10, 'packed': fn == 'join_commander', 'armies': []}
+            expected = {'unitId': 10, 'packed': fn in ('join_commander', 'join_fleet'), 'armies': []}
             captured = {**arguments, 'baseline_armies': []}
             with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=[
                 {'status': 'submitted', 'before': before, 'expected': expected, 'verificationArguments': captured}, {**before, **expected}]) as run:
@@ -35,7 +37,7 @@ class MembershipTests(unittest.IsolatedAsyncioTestCase):
             with patch('civ7.actions.run_script', new_callable=AsyncMock) as run:
                 with self.assertRaises(ValueError): await getattr(actions, fn)(True, *args[1:])
                 with self.assertRaises(ToolError):
-                    await create_server(enable_writes=True).call_tool(name, {k: True if k == 'expected_turn' else v for k, v in arguments.items() if k != 'mode'})
+                    await create_server(enable_writes=True).call_tool(name, {k: True if k == 'expected_turn' else v for k, v in arguments.items() if k not in ('mode', 'domain')})
                 run.assert_not_awaited()
 
     async def test_membership_uncertainty_and_noops_never_retry(self):
