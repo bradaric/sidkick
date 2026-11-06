@@ -1505,6 +1505,15 @@ identity/owner, physical road destruction or full connectivity claim. No eligibl
 ready live source found; no plunder request submitted, positive case fixture-only.
 **226 Python / 409 Node pass; tools23/102 (79 actions).**
 
+`choose_civ7_extended_narrative` supports acknowledged trial-head choices and paid
+choices only with matching known Gold/Influence currency, native affordability and
+an actual runtime Cost quote under a cap. Missing quote/currency rejects; definition
+prices never substitute. Trial readout now models native linked/requisite options.
+Readback verifies exact instance consumption and net spend, not full scripted
+rewards/gross debit or Age effects. Current Modern has no pending paid story or
+TRIAL definition; positive cases remain fixture-only, no narrative mutation sent.
+**227 Python / 410 Node pass; tools23/103 (80 actions).**
+
 ## One-shot export
 
 ```powershell

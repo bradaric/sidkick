@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def choose_extended_narrative(instance_id: StrictInt, instance_type: StrictInt, choice: StrictStr, expected_turn: StrictInt, max_cost: StrictFloat, cost_yield: Literal["YIELD_GOLD", "YIELD_DIPLOMACY"] | None = None, allow_trial: StrictBool = False) -> dict[str, Any]:
+    """Choose an exact trial or paid narrative option only under explicit acknowledgement/native runtime cap."""
+    if (any(type(v) is not int or v<0 for v in (instance_id,instance_type,expected_turn)) or not isinstance(choice,str) or not choice.strip() or type(max_cost) not in (int,float) or not math.isfinite(max_cost) or max_cost<0 or cost_yield not in (None,"YIELD_GOLD","YIELD_DIPLOMACY") or type(allow_trial) is not bool):
+        raise ValueError("Exact narrative instance/choice, supported currency cap/trial acknowledgement and expected turn required")
+    return await _execute_and_verify("choose_narrative.js",{"instance_id":instance_id,"instance_type":instance_type,"choice":choice.strip(),"expected_turn":expected_turn,"extended":True,"max_cost":max_cost,"cost_yield":cost_yield,"allow_trial":allow_trial},"narrative_state.js")
+
+
 async def plunder_trade_route(unit_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Use installed current-tile trade plunder; native selects the eligible route, never a physical road."""
     if any(type(v) is not int or v<0 for v in (unit_id,expected_turn)):

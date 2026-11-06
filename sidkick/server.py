@@ -58,6 +58,7 @@ from civ7.actions import (
     peace_deal_action,
     levy_city_state_unit,
     plunder_trade_route,
+    choose_extended_narrative,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -274,6 +275,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="choose_civ7_extended_narrative",title="Choose capped paid or acknowledged trial narrative",
+            description=("CHANGE GAME STATE: exact owned pending narrative instance_id/instance_type, choice "
+                         "and expected_turn, finite max_cost, optional cost_yield YIELD_GOLD/YIELD_DIPLOMACY "
+                         "and allow_trial acknowledgement. Trial requires allow_trial=true and exact current "
+                         "native discovery/trial head. Paid choice requires known matching definition currency, "
+                         "native canAfford, actual selected-operation runtime Cost quote under cap and known "
+                         "balance; definition price alone or missing runtime quote rejects. No confirmation "
+                         "bypass. Verifies exact pending instance consumed and net spending within cap, not "
+                         "full scripted rewards/gross debit or trial/Age-transition effects. No turn advance. "
+                         "One submission; never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(choose_extended_narrative)
         server.tool(
             name="plunder_civ7_trade_route",title="Plunder native-selected Civ VII trade route at unit",
             description=("CHANGE GAME STATE: installed fixed PLUNDER_TRADE_ROUTE command by exact ready "

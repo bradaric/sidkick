@@ -13,5 +13,12 @@
     const story = stories.find(pending[0]);
     if (!story || GameInfo.NarrativeStories.lookup(story.type)?.NarrativeStoryType !== storyType) throw Error("Pending narrative identity changed");
   }
-  return {turn: Game.turn, age: Game.age, playerId, instanceId, instanceType, storyType, resolved: !pending.length};
+  const {cost_yield:yieldType,before_balance:balance,max_cost:cap}=queryArguments;
+  let payment={};
+  if(yieldType!==undefined){
+    const current=yieldType==="YIELD_GOLD"?player.Treasury?.goldBalance:yieldType==="YIELD_DIPLOMACY"?player.DiplomacyTreasury?.diplomacyBalance:null;
+    if(!Number.isFinite(balance)||!Number.isFinite(cap)||cap<0||!Number.isFinite(current))throw Error("Captured payment balance is unknown");
+    payment={netSpend:balance-current,netSpendWithinCap:balance-current<=cap};
+  }
+  return {turn: Game.turn, age: Game.age, playerId, instanceId, instanceType, storyType, resolved: !pending.length,...payment};
 })()

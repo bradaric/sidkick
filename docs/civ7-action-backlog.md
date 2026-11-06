@@ -480,6 +480,20 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   or forced verification success. Positive trade plunder remains an eligibility
   verification gap, implementation/fixtures are present. 226 Python / 409 Node
   pass; tools23/102 including79 actions. T62 unchanged.
+- `c9bfbaf`: installed trade plunder. Extended narrative choices implemented using
+  the authoritative trial UI's linked/requisite choices and same exact native story
+  direction operation. Trial requires explicit acknowledgement and the exact current
+  discovery/trial head. Paid choices require a known matching Gold/Influence currency,
+  native canAfford, actual selected-operation runtime Cost quote under the approved
+  cap and known balance; definition Cost alone or missing quote/currency rejects.
+  Default zero-cost/non-trial tool remains bounded. Confirmation also rejects.
+- Readout now models trial choices and distinguishes native runtime quote from
+  definition cost, with write-support flag. Readback proves pending instance consumed
+  and net-spend cap only; no full scripted reward/gross debit or trial/Age-effect
+  accounting. Current pending queue empty, no active/archived paid parent223A/208A
+  found and zero TRIAL definitions in active Modern rules. No narrative mutation
+  submitted; positive paid/trial execution unavailable here, fixtures cover it.
+- 227 Python / 410 Node pass; tools23/103 including80 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -490,7 +504,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
-| Diplomacy/choices | Project support withdrawal/cancellation, general secondary targets/concession deals, paid/trial narrative and remaining hostile/mandatory variants remain. Exact city-state levies implemented and native receipt verified; independent befriending and pending bonus choices implemented, positive live cases unavailable. |
+| Diplomacy/choices | Project support withdrawal/cancellation, general secondary targets/concession deals and remaining hostile/mandatory variants remain. Capped paid/acknowledged trial narrative handlers implemented; missing quote/currency rejects and positive active-Age case unavailable. Exact levies live-verified; independent befriending and pending bonus choices implemented, positive live cases unavailable. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

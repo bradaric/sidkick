@@ -73,9 +73,8 @@
       location: safeLocation(stories.getStoryPlotCoord(storyId)),
       choices: null
     };
-    if (def.UIActivation === "TRIAL") {
-      event.choicesUnavailableReason = "Trial-specific choices are not modeled";
-    } else {
+    event.trialRequiresAcknowledgement=def.UIActivation==="TRIAL";
+    {
       const links = def.VariableLinks ? stories.getOrderedLinks(storyId) ?? []
         : GameInfo.NarrativeStory_Links.filter(value => value.FromNarrativeStoryType === def.NarrativeStoryType)
           .map(value => value.ToNarrativeStoryType);
@@ -99,7 +98,9 @@
       event.choices = choices.map(choice => {
         const result = Game.PlayerOperations.canStart(playerId, PlayerOperationTypes.CHOOSE_NARRATIVE_STORY_DIRECTION,
           {TargetType: choice.id, Target: storyId, Action: PlayerOperationParameters.Activate}, false);
-        return {...choice, quotedCost: null, operationAllowed: Boolean(result?.Success),
+        const quote=Number.isFinite(result?.Cost)&&result.Cost>=0?{yield:choice.baseCost?.yield??null,amount:result.Cost}:null;
+        return {...choice, quotedCost:quote, operationAllowed: Boolean(result?.Success),
+          supportedByExtendedTool:choice.baseCost?.amount===0||quote!==null&&["YIELD_GOLD","YIELD_DIPLOMACY"].includes(quote.yield),
           availableNow: choice.canAfford && Boolean(result?.Success),
           failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
       });
