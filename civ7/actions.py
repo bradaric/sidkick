@@ -195,6 +195,14 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def connect_merchant_road(unit_id: StrictInt, target_city_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Create an exact native-offered new owned-city road connection without movement fallback."""
+    if any(type(v) is not int or v<0 for v in (unit_id,target_city_id,expected_turn)):
+        raise ValueError("Exact Merchant, target city and expected turn required")
+    return await _execute_and_verify("connect_merchant_road.js",{"unit_id":unit_id,"target_city_id":target_city_id,"expected_turn":expected_turn},
+        "merchant_road_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def resettle_migrant(unit_id: StrictInt, x: StrictInt, y: StrictInt, improvement: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Consume one exact Migrant into an explicitly chosen native expansion tile/improvement."""
     if any(type(v) is not int or v<0 for v in (unit_id,x,y,expected_turn)) or not isinstance(improvement,str) or not improvement:

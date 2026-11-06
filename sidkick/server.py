@@ -44,6 +44,7 @@ from civ7.actions import (
     choose_city_state_bonus,
     local_civilian_action,
     resettle_migrant,
+    connect_merchant_road,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -260,6 +261,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="connect_civ7_merchant_road",title="Connect owned Civ VII cities by Merchant road",
+            description=("CHANGE GAME STATE: native CONNECT_WITH_ROAD by exact ready deployed Merchant "
+                         "unit_id at a visible owned city centre to exact visible owned target_city_id centre, "
+                         "fresh expected_turn. Requires currently disconnected endpoints, known unpacked/"
+                         "nonreinforcing source and exact native offered/selected permission without extra "
+                         "cost/confirmation. No guessed path, foreign destination or MOVE_TO fallback. Verifies "
+                         "Merchant consumption/movement spend plus new bidirectional endpoint connection and "
+                         "preserved prior links, not every road hex. No turn advancement. One submission, "
+                         "15-second readback; never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(connect_merchant_road)
         server.tool(
             name="resettle_civ7_migrant",title="Resettle Civ VII Migrant into chosen improvement",
             description=("CHANGE GAME STATE: consume exact ready owned Migrant unit_id into exact "

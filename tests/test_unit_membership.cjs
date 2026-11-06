@@ -22,11 +22,12 @@ function run(o = {}, script = 'unit_membership.js') {
       commander_type: 300, commander_component_type: 26, baseline_armies: baseline, ...o.args},
     UI: {isInGame: () => true}, Locale: {compose: x => x}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => o.missing ? owned.slice(1) : owned},
+      Cities:{getCities:()=>[{id:{owner:0,id:7,type:1},name:'Target',location:{x:3,y:3}}]},
       Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 30 : -1}})},
     Armies: {get: id => ({owner: o.foreignArmy ? 1 : 0, localId: id.id,
       getCommanderId: () => component(id.id), getUnitIds: () => o.unknownArmy ? null :
         id.id === 30 ? [component(11), ...(packed ? [component(10)] : [])] : []})},
-    GameInfo: {Constructibles:{lookup:()=>({ConstructibleType:'IMPROVEMENT_TEST',ConstructibleClass:'IMPROVEMENT'})},Units: {lookup: type => ({UnitType:o.migrant&&type===100?'UNIT_MIGRANT':`UNIT_${type}`,Domain: o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+    GameInfo: {Constructibles:{lookup:()=>({ConstructibleType:'IMPROVEMENT_TEST',ConstructibleClass:'IMPROVEMENT'})},Units: {lookup: type => ({UnitType:o.merchant&&type===100?'UNIT_MERCHANT':o.migrant&&type===100?'UNIT_MIGRANT':`UNIT_${type}`,Domain: o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
       FormationClass: o.civilian ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_NAVAL', Packable: !o.notPackable})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getPlotDistance: () => o.distant ? 2 : o.origin ? 0 : 1,
       getIndexFromLocation: l => l.x + l.y * 10, getRevealedState: () => o.hidden ? 0 : 2,
@@ -132,4 +133,9 @@ test('selected naval logistics exposes checked same-domain fleet join/leave only
 test('selected Migrant logistics exposes visible native expansion choices and exact improvement IDs',()=>{
   const r=run({migrant:true},'logistics.js');assert.equal(r.data.selectedUnit.resettle.options[0].improvement,'IMPROVEMENT_TEST');
   assert.equal(run({migrant:true,hidden:true},'logistics.js').data.selectedUnit.resettle.options.length,0);
+});
+
+test('selected Merchant logistics exposes only visible owned native road city endpoints',()=>{
+  assert.equal(run({merchant:true},'logistics.js').data.selectedUnit.connectWithRoad.options[0].targetCityId,7);
+  assert.deepEqual(run({merchant:true,hidden:true},'logistics.js').data.selectedUnit.connectWithRoad.options,[]);
 });

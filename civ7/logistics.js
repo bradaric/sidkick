@@ -130,6 +130,17 @@
           failureReasons: (wind?.FailureReasons ?? []).map(name).filter(Boolean)};
       }
     }
+    if (def?.UnitType === "UNIT_MERCHANT" && typeof Game.UnitCommands?.canStart === "function") {
+      const result=deployed(unit)?Game.UnitCommands.canStart(unit.id,"UNITCOMMAND_CONNECT_WITH_ROAD",{},false):null,plots=new Set(result?.Plots??[]),options=[];
+      for(const city of player.Cities.getCities().filter(c=>c.id.owner===id)){
+        const l=city.location;
+        if(!valid(l)||GameplayMap.getRevealedState(id,l.x,l.y)!==RevealedStates.VISIBLE||GameplayMap.getOwner(l.x,l.y)!==id||!plots.has(GameplayMap.getIndexFromLocation(l)))continue;
+        const check=Game.UnitCommands.canStart(unit.id,"UNITCOMMAND_CONNECT_WITH_ROAD",{X:l.x,Y:l.y},false);
+        options.push({targetCityId:city.id.id,name:name(city.name),location:{x:l.x,y:l.y},availableNow:result?.Success===true&&check?.Success===true&&check.RequiresConfirmation!==true,
+          failureReasons:(check?.FailureReasons??[]).map(name).filter(Boolean)});
+      }
+      selectedUnit.connectWithRoad={operationAllowed:result?.Success===true,options,scope:"Visible owned native endpoints; mutation separately checks missing connection and exact source city"};
+    }
     if (def?.UnitType === "UNIT_MIGRANT" && typeof Game.UnitCommands?.canStart === "function") {
       const result = deployed(unit) ? Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_RESETTLE", {}, false) : null;
       const options = [], seen = new Set();

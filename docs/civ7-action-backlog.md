@@ -300,6 +300,17 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Copan, exact improvement and population increase to42 verified; pending remains0.
   No guessed city-centre resettle was submitted. 213 Python / 391 Node pass;
   tools23/88 including65 actions, still T62/no Gold spend.
+- `eff7d2d`: Migrant expansion. Merchant roads implemented with exact owned visible
+  source/target centres, known ready unpacked/nonreinforcing Merchant, currently
+  missing endpoint connection, native CONNECT_WITH_ROAD offered/selected permission,
+  no extra quoted cost/confirmation or MOVE_TO fallback. Verifies consumption/spend
+  and new bidirectional endpoint connection while preserving prior endpoint links;
+  not every road hex. Selected Merchant logistics exposes eligible visible native
+  endpoint IDs. Already-connected endpoints reject rather than falsely claiming a
+  newly built road from an old naval/land connection.
+- Synthetic Merchant5701696 normally connected Copan65536 to Ur524295, consumed
+  Merchant and new bidirectional connection verified. Original3473432 untouched.
+  214 Python / 393 Node pass; tools23/89 including66 actions; T62/no Gold spend.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

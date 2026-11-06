@@ -1391,6 +1391,14 @@ exact improvement and source-city population/pending growth. Live5570622 became
 Fishing Boat17694949 `(27,12)`, Copan population increased to42, pending0.
 **213 Python / 391 Node pass; tools23/88 (65 actions).**
 
+`connect_civ7_merchant_road` binds a ready Merchant at one owned visible centre to
+another owned visible native-offered centre, with a currently missing connection.
+No movement fallback, foreign endpoint, extra quoted cost or confirmation. Readback
+requires consumption/spend and a new bidirectional endpoint connection with old
+links preserved, not every road hex. Selected Merchant logistics lists endpoints.
+Live synthetic5701696 connected Copan–Ur and was consumed; original Merchant was
+untouched. **214 Python / 393 Node pass; tools23/89 (66 actions).**
+
 ## One-shot export
 
 ```powershell
