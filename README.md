@@ -1704,6 +1704,16 @@ Latest MilitaryGreatPerson T62 checkpoint confirmed RESULT_OK; original Merchant
 Gold2081.33984375, Influence54.82421875 and alliance1 intact.
 **251 Python / 454 Node pass; tools24/126 (102 actions).**
 
+Commander Great Person activation also accepts `effect="heal"` for Morelos. Native
+tests showed healing beyond the selected Army's radius, including distant packed
+units; readback now reports additional owned heals instead of promising outside
+health stays unchanged. Distinct synthetic-injury case verified primary and wider
+healing, source retirement and preserved experience/ledgers/balances. Earlier
+exclusive-radius checks remain UNKNOWN and were not retried. Exact future/ongoing
+healing semantics remain unproven; no turn advanced or healing result forced.
+New Morelos T62 save confirmed RESULT_OK; original Merchant/balances/alliance intact.
+**252 Python / 455 Node pass; tool counts unchanged.**
+
 ## One-shot export
 
 ```powershell

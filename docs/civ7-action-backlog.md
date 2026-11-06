@@ -872,6 +872,37 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   confirmed RESULT_OK/no overwrite. Original Merchant3473432 `(18,20)`/100HP,
   Gold2081.33984375, Influence54.82421875 and alliance1 independently intact. Earlier
   unsuccessful Town setup remains empty; no delayed capture or setup retry claimed.
+- `3714457`: exact Santa Anna effects. Existing Commander Great Person tool now
+  accepts explicit `effect="heal"` for Morelos, retaining default promotion behavior.
+  Requires actual no-cost single-charge profile/native English quote, exact Army
+  target, native radius and complete owned-health/membership ledger. Requires a
+  wounded selected-radius recipient (including known packed projection), preserves
+  target experience, source retirement, unit identities/armies/balances. Readback
+  accounts for unchanged health or native99 damage reduction, reporting additional
+  owned-unit healing outside the selected radius separately. Unexpected damage,
+  partial/unexplained health changes or identity/max-health changes stay unknown.
+- Native evidence corrected a false assumption: selected radius is not an exclusive
+  effect boundary. Morelos9175156 retired/healed actual14-damaged packed7274583 but
+  first full health check failed; original outcome remains UNKNOWN, never retried.
+  Tank7340120 subsequently healed after moving into that area without a second
+  activation; not normal turn healing or proof of exact persistence semantics.
+- Distinct isolated9306230→Commander8978545 with explicitly debug-injured deployed
+ 9371767 healed14→0 and full owned-health audit passed. Separate9437304→9109619
+  healed packed9371767 but also distant packed7274583: audit proved selected14→0
+  and remote7→0, so exclusive-radius prediction returned UNKNOWN, never repeated.
+  Native data has COLLECTION_PLAYER_UNITS / REQUIREMENT_PLOT_IN_COMMAND_RADIUS /
+  Amount=-99 / ApplyToArmy=true; exact broader/future eligibility remains unproven.
+- Regression now models observed wider healing explicitly, not an unchanged-outside
+  promise. Distinct source9240693 (earlier rejected before submission) activated once
+  on7602268 with labelled synthetic packed injuries14 selected/7 remote. Primary
+  healed7274583 plus additional9371767 reported separately; full audit, retirement,
+  experience/inventory/armies/balances verified. This is synthetic injury/native
+  execution proof, not natural injury or future/no-turn-healing verification. No
+  forced healing, original unknown-source resubmission or turn advancement.
+- 252 Python /455 Node pass; tools24/126 including102 actions unchanged. Separate
+  `Sidkick_Playground_GroupOneMorelos_T62_1794003553486` confirmed RESULT_OK, no
+  overwrite. Merchant3473432 `(18,20)`/100HP, Gold2081.33984375,
+  Influence54.82421875 and alliance1 independently intact; still T62.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -881,7 +912,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
 | Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Observed Sweep and fortified Carpet Bomb now verified; fortified naval positive remains native-blocked. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
-| Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Proper Great Person activation now positive native, plus exact Santa Anna Commander effect accounting. Other effect-specific GP profiles remain unimplemented, not verification-only. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
+| Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Santa Anna promotion and Morelos primary/wider-owned healing effect accounting implemented/native-verified with labelled synthetic prerequisites. Other effect-specific GP profiles remain unimplemented, not verification-only. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
 | Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel and five Modern espionage variants now implemented; current eligibility blocks positive tests. Own-war support, capped cancellation/2→1 withdrawal verified. First-meet/other unimplemented mandatory variants must remain distinct from paid/trial/independent/bonus positive gaps. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
