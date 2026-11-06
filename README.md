@@ -1070,6 +1070,28 @@ checked nearby cities offer no air purchases. MCP type rejection was verified wi
 a naval unit, not presented as aircraft execution coverage. **179 Python / 341
 Node tests pass; write mode66 tools (43 actions), default23 read-only unchanged.**
 
+#### Full-fleet drill and deployment readback
+
+The existing `pack_civ7_commander`, `move_civ7_commander` and
+`unpack_civ7_commander` tools have now been exercised on a Fleet Commander, not
+only land armies. Native capacity selected four nearby ships, a packed water-tile
+round trip preserved all four, and full deployment emptied the fleet and deployed
+all four. The fifth nearby ship stayed outside the full fleet. Initial movement
+readiness was privately restored; no turns advanced.
+
+The first unpack returned unknown at the two-second deadline, then later read-only
+inspection proved full deployment. It was not repeated. Pack/unpack now use the
+existing15-second commander verification window; ordinary action deadlines remain
+unchanged. A distinct second native pack/unpack verified through MCP in0.225/0.198s;
+the delayed-application regression, not that fast live call, exercises the extended
+window. Native unit placement is engine-selected, not an exact per-member tile claim.
+
+**181 Python / 341 Node tests pass.** Final native save
+`Sidkick_Playground_AfterAirNavalLogistics_T62_1793966046841` confirmed RESULT_OK,
+no overwrite. Still T62; Gold and original Merchant unchanged. Fleet commander
+at `(46,30)` is empty, and all five nearby combat ships are deployed with queue0
+and HP100. Other land armies retain their members.
+
 ## One-shot export
 
 ```powershell

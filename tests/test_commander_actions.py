@@ -14,6 +14,28 @@ CASES = [
 
 
 class CommanderActionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_pack_and_unpack_use_commander_window_not_ordinary_two_second_deadline(self):
+        for _, fn, positional, arguments, field in CASES[:2]:
+            with patch('civ7.actions._execute_and_verify', new_callable=AsyncMock, return_value={}) as execute:
+                await getattr(actions, fn)(*positional)
+                self.assertEqual(execute.await_args.kwargs, {'verification_timeout': actions._COMBAT_VERIFICATION_TIMEOUT})
+
+    async def test_delayed_pack_and_unpack_are_read_back_without_resubmitting(self):
+        for _, fn, positional, _, field in CASES[:2]:
+            before = {'turn': 62, 'age': 42, 'playerId': 0}
+            expected = {'commanderId': 10, field: True}
+
+            async def response(script, *args):
+                if script == 'commander_action.js':
+                    return {'status': 'submitted', 'before': before, 'expected': expected}
+                await asyncio.sleep(0.03)
+                return {**before, **expected}
+
+            with patch('civ7.actions._VERIFICATION_TIMEOUT', 0.01), patch('civ7.actions._COMBAT_VERIFICATION_TIMEOUT', 0.2), patch(
+                    'civ7.actions.run_script', side_effect=response) as run:
+                self.assertEqual((await getattr(actions, fn)(*positional))['status'], 'verified_applied')
+                self.assertEqual([call.args[0] for call in run.await_args_list], ['commander_action.js', 'commander_action_state.js'])
+
     async def test_commander_wrappers_use_single_submission_and_captured_membership_verification(self):
         for _, fn, positional, arguments, field in CASES:
             self.assertTrue(callable(getattr(actions, fn, None)))

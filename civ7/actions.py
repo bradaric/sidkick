@@ -378,7 +378,7 @@ async def pack_commander(commander_id: StrictInt, expected_turn: StrictInt) -> d
         raise ValueError("An owned commander ID and expected turn are required")
     return await _execute_and_verify("commander_action.js", {
         "mode": "pack", "commander_id": commander_id, "expected_turn": expected_turn,
-    }, "commander_action_state.js")
+    }, "commander_action_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
 async def unpack_commander(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
@@ -387,7 +387,7 @@ async def unpack_commander(commander_id: StrictInt, x: StrictInt, y: StrictInt, 
         raise ValueError("An owned commander, deployment tile and expected turn are required")
     return await _execute_and_verify("commander_action.js", {
         "mode": "unpack", "commander_id": commander_id, "x": x, "y": y, "expected_turn": expected_turn,
-    }, "commander_action_state.js")
+    }, "commander_action_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
 async def move_commander(

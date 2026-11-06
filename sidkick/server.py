@@ -436,7 +436,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "not per-unit selection. Requires verified owned army membership and native permission. "
                          "Verifies new captured-owned members entered the same army without losing existing "
                          "members. May consume movement/change unit orders. Requires user authorization for "
-                         "that whole pack-nearby action; submits once, never retries unknown/cancelled outcomes."),
+                         "that whole pack-nearby action; submits once, polls read-only for 15 seconds and never retries unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(pack_commander)
@@ -448,7 +448,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "individual member placement; not per-unit targeting. Verifies all previously packed "
                          "members are deployed and membership is empty; partial deployment remains unknown, "
                          "never auto-retried. No attacks, reinforcement or transport. Requires user authorization; "
-                         "submits once, never retries unknown/cancelled calls."),
+                         "submits once, polls read-only for 15 seconds and never retries unknown/cancelled calls."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(unpack_commander)
