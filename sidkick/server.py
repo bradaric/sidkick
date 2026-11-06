@@ -438,6 +438,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="leave_civ7_fleet", title="Deploy one Civ VII ship from fleet",
             description=("CHANGE GAME STATE: deploy exact packed naval combat unit_id from exact "
                          "Fleet Commander commander_id to adjacent empty visible own/unowned water x/y "
+                         "or its exact origin occupied only by that Fleet Commander "
                          "with fresh expected_turn. Requires known owner-qualified membership, no queued/"
                          "reinforcing source and exact native offered/selected REMOVE_FROM_ARMY permission. "
                          "Verifies exact ship/tile and preservation of every other captured own army member. "
@@ -525,7 +526,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="leave_civ7_commander", title="Remove one Civ VII unit from commander",
             description=("CHANGE GAME STATE: deploy exact packed land unit_id from exact commander_id to x/y "
                          "with fresh expected_turn. Requires verified owner-qualified membership, no queued or "
-                         "reinforcing source, an adjacent empty visible own/unowned native-offered plot and "
+                         "reinforcing source, an adjacent empty visible own/unowned native-offered plot "
+                         "or the exact origin occupied only by that commander, and "
                          "exact REMOVE_FROM_ARMY permission. Verifies this unit's deployment at the exact tile "
                          "and complete preservation of all other army memberships. No full-army unpack, "
                          "implicit transfers, foreign destinations or turn advancement. Requires exact-unit "

@@ -153,8 +153,13 @@
               GameplayMap.isWater(c.location.x, c.location.y) !== true || GameplayMap.isWater(l.x, l.y) !== true ||
               (!leaving && GameplayMap.isWater(unit.location.x, unit.location.y) !== true)))) continue;
         if (leaving) {
-          if (GameplayMap.getPlotDistance(c.location.x, c.location.y, l.x, l.y) !== 1 || typeof MapUnits === "undefined" ||
-              !Array.isArray(MapUnits.getUnits(l.x, l.y)) || MapUnits.getUnits(l.x, l.y).length !== 0) continue;
+          if (typeof MapUnits === "undefined") continue;
+          const distance = GameplayMap.getPlotDistance(c.location.x, c.location.y, l.x, l.y), ids = MapUnits.getUnits(l.x, l.y);
+          if (!Array.isArray(ids)) continue;
+          const origin = distance === 0 && c.location.x === l.x && c.location.y === l.y && ids.length === 1 &&
+            ids[0].owner === id && ids[0].id === c.id.id && ids[0].type === c.id.type &&
+            owned.filter(u => u.isOnMap === true && u.id.id !== unit.id.id && u.location?.x === l.x && u.location?.y === l.y).length === 1;
+          if (!(distance === 1 && ids.length === 0) && !origin) continue;
         } else if (GameplayMap.getPlotDistance(unit.location.x, unit.location.y, l.x, l.y) > 1) continue;
         const check = Game.UnitCommands.canStart(unit.id, membershipCommand, {X: l.x, Y: l.y}, false);
         options.push({commanderId: c.id.id, location: {x: l.x, y: l.y}, availableNow: result?.Success === true && check?.Success === true &&

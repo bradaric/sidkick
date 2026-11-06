@@ -8,7 +8,7 @@ function run(o = {}, script = 'unit_membership.js') {
   const calls = [], mode = o.mode ?? 'join', packed = mode === 'join' ? Boolean(o.applied) : !o.applied;
   const component = id => ({owner: 0, id, type: 26});
   const unit = {id: {...component(10), owner: o.foreign ? 1 : 0}, type: 100, isOnMap: !packed,
-    operationQueueSize: o.queued ? 1 : 0, location: packed ? {x: -9999, y: -9999} : {x: 2, y: 3},
+    operationQueueSize: o.queued ? 1 : 0, location: packed ? {x: -9999, y: -9999} : o.origin ? {x: 3, y: 3} : {x: 2, y: 3},
     Movement: {movementMovesRemaining: 2}};
   const commanders = [30, 40].map(id => ({id: component(id), type: 300, isCommanderUnit: true, isOnMap: true,
     isFleetCommander: !o.notFleet,
@@ -18,7 +18,7 @@ function run(o = {}, script = 'unit_membership.js') {
     packedUnitIds: mode === 'join' ? [11] : [10, 11]},
     {commanderId: 40, commanderType: 300, componentType: 26, armyId: 40, packedUnitIds: []}];
   const context = {queryArguments: {mode, unit_id: 10, commander_id: 30, expected_turn: 62,
-      ...(mode === 'leave' ? {x: 2, y: 3} : {}), unit_type: 100, component_type: 26,
+      ...(mode === 'leave' ? {x: o.origin ? 3 : 2, y: 3} : {}), unit_type: 100, component_type: 26,
       commander_type: 300, commander_component_type: 26, baseline_armies: baseline, ...o.args},
     UI: {isInGame: () => true}, Locale: {compose: x => x}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => o.missing ? owned.slice(1) : owned},
@@ -28,14 +28,16 @@ function run(o = {}, script = 'unit_membership.js') {
         id.id === 30 ? [component(11), ...(packed ? [component(10)] : [])] : []})},
     GameInfo: {Units: {lookup: type => ({Domain: o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
       FormationClass: o.civilian ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_NAVAL', Packable: !o.notPackable})}},
-    GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getPlotDistance: () => o.distant ? 2 : 1,
+    GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getPlotDistance: () => o.distant ? 2 : o.origin ? 0 : 1,
       getIndexFromLocation: l => l.x + l.y * 10, getRevealedState: () => o.hidden ? 0 : 2,
       getLocationFromIndex: i => ({x: i % 10, y: Math.floor(i / 10)}),
-      getOwner: () => o.foreignTile ? 1 : 0, isWater: () => !o.landTile}, RevealedStates: {VISIBLE: 2}, MapUnits: {getUnits: () => o.occupied ? [component(99)] : []},
+      getOwner: () => o.foreignTile ? 1 : 0, isWater: () => !o.landTile}, RevealedStates: {VISIBLE: 2},
+    MapUnits: {getUnits: () => o.occupied ? [component(99)] : o.origin ? [component(30)] : []},
     Game: {turn: 62, age: 42, UnitOperations: {canStart: () => ({Success: false, Plots: []})}, UnitCommands: {canStart: (id, command, args, exclusion) => {
       calls.push({kind: 'check', id, command, args, exclusion});
       if (o.changed) context.Game.turn++;
-      return {Success: !o.blocked, Plots: o.notOffered ? [] : [mode === 'join' ? 33 : 32], RequiresConfirmation: o.confirm};
+      if (o.changedOccupancy) o.occupied = true;
+      return {Success: !o.blocked, Plots: o.notOffered ? [] : [mode === 'join' || o.origin ? 33 : 32], RequiresConfirmation: o.confirm};
     }, sendRequest: (id, command, args) => {calls.push({kind: 'send', id, command, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   let data;
   try {data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7', script), 'utf8'), context);}
@@ -55,6 +57,20 @@ test('join and leave act on one exact unit and preserve every other captured arm
   }
   assert.equal(run({applied: true}).data.status, 'already_active');
   assert.equal(run({mode: 'leave', applied: true}).data.status, 'already_inactive');
+});
+
+test('individual deployment may use the exact commander origin only when no other unit occupies it', () => {
+  for (const sea of [false, true]) {
+    const args = sea ? {domain: 'DOMAIN_SEA'} : {};
+    const r = run({mode: 'leave', origin: true, sea, args}); assert.equal(r.data.status, 'submitted');
+    assert.deepEqual(r.data.expected.location, {x: 3, y: 3});
+    assert.deepEqual(run({mode: 'leave', origin: true, applied: true, sea, args}, 'unit_membership_state.js').data.location, {x: 3, y: 3});
+    assert.equal(run({mode: 'leave', origin: true, sea, args}, 'logistics.js').data.selectedUnit.removeFromArmy.options[0].availableNow, true);
+  }
+  for (const o of [{occupied: true}, {ambiguous: true}, {changedOccupancy: true}, {blocked: true}, {confirm: true}]) {
+    const r = run({mode: 'leave', origin: true, ...o}); assert.equal(r.data.status, 'rejected');
+    assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
+  }
 });
 
 test('membership rejects unknown, foreign, ambiguous, queued, reinforcing, stale and unsupported destinations', () => {

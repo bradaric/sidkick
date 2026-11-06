@@ -1297,6 +1297,13 @@ at least one participant fired; it does not imply every secondary attack finishe
 Negative/unknown counters are not proof of consumption. Kill/full-splash accounting
 remains excluded. **202 Python / 370 Node tests pass; tools23/77 (54 actions).**
 
+Individual land/fleet leave tools also accept their exact commander origin when
+native permission offers it and only that commander occupies the tile. Unrelated
+stacks/ambiguous commanders are rejected and occupancy is checked again before
+submission. Live Tank5177400 deployment at65536's origin restored the original
+Rifleman-only packed army with every other membership preserved. Naval-origin
+deployment is fixture-only. **202 Python / 371 Node tests pass; tools23/77.**
+
 ## One-shot export
 
 ```powershell

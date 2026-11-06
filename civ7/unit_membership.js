@@ -44,11 +44,18 @@
   const water = l => valid(l) && typeof GameplayMap.isWater === "function" && GameplayMap.isWater(l.x, l.y) === true;
   if (!visible(before.commanderLocation) || !visible(destination) || ![-1, playerId].includes(GameplayMap.getOwner(destination.x, destination.y))) return reject("Commander and destination must be currently visible on an own/unowned destination");
   if (domain === "DOMAIN_SEA" && (!water(before.commanderLocation) || !water(destination) || (mode === "join" && !water(before.unitLocation)))) return reject("Fleet commander, joining ship and deployment destination must be on water");
+  function deploymentClear() {
+    const ids = MapUnits.getUnits(x, y), distance = GameplayMap.getPlotDistance(before.commanderLocation.x, before.commanderLocation.y, x, y);
+    if (!Array.isArray(ids)) return false;
+    if (distance === 1) return ids.length === 0;
+    return distance === 0 && x === before.commanderLocation.x && y === before.commanderLocation.y && ids.length === 1 &&
+      ids[0].owner === playerId && ids[0].id === commanderId && ids[0].type === commander.id.type &&
+      owned.filter(u => u.isOnMap === true && u.id.id !== unitId && u.location?.x === x && u.location?.y === y).length === 1;
+  }
   if (mode === "join") {
     if (unit.isOnMap !== true || !visible(before.unitLocation) || GameplayMap.getPlotDistance(before.unitLocation.x, before.unitLocation.y, destination.x, destination.y) > 1 ||
         owned.filter(c => c.isCommanderUnit && c.isOnMap === true && c.location?.x === destination.x && c.location?.y === destination.y).length !== 1) return reject("Joining requires a deployed nearby unit and one unambiguous commander on the destination");
-  } else if (GameplayMap.getPlotDistance(before.commanderLocation.x, before.commanderLocation.y, x, y) !== 1 ||
-      !Array.isArray(MapUnits.getUnits(x, y)) || MapUnits.getUnits(x, y).length !== 0) return reject("Leaving requires an adjacent empty deployment plot");
+  } else if (!deploymentClear()) return reject("Leaving requires an adjacent empty plot or the exact origin occupied only by this commander");
   const command = mode === "join" ? "UNITCOMMAND_ADD_TO_ARMY" : "UNITCOMMAND_REMOVE_FROM_ARMY", args = {X: destination.x, Y: destination.y};
   const picker = Game.UnitCommands.canStart(unit.id, command, {}, false);
   if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation(destination))) return reject("Destination is not offered by the native membership picker", picker?.FailureReasons ?? []);
@@ -61,7 +68,7 @@
       JSON.stringify(armies()) !== JSON.stringify(baseline) || !visible(destination) || ![-1, playerId].includes(GameplayMap.getOwner(destination.x, destination.y)) ||
       (domain === "DOMAIN_SEA" && (!water(before.commanderLocation) || !water(destination) || (mode === "join" && !water(before.unitLocation)))) ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1 ||
-      (mode === "join" ? unit.isOnMap !== true || unit.location.x !== before.unitLocation.x || unit.location.y !== before.unitLocation.y : MapUnits.getUnits(x, y)?.length !== 0)) return reject("Unit, commander, membership, destination or game context changed during validation");
+      (mode === "join" ? unit.isOnMap !== true || unit.location.x !== before.unitLocation.x || unit.location.y !== before.unitLocation.y : !deploymentClear())) return reject("Unit, commander, membership, destination or game context changed during validation");
   const expectedArmies = baseline.map(a => ({...a, packedUnitIds: a.commanderId !== commanderId ? a.packedUnitIds :
     mode === "join" ? [...a.packedUnitIds, unitId].sort((a, b) => a - b) : a.packedUnitIds.filter(id => id !== unitId)}));
   const verificationArguments = {unit_id: unitId, commander_id: commanderId, component_type: before.componentType, unit_type: before.unitType,

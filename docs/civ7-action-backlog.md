@@ -169,6 +169,18 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   assignment retained. Native Tank leave offers only occupied origin/foreign tile;
   bounded adjacent-empty tool rejected, no removal submitted.
 - 202 Python + 370 Node tests pass; tools unchanged23/77 including54 actions.
+- Participant observation batch committed as `fa0ba2c`.
+- Individual land/fleet deployment now permits the exact commander origin only
+  when native offered/selected checks allow it and that tile contains precisely
+  the selected commander, with no other deployed unit or ambiguous commander.
+  Adjacent-empty alternatives retain their previous guards. Exact occupancy is
+  rechecked before submission; logistics exposes the same bounded option. This is
+  not arbitrary stacking, foreign entry or auto-unpack.
+- Actual MCP Tank5177400 individually left65536 at origin `(29,29)`, verified
+  deployed identity/location and complete army ledger. Original commander65536 is
+  restored to just packed Rifleman3080232; reinforcement3932172 untouched. Naval
+  origin variant is fixture-tested, not positively live-tested in this batch.
+- 202 Python + 371 Node tests pass; tools unchanged23/77 including54 actions.
 
 ## Existing baseline
 
