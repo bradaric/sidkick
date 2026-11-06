@@ -105,6 +105,26 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   196610 at `(18,21)`: attack1→0, district damage0→10. No district HP was forced.
   Original Merchant remains separate; no turn advanced.
 - 200 Python + 364 Node tests pass; default23 tools, write mode76 including53 actions.
+- District bombardment committed as `09d190d`.
+- Native Tuner UI `CREATE_ELEMENT` works where prior private Units.create did not.
+  All following cases are explicitly synthetic prerequisites, not natural production.
+  Created own Field Gun4390956 `(18,18)` and Franklin Rifleman4653101 `(17,20)`;
+  normal MCP enemy-field ranged attack verified attack1→0/damage0→21. Created
+  Franklin Frigate4718629 `(31,14)`; existing Dreadnought3407900 normally fired
+  MCP naval attack, attack1→0/damage0→31. Both previous positive-execution gaps closed.
+- Created Biplane4456493, Squadron Commander4522030 and city Aerodrome Commanders
+  4587567 St. Petersburg `(19,9)` / 4653104 Copan `(26,12)` through native Tuner.
+  First normal aircraft rebase submitted once and returned unknown: actual native
+  arrival stations aircraft off-map inside the destination Aerodrome, contradicting
+  old on-map/unchanged-membership verification. Arrival independently read, never
+  repeated. Fixed verifier captures exact city Aerodromes and expected source/
+  destination member delta, preserves all other armies, accepts only deployed or
+  captured city-Aerodrome source (not squadron/carrier). Distinct normal MCP return
+  rebase St. Petersburg → Copan verified aircraft4456493 in4653104, source empty,
+  health stable/queue0 and all other memberships preserved. Movement setup synthetic.
+- Pre-Tuner checkpoint `Sidkick_Playground_GroupOneBeforeTunerCases_T62_1793976618146`
+  confirmed RESULT_OK; no overwrite. No turns; Gold2131.33984375 unchanged.
+  200 Python + 365 Node tests pass; tools unchanged at23/76 including53 actions.
 
 ## Existing baseline
 
@@ -126,8 +146,8 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Queue cancellation/adjacent reorder and resource unassignment/swaps implemented; other items pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
-| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded land/fleet movement, pack/unpack, land/naval membership, reinforcement assignment and rail implemented; city-only rebase fixture-tested; further air/transport pending |
-| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged, Focus Fire/coordinated melee, native Overrun, enemy-field ranged and naval attack implemented; last three lack positive live coverage |
+| 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded land/fleet movement, pack/unpack, land/naval membership, reinforcement assignment, rail and city-Aerodrome rebase live-verified; further air/transport pending |
+| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Individual melee/ranged/naval/enemy-field, Focus Fire/coordinated melee, Heroic Assault and district bombardment live-verified; native Overrun still lacks positive execution |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | One More Turn tested through UI only; reusable boundary actions pending |
 
 Save/load recovery and WMD actions are separately scoped optional extensions.

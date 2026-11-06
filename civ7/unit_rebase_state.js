@@ -3,9 +3,10 @@
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
   if (!Number.isInteger(playerId) || playerId < 0 || !player) throw Error("No local player");
   const {unit_id: unitId, target_city_id: cityId, unit_type: unitType, component_type: componentType,
-    target_city_component_type: cityComponentType, destination, baseline_armies: baseline, before_damage: damage} = queryArguments;
+    target_city_component_type: cityComponentType, destination, baseline_armies: baseline, before_damage: damage,
+    expected_armies: expectedArmies = baseline, target_air_base: targetBase = null} = queryArguments;
   if (![unitId, cityId, componentType, cityComponentType, destination?.x, destination?.y].every(v => Number.isInteger(v) && v >= 0) ||
-      !Number.isInteger(unitType) || !Array.isArray(baseline) || !Number.isFinite(damage) || damage < 0 ||
+      !Number.isInteger(unitType) || !Array.isArray(baseline) || !Array.isArray(expectedArmies) || !Number.isFinite(damage) || damage < 0 ||
       destination.x >= GameplayMap.getGridWidth() || destination.y >= GameplayMap.getGridHeight()) throw Error("Invalid captured rebase identity/baseline");
   const owned = player.Units.getUnits().filter(u => u.id.owner === playerId), units = owned.filter(u => u.id.id === unitId);
   const cities = player.Cities.getCities().filter(c => c.id.owner === playerId && c.id.id === cityId);
@@ -22,10 +23,17 @@
   armies.sort((a, b) => a.commanderId - b.commanderId);
   if (new Set(armies.map(a => a.commanderId)).size !== armies.length) throw Error("Commander identity is ambiguous");
   const unit = units[0], city = cities[0];
-  const rebaseObserved = unit.isOnMap === true && unit.isDead !== true && unit.operationQueueSize === 0 && unit.Health?.damage === damage &&
-    unit.location?.x === destination.x && unit.location?.y === destination.y && city.location?.x === destination.x && city.location?.y === destination.y &&
+  const base = targetBase ? owned.find(u => u.id.id === targetBase.commanderId) : null;
+  const stationed = targetBase && base?.id.type === targetBase.componentType && base.type === targetBase.commanderType && base.isAerodromeCommander === true && base.isOnMap === true &&
+    base.location?.x === destination.x && base.location?.y === destination.y && unit.isOnMap === false && unit.armyId?.owner === playerId &&
+    unit.armyId.id === targetBase.armyId && unit.armyId.type === targetBase.armyComponentType &&
+    armies.find(a => a.commanderId === targetBase.commanderId)?.packedUnitIds.includes(unitId);
+  const deployed = !targetBase && unit.isOnMap === true && !seen.has(unitId) && unit.location?.x === destination.x && unit.location?.y === destination.y;
+  const rebaseObserved = Boolean((stationed || deployed) && unit.isDead !== true && unit.operationQueueSize === 0 && unit.Health?.damage === damage &&
+    city.location?.x === destination.x && city.location?.y === destination.y &&
     GameplayMap.getRevealedState(playerId, destination.x, destination.y) === RevealedStates.VISIBLE && GameplayMap.getOwner(destination.x, destination.y) === playerId &&
-    !seen.has(unitId) && JSON.stringify(armies) === JSON.stringify(baseline);
+    JSON.stringify(armies) === JSON.stringify(expectedArmies));
   return {turn: Game.turn, age: Game.age, playerId, unitId, targetCityId: cityId, rebaseObserved, armies,
-    location: unit.isOnMap === true ? {x: unit.location?.x, y: unit.location?.y} : null, queueSize: unit.operationQueueSize};
+    location: unit.isOnMap === true ? {x: unit.location?.x, y: unit.location?.y} : null,
+    stationedInAirBase: stationed ? targetBase.commanderId : null, queueSize: unit.operationQueueSize};
 })()

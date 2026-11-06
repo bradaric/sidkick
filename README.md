@@ -1249,6 +1249,23 @@ Live MCP Field Gun2818084 fired from `(18,19)` at city-centre district196610 on
 `(18,21)`: attack1→0 and district damage0→10, with no debug district damage.
 **200 Python / 364 Node tests pass; write mode76 tools (53 actions), default23 unchanged.**
 
+#### Aerodrome rebase correction and synthetic combat cases
+
+Native Tuner `CREATE_ELEMENT` enabled explicitly synthetic units/bases without
+advancing turns. Normal MCP enemy-field ranged fire (Field Gun4390956 → Franklin
+Rifleman4653101) verified21 damage; normal naval fire (existing Dreadnought3407900
+→ synthetic Frigate4718629) verified31 damage. Both consumed one attack normally.
+
+The first Biplane4456493 rebase reached a synthetic city Aerodrome but returned
+unknown: native arrival stations it inside the base, not on-map at city coordinates.
+That request was not repeated. Rebase now captures exact visible owned city bases,
+verifies stationing and precisely one aircraft's source/destination membership delta
+while preserving every other member. Sources may be deployed or city-Aerodrome
+stationed; squadron/carrier transfers remain excluded. A distinct normal MCP return
+from St. Petersburg to Copan verified4456493 stationed in4653104 with stable health,
+queue0 and all other armies preserved. Test-plane movement restoration was synthetic.
+**200 Python / 365 Node tests pass; tools unchanged at23/76 (53 actions).**
+
 ## One-shot export
 
 ```powershell

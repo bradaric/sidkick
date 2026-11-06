@@ -12,11 +12,11 @@
   const unit = units[0], city = cities[0], destination = {x: city.location?.x, y: city.location?.y};
   const valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) && l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();
   const visible = l => valid(l) && GameplayMap.getRevealedState(playerId, l.x, l.y) === RevealedStates.VISIBLE;
-  if (unit.isOnMap !== true || unit.isCommanderUnit || unit.isDead === true || unit.operationQueueSize !== 0 ||
+  if (unit.isCommanderUnit || unit.isDead === true || unit.operationQueueSize !== 0 ||
       GameInfo.Units.lookup(unit.type)?.Domain !== "DOMAIN_AIR" || GameInfo.Units.lookup(unit.type)?.FormationClass !== "FORMATION_CLASS_AIR" ||
-      !visible(unit.location) || !visible(destination) || GameplayMap.getOwner(destination.x, destination.y) !== playerId ||
+      !visible(destination) || GameplayMap.getOwner(destination.x, destination.y) !== playerId ||
       !Number.isFinite(unit.Health?.damage) || !Number.isFinite(unit.Health.maxDamage) || unit.Health.damage < 0 || unit.Health.damage >= unit.Health.maxDamage ||
-      typeof player.Armies?.getUnitReinforcementCommanderId !== "function" || player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1) return reject("A deployed visible unqueued nonreinforcing aircraft and visible owned city centre are required");
+      typeof player.Armies?.getUnitReinforcementCommanderId !== "function" || player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1) return reject("An unqueued nonreinforcing aircraft and visible owned city centre are required");
   function armies() {
     if (typeof Armies === "undefined" || typeof Armies.get !== "function") return null;
     const owned = player.Units.getUnits().filter(u => u.id.owner === playerId), seen = new Set(), records = [];
@@ -32,25 +32,54 @@
     return new Set(records.map(a => a.commanderId)).size === records.length ? records : null;
   }
   const baseline = armies();
-  if (!baseline || baseline.some(a => a.packedUnitIds.includes(unitId))) return reject("Aircraft is packed or complete owned army membership is unknown");
+  if (!baseline) return reject("Complete owned army membership is unknown");
+  function baseInfo(id) {
+    const c = player.Units.getUnits().find(u => u.id.owner === playerId && u.id.id === id), a = baseline.find(a => a.commanderId === id);
+    if (!c || c.isAerodromeCommander !== true || c.isOnMap !== true || c.isDead === true || c.operationQueueSize !== 0 || !a ||
+        !visible(c.location) || GameplayMap.getOwner(c.location.x, c.location.y) !== playerId || !Number.isInteger(c.armyId?.type) ||
+        c.armyId.owner !== playerId || c.armyId.id !== a.armyId) return null;
+    const cities = player.Cities.getCities().filter(city => city.id.owner === playerId && city.location?.x === c.location.x && city.location?.y === c.location.y);
+    if (cities.length !== 1) return null;
+    return {commanderId: c.id.id, commanderType: c.type, componentType: c.id.type, armyId: a.armyId, armyComponentType: c.armyId.type,
+      location: {x: c.location.x, y: c.location.y}, cityId: cities[0].id.id, cityComponentType: cities[0].id.type};
+  }
+  const containing = baseline.filter(a => a.packedUnitIds.includes(unitId));
+  const sourceBase = containing.length === 1 ? baseInfo(containing[0].commanderId) : null;
+  if (containing.length && (!sourceBase || unit.isOnMap !== false || unit.armyId?.owner !== playerId || unit.armyId.id !== sourceBase.armyId || unit.armyId.type !== sourceBase.armyComponentType)) return reject("Packed source must be stationed in one captured visible owned city Aerodrome, not a squadron/carrier");
+  const source = sourceBase ? sourceBase.location : unit.location;
+  if ((!sourceBase && unit.isOnMap !== true) || !visible(source)) return reject("Aircraft source deployment or visible city Aerodrome is unverified");
+  const baseCandidates = player.Units.getUnits().filter(u => u.id.owner === playerId && u.isAerodromeCommander === true && u.location?.x === destination.x && u.location?.y === destination.y);
+  if (baseCandidates.length > 1) return reject("Destination city Aerodrome identity is ambiguous");
+  const targetBase = baseCandidates.length ? baseInfo(baseCandidates[0].id.id) : null;
+  if (baseCandidates.length && (!targetBase || targetBase.cityId !== cityId)) return reject("Destination Aerodrome identity/location is unverified");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
-    targetCityId: cityId, targetCityComponentType: city.id.type, location: {x: unit.location.x, y: unit.location.y}, destination,
-    damage: unit.Health.damage, armies: baseline};
-  if (before.location.x === destination.x && before.location.y === destination.y) return {status: "already_active", before};
+    targetCityId: cityId, targetCityComponentType: city.id.type, location: {x: source.x, y: source.y}, destination,
+    rawLocation: {x: unit.location?.x, y: unit.location?.y}, onMap: unit.isOnMap,
+    sourceAirBase: sourceBase, targetAirBase: targetBase, damage: unit.Health.damage, armies: baseline};
+  if (targetBase ? sourceBase?.commanderId === targetBase.commanderId : before.location.x === destination.x && before.location.y === destination.y) return {status: "already_active", before};
   const operation = "UNITOPERATION_REBASE", args = {X: destination.x, Y: destination.y};
   const picker = Game.UnitOperations.canStart(unit.id, operation, {}, false);
   if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation(destination))) return reject("Native rebase picker does not offer the exact city centre", picker?.FailureReasons ?? []);
   const check = Game.UnitOperations.canStart(unit.id, operation, args, false);
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Exact native rebase permission failed or needs confirmation", check?.FailureReasons ?? []);
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
-      unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType || unit.isOnMap !== true || unit.operationQueueSize !== 0 ||
-      unit.location.x !== before.location.x || unit.location.y !== before.location.y || unit.Health.damage !== before.damage ||
+      unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType || unit.isOnMap !== before.onMap || unit.operationQueueSize !== 0 ||
+      unit.location?.x !== before.rawLocation.x || unit.location?.y !== before.rawLocation.y || unit.Health.damage !== before.damage ||
       city.id.owner !== playerId || city.id.type !== before.targetCityComponentType || city.location?.x !== destination.x || city.location?.y !== destination.y ||
-      !visible(unit.location) || !visible(destination) || GameplayMap.getOwner(destination.x, destination.y) !== playerId ||
+      (!sourceBase && !visible(unit.location)) || (sourceBase && JSON.stringify(baseInfo(sourceBase.commanderId)) !== JSON.stringify(sourceBase)) ||
+      (targetBase && JSON.stringify(baseInfo(targetBase.commanderId)) !== JSON.stringify(targetBase)) ||
+      !visible(destination) || GameplayMap.getOwner(destination.x, destination.y) !== playerId ||
       JSON.stringify(armies()) !== JSON.stringify(baseline) || player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1) return reject("Aircraft, city, membership or game context changed during validation");
+  const expectedArmies = baseline.map(a => {
+    let ids = a.packedUnitIds;
+    if (sourceBase && a.commanderId === sourceBase.commanderId) ids = ids.filter(id => id !== unitId);
+    if (targetBase && a.commanderId === targetBase.commanderId) ids = [...ids, unitId].sort((a, b) => a - b);
+    return {...a, packedUnitIds: ids};
+  });
   const verificationArguments = {unit_id: unitId, target_city_id: cityId, unit_type: before.unitType, component_type: before.componentType,
-    target_city_component_type: before.targetCityComponentType, destination, baseline_armies: baseline, before_damage: before.damage};
+    target_city_component_type: before.targetCityComponentType, destination, baseline_armies: baseline, expected_armies: expectedArmies,
+    target_air_base: targetBase, before_damage: before.damage};
   Game.UnitOperations.sendRequest(unit.id, operation, args);
   return {status: "submitted", before, expected: {unitId, targetCityId: cityId, rebaseObserved: true}, verificationArguments,
-    verificationScope: "Exact aircraft deployed at the captured owned city centre, clear operation queue, stable health and all owned army memberships preserved; no carrier/squadron transfer or future-turn arrival claim"};
+    verificationScope: "Exact aircraft arrival/stationing at the captured city Aerodrome, clear queue, stable health and precisely the captured source/destination membership delta with all other members preserved; no carrier/squadron transfer or future-turn claim"};
 })()

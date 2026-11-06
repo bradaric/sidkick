@@ -394,11 +394,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             description=("CHANGE GAME STATE: rebase exact owned deployed aircraft unit_id to exact owned "
                          "target_city_id with fresh expected_turn. Initial scope is a currently visible owned "
                          "city centre offered by native REBASE; native selected-target permission controls "
-                         "range/capacity. Requires an unqueued, nonreinforcing, unpacked aircraft and complete "
-                         "known own army membership. No commander rebasing, carrier/squadron transfer, foreign "
+                         "range/capacity. Requires unqueued nonreinforcing aircraft, deployed or stationed in "
+                         "one captured visible owned city Aerodrome, and complete known own army membership. "
+                         "No commander rebasing, carrier/squadron transfer, foreign "
                          "bases, hidden destinations, automatic unpack or turn advancement. Verifies the same "
-                         "aircraft deployed at the exact city centre with clear queue, stable health and all "
-                         "captured army memberships unchanged; not a future-turn arrival or air mission claim. "
+                         "aircraft arrived or normally stationed in the captured destination Aerodrome, "
+                         "with clear queue, stable health, precise source/destination member delta and all "
+                         "other captured memberships preserved; not a future-turn or air mission claim. "
                          "Submits once, polls read-only for 15 seconds and never retries unknown/cancelled calls."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
