@@ -268,6 +268,27 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   secondary yield/unit/resource effect. Live readout has no known independent and
   no pending bonus selection; positive cases remain unavailable, fixtures pass.
   211 Python / 385 Node pass; tools23/86 including63 actions; T62/no spend.
+- `8ed0a9c`: minor diplomacy. Fixed local civilian activity intents implemented for
+  founding, excavation, artifact research, owned-settlement spread, Great Person
+  activation and current-tile resettle (only if that exact tile is actually offered).
+  Role/current tile/owner/packing/reinforcement/ability/native gates; explicit fixed
+  operation IDs, not arbitrary commands. Consumption/order/research/population
+  readback states precisely which effect is proven. Visible UI-filtered ruins
+  outside any settlement accept the native neutral-owner sentinel; no foreign
+  settlement conversions or guessed archaeological targets.
+- Synthetic Explorer5439548 on existing visible neutral ruin `(14,19)` normally
+  queued EXCAVATE hash1548958412, verified without turn or artifact-reward claim.
+  Synthetic Explorer5374011 at Copan University `(25,14)` is natively research-
+  blocked: Exploration ruins already researched on this continent, Hegemony needed
+  for Antiquity. No research request submitted. Synthetic Settler5505085 normally
+  founded owned settlement1179665 `(1,8)`, consumed Settler and preserved all17
+  prior settlement identities, verified at T62.
+- Synthetic Migrant5570622 at Copan and Great Merchant5636159 created for eligible-
+  state checks. Great Person activation natively unavailable; no missionaries are
+  defined in the active Modern ruleset. Migrant exposes expansion plots, not its
+  current centre; no guessed resettlement sent. Explicit destination path follows.
+- 212 Python / 388 Node pass; tools23/87 including64 actions. Original Merchant
+  untouched; original Explorer2359326 retained. No turn or Gold spend.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

@@ -42,6 +42,7 @@ from civ7.actions import (
     choose_religious_action,
     befriend_independent,
     choose_city_state_bonus,
+    local_civilian_action,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -258,6 +259,25 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="perform_civ7_local_civilian_action", title="Perform current-tile Civ VII civilian activity",
+            description=("CHANGE GAME STATE: fixed kind found/excavate/research/spread/great_person/resettle "
+                         "by exact unit_id at its current visible own/unowned tile with fresh expected_turn. "
+                         "Optional exact ability must be linked to that fixed native operation/command. "
+                         "Requires ready deployed unembarked unqueued role-eligible unpacked/nonreinforcing "
+                         "unit, no foreign stack and native selected permission without confirmation. "
+                         "Excavation also accepts a visible UI-filtered ruin outside any settlement under "
+                         "the native neutral-owner sentinel. Found "
+                         "requires unowned non-settlement tile; spread/resettle currently owned settlement "
+                         "only. Verifies exact new settlement/consumed settler, exact archaeology order/research "
+                         "change, spread/Great Person charge or unit consumption, or resettle consumption plus "
+                         "population/pending increase. Queued archaeology is not completion/artifact reward; "
+                         "consumption is not full religious/Great Person effect accounting. No movement, "
+                         "foreign conversion, adjacent founding, road building, turn or Age advancement. "
+                         "One submission,15-second readback, never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(local_civilian_action)
         server.tool(
             name="befriend_civ7_independent", title="Befriend one known Civ VII independent power",
             description=("CHANGE GAME STATE: start one fixed native GIVE_INFLUENCE_TOKEN project for "

@@ -1371,6 +1371,18 @@ suzerainty and native bonus eligibility; verifies selected bonus/consumed picker
 Current save has no known independent or pending picker, so positive live cases
 remain unavailable. **211 Python / 385 Node pass; tools23/86 (63 actions).**
 
+`perform_civ7_local_civilian_action` exposes only fixed found/excavate/research/
+spread/great_person/resettle intents at a proven current tile, with role, visibility,
+owner, queue, packing/reinforcement, linked ability and native permission guards.
+Founding verifies one new exact settlement plus consumed Settler and preserved old
+settlements. Archaeology can verify a queued exact operation, not completed reward;
+spread/Great Person consumption is not full effect accounting. Current-tile
+resettlement additionally requires that exact native offered destination.
+Live test Settler founded1179665 `(1,8)` preserving all17 prior settlements; Explorer
+queued excavation at `(14,19)`. Research is natively Hegemony-gated; Modern has no
+missionary definition/eligible Great Person activation. No turn or forced effect.
+**212 Python / 388 Node pass; tools23/87 (64 actions).**
+
 ## One-shot export
 
 ```powershell

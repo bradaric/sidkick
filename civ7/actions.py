@@ -195,6 +195,15 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def local_civilian_action(unit_id: StrictInt, kind: Literal["found", "excavate", "research", "spread", "great_person", "resettle"], expected_turn: StrictInt, ability: StrictStr | None = None) -> dict[str, Any]:
+    """Perform one fixed native civilian activity only at its proven current own/unowned location."""
+    if (any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or kind not in ("found", "excavate", "research", "spread", "great_person", "resettle") or
+            ability is not None and (not isinstance(ability,str) or not ability)):
+        raise ValueError("Exact owned unit, supported local activity/ability and expected turn are required")
+    return await _execute_and_verify("local_civilian_action.js", {"unit_id":unit_id,"kind":kind,"expected_turn":expected_turn,"ability":ability},
+        "local_civilian_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def choose_religious_action(kind: Literal["pantheon", "belief", "found"], choice: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Select one exact available pantheon/belief, or found one unclaimed named religion."""
     if kind not in ("pantheon", "belief", "found") or not isinstance(choice, str) or not choice or type(expected_turn) is not int or expected_turn < 0:

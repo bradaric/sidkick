@@ -182,6 +182,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "choose_civ7_religious_action",
             "befriend_civ7_independent",
             "choose_civ7_city_state_bonus",
+            "perform_civ7_local_civilian_action",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)
