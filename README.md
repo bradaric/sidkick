@@ -811,6 +811,22 @@ No turn advanced. Separate pre-war save
 the reviewed morning checkpoint also remains preserved. The test game is now at
 war with Franklin; the original Merchant was not moved or ordered.
 
+#### Adjacent shore crossings
+
+The existing `move_civ7_unit` now supports land-unit embark/disembark steps under
+the same empty, currently visible own/unowned destination, direct one-edge path,
+native reachability/noncombat and exact permission checks. Source embarkation must
+match the observed terrain; sea-domain units cannot leave water. Shore readback
+requires the actual destination embarkation state **and** exact unit position.
+This is not longer-path, commander, foreign-territory or transport support.
+
+**157 Python and 312 Node tests pass.** Live T62 Scout3670032 moved normally from
+Roskilde `(24,5)` to `(25,5)`, then embarked at `(25,4)`, verifying false→true.
+After private movement restoration, typed disembark to `(25,5)` verified true→false.
+Initial direct request to `(24,4)` was rejected: native reachability/path required
+a detour, which this action correctly does not queue. Preconditions used restored
+movement, not a naturally refreshed turn. No turn advanced; tool counts unchanged.
+
 ## One-shot export
 
 ```powershell

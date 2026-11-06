@@ -20,11 +20,11 @@
   const domain = GameInfo.Units.lookup(unit.type)?.Domain;
   const fromWater = GameplayMap.isWater(unit.location.x, unit.location.y);
   const toWater = GameplayMap.isWater(x, y);
-  // Land-domain units can already be embarked. Keep the current terrain state
-  // rather than mistaking water-to-water travel for an embarkation transition.
+  const shore = fromWater !== toWater;
   if (!["DOMAIN_LAND", "DOMAIN_SEA"].includes(domain) ||
-      typeof fromWater !== "boolean" || typeof toWater !== "boolean" || fromWater !== toWater ||
-      (domain === "DOMAIN_SEA" && !toWater)) return reject("Only land/sea steps without embarking or disembarking are supported");
+      typeof fromWater !== "boolean" || typeof toWater !== "boolean" ||
+      (domain === "DOMAIN_SEA" && (!fromWater || !toWater)) ||
+      (shore && (domain !== "DOMAIN_LAND" || unit.isEmbarked !== fromWater))) return reject("Land shore crossings need consistent native embarkation; sea units must stay on water");
   const sameId = (a, b) => a.owner === b.owner && a.id === b.id && a.type === b.type;
   for (const commander of units.filter(value => value.isCommanderUnit)) {
     const army = typeof Armies !== "undefined" ? Armies.get(commander.armyId) : null;
@@ -51,16 +51,20 @@
   const args = {X: x, Y: y, Modifiers: UnitOperationMoveModifiers.NONE};
   if (Game.Combat.testAttackInto(unit.id, args) !== CombatTypes.NO_COMBAT) return reject("Native combat check did not confirm noncombat movement");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
-    location: {x: unit.location.x, y: unit.location.y}, movesRemaining: unit.Movement.movementMovesRemaining};
+    location: {x: unit.location.x, y: unit.location.y}, movesRemaining: unit.Movement.movementMovesRemaining,
+    embarked: typeof unit.isEmbarked === "boolean" ? unit.isEmbarked : null};
   const check = Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO, args, false);
   if (check?.Success !== true) return reject("Native movement check failed", check?.FailureReasons ?? []);
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || unit.id.owner !== playerId ||
       unit.location.x !== before.location.x || unit.location.y !== before.location.y ||
+      (shore && (unit.isEmbarked !== before.embarked || GameplayMap.isWater(x, y) !== toWater ||
+        GameplayMap.isWater(before.location.x, before.location.y) !== fromWater)) ||
       unit.Movement.movementMovesRemaining !== before.movesRemaining || GameplayMap.getOwner(x, y) !== owner ||
       MapUnits.getUnits(x, y)?.length !== 0) return reject("Game context, unit or destination changed during validation");
   // Do not invoke WorldInput: its helper can attack, declare war or swap units.
   Game.UnitOperations.sendRequest(unit.id, UnitOperationTypes.MOVE_TO, args);
-  return {status: "submitted", before, expected: {unitId, unitType: unit.type, componentType: unit.id.type, location: {x, y}},
+  return {status: "submitted", before, expected: {unitId, unitType: unit.type, componentType: unit.id.type, location: {x, y},
+    ...(shore ? {embarked: toWater} : {})},
     verificationArguments: {unit_id: unitId}};
 })()

@@ -9,6 +9,8 @@ function run(o = {}, script = 'move_unit.js') {
   const unit = {id: {owner: o.foreignUnit ? 1 : 0, id: 20, type: 26}, type: 201,
     location: {x: 9, y: 15}, isOnMap: !o.offMap, isCommanderUnit: o.commander ?? false,
     Movement: {movementMovesRemaining: o.moves ?? 3}, ...o.unit};
+  if (o.embark || o.disembark) unit.isEmbarked = Boolean(o.disembark);
+  if (o.unknownEmbarkation) unit.isEmbarked = undefined;
   const units = o.missing ? [] : [unit];
   if (o.duplicate) units.push(unit);
   if (o.packed || o.unknownPacking) units.push({id: {owner: 0, id: 30, type: 26}, isCommanderUnit: true, armyId: 8});
@@ -76,9 +78,23 @@ test('foreign, packed, reinforcing, off-map, immobile and stale units cannot mov
   }
 });
 
-test('fogged, occupied, foreign, non-adjacent, attack, embarkation and detour destinations cannot move', () => {
+test('land units can cross a shore only with consistent source embarkation and exact native step permission', () => {
+  for (const o of [{embark: true}, {disembark: true}]) {
+    const {data, calls} = run(o);
+    assert.equal(data.status, 'submitted');
+    assert.equal(data.before.embarked, Boolean(o.disembark));
+    assert.equal(data.expected.embarked, Boolean(o.embark));
+    assert.equal(calls.filter(c => c.kind === 'send').length, 1);
+  }
+  for (const o of [{embark: true, unknownEmbarkation: true}, {disembark: true, unknownEmbarkation: true},
+    {embark: true, nativeBlocked: true}, {disembark: true, nativeBlocked: true}]) {
+    assert.equal(run(o).data.status, 'rejected');
+  }
+});
+
+test('fogged, occupied, foreign, non-adjacent, attack and detour destinations cannot move', () => {
   for (const o of [{hidden: true}, {foggedTarget: true}, {occupied: true}, {foreignPlot: true}, {distant: true},
-    {unreachable: true}, {attack: true}, {combat: true}, {embark: true}, {disembark: true},
+    {unreachable: true}, {attack: true}, {combat: true},
     {unknownWater: true}, {detour: true}, {emptyPath: true},
     {nativeBlocked: true}, {noModifier: true}, {changedOccupancy: true}]) {
     const {data, calls} = run(o);
@@ -101,6 +117,9 @@ test('readback reports the exact owned component, type and actual location witho
   assert.deepEqual(data.location, {x: 10, y: 15});
   assert.equal(calls.length, 0);
   assert.equal(run({offMap: true}, 'unit_position_state.js').data.location, null);
+  assert.equal(run({unit: {isEmbarked: true}}, 'unit_position_state.js').data.embarked, true);
+  assert.equal(run({unit: {isEmbarked: false}}, 'unit_position_state.js').data.embarked, false);
+  assert.equal(run({}, 'unit_position_state.js').data.embarked, null);
 });
 
 test('readback withholds plausible coordinates after packing or reinforcement, including unknown packing state', () => {

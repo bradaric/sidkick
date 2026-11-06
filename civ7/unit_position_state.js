@@ -19,6 +19,7 @@
   if (typeof player.Armies?.getUnitReinforcementCommanderId !== "function" ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1) deployed = false;
   return {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
+    embarked: typeof unit.isEmbarked === "boolean" ? unit.isEmbarked : null,
     location: deployed && location && Number.isInteger(location.x) && location.x >= 0 &&
       Number.isInteger(location.y) && location.y >= 0 ? {x: location.x, y: location.y} : null,
     movesRemaining: unit.Movement?.movementMovesRemaining ?? null};

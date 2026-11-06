@@ -34,7 +34,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
 | 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group, zero-cost non-trial narrative and cooperative project responses implemented; paid/trial/hostile/deal responses pending |
-| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders, promotions and capped upgrades implemented; extended travel pending |
+| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders, promotions, capped upgrades and adjacent shores implemented; extended travel pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
@@ -242,3 +242,17 @@ Morning inspection/actions before this implementation batch:
   Independent read: CuirassierHP87, no defender on target tile. These are real native
   attacks under synthetic war/readiness, not naturally occurring campaign coverage.
   Still T62; no turn advancement. Reviewed morning save and original Merchant preserved.
+- Field combat committed as `3973c4c`.
+- Adjacent shore steps: existing movement tool now allows direct native-offered
+  land-unit embark/disembark, same noncombat/path/visibility/ownership checks and
+  actual embarkation-state readback. Sea units cannot leave water. 157 Python +
+  312 Node tests. Scout3670032 normally moved `(24,5) → (25,5)`, embarked at `(25,4)`
+  (false→true), then disembarked back to `(25,5)` (true→false), each verified.
+  Prerequisite movement was debug-restored. Native-detour request `(24,4)` correctly
+  rejected without queueing. No turn advanced; no new tools.
+- Turn-boundary investigation: source confirms one Sidkick sendTurnComplete and
+  no transport resubmission. Native panel can auto-submit with isAutoEndTurn;
+  victory UI's next-player button is another native submission path, not proof
+  either caused the historical 60→62 event. Four concurrent read-only turn/position
+  pairs returned correct shapes; no transport mix-up reproduced. Cause unresolved,
+  not silently repaired or retried; no further turn advancement in this batch.
