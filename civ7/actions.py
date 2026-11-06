@@ -471,6 +471,15 @@ async def leave_fleet(unit_id: StrictInt, commander_id: StrictInt, x: StrictInt,
     }, "unit_membership_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def rebase_aircraft(unit_id: StrictInt, target_city_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Rebase one deployed aircraft to an exact visible owned city centre offered natively."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, target_city_id, expected_turn)):
+        raise ValueError("Exact owned aircraft/city IDs and expected turn are required")
+    return await _execute_and_verify("rebase_unit.js", {
+        "unit_id": unit_id, "target_city_id": target_city_id, "expected_turn": expected_turn,
+    }, "unit_rebase_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def army_ranged_attack(
     commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:

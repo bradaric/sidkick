@@ -182,7 +182,7 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 |---|---|
 | Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
 | More commander abilities | Second Wind implemented/live-verified with debug-earned Valor; capped upgrade-all and direct/special commander attacks pending. Force March has UI text but no installed command definition, not exposed. |
-| Military transport and travel | Individual naval combat join/leave implemented/live-verified. Air membership, other fleet/squadron commands, army naval transport, rail and rebase writes; longer ordinary-unit paths, safe fog exploration/foreign travel and packed-commander shore crossings pending. |
+| Military transport and travel | Individual naval combat join/leave live-verified; city-only deployed-aircraft rebase implemented, positive live case pending. Air membership, other fleet/squadron commands, army naval transport, rail, longer ordinary-unit paths, safe foreign/fog travel and packed-commander shore crossings pending. |
 | Broader warfare | Separate ranged-only enemy-field action implemented (positive live case pending). City/district attacks, enemy-field melee, occupation/capture, pillage/coastal raids, naval/air strikes and complete splash/secondary accounting still pending. Other attacks retain own/unowned field boundaries. |
 | Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
 | Civilian/cultural/religious actions | Found/resettle, Merchant roads, archaeology excavation/research, religion/pantheon/beliefs/spread, Great People, Great Work swaps/archive. Direct Merchant routes and non-swap Great Work relocation already exist. |
@@ -262,6 +262,20 @@ Turn advancement remains deferred; original Merchant and reviewed saves preserve
   synthetic readiness; no turn advancement or new purchases.
 - 176 Python + 338 Node tests pass. Default23 read-only tools; write mode65 tools,
   including42 actions. Air membership and full-fleet actions still pending.
+- Fleet membership batch committed as `55a3d19`.
+- Added rebase_civ7_aircraft: exact owned deployed unqueued nonreinforcing aircraft
+  and exact owned target_city_id. Restricts destination to its currently visible
+  owned centre and requires native coordinate-free REBASE offered plot and exact
+  selected-target permission. All own army membership must be known and source
+  unpacked. Captured identity, exact arrival, clear queue, stable HP and complete
+  preserved own army membership are read back; no future-turn arrival claim.
+- Initial rebase scope excludes commander/carrier/squadron transfers, packed or
+  auto-packed aircraft, foreign bases and hidden destinations. Positive execution
+  remains fixture-only: no aircraft owned/no air purchases offered in checked
+  nearby cities. Actual MCP rejected a deliberately selected naval unit before
+  any request; this is only a live type guard, not positive rebase coverage.
+- 179 Python + 341 Node tests pass; default23 read-only tools unchanged, write
+  mode66 tools including43 actions. No turns advanced or purchases made.
 
 ## Batch 1: settlement management
 

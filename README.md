@@ -1055,6 +1055,21 @@ back to its original `(47,30)` water tile, with both land armies unchanged.
 Movement was privately restored; no turns advanced. **176 Python / 338 Node tests
 pass; write mode65 tools (42 actions), default23 read-only tools unchanged.**
 
+#### City-only aircraft rebase
+
+`rebase_civ7_aircraft(unit_id, target_city_id, expected_turn)` requires the exact
+owned unpacked deployed aircraft, a visible owned city centre and native offered/
+selected REBASE permission. No queued or reinforcing source, hidden/foreign base,
+carrier/squadron transfer, commander rebase, auto-unpack or turn advancement.
+Readback requires the same aircraft at the exact city centre with clear queue,
+stable health and every captured own army membership unchanged. Automatic packing
+is not accepted as deployment; an unverified arrival is never retried automatically.
+
+**Positive rebase execution is fixture-only.** The live game has no aircraft and
+checked nearby cities offer no air purchases. MCP type rejection was verified with
+a naval unit, not presented as aircraft execution coverage. **179 Python / 341
+Node tests pass; write mode66 tools (43 actions), default23 read-only unchanged.**
+
 ## One-shot export
 
 ```powershell

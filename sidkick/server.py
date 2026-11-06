@@ -18,6 +18,7 @@ from civ7.actions import (
     leave_commander,
     join_fleet,
     leave_fleet,
+    rebase_aircraft,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -237,6 +238,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="rebase_civ7_aircraft", title="Rebase Civ VII aircraft to owned city",
+            description=("CHANGE GAME STATE: rebase exact owned deployed aircraft unit_id to exact owned "
+                         "target_city_id with fresh expected_turn. Initial scope is a currently visible owned "
+                         "city centre offered by native REBASE; native selected-target permission controls "
+                         "range/capacity. Requires an unqueued, nonreinforcing, unpacked aircraft and complete "
+                         "known own army membership. No commander rebasing, carrier/squadron transfer, foreign "
+                         "bases, hidden destinations, automatic unpack or turn advancement. Verifies the same "
+                         "aircraft deployed at the exact city centre with clear queue, stable health and all "
+                         "captured army memberships unchanged; not a future-turn arrival or air mission claim. "
+                         "Submits once, polls read-only for 15 seconds and never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(rebase_aircraft)
         server.tool(
             name="join_civ7_fleet", title="Add one Civ VII ship to Fleet Commander",
             description=("CHANGE GAME STATE: join exact owned naval combat unit_id to exact deployed "
