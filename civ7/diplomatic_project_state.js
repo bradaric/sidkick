@@ -8,7 +8,7 @@
   if (!Number.isInteger(targetId) || targetId < 0 || targetId === playerId || !(player.Diplomacy.hasMet(targetId) ||
       kind === "independent" && Game.IndependentPowers?.independentVillageDiscoveredByPlayer(targetId, playerId) === true)) throw Error("A known foreign target is required");
   const target = Players.get(targetId);
-  if (!target || (kind === "major" ? target.isMajor !== true : kind === "city-state" ? target.isMinor !== true : kind !== "independent" || target.isIndependent !== true)) throw Error("Target kind is unverified");
+  if (!target || (["major", "hostile"].includes(kind) ? target.isMajor !== true : kind === "city-state" ? target.isMinor !== true : kind !== "independent" || target.isIndependent !== true)) throw Error("Target kind is unverified");
   const definition = GameInfo.DiplomacyActions.lookup(action);
   if (definition?.DiplomacyActionType !== action || !Number.isInteger(definition.$hash)) throw Error("Project identity is unavailable");
   if (!Array.isArray(baseline) || baseline.some(id => !Number.isInteger(id) || id < 0)) throw Error("Pre-submit event identities are required");

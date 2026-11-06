@@ -323,17 +323,30 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   invented atomic swap operation. Unknown/failed stages stop; no automatic rollback
   or retry. Works6 Museum/Bàakʼ and13 Palace/St. Petersburg restored, no yield or
   Tourism claim. 215 Python / 394 Node pass; tools23/90 including67 actions.
+- `6af2bc0`: Great Work archive/full-ledger movement. Explicit surprise/formal war
+  declaration now implemented with met-major identity, native war eligibility and
+  selected operation gates; bilateral war readback, not full alliance/support
+  cascade accounting. Formal declaration against player5 rejected by the native
+  relationship gate without submission. Distinct surprise declaration against5
+  verified bilateral war; original Franklin4 war retained. No turn advanced.
+- Fixed capped hostile sanctions/espionage project starts implemented separately
+  from cooperative projects/war declaration. Native offered exact primary quote,
+  known Influence balance, no secondary targets/hidden foreign inventory. Live
+  Military Infiltration80 and Hinder Research81 against wartime Franklin4 started
+  normally and new owned events verified, spending120+90 Influence (174.82421875
+  left). No infiltration/research-denial completion or secrecy claim.
+- 216 Python / 396 Node pass; tools23/92 including69 actions.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 
 | Group 1 implementation still needed | Current boundary |
 |---|---|
-| Combat/capture and hostile diplomacy | Enemy-field melee, occupation/capture decisions, naval shore fire/coastal raids, route pillage, war/peace and espionage remain unimplemented. District bombardment is ranged-only. |
+| Combat/capture and hostile diplomacy | Occupation/capture decisions, route pillage and peace/deals remain unimplemented. Enemy-field melee, naval shore fire/raids, explicit war declaration and capped no-secondary sanctions/espionage are implemented. |
 | Military transport | Air membership/squadron/carrier missions and transfers, army naval transport, packed shores and broader travel remain unimplemented. City rebase and single-aircraft city-base field strikes work. |
-| Construction/resources | Wonders, repairs, overbuilding, unique improvements and factory reassignment rules remain unimplemented. Atomic resource swaps are implemented but lack a live eligible pair. |
-| Civilian/cultural/religious | Found/resettle, Merchant roads, archaeology, pantheons/religion/beliefs/spread, Great People and Great Work swaps/archive remain unimplemented. Original Merchant must stay untouched. |
-| Diplomacy/choices | Project cancellation, independent befriending, city-state bonuses/levies, secondary targets/deals, paid/trial narrative and remaining hostile/mandatory variants remain unimplemented. |
+| Construction/resources | Factory reassignment rules remain unimplemented. Advanced Wonder/repair/overbuild/improvement queue intents are implemented; completion/repair positive cases are separate verification gaps. Atomic swaps lack a live eligible pair. |
+| Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
+| Diplomacy/choices | Project cancellation, city-state levies, secondary targets/deals, paid/trial narrative and remaining hostile/mandatory variants remain unimplemented. Independent befriending and pending bonus choices implemented, positive live cases unavailable. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

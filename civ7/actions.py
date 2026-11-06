@@ -133,8 +133,20 @@ async def start_city_state_project(
     return await _start_project("city-state", target_player_id, action, max_influence_cost, expected_turn)
 
 
+async def start_hostile_diplomatic_project(target_player_id: StrictInt, action: StrictStr, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Start one fixed offered sanction/espionage project; never declare war or select secondary targets."""
+    return await _start_project("hostile", target_player_id, action, max_influence_cost, expected_turn)
+
+
+async def declare_war(target_player_id: StrictInt, war_type: Literal["surprise", "formal"], expected_turn: StrictInt) -> dict[str, Any]:
+    """Explicit native declaration against an exact met major; native diplomatic cascades may follow."""
+    if any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or war_type not in ("surprise","formal"):
+        raise ValueError("Exact target, supported war type and expected turn required")
+    return await _execute_and_verify("declare_war.js",{"target_player_id":target_player_id,"war_type":war_type,"expected_turn":expected_turn},"war_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def _start_project(
-    kind: Literal["major", "city-state", "independent"], target_player_id: int, action: str,
+    kind: Literal["major", "city-state", "independent", "hostile"], target_player_id: int, action: str,
     max_influence_cost: float, expected_turn: int,
 ) -> dict[str, Any]:
     if type(target_player_id) is not int or target_player_id < 0:

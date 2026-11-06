@@ -1407,6 +1407,15 @@ Live13/6 exchanged Museum/Palace via archive buffer, every stage verified, then
 inverse stages restored the exact original inventory. No Tourism/yield forecast.
 **215 Python / 394 Node pass; tools23/90 (67 actions).**
 
+`declare_civ7_war` explicitly selects surprise/formal war against a met major,
+requiring native declaration eligibility and selected permission. Live surprise
+war against5 verified; formal relationship gate rejected without submission.
+Readback is bilateral, not full diplomatic cascade accounting.
+`start_civ7_hostile_diplomatic_project` adds fixed capped no-secondary sanctions/
+espionage using native offered quotes. Infiltration80 and Hinder Research81 against
+Franklin4 started and verified, spending210 Influence, leaving174.82421875. No
+completion/secrecy claim or turn. **216 Python / 396 Node pass; tools23/92 (69 actions).**
+
 ## One-shot export
 
 ```powershell

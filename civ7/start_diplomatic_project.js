@@ -5,7 +5,10 @@
   const allowed = kind === "major" ? ["DIPLOMACY_ACTION_OPEN_BORDERS",
     "DIPLOMACY_ACTION_RESEARCH_COLLABORATION", "DIPLOMACY_ACTION_CULTURAL_EXCHANGE"]
     : kind === "city-state" ? ["DIPLOMACY_ACTION_CS_PROMOTE_GROWTH",
-      "DIPLOMACY_ACTION_CS_BOLSTER_MILITARY", "DIPLOMACY_ACTION_CS_INCORPORATE"] : kind === "independent" ? ["DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN"] : [];
+      "DIPLOMACY_ACTION_CS_BOLSTER_MILITARY", "DIPLOMACY_ACTION_CS_INCORPORATE"] : kind === "independent" ? ["DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN"] : kind === "hostile" ? [
+        "DIPLOMACY_ACTION_DENOUNCE", "DIPLOMACY_ACTION_DENOUNCE_MILITARY_PRESENCE", "DIPLOMACY_ACTION_SABOTAGE_TREASURY", "DIPLOMACY_ACTION_SABOTAGE_MORALE",
+        "DIPLOMACY_ACTION_SABOTAGE_RESEARCH", "DIPLOMACY_ACTION_SABOTAGE_CIVIC_STUDY", "DIPLOMACY_ACTION_SABOTAGE_MILITARY_PRODUCTION", "DIPLOMACY_ACTION_COUNTER_SPY",
+        "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC", "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION"] : [];
   if (!allowed.includes(action) || !Number.isInteger(targetId) || targetId < 0 ||
       typeof maximumCost !== "number" || !Number.isFinite(maximumCost) || maximumCost < 0 ||
       !Number.isInteger(expectedTurn) || expectedTurn < 0) return reject("Unsupported project or invalid target, budget or turn");
@@ -18,8 +21,9 @@
   const known = () => player.Diplomacy.hasMet(targetId) === true || (kind === "independent" && Game.IndependentPowers?.independentVillageDiscoveredByPlayer(targetId, playerId) === true);
   if (targetId === playerId || !known()) return reject("A met foreign target or discovered independent power is required");
   const target = Players.get(targetId);
-  if (!target || (kind === "major" ? target.isMajor !== true : kind === "city-state" ? target.isMinor !== true : target.isIndependent !== true)) return reject("Target is not the requested player kind");
-  if (kind !== "independent" && player.Diplomacy.isAtWarWith(targetId)) return reject("This handler does not initiate cooperative projects during war");
+  if (!target || (["major", "hostile"].includes(kind) ? target.isMajor !== true : kind === "city-state" ? target.isMinor !== true : target.isIndependent !== true)) return reject("Target is not the requested player kind");
+  const war = player.Diplomacy.isAtWarWith(targetId);
+  if (!["independent", "hostile"].includes(kind) && war) return reject("This handler does not initiate cooperative projects during war");
   if (action === "DIPLOMACY_ACTION_CS_INCORPORATE" && target.Influence?.getSuzerain() !== playerId) return reject("Local suzerainty is required for incorporation");
   const definition = GameInfo.DiplomacyActions.lookup(action);
   if (definition?.DiplomacyActionType !== action || !Number.isInteger(definition.$hash)) return reject("Project definition is unavailable");
@@ -63,7 +67,7 @@
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native project start failed or requires confirmation", check?.FailureReasons ?? []);
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
-      !known() || (kind === "independent" ? target.isIndependent !== true : player.Diplomacy.isAtWarWith(targetId)) ||
+      !known() || (kind === "independent" ? target.isIndependent !== true : player.Diplomacy.isAtWarWith(targetId) !== war) ||
       selected.costYieldD !== quotedCost || player.DiplomacyTreasury.diplomacyBalance < quotedCost) return reject("Game context, target or cost changed during validation");
   const verificationArguments = {...queryArguments, baseline_event_ids: before.eventIds};
   Game.PlayerOperations.sendRequest(playerId, project.operationType, args);

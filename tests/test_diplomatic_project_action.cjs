@@ -35,7 +35,7 @@ function run(options = {}, script = 'start_diplomatic_project.js') {
       if (id === 0) return local;
       assert.ok(!options.unmet || options.discovered, 'undiscovered unmet targets must not be inspected');
       assert.equal(id, 3);
-      return {isMajor: options.wrongKind ? kind !== 'major' : kind === 'major',
+      return {isMajor: options.wrongKind ? !['major','hostile'].includes(kind) : ['major','hostile'].includes(kind),
         isMinor: options.wrongKind ? kind !== 'city-state' : kind === 'city-state',
         isIndependent: options.wrongKind ? kind !== 'independent' : kind === 'independent',
         Influence: {getSuzerain: () => options.suzerain ?? 0}};
@@ -93,6 +93,17 @@ test('independent befriending binds one met/discovered power to its native offer
     const r = run({kind: 'independent', ...o}); assert.equal(r.data.status, 'submitted'); assert.equal(r.calls.at(-1).args.ID, 3);
   }
   for (const o of [{unmet: true}, {wrongKind: true}, {cost: 151}, {secondary: true}]) assert.equal(run({kind: 'independent', ...o}).data.status, 'rejected');
+});
+
+test('explicit hostile project family supports fixed sanctions and espionage including during an existing war',()=>{
+  for(const action of ['DIPLOMACY_ACTION_DENOUNCE','DIPLOMACY_ACTION_SABOTAGE_TREASURY','DIPLOMACY_ACTION_COUNTER_SPY',
+    'DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH','DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC','DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION','DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE']){
+    const r=run({kind:'hostile',action,atWar:true});assert.equal(r.data.status,'submitted');assert.equal(r.calls.at(-1).operation,77);
+  }
+  for(const o of [{action:'DIPLOMACY_ACTION_DECLARE_WAR'},{action:'DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION',secondary:true}])
+    assert.equal(run({kind:'hostile',...o}).data.status,'rejected');
+  const event={uniqueID:90,initialPlayer:0,targetPlayer:3,actionType:-101,gameTurnStart:58,gameTurnEnd:-1,failed:false};
+  assert.equal(run({kind:'hostile',action:'DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH',events:[event]},'diplomatic_project_state.js').data.newProjectObserved,true);
 });
 
 test('incorporation uses its distinct native operation and requires local suzerainty', () => {

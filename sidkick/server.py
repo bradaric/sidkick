@@ -46,6 +46,8 @@ from civ7.actions import (
     resettle_migrant,
     connect_merchant_road,
     archive_great_work,
+    declare_war,
+    start_hostile_diplomatic_project,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -262,6 +264,28 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="declare_civ7_war",title="Declare Civ VII surprise or formal war",
+            description=("CHANGE GAME STATE: explicit native DECLARE_WAR against exact met major target_player_id, "
+                         "war_type surprise/formal and expected_turn. Requires native declaration eligibility "
+                         "and exact selected permission on a fresh active turn; already at war is a no-op. "
+                         "Native alliances, war support, relationships and other players may be affected. "
+                         "Verifies only exact bilateral war, not all diplomatic cascades. No peace deal, "
+                         "automatic combat or turn advancement. One submission,15-second readback; never retry unknown."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(declare_war)
+        server.tool(
+            name="start_civ7_hostile_diplomatic_project",title="Start capped Civ VII sanction or espionage",
+            description=("CHANGE GAME STATE: one exact offered fixed sanction/espionage action against met major "
+                         "target_player_id with max_influence_cost and expected_turn. Supports denouncement, "
+                         "military-presence denouncement, treasury/morale/research/civic/military-production "
+                         "sabotage, counterspy, military sabotage/infiltration and tech/civic theft. Native "
+                         "offered primary-target quote, sufficient Influence and selected permission required, "
+                         "including wartime only if native allows. No secondary targets, arbitrary action, war "
+                         "declaration or hidden foreign inventory reads. Verifies one new locally initiated "
+                         "event, not completion, secrecy, stolen reward or all relationship effects. One submission; no turn advance/retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(start_hostile_diplomatic_project)
         server.tool(
             name="archive_civ7_great_work",title="Archive one owned Civ VII Great Work",
             description=("CHANGE GAME STATE: native MOVE_GREAT_WORK to archive for exact owned "
