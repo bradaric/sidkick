@@ -213,6 +213,9 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "manage_civ7_city_peace_deal",
             "attack_civ7_fleet",
             "observe_civ7_army_attack",
+            "join_civ7_airlift",
+            "leave_civ7_airlift",
+            "airdrop_civ7_infantry",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

@@ -1612,6 +1612,16 @@ Great Work deal offers remain API-blocked: two identical identity-free objects,
 no safe per-work selection; no opaque or array-order write attempted.
 **240 Python / 434 Node pass; tools24/118 (94 actions).**
 
+`join_civ7_airlift` / `leave_civ7_airlift` pack/deploy exact Infantry through a
+promoted Airborne Forces Squadron. `airdrop_civ7_infantry` uses the native Squadron
+operation for one sole packed Infantry, exact visible empty land landing and full
+membership/health/base preservation checks. Selected logistics supplies safe offers.
+Native join, Airdrop `(22,11)→(23,12)`, re-pack and individual leave verified with
+labelled XP/creation/readiness setup; no landing/membership effects forced. Multiple/
+mixed payloads still reject. Separate FleetAirlift T62 save confirmed RESULT_OK;
+original Merchant intact, no turns advanced.
+**242 Python / 437 Node pass; tools24/121 (97 actions).**
+
 ## One-shot export
 
 ```powershell

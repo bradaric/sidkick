@@ -73,6 +73,9 @@ from civ7.actions import (
     peace_city_action,
     fleet_attack,
     observed_army_attack,
+    join_airlift,
+    leave_airlift,
+    airdrop_infantry,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -290,6 +293,37 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="airdrop_civ7_infantry",title="Airdrop exactly one packed Civ VII Infantry",
+            description=("CHANGE GAME STATE: exact sole packed Infantry unit_id, Airborne Forces Squadron "
+                         "commander_id, native offered/selected landing x/y and expected_turn. Requires "
+                         "empty currently visible own/unowned flat/hill land, unqueued ready Squadron, "
+                         "full army ledger and no other payload. Executes native UNIT_AIR_DROP once, "
+                         "not per-unit leave or teleport. Verifies exact Infantry landing, other army "
+                         "memberships preserved, unchanged Squadron position and both health baselines, "
+                         "no queued orders. No mixed/multiple payloads, combat, foreign/fogged landing, "
+                         "turn advance or automatic retry;15-second readback."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(airdrop_infantry)
+        server.tool(
+            name="join_civ7_airlift",title="Pack exact Civ VII Infantry into promoted Squadron",
+            description=("CHANGE GAME STATE: exact nearby unembarked Infantry unit_id joins exact "
+                         "commander_id Squadron with native Airborne Forces and expected_turn. Visible "
+                         "own/unowned land base, one unambiguous commander at target, native offered/selected "
+                         "membership permission, unqueued/unpacked/nonreinforcing unit and full army ledger "
+                         "required. Verifies exact member addition with all other memberships preserved. "
+                         "No carrier/Cavalry/aircraft substitution, automatic airdrop or turn. One request,15-second readback; no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(join_airlift)
+        server.tool(
+            name="leave_civ7_airlift",title="Deploy exact Infantry from Civ VII airlift Squadron",
+            description=("CHANGE GAME STATE: exact packed Infantry unit_id leaves promoted Airborne Forces "
+                         "Squadron commander_id at native offered visible own/unowned land x/y with expected_turn. "
+                         "Destination adjacent empty or origin occupied only by its commander; full exact "
+                         "membership/deployment readback, other armies preserved. No airlift to distant plot, "
+                         "implicit transfer, new war or turn. One request,15-second readback; no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(leave_airlift)
         server.tool(
             name="observe_civ7_army_attack",title="Execute Civ VII land group attack with visible effect observations",
             description=("CHANGE GAME STATE: exact land commander_id, kind ranged/melee, target_player/"

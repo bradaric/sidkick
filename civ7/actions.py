@@ -207,6 +207,27 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def airdrop_infantry(unit_id: StrictInt, commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Drop exactly one Infantry payload from a promoted Squadron onto an exact native offered land tile."""
+    if any(type(v) is not int or v<0 for v in (unit_id,commander_id,x,y,expected_turn)) or unit_id==commander_id:
+        raise ValueError("Distinct owned packed Infantry/Squadron IDs, exact landing and expected turn required")
+    return await _execute_and_verify("unit_membership.js",{"mode":"airdrop","unit_id":unit_id,"commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn,"air_transport":True},"unit_membership_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def join_airlift(unit_id: StrictInt, commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Pack exact nearby Infantry into an exact promoted Squadron through native membership."""
+    if any(type(v) is not int or v<0 for v in (unit_id,commander_id,expected_turn)) or unit_id==commander_id:
+        raise ValueError("Distinct owned Infantry/Squadron IDs and expected turn required")
+    return await _execute_and_verify("unit_membership.js",{"mode":"join","unit_id":unit_id,"commander_id":commander_id,"expected_turn":expected_turn,"air_transport":True},"unit_membership_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def leave_airlift(unit_id: StrictInt, commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Individually deploy Infantry from a promoted Squadron at one native offered nearby land tile."""
+    if any(type(v) is not int or v<0 for v in (unit_id,commander_id,x,y,expected_turn)) or unit_id==commander_id:
+        raise ValueError("Distinct owned Infantry/Squadron IDs, exact deployment and expected turn required")
+    return await _execute_and_verify("unit_membership.js",{"mode":"leave","unit_id":unit_id,"commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn,"air_transport":True},"unit_membership_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def observed_army_attack(commander_id: StrictInt, kind: Literal["ranged", "melee"], target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """One existing fixed land focused attack with bounded multi-attacker effect observation."""
     if any(type(v) is not int or v<0 for v in (commander_id,target_player,target_unit_id,x,y,expected_turn)) or kind not in ("ranged","melee"):

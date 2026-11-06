@@ -27,6 +27,10 @@
   for (const record of records) for (const packedId of record.packedUnitIds ?? []) packedBy.set(packedId, record.unit.id.id);
   const packingKnown = records.every(record => record.packedUnitIds !== null);
   const deployed = unit => Boolean(packingKnown && valid(unit.location) && !packedBy.has(unit.id.id) && unit.isOnMap !== false);
+  const airliftSquadron=c=>GameInfo.Units.lookup(c.type)?.UnitType==="UNIT_SQUADRON_COMMANDER"&&
+    c.Experience?.hasPromotion("DISCIPLINE_SQUADRON_AIRLIFT_OPERATIONS","PROMOTION_SQUADRON_AIRBORNE_FORCES")===true;
+  const infantry=u=>u&&GameInfo.Units.lookup(u.type)?.Domain==="DOMAIN_LAND"&&GameInfo.Units.lookup(u.type)?.FormationClass==="FORMATION_CLASS_LAND_COMBAT"&&
+    (GameInfo.TypeTags?.filter(t=>t.Type===GameInfo.Units.lookup(u.type)?.UnitType&&t.Tag==="UNIT_CLASS_INFANTRY").length??0)>0;
   const describe = unit => ({instanceId: unit.id.id, id: GameInfo.Units.lookup(unit.type)?.UnitType ?? null,
     name: name(unit.name ?? GameInfo.Units.lookup(unit.type)?.Name),
     location: deployed(unit) ? {x: unit.location.x, y: unit.location.y} : null,
@@ -74,6 +78,23 @@
         options.push({location:{x:l.x,y:l.y},availableNow:picker?.Success===true&&check?.Success===true&&check.RequiresConfirmation!==true&&unit.operationQueueSize===0&&unit.Movement?.movementMovesRemaining>0,failureReasons:(check?.FailureReasons??[]).map(name).filter(Boolean)});
       }
       selectedUnit.establishBase={operationAllowed:picker?.Success===true,options,failureReasons:(picker?.FailureReasons??[]).map(name).filter(Boolean)};
+      if(airliftSquadron(unit)){
+        const operation="UNITOPERATION_UNIT_AIR_DROP",picker=Game.UnitOperations.canStart(unit.id,operation,{},false),payload=records.find(r=>r.unit.id.id===unit.id.id)?.packedUnitIds,options=[];
+        const supported=payload?.length===1&&infantry(byId.get(payload[0]))&&unit.operationQueueSize===0&&
+          GameplayMap.getRevealedState(id,unit.location.x,unit.location.y)===RevealedStates.VISIBLE&&[-1,id].includes(GameplayMap.getOwner(unit.location.x,unit.location.y))&&GameplayMap.isWater(unit.location.x,unit.location.y)===false;
+        if(supported)for(const index of [...new Set(picker?.Plots??[])]){
+          if(!Number.isInteger(index)||index<0||index>=width*height)continue;
+          const l=GameplayMap.getLocationFromIndex(index);
+          if(!valid(l)||GameplayMap.getRevealedState(id,l.x,l.y)!==RevealedStates.VISIBLE||![-1,id].includes(GameplayMap.getOwner(l.x,l.y))||GameplayMap.isWater(l.x,l.y)!==false||
+              !["TERRAIN_FLAT","TERRAIN_HILL"].includes(GameInfo.Terrains.lookup(GameplayMap.getTerrainType(l.x,l.y))?.TerrainType))continue;
+          const ids=MapUnits.getUnits(l.x,l.y);if(!Array.isArray(ids)||ids.length)continue;
+          const check=Game.UnitOperations.canStart(unit.id,operation,{X:l.x,Y:l.y},false);
+          options.push({location:{x:l.x,y:l.y},availableNow:picker?.Success===true&&check?.Success===true&&check.RequiresConfirmation!==true&&unit.Movement?.movementMovesRemaining>0,
+            failureReasons:(check?.FailureReasons??[]).map(name).filter(Boolean)});
+        }
+        selectedUnit.airdrop={payloadUnitIds:payload??null,supportedPayload:Boolean(supported),operationAllowed:picker?.Success===true,options,
+          failureReasons:(picker?.FailureReasons??[]).map(name).filter(Boolean),scope:"Exactly one packed Infantry; explicit native landing, no mixed/multiple payload or automatic action"};
+      }
     }
     if (unit.isCommanderUnit && deployed(unit) && typeof Game.UnitCommands?.canStart === "function") {
       const pack = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_PACK_ARMY", {X: -9999, Y: -9999, UnitAbilityType: -1}, false);
@@ -185,10 +206,13 @@
             GameplayMap.getRevealedState(id, l.x, l.y) !== RevealedStates.VISIBLE || typeof GameplayMap.getOwner !== "function" ||
             ![-1, id].includes(GameplayMap.getOwner(l.x, l.y))) continue;
         const targets = leaving ? [sourceCommander] : records.map(r => r.unit).filter(c => deployed(c) &&
-          GameInfo.Units.lookup(c.type)?.Domain === def.Domain && c.location.x === l.x && c.location.y === l.y);
+          (GameInfo.Units.lookup(c.type)?.Domain === def.Domain||infantry(unit)&&airliftSquadron(c)) && c.location.x === l.x && c.location.y === l.y);
         if (targets.length !== 1 || !valid(targets[0].location) || typeof GameplayMap.getPlotDistance !== "function") continue;
         const c = targets[0];
-        if (GameInfo.Units.lookup(c.type)?.Domain !== def.Domain || (def.Domain === "DOMAIN_SEA" &&
+        const airlift=infantry(unit)&&airliftSquadron(c);
+        if(airlift&&(GameplayMap.isWater(c.location.x,c.location.y)!==false||GameplayMap.isWater(l.x,l.y)!==false||
+            ![-1,id].includes(GameplayMap.getOwner(c.location.x,c.location.y))||(!leaving&&(unit.isEmbarked!==false||GameplayMap.isWater(unit.location.x,unit.location.y)!==false))))continue;
+        if ((!airlift&&GameInfo.Units.lookup(c.type)?.Domain !== def.Domain) || (def.Domain === "DOMAIN_SEA" &&
             (c.isFleetCommander !== true || typeof GameplayMap.isWater !== "function" ||
               GameplayMap.isWater(c.location.x, c.location.y) !== true || GameplayMap.isWater(l.x, l.y) !== true ||
               (!leaving && GameplayMap.isWater(unit.location.x, unit.location.y) !== true)))) continue;
@@ -202,7 +226,7 @@
           if (!(distance === 1 && ids.length === 0) && !origin) continue;
         } else if (GameplayMap.getPlotDistance(unit.location.x, unit.location.y, l.x, l.y) > 1) continue;
         const check = Game.UnitCommands.canStart(unit.id, membershipCommand, {X: l.x, Y: l.y}, false);
-        options.push({commanderId: c.id.id, location: {x: l.x, y: l.y}, availableNow: result?.Success === true && check?.Success === true &&
+        options.push({commanderId: c.id.id,...(airlift?{transport:"squadron-infantry"}:{}), location: {x: l.x, y: l.y}, availableNow: result?.Success === true && check?.Success === true &&
           check.RequiresConfirmation !== true && unit.operationQueueSize === 0 && c.operationQueueSize === 0 &&
           typeof player.Armies?.getUnitReinforcementCommanderId === "function" && player.Armies.getUnitReinforcementCommanderId(unit.id, id) === -1,
           failureReasons: (check?.FailureReasons ?? []).map(name).filter(Boolean)});

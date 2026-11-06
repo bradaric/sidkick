@@ -683,6 +683,24 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Guns7667805/7733342 dealt47 to5439550 `(21,17)`, both attacks consumed, two native
   events and quiet533ms. Synthetic creation only. 240 Python / 434 Node pass;
   tools24/118 including94 actions. T62 unchanged.
+- `77fe2d1`: fleet/observed group combat. Squadron Infantry transport now explicit:
+  native per-unit join/leave requires exact Squadron/Airborne Forces, Infantry tag,
+  land base/deployment and complete owned membership ledger. Separate native
+  Airdrop intent requires sole packed Infantry, empty visible own/unowned flat/hill
+  native offered/selected landing; no mixed payload/implicit mass deployment. Verifies
+  exact landing, all other memberships, unchanged Squadron position, both health
+  baselines and no queued orders. Selected logistics exposes qualified Infantry
+  join/leave and single-payload Airdrop destinations without writing.
+- New test Squadron7798879 received labelled15XP, typed native Airborne Forces
+  promotion, typed base establishment at `(22,11)`, then fresh Rifleman7864416 packed
+  through normal membership. Native Airdrop to `(23,12)` verified with empty Squadron,
+  unchanged base/health and all other armies preserved. Immediate re-pack rejected
+  without request due spent readiness; after labelled movement restoration only on
+  these two test units, native re-pack then individual leave to `(23,11)` verified.
+  No location, membership or damage effect forced; other squadrons unaffected.
+- 242 Python / 437 Node pass; tools24/121 including97 actions. Separate progress
+  save `Sidkick_Playground_GroupOneFleetAirlift_T62_1793997593881` confirmed RESULT_OK,
+  no overwrite. Merchant3473432 `(18,20)`/100HP independently intact; still T62.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -690,7 +708,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
-| Military transport | Broader travel/transport variants remain to assess. Heavy/Light Fleet focused commands and observed land-group attacks now native-verified. Squadron establishment/packed relocation, aircraft transfers and air missions implemented/live-verified. Packed-army ocean travel verified. Some multi-aircraft/fortified bomb cases fixture-only. |
+| Military transport | Broader travel, mass/mixed Infantry Airdrop remain to assess/implement. Single Infantry Squadron join/leave/Airdrop now native-verified. Heavy/Light Fleet and observed land-group attacks verified. Squadron relocation/transfers/air missions and packed-army ocean travel verified. Some multi-aircraft/fortified bomb cases fixture-only. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
 | Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |

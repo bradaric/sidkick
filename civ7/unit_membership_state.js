@@ -24,6 +24,8 @@
   const unit = units[0], selected = armies.find(a => a.commanderId === commanderId);
   if (!selected) throw Error("Selected army disappeared");
   return {turn: Game.turn, age: Game.age, playerId, unitId, unitType, componentType, commanderId, commanderType, commanderComponentType,
+    commanderLocation:{x:commanders[0].location?.x,y:commanders[0].location?.y},unitDamage:unit.Health?.damage??null,commanderDamage:commanders[0].Health?.damage??null,
+    unitQueueSize:unit.operationQueueSize,commanderQueueSize:commanders[0].operationQueueSize,
     packed: selected.packedUnitIds.includes(unitId), armies,
     location: !seen.has(unitId) && unit.isOnMap === true && Number.isInteger(unit.location?.x) && unit.location.x >= 0 &&
       Number.isInteger(unit.location?.y) && unit.location.y >= 0 ? {x: unit.location.x, y: unit.location.y} : null};
