@@ -19,6 +19,8 @@ function run(o = {}, script = 'attack_unit.js') {
   if (o.movedCommander) {commander.location = {x: 3, y: 3}; commander.Movement.movementMovesRemaining = 0;}
   if (o.spentCommander) commander.Movement.movementMovesRemaining = 0;
   const second = {...attacker, id: {owner: 0, id: 11, type: 26}, location: {x: 3, y: 2}};
+  if (o.secondUnspent) second.Combat = {...second.Combat, attacksRemaining: 1};
+  if (o.negativeAttacks) attacker.Combat.attacksRemaining = -1;
   const player = {isTurnActive: !o.inactive, Units: {getUnits: () => [...(o.deadAttacker ? [] : [attacker]), ...(o.secondParticipant ? [second] : []), ...(o.group ? [commander] : [])]},
     Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 10 : -1},
     Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace}};
@@ -77,6 +79,17 @@ test('single melee/ranged unit attacks bind explicit hostile component and fixed
     assert.equal(data.expected.attackObserved, true);
     assert.equal(data.verificationArguments.before_target_damage, 0);
   }
+});
+
+test('army combat readback distinguishes primary effect from complete participant consumption', () => {
+  const args = {unit_id: 30, attacker_type: 300, participants: [10, 11].map(unit_id => ({unit_id, component_type: 26, unit_type: 100, before_attacks: 1}))};
+  const complete = run({group: true, secondParticipant: true, spent: true, damaged: true, args}, 'unit_attack_state.js').data;
+  assert.equal(complete.allCapturedParticipantsConsumed, true); assert.equal(complete.participantObservations.length, 2);
+  assert.deepEqual(complete.participantObservations.map(p => p.attacksRemaining), [0, 0]);
+  const partial = run({group: true, secondParticipant: true, secondUnspent: true, spent: true, damaged: true, args}, 'unit_attack_state.js').data;
+  assert.equal(partial.attackObserved, true); assert.equal(partial.allCapturedParticipantsConsumed, false);
+  assert.deepEqual(partial.participantObservations.map(p => p.attackConsumedOrLost), [true, false]);
+  assert.equal(run({spent: true, negativeAttacks: true, damaged: true}, 'unit_attack_state.js').data.attackObserved, false);
 });
 
 test('explicit enemy-field ranged mode allows only positively classified visible non-city wartime fields', () => {

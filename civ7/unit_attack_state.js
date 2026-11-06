@@ -12,8 +12,9 @@
   const own = owned.filter(u => u.id.id === unitId);
   if (own.length > 1 || (own.length && (own[0].id.type !== componentType || own[0].type !== unitType))) throw Error("Attacker identity is ambiguous or changed");
   const attacker = own[0], attacks = attacker?.Combat?.attacksRemaining ?? null;
-  let consumed = own.length === 0 || (Number.isInteger(attacks) && attacks < beforeAttacks);
+  let consumed = own.length === 0 || (Number.isInteger(attacks) && attacks >= 0 && attacks < beforeAttacks);
   let consumedUnitIds = consumed ? [unitId] : [];
+  let participantObservations = null;
   if (queryArguments.participants !== undefined) {
     const participants = queryArguments.participants;
     if (!Array.isArray(participants) || participants.length < 1 || participants.length > 16 ||
@@ -21,11 +22,16 @@
           p.unit_id === unitId || p.before_attacks <= 0 || !Number.isInteger(p.unit_type)) ||
         new Set(participants.map(p => p.unit_id)).size !== participants.length) throw Error("Invalid submitted attack participants");
     if (!attacker || attacker.isCommanderUnit !== true) throw Error("Focused attack commander identity changed");
-    consumedUnitIds = participants.filter(p => {
+    participantObservations = participants.map(p => {
       const units = owned.filter(u => u.id.id === p.unit_id);
       if (units.length > 1 || (units.length && (units[0].id.type !== p.component_type || units[0].type !== p.unit_type))) throw Error("Participant identity changed");
-      return !units.length || (Number.isInteger(units[0].Combat?.attacksRemaining) && units[0].Combat.attacksRemaining < p.before_attacks);
-    }).map(p => p.unit_id);
+      const unit = units[0], current = unit?.Combat?.attacksRemaining ?? null;
+      return {unitId: p.unit_id, present: Boolean(unit), beforeAttacks: p.before_attacks, attacksRemaining: current,
+        attackConsumedOrLost: !unit || (Number.isInteger(current) && current >= 0 && current < p.before_attacks),
+        health: Number.isFinite(unit?.Health?.damage) && Number.isFinite(unit.Health.maxDamage) ? {current: unit.Health.maxDamage - unit.Health.damage, maximum: unit.Health.maxDamage} : null,
+        location: unit?.isOnMap === true ? {x: unit.location?.x, y: unit.location?.y} : null, queueSize: unit?.operationQueueSize ?? null};
+    });
+    consumedUnitIds = participantObservations.filter(p => p.attackConsumedOrLost).map(p => p.unitId);
     consumed = consumedUnitIds.length > 0;
   }
   let targetDamage = null, targetLeftTile = null;
@@ -63,6 +69,7 @@
   }
   return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId,
     attackerPresent: Boolean(attacker), attacksRemaining: attacks, attackConsumedOrAttackerLost: consumed, consumedUnitIds,
+    participantObservations, allCapturedParticipantsConsumed: participantObservations ? participantObservations.every(p => p.attackConsumedOrLost) : null,
     targetDamage, targetLeftTile, attackObserved: consumed && (targetLeftTile === true || (targetDamage != null && targetDamage > beforeDamage)),
     note: "A target leaving a visible tile is not proof of destruction; no hidden target state or damage forecast is queried"};
 })()

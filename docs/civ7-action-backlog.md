@@ -141,6 +141,34 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   `(19,20)` produced no observed constructible and are not claimed successful.
   Native unit creation remains supported; do not assume building creation works.
 - 202 Python + 369 Node tests pass; default23 tools, write mode77 including54 actions.
+- Pillage batch committed as `fab62ec`.
+- Multi-participant native verification completed under synthetic prerequisites.
+  Created commander4849715 and guns4915252/4980789, checked repositioning into its
+  real radius (commander `(14,17)`, guns `(14,18)`/`(15,17)`), restored movement
+  after setup, restored visible Cuirassier2687012 to100HP. Normal MCP Focus Fire
+  consumed both attacks1→0 and dealt47 damage, both guns100HP. Initial out-of-radius/
+  range setup was rejected before submission, not bypassed.
+- Distinct native coordinated melee: commander moved by checked step to `(14,16)`;
+  synthetic own Riflemen5046326 `(13,16)` / 5111863 `(14,17)` and Franklin
+  Rifleman4784138 `(13,17)`. MCP returned after first participant hit (28 damage),
+  later readback confirmed both attacks1→0, total damage76, attackerHP77/87 and
+  clear queues. Do not present the early primary-effect result as full completion.
+- Combat readback now separately exposes each captured participant's presence,
+  before/current attacks, consumption/loss, HP, location and queue, plus
+  allCapturedParticipantsConsumed. Existing success remains primary-effect/at-least-
+  one-consumer scoped; secondary attacks may finish later. Unknown negative attack
+  counts no longer count as spent attacks. Fixture covers partial vs complete;
+  exact read-only native verifier confirmed both complete live cases without retry.
+- Overrun still natively unavailable: synthetic Tank5177400 joined65536 with its
+  original Rifleman3080232 retained. Native picker reports Insufficient Strength
+  Difference against synthetic Franklin Field Gun4915254 `(29,30)`; no Overrun
+  submitted. Another Field Gun4849717 appeared at `(28,29)` rather than requested
+  `(29,28)`: Tuner creation may relocate units, so absence at the requested plot
+  is not proof of no effect. Warrior type is unavailable in this age's definitions.
+  Original commander remains `(29,29)` with Rifleman + test Tank, reinforcement
+  assignment retained. Native Tank leave offers only occupied origin/foreign tile;
+  bounded adjacent-empty tool rejected, no removal submitted.
+- 202 Python + 370 Node tests pass; tools unchanged23/77 including54 actions.
 
 ## Existing baseline
 

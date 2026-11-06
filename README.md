@@ -1282,6 +1282,21 @@ movement2→0 and damaged=false→true. No forced damage or healing claim. Anoth
 urban test correctly rejected its fogged owning centre; the original Merchant
 was untouched. **202 Python / 369 Node tests pass; tools23/77 (54 actions).**
 
+#### Multi-participant combat observation
+
+Normal MCP Focus Fire with two synthetic Field Guns consumed both attacks and
+dealt47 damage. Distinct coordinated melee with two synthetic Riflemen consumed
+both attacks and dealt76 damage (attackerHP77/87). Melee initially returned after
+one hit; complete consumption was confirmed later by read-only evidence, not by
+resubmitting. Setup used native Tuner units, checked movement and labelled readiness/
+defender-health restoration; no attack consumption or damage effect was forced.
+
+Readback exposes per-participant attack counts, consumption/loss, HP, location and
+queue plus `allCapturedParticipantsConsumed`. Primary-effect success still means
+at least one participant fired; it does not imply every secondary attack finished.
+Negative/unknown counters are not proof of consumption. Kill/full-splash accounting
+remains excluded. **202 Python / 370 Node tests pass; tools23/77 (54 actions).**
+
 ## One-shot export
 
 ```powershell
