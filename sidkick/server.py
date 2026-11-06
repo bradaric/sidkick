@@ -68,6 +68,7 @@ from civ7.actions import (
     peace_concession,
     found_adjacent_settlement,
     spread_foreign_religion,
+    withdraw_capped_project_support,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -284,6 +285,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="withdraw_civ7_capped_project_support",title="Withdraw one Civ VII own token under acknowledged penalty caps",
+            description=("CHANGE GAME STATE: exact own active event_id/target_player_id, max_cancel_penalty, "
+                         "max_unsupport_penalty and expected_turn. Explicit caps apply to installed native "
+                         "definition penalty fields, NOT a Gold/Influence/runtime relationship quote. "
+                         "Supported cooperative/city-state/espionage/sabotage project only; one own token "
+                         "removed, known other supporters captured. Rejects removing last own token while "
+                         "others support it; no incoming/war projects. Native permission without confirmation/"
+                         "quoted currency cost required. Verifies exactly one token decrement, other support "
+                         "preserved and no unexpected net currency debit; cancellation reported separately, "
+                         "not complete relationship/refund/expiry effects. One write, no turn or unknown retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(withdraw_capped_project_support)
         server.tool(
             name="found_civ7_adjacent_settlement",title="Found exact native-offered adjacent Civ VII settlement",
             description=("CHANGE GAME STATE: fixed FOUND_CITY_ADJACENT_PLOT by exact ready founder unit_id "

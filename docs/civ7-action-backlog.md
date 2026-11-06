@@ -595,6 +595,26 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   Positive adjacent-found/foreign-spread cases remain specific eligibility gaps,
   implementations and fixtures present. 234 Python / 421 Node pass; tools23/112
   including89 actions, T62 unchanged.
+- `99c7511`: adjacent founding/foreign spread. Continuing toward the user's
+  tomorrow-morning target: close remaining concrete implementation gaps, no turns
+  or silent scope expansion; positive eligibility gaps stay distinct from code.
+- Capped own-project support withdrawal now supports known nonzero native definition
+  penalties and exact one-token decrement from multiple local tokens. Default tool
+  stays sole-token/zero-penalty. Captures other known supporters and verifies their
+  support preserved; removing last own token with other supporters rejects rather
+  than risk implicit project abandonment. Definition caps are not currency quotes
+  or complete relationship-effect guarantees; unexpected net currency debit fails
+  verification. Hinder Research81 native cancellation verified with cap10; cap9
+  rejected without request. Project73 native support2→1 verified, original project
+  retained and not canceled. Native getSupportingPlayers repeats players per token
+  (`[0,0]`); diagnosed and fixture-covered, no duplicate write.
+- Multi-token setup used labelled500 Influence grant, normal extra token150, then
+  exact typed withdrawal. No new collaboration was started (native single-instance
+  gate rejected). Disposable budget reset to recorded54.82421875 after original
+  project73/count1 restoration. Merchant3473432 `(18,20)`/100HP independently intact.
+  New no-overwrite progress save `Sidkick_Playground_GroupOneAirDiplomacy_T62_1793994262110`
+  confirmed RESULT_OK before budget setup; no unrelated checkpoints overwritten.
+- 235 Python / 422 Node pass; tools23/113 including90 actions, still T62.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -605,7 +625,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Military transport | Broader travel/transport variants remain to assess. Squadron establishment/packed relocation, aircraft transfers, grouped Ground Attack, Fighter Sweep and Carpet Bomb implemented/live-verified. Single-aircraft carrier missions and packed-army ocean travel live-verified. Multi-aircraft Ground Attack/fortified district bombing cases fixture-tested. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
-| Diplomacy/choices | Asset concessions, nonzero-penalty/multi-support withdrawal and remaining hostile/mandatory variants remain. Economic concession editing/submission/response handlers implemented. Fixed secondary aid/food/raid and sole-own zero-penalty project withdrawal implemented; aid/cancellation/levy live-verified. Paid/trial/independent/bonus positive gaps kept separate. |
+| Diplomacy/choices | Asset concessions and remaining hostile/mandatory variants remain. Economic concession editing and capped nonzero-penalty/multi-token own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with other supporters deliberately rejects. Fixed secondary handlers present; paid/trial/independent/bonus positive gaps separate. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

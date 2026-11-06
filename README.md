@@ -1573,6 +1573,15 @@ before request; current Modern has no Missionary definition. Positive cases rema
 fixture-only; no founding/spread effects forced.
 **234 Python / 421 Node pass; tools23/112 (89 actions).**
 
+`withdraw_civ7_capped_project_support` acknowledges explicit native definition
+penalty caps and removes exactly one own token, preserving captured other support.
+Default remains sole-token/zero-penalty; last own token with other supporters rejects.
+Native penalty10 cancellation and project73 support2→1 verified, original project
+retained. Multi-token setup used disposable Influence then reset its original
+54.82421875 balance; Merchant independently intact. New separate AirDiplomacy T62
+progress save confirmed RESULT_OK. Definition penalties are not currency quotes.
+**235 Python / 422 Node pass; tools23/113 (90 actions).**
+
 ## One-shot export
 
 ```powershell

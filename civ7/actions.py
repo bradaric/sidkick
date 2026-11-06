@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def withdraw_capped_project_support(event_id: StrictInt, target_player_id: StrictInt, max_cancel_penalty: StrictInt, max_unsupport_penalty: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Withdraw one own token under acknowledged native-definition penalty caps, preserving other support."""
+    if any(type(v) is not int or v<0 for v in (event_id,target_player_id,max_cancel_penalty,max_unsupport_penalty,expected_turn)):
+        raise ValueError("Exact own project/counterpart, native-definition penalty caps and expected turn required")
+    return await _execute_and_verify("withdraw_project_support.js",{"event_id":event_id,"target_player_id":target_player_id,"expected_turn":expected_turn,"extended":True,"max_cancel_penalty":max_cancel_penalty,"max_unsupport_penalty":max_unsupport_penalty},"project_withdrawal_state.js")
+
+
 async def found_adjacent_settlement(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Found at an explicit native-offered adjacent plot; source may be embarked."""
     if any(type(v) is not int or v<0 for v in (unit_id,x,y,expected_turn)):

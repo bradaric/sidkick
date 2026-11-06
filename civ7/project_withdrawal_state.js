@@ -7,7 +7,10 @@
   const canceled=Game.Diplomacy.isProjectCanceled(eventId);
   if(canceled!==true&&!matches.length)throw Error("Project disappeared without native cancellation evidence");
   const support=canceled===true?0:Game.Diplomacy.getNumSupportEnvoysForPlayer(eventId,playerId),currentGold=player.Treasury?.goldBalance,currentInfluence=player.DiplomacyTreasury?.diplomacyBalance;
+  const {before_support:beforeSupport=1,other_support:otherSupport=[]}=queryArguments;
+  if(!Number.isInteger(beforeSupport)||beforeSupport<1||beforeSupport>16||!Array.isArray(otherSupport))throw Error("Invalid captured support inventory");
+  const othersPreserved=otherSupport.every(p=>Number.isInteger(p.playerId)&&p.playerId!==playerId&&player.Diplomacy.hasMet(p.playerId)===true&&Number.isInteger(p.count)&&p.count>0&&canceled!==true&&Game.Diplomacy.getNumSupportEnvoysForPlayer(eventId,p.playerId)===p.count);
   return{turn:Game.turn,age:Game.age,playerId,eventId,projectCanceled:typeof canceled==="boolean"?canceled:null,ownSupport:support,
     cancellationScheduled:canceled!==true&&matches.length===1?Game.Diplomacy.getCompletionData(eventId)?.bWillCancel??null:false,
-    ownSupportWithdrawn:support===0&&Number.isFinite(currentGold)&&Number.isFinite(currentInfluence)&&currentGold>=gold&&currentInfluence>=influence};
+    otherSupportPreserved:othersPreserved,ownSupportWithdrawn:support===beforeSupport-1&&othersPreserved&&Number.isFinite(currentGold)&&Number.isFinite(currentInfluence)&&currentGold>=gold&&currentInfluence>=influence};
 })()
