@@ -1728,6 +1728,25 @@ prior abilities, experience, health, inventory/armies and balances. Creation-onl
 setup; future combat Gold payouts remain unverified, not implied by the grant.
 **254 Python / 457 Node pass; all24 default tools freshly called over real stdio.**
 
+`respond_civ7_first_meet` now binds an actual blocking `NOTIFICATION_PLAYER_MET`
+notice, fresh diplomacy token, fixed greeting and native cost/delta/cap—not merely
+permissive native permission. Initial peaceful/nonallied zero-relationship/empty-
+history profiles only; GameStarted required, unknown/ambiguous/stale notices reject.
+Native friendly
+reply to Hatshepsut verified20 Influence spent, relationship0→20, notice cleared and
+Gold/peace/alliance stable; neutral verified zero-cost/zero-delta notice clearance.
+An unfriendly request timed out behind Begin, then its exact20 debit/−20 relationship
+and notice clearance were observed after Begin without resubmission. Original
+UNKNOWN retained; fresh fully-started bounded unfriendly verification remains open.
+New guard live-rejected at Begin; loading is not inferred from isInGame alone.
+Contact used
+labelled test Scouts/readiness, not forced contact or response; no turns advanced.
+User's Maya original and Modern/T62 checkpoint preserved; all16 original Maya units
+unchanged. Pending/friendly/unfriendly/final guarded branches saved separately with
+RESULT_OK; friendly+20 state restored, still T1. Other write families' loading gates
+were not audited here.
+**255 Python / 462 Node pass; tools24/128 (104 actions); all24 default tools pass real stdio.**
+
 ## One-shot export
 
 ```powershell

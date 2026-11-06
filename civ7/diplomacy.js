@@ -242,6 +242,7 @@
       atWar: Boolean(diplomacy.isAtWarWith(otherId)),
       allied: Boolean(diplomacy.hasAllied(otherId)),
       pendingDeal: Boolean(Game.DiplomacyDeals.hasPendingDeal(localId, otherId)),
+      firstMeet:typeof firstMeet!=="undefined"?firstMeet.snapshot(localId,otherId):null,
       whitePeace:typeof DiplomacyDealDirection!=="undefined"?{outgoing:whitePeaceDraft(otherId,DiplomacyDealDirection.OUTGOING),incoming:whitePeaceDraft(otherId,DiplomacyDealDirection.INCOMING)}:null,
       economicPeace:typeof DiplomacyDealDirection!=="undefined"?{outgoing:economicPeaceDraft(otherId,DiplomacyDealDirection.OUTGOING),incoming:economicPeaceDraft(otherId,DiplomacyDealDirection.INCOMING)}:null,
       relationshipModifiers: (diplomacy.getPlayerRelationshipHistory(otherId) ?? []).map(event => ({

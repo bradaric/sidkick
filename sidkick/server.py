@@ -82,6 +82,7 @@ from civ7.actions import (
     manage_alliance,
     activate_commander_great_person,
     respond_hostile_diplomatic_project,
+    respond_first_meet,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -299,6 +300,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="respond_civ7_first_meet",title="Respond to an exact pending Civ VII first-meet greeting",
+            description=("CHANGE GAME STATE: exact met-major target_player_id, friendly/neutral/unfriendly "
+                         "greeting, max_influence_cost, fresh diplomacy firstMeet.notificationToken and expected_turn. "
+                         "Requires one actual local active blocking NOTIFICATION_PLAYER_MET tied to that target, "
+                         "not a guessed diplomacy session or permissive canStart alone. Initial peaceful/nonallied "
+                         "zero-relationship/empty-history profile only. Uses native greeting cost/relationship "
+                         "delta and permission only after GameStarted readiness (not the Begin loading gate). Rechecks native "
+                         "quote/balances/notice before submission; rejects confirmations, unknown costs and changed context. Verifies "
+                         "pending choice cleared, exact Influence debit/relationship delta, unchanged Gold/peace/"
+                         "alliance. Friendly may reveal capitals; complete reveal/global/relationship effects and "
+                         "UI-session closure not claimed. One request,15-second readback; no dismissal, turn or retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(respond_first_meet)
         server.tool(
             name="respond_civ7_hostile_project",title="Respond to one revealed incoming Civ VII sanction",
             description=("CHANGE GAME STATE: exact incoming action_id, native offered accept/support/reject "
@@ -1948,7 +1963,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "definitions, native duration quotes, active stages and native event progress/"
             "completion timing, not guaranteed agreement expiry dates. Pending visible incoming "
             "projects include responseOptions with native descriptions, Influence quotes, selectability "
-            "and exact response-operation eligibility; these are not predicted final outcomes. Safe secondaryTargets "
+            "and exact response-operation eligibility; these are not predicted final outcomes. Pending "
+            "firstMeet entries bind actual blocking PLAYER_MET notifications to native greeting costs/"
+            "relationship deltas and a fresh notificationToken; availability also requires GameStarted, "
+            "not the Begin loading gate. Native permission alone is not a pending choice. Safe secondaryTargets "
             "include met/local players, offered owned settlements, offered currently visible "
             "settlement centres of the met counterpart, public unit types and amounts, with "
             "owner-qualified City identity, exact selected-argument checks and failure reasons. "

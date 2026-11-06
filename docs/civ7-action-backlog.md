@@ -941,6 +941,72 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   `Sidkick_Playground_GroupOneVillaSanctions_T62_1794004265576` confirmed RESULT_OK,
   no overwrite. Still T62; original Merchant3473432 `(18,20)`/100HP,
   Gold2081.33984375, Influence54.82421875, alliance1 and peace with3 intact.
+- User supplied **Catherine – Maya-Maya**, loaded as Exploration/T1/local0/single
+  player for first-meet testing. Original Modern/T62 game first saved separately as
+  `Sidkick_Playground_BeforeMayaFirstContact_T62_1794005100753`, RESULT_OK. Original
+  Maya save not overwritten; baseline test copy
+  `Sidkick_Playground_MayaBeforeFirstContact_T1_1794005298721` confirmed RESULT_OK.
+- First-meet pending-choice binding implemented: authoritative ribbon UI activates
+  `NOTIFICATION_PLAYER_MET`, not DIPLOMACY_SESSION. New helper requires one active
+  local blocking/non-dismissible notice with exact met-major Player/Player2 and
+  component identity. Diplomacy readout exposes native friendly/neutral/unfriendly
+  cost/delta, supported initial-profile eligibility and a whole-state token. Fixed
+  responder requires that token, native permission, explicit cap and stable context;
+  rejects missing/ambiguous/unknown notice records and permissive permission alone.
+  Requires actual GameStarted readiness, with final native quote/delta, notice and
+  raw balance/relationship checks after rebuilding the token; no queued Begin-gate reply.
+  Currently supports peaceful/nonallied zero-relationship/empty-history profiles;
+  inherited modifiers reject. Verifies notice clearance, exact own Influence debit/
+  relationship delta and stable Gold/peace/alliance. Friendly capital reveals and
+  broader/global effects or UI-session closure are not fully accounted for.
+- Contact setup used only new test Scouts1114128/1179665/1245202 and labelled
+  movement restoration. No hidden rival inventory read or forced meet/response:
+  1179665 was synthetically placed at fixed `(55,23)`, then normal native visible
+  movement to `(61,23)` met Hatshepsut3 and produced blocking local notice23/type20.
+  Initial original-location Scout exploration found no contact. A northern requested
+  placement `(55,11)` actually yielded1245202 at `(60,21)`; never count requested
+  debug coordinates as native placement proof. Its later `(57,16)` move returned
+  UNKNOWN at the ordinary short timeout; independent readback observed arrival,
+  queue0/health intact, and no repeat of that move was submitted.
+- Separate pending checkpoint
+  `Sidkick_Playground_MayaFirstMeetPending3_T1_1794005858208` confirmed RESULT_OK.
+  Native typed friendly greeting cost20 (cap19 rejected), Influence357.40234375→
+  337.40234375, relationship0→20 and notice cleared. Gold140.1015625/peace/nonalliance
+  unchanged. Real opt-in stdio rejected the consumed notice token without a second
+  response. All16 original Maya unit locations,
+  movement and queues independently unchanged, including Merchant327684 `(15,26)`.
+- Friendly branch saved separately as
+  `Sidkick_Playground_MayaFirstMeetFriendly_T1_1794006681982`, confirmed RESULT_OK,
+  before deliberate loading of the pending checkpoint for a distinct neutral case.
+  Initial neutral read during loading failed without submitting; later neutral
+  verified native notice clearance at zero cost/zero relationship delta.
+- Separate unfriendly branch exposed the loading-readiness bug: isInGame=true,
+  turn-active and native permission=true while still WaitingForUIReady/Begin.
+  One unfriendly request returned UNKNOWN after15 seconds with no immediate effect.
+  User clicked Begin; read-only inspection then proved notice cleared, relationship
+  0→-20, exact20 Influence debit, stable Gold/peace/nonalliance. Original UNKNOWN
+  record retained, no request repeated. Unfriendly effects were late observed,
+  not successful bounded execution from the fully started state. Saved separately
+  as `Sidkick_Playground_MayaFirstMeetUnfriendly_T1_1794007320072`, RESULT_OK.
+- New GameStarted guard fixture-tested with active pending choice/native permission
+  true; also live-rejected at actual Begin before any new response. Friendly branch
+  deliberately restored; native Begin callback `UI.notifyUIReady()` used once only
+  at its normal WaitingForUIReady gate, not forced readiness/configuration or turn
+  advance. Native load-screen model confirms this is the actual Begin handler.
+  Earlier restore diagnostic hit an unloaded Game context; only read-only waiting
+  resumed, no load request repeated. Other write families' loading gates not audited.
+- User's north-of-Hatty hint used for additional bounded discovery tests with new
+  Scouts1310739/1376276. Requested `(64,11)`/`(64,4)` placements instead landed at
+  `(59,11)`/`(57,7)`. Nearby visible ocean destinations had empty native paths even
+  when canStart=true; no ocean/technology override or unsafe move sent. No second
+  pending major greeting produced; fresh fully-started unfriendly positive remains
+  separate from its late-observed saved-branch result.
+- Final friendly test state saved as
+  `Sidkick_Playground_MayaFirstMeetGuarded_T1_1794007838230`, RESULT_OK/no overwrite.
+  Still T1/GameStarted; all16 original units' locations/movement/queues intact,
+  Merchant327684 `(15,26)`/4 moves/undamaged, Hatshepsut3 relationship+20,
+  Influence337.40234375 and Gold140.1015625.255 Python /462 Node pass;
+  all24 default tools freshly passed real stdio calls; opt-in128 including104 actions.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -951,7 +1017,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Observed Sweep and fortified Carpet Bomb now verified; fortified naval positive remains native-blocked. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding/adjacent intent, resettle/roads, archaeology, spread/religion and archive-buffer exchange implemented. Santa Anna promotion, Morelos primary/wider-owned healing and Villa ability grant implemented/native-verified with labelled synthetic prerequisites. Future Villa combat payouts remain unverified. Other effect-specific GP profiles remain unimplemented. Adjacent founding/Modern Missionary remain eligibility gaps; original Merchant intact. |
-| Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel, five Modern espionage variants and explicit revealed hostile-sanction replies implemented; eligibility blocks positive tests. Own-war support/capped withdrawal verified. First-meet still needs a pending-choice binding (native permission alone is permissive); other mandatory variants remain distinct from paid/trial/independent/bonus verification gaps. |
+| Diplomacy/choices | Great Work/other asset variants still need implementation; Great Work offers lack identity, unit/captive/tech lists empty. Alliance form/cancel, Modern espionage and hostile-sanction replies implemented; eligibility blocks positive tests. Own-war support/capped withdrawal verified. First-meet initial profile implemented with GameStarted/PLAYER_MET guards: friendly/neutral native verified; unfriendly effects late observed after Begin, fresh bounded positive still unverified. Inherited first-meet modifiers and other mandatory variants remain separate implementation work. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun

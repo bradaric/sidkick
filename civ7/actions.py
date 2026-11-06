@@ -701,6 +701,13 @@ async def choose_narrative(
     }, "narrative_state.js")
 
 
+async def respond_first_meet(target_player_id: StrictInt, greeting: Literal["friendly", "neutral", "unfriendly"], max_influence_cost: StrictFloat, notification_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Respond once to one native pending PLAYER_MET greeting, never permission-only or session guessing."""
+    if any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or greeting not in ("friendly","neutral","unfriendly") or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0 or not isinstance(notification_token,str) or not notification_token or len(notification_token)>100000:
+        raise ValueError("Exact pending first-meet target/token, fixed greeting, finite Influence cap and expected turn required")
+    return await _execute_and_verify("respond_first_meet.js",{"target_player_id":target_player_id,"greeting":greeting,"max_influence_cost":max_influence_cost,"notification_token":notification_token,"expected_turn":expected_turn},"first_meet_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def respond_hostile_diplomatic_project(action_id: StrictInt, response: Literal["accept", "support", "reject"], max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
     """Respond to one exact revealed incoming sanction; never infer a pending choice from native permission alone."""
     if any(type(v) is not int or v<0 for v in (action_id,expected_turn)) or response not in ("accept","support","reject") or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0:
