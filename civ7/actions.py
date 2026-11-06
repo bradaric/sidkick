@@ -195,6 +195,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def archive_great_work(great_work_index: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Archive one exact owned displayed Great Work while preserving the full owned work ledger."""
+    if any(type(v) is not int or v<0 for v in (great_work_index,expected_turn)):
+        raise ValueError("Exact owned work index and expected turn required")
+    return await _execute_and_verify("archive_great_work.js",{"great_work_index":great_work_index,"expected_turn":expected_turn},"great_work_location_state.js")
+
+
 async def connect_merchant_road(unit_id: StrictInt, target_city_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Create an exact native-offered new owned-city road connection without movement fallback."""
     if any(type(v) is not int or v<0 for v in (unit_id,target_city_id,expected_turn)):

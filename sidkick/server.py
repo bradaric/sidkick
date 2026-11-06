@@ -45,6 +45,7 @@ from civ7.actions import (
     local_civilian_action,
     resettle_migrant,
     connect_merchant_road,
+    archive_great_work,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -261,6 +262,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="archive_civ7_great_work",title="Archive one owned Civ VII Great Work",
+            description=("CHANGE GAME STATE: native MOVE_GREAT_WORK to archive for exact owned "
+                         "great_work_index and fresh expected_turn. Requires a complete unique owned work "
+                         "ledger, exact displayed source in an undamaged owned building and native archive "
+                         "permission without confirmation. Already archived is a no-op. Verifies exact "
+                         "archive location and preservation of every other owned work's ownership/location. "
+                         "Use existing move tool to redisplay into a native-compatible empty slot. Combined "
+                         "archive/move sequences can exchange works but are explicitly non-atomic: stop on "
+                         "unknown/failed stages, never blind retry or auto-rollback. No Tourism/yield forecast "
+                         "or turn advancement. One submission."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(archive_great_work)
         server.tool(
             name="connect_civ7_merchant_road",title="Connect owned Civ VII cities by Merchant road",
             description=("CHANGE GAME STATE: native CONNECT_WITH_ROAD by exact ready deployed Merchant "

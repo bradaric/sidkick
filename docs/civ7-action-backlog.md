@@ -311,6 +311,18 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
 - Synthetic Merchant5701696 normally connected Copan65536 to Ur524295, consumed
   Merchant and new bidirectional connection verified. Original3473432 untouched.
   214 Python / 393 Node pass; tools23/89 including66 actions; T62/no Gold spend.
+- `7afd6fc`: Merchant roads. Native archival destination validated read-only, then
+  typed archive implemented: exact displayed owned work, undamaged source, native
+  MOVE_GREAT_WORK to destination city/building -1, captured complete owned work
+  ledger and single submission. Readback proves archive plus all other work
+  ownership/locations preserved. Existing empty-slot moves now also verify the
+  complete work ledger and reject native confirmation requirements.
+- Works13/6 exchanged through explicit archive13 → move6 Palace → move13 Museum,
+  every stage verified, then inverse three checked stages restored the exact original
+  two-work inventory. This is an explicitly non-atomic primitive sequence, not an
+  invented atomic swap operation. Unknown/failed stages stop; no automatic rollback
+  or retry. Works6 Museum/Bàakʼ and13 Palace/St. Petersburg restored, no yield or
+  Tourism claim. 215 Python / 394 Node pass; tools23/90 including67 actions.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

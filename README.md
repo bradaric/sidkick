@@ -1399,6 +1399,14 @@ links preserved, not every road hex. Selected Merchant logistics lists endpoints
 Live synthetic5701696 connected Copan–Ur and was consumed; original Merchant was
 untouched. **214 Python / 393 Node pass; tools23/89 (66 actions).**
 
+`archive_civ7_great_work` moves one exact owned displayed work to native archive,
+verifying its location and the complete owned work ledger. Existing empty-slot
+moves now preserve/verify that ledger too. Archive + checked moves support explicit
+non-atomic exchanges; stop on failed/unknown stages, never blind retry/auto-rollback.
+Live13/6 exchanged Museum/Palace via archive buffer, every stage verified, then
+inverse stages restored the exact original inventory. No Tourism/yield forecast.
+**215 Python / 394 Node pass; tools23/90 (67 actions).**
+
 ## One-shot export
 
 ```powershell

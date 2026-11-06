@@ -12,11 +12,14 @@
   const player = Players.get(playerId);
   if (!player || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false) return reject("Local turn is not active");
   if (Game.turn !== expectedTurn) return reject("The observed turn is stale");
-  const sources = [], buildings = [];
+  const sources = [], buildings = [], inventory = [];
   const archiveCount = player.Culture.getNumWorksInArchive();
   if (!Number.isInteger(archiveCount) || archiveCount < 0) return reject("Archive inventory is unavailable");
   for (let slot = 0; slot < archiveCount; slot++) {
-    if (player.Culture.getArchivedGreatWork(slot) === index) sources.push({
+    const work = player.Culture.getArchivedGreatWork(slot);
+    if (!Number.isInteger(work) || work < 0) return reject("Archive work identity is unavailable");
+    inventory.push({index:work,location:{archived:true,cityId:null,buildingType:null}});
+    if (work === index) sources.push({
       location: {archived: true, cityId: null, buildingType: null}, damaged: false});
   }
   let inventoryError = false;
@@ -32,12 +35,15 @@
           entry.slots.some(slot => !Number.isInteger(slot.greatWorkIndex))) { inventoryError = true; continue; }
       const indices = entry.slots.map(slot => slot.greatWorkIndex).filter(value => value >= 0);
       const location = {archived: false, cityId: city.id.id, buildingType: definition.ConstructibleType};
+      for (const work of indices) inventory.push({index:work,location});
       for (const work of indices) if (work === index) sources.push({location, damaged: instance.damaged});
       buildings.push({location, nativeType: instance.type, damaged: instance.damaged,
         capacity: city.Constructibles.getNumGreatWorkSlots(entry.constructibleID), used: indices.length});
     }
   }
   if (inventoryError) return reject("Owned Great Work slot inventory is incomplete");
+  inventory.sort((a,b)=>a.index-b.index);
+  if (new Set(inventory.map(r=>r.index)).size !== inventory.length) return reject("Owned work ledger identity is ambiguous");
   if (sources.length !== 1) return reject("No unique owned Great Work matches this instance index");
   const targets = buildings.filter(building => building.location.cityId === destinationId &&
     building.location.buildingType === destinationType);
@@ -54,11 +60,12 @@
   if (!source.location.archived) args.SourceCity = source.location.cityId;
   const operation = PlayerOperationTypes.MOVE_GREAT_WORK;
   const check = Game.PlayerOperations.canStart(playerId, operation, args, false);
-  if (check?.Success !== true) return {status: "rejected", greatWorkIndex: index,
+  if (check?.Success !== true || check.RequiresConfirmation === true) return {status: "rejected", greatWorkIndex: index,
     reason: "Native Great Work move check failed", failureReasons: check?.FailureReasons ?? []};
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false) return reject("Game context changed during validation");
   Game.PlayerOperations.sendRequest(playerId, operation, args);
   return {status: "submitted", greatWorkIndex: index, before,
-    expected: {greatWorkIndex: index, location: target.location}};
+    expected: {greatWorkIndex: index, location: target.location, inventoryPreserved:true},
+    verificationArguments:{great_work_index:index,expected_inventory:inventory.map(r=>({index:r.index,location:r.index===index?target.location:r.location}))}};
 })()

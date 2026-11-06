@@ -6,11 +6,14 @@
   if (!player) throw Error("No local player");
   const index = queryArguments.great_work_index;
   if (!Number.isInteger(index) || index < 0) throw Error("Invalid Great Work instance index");
-  const locations = [];
+  const locations = [], inventory = [], expectedInventory = queryArguments.expected_inventory;
+  if (expectedInventory !== undefined && !Array.isArray(expectedInventory)) throw Error("Invalid captured work ledger");
   const count = player.Culture.getNumWorksInArchive();
   if (!Number.isInteger(count) || count < 0) throw Error("Archive inventory is unavailable");
   for (let slot = 0; slot < count; slot++) {
-    if (player.Culture.getArchivedGreatWork(slot) === index) locations.push({archived: true, cityId: null, buildingType: null});
+    const work = player.Culture.getArchivedGreatWork(slot), location = {archived: true, cityId: null, buildingType: null};
+    if (expectedInventory !== undefined) inventory.push({index:work,location});
+    if (work === index) locations.push(location);
   }
   for (const city of player.Cities.getCities().filter(city => city.id.owner === playerId)) {
     const entries = city.Constructibles.getGreatWorkBuildings();
@@ -27,9 +30,16 @@
           if (!definition) throw Error("Building identity is unavailable");
           locations.push({archived: false, cityId: city.id.id, buildingType: definition.ConstructibleType});
         }
+        if (expectedInventory !== undefined && slot.greatWorkIndex >= 0) {
+          const definition = GameInfo.Constructibles.lookup(instance.type);
+          if (!definition) throw Error("Owned ledger building identity is unavailable");
+          inventory.push({index:slot.greatWorkIndex,location:{archived:false,cityId:city.id.id,buildingType:definition.ConstructibleType}});
+        }
       }
     }
   }
   if (locations.length !== 1) throw Error("No unique owned Great Work matches");
-  return {turn: Game.turn, age: Game.age, playerId, greatWorkIndex: index, location: locations[0]};
+  inventory.sort((a,b)=>a.index-b.index);
+  return {turn: Game.turn, age: Game.age, playerId, greatWorkIndex: index, location: locations[0],
+    ...(expectedInventory !== undefined ? {inventoryPreserved:new Set(inventory.map(r=>r.index)).size===inventory.length&&JSON.stringify(inventory)===JSON.stringify(expectedInventory)} : {})};
 })()

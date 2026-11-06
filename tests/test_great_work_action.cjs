@@ -36,7 +36,7 @@ function run(options = {}, script = 'move_great_work.js') {
       canStart: (id, operation, args, exclusion) => {
         calls.push({kind: 'check', id, operation, args, exclusion});
         if (options.changed) context.Game.age++;
-        return {Success: options.allowed ?? true, FailureReasons: ['Incompatible work']};
+        return {Success: options.allowed ?? true, RequiresConfirmation:Boolean(options.confirm), FailureReasons: ['Incompatible work']};
       },
       sendRequest: (id, operation, args) => calls.push({kind: 'send', id, operation, args}),
     }},
@@ -49,7 +49,8 @@ test('Great Work relocation sends source city and native destination building ty
   const {data, calls} = run();
   assert.equal(data.status, 'submitted');
   assert.deepEqual(data.expected, {greatWorkIndex: 6,
-    location: {archived: false, cityId: 20, buildingType: 'BUILDING_MUSEUM'}});
+    location: {archived: false, cityId: 20, buildingType: 'BUILDING_MUSEUM'},inventoryPreserved:true});
+  assert.deepEqual(data.verificationArguments.expected_inventory,[{index:6,location:{archived:false,cityId:20,buildingType:'BUILDING_MUSEUM'}}]);
   assert.deepEqual(calls, [
     {kind: 'check', id: 0, operation: 'MOVE_WORK', args: {Player1: 0, GreatWorkIndex: 6, DestinationCity: 20, DestinationBuilding: 2002, SourceCity: 10}, exclusion: false},
     {kind: 'send', id: 0, operation: 'MOVE_WORK', args: {Player1: 0, GreatWorkIndex: 6, DestinationCity: 20, DestinationBuilding: 2002, SourceCity: 10}},
@@ -82,7 +83,7 @@ test('already displayed at the requested destination is a no-op', () => {
 });
 
 test('native Great Work rejection and changed context prevent relocation', () => {
-  for (const options of [{allowed: false}, {changed: true}]) {
+  for (const options of [{allowed: false}, {changed: true}, {confirm:true}]) {
     const {data, calls} = run(options);
     assert.equal(data.status, 'rejected');
     assert.deepEqual(calls.map(call => call.kind), ['check']);
@@ -94,4 +95,15 @@ test('Great Work readback locates one owned instance without native requests or 
   assert.deepEqual(data, {turn: 58, age: 42, playerId: 0, greatWorkIndex: 6,
     location: {archived: false, cityId: 10, buildingType: 'BUILDING_PALACE'}});
   assert.equal(calls.length, 0);
+});
+
+test('archive move uses the exact owned work and preserves the full owned work ledger',()=>{
+  const r=run({full:true},'archive_great_work.js');assert.equal(r.data.status,'submitted');
+  assert.deepEqual(r.calls.at(-1).args,{Player1:0,GreatWorkIndex:6,SourceCity:10,DestinationCity:-1,DestinationBuilding:-1});
+  const expected=[{index:6,location:{archived:true,cityId:null,buildingType:null}},{index:7,location:{archived:false,cityId:20,buildingType:'BUILDING_MUSEUM'}}];
+  const after=run({full:true,archived:true,arguments:{expected_inventory:expected}},'great_work_location_state.js').data;
+  assert.equal(after.inventoryPreserved,true);assert.equal(after.location.archived,true);
+  assert.equal(run({full:false,archived:true,arguments:{expected_inventory:expected}},'great_work_location_state.js').data.inventoryPreserved,false);
+  assert.equal(run({archived:true},'archive_great_work.js').data.status,'already_active');
+  assert.equal(run({sourceDamaged:true},'archive_great_work.js').data.status,'rejected');
 });
