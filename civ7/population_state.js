@@ -18,7 +18,15 @@
   const fresh = city.Constructibles.getIds().map(id => Constructibles.getByComponentID(id)).filter(value =>
     value && validId(value.id) && !old.has(key(value.id)) && value.type === def.$hash &&
     value.location?.x === x && value.location?.y === y && value.damaged === false);
+  let resettleObserved = null;
+  if (queryArguments.resettle_unit_id !== undefined) {
+    const {resettle_unit_id: unitId, resettle_unit_type: unitType, resettle_component_type: componentType, before_population: population, before_pending_population: pending} = queryArguments;
+    if (![unitId,componentType,population,pending].every(v=>Number.isInteger(v)&&v>=0)||!Number.isInteger(unitType)) throw Error("Invalid captured Migrant identity/population");
+    const units=player.Units.getUnits().filter(u=>u.id.owner===playerId&&u.id.id===unitId);
+    if(units.length>1||units.length&&(units[0].type!==unitType||units[0].id.type!==componentType))throw Error("Captured Migrant identity changed");
+    resettleObserved=units.length===0&&fresh.length===1&&(city.population>population||city.pendingPopulation>pending);
+  }
   return {turn: Game.turn, age: Game.age, playerId, cityId, improvement, location: {x, y},
     population: city.population, pendingPopulation: city.pendingPopulation,
-    newImprovementObserved: fresh.length === 1, newImprovements: fresh.map(value => ({id: value.id, location: {x, y}}))};
+    newImprovementObserved: fresh.length === 1, resettleObserved, newImprovements: fresh.map(value => ({id: value.id, location: {x, y}}))};
 })()

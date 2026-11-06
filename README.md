@@ -1383,6 +1383,14 @@ queued excavation at `(14,19)`. Research is natively Hegemony-gated; Modern has 
 missionary definition/eligible Great Person activation. No turn or forced effect.
 **212 Python / 388 Node pass; tools23/87 (64 actions).**
 
+`resettle_civ7_migrant` uses the explicit native acquire-tile path: exact ready
+Migrant, visible empty same-city/unowned x/y and approved improvement from native
+paired RESETTLE choices. No implicit tile transfer/overbuilding/specialist placement.
+Selected-unit logistics exposes choices; readback needs consumed Migrant, one new
+exact improvement and source-city population/pending growth. Live5570622 became
+Fishing Boat17694949 `(27,12)`, Copan population increased to42, pending0.
+**213 Python / 391 Node pass; tools23/88 (65 actions).**
+
 ## One-shot export
 
 ```powershell

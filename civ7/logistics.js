@@ -130,6 +130,23 @@
           failureReasons: (wind?.FailureReasons ?? []).map(name).filter(Boolean)};
       }
     }
+    if (def?.UnitType === "UNIT_MIGRANT" && typeof Game.UnitCommands?.canStart === "function") {
+      const result = deployed(unit) ? Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_RESETTLE", {}, false) : null;
+      const options = [], seen = new Set();
+      for (let i = 0; i < (result?.Plots ?? []).length; i++) {
+        const plot = result.Plots[i];
+        if (!Number.isInteger(plot) || plot < 0 || plot >= width * height || seen.has(plot)) continue;
+        const l = GameplayMap.getLocationFromIndex(plot);
+        if (!valid(l) || GameplayMap.getRevealedState(id,l.x,l.y) !== RevealedStates.VISIBLE || ![-1,id].includes(GameplayMap.getOwner(l.x,l.y))) continue;
+        const improvement = result.ConstructibleTypes?.[i] == null ? null : GameInfo.Constructibles.lookup(result.ConstructibleTypes[i]);
+        if (improvement?.ConstructibleClass !== "IMPROVEMENT") continue;
+        const check = Game.UnitCommands.canStart(unit.id,"UNITCOMMAND_RESETTLE",{X:l.x,Y:l.y},false);
+        options.push({location:{x:l.x,y:l.y},improvement:improvement.ConstructibleType,availableNow:result?.Success === true && check?.Success === true && check.RequiresConfirmation !== true,
+          failureReasons:(check?.FailureReasons ?? []).map(name).filter(Boolean)}); seen.add(plot);
+      }
+      selectedUnit.resettle = {operationAllowed:result?.Success === true,options,
+        scope:"Visible native paired expansion choices only; mutation separately checks current source city, empty destination, ownership, packing and exact improvement"};
+    }
     if (!unit.isCommanderUnit && ["DOMAIN_LAND", "DOMAIN_SEA"].includes(def?.Domain) && def.Packable === true && packingKnown && typeof Game.UnitCommands?.canStart === "function" &&
         (def.Domain !== "DOMAIN_SEA" || def.FormationClass === "FORMATION_CLASS_NAVAL")) {
       const membershipCommand = packedBy.has(unit.id.id) ? "UNITCOMMAND_REMOVE_FROM_ARMY" : "UNITCOMMAND_ADD_TO_ARMY";

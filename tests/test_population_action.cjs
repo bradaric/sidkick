@@ -10,7 +10,8 @@ function run(o = {}, script = 'place_population.js') {
   const city = {id: {owner: o.foreign ? 1 : 0, id: 10, type: 1}, name: 'Hanseong', population: 5,
     pendingPopulation: o.pending ?? 1, Growth: {isReadyToPlacePopulation: o.ready ?? true},
     Constructibles: {getIds: () => buildings.map(b => b.id)}};
-  const player = {isTurnActive: !o.inactive, Cities: {getCities: () => o.duplicate ? [city, city] : [city]}};
+  const player = {isTurnActive: !o.inactive, Cities: {getCities: () => o.duplicate ? [city, city] : [city]},
+    Units:{getUnits:()=>o.migrantAlive?[{id:{owner:0,id:30,type:26},type:100}]:[]}};
   const context = {queryArguments: {settlement: 'Hanseong', x: 12, y: 37,
     improvement: 'IMPROVEMENT_FISHING_BOAT', expected_turn: 59, city_id: 10, baseline_component_ids: [], ...o.args},
     UI: {isInGame: () => !o.notInGame}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sentTurn ?? false},
@@ -79,4 +80,14 @@ test('population readback proves a new owned improvement at the exact tile, not 
   }
   assert.equal(read([]).newImprovementObserved, false);
   assert.equal(read([building], {args: {baseline_component_ids: [building.id]}}).newImprovementObserved, false);
+});
+
+test('resettlement readback additionally requires exact Migrant consumption and population growth',()=>{
+  const building={id:{owner:0,id:22,type:2},type:301,location:{x:12,y:37},damaged:false};
+  const args={resettle_unit_id:30,resettle_unit_type:100,resettle_component_type:26,before_population:4,before_pending_population:0};
+  const read=o=>run({pending:0,buildings:[building],args,...o},'population_state.js').data;
+  assert.equal(read({}).resettleObserved,true);
+  assert.equal(read({migrantAlive:true}).resettleObserved,false);
+  assert.equal(read({buildings:[]}).resettleObserved,false);
+  assert.equal(read({args:{...args,before_population:5}}).resettleObserved,false);
 });

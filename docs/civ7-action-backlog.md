@@ -289,6 +289,17 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   current centre; no guessed resettlement sent. Explicit destination path follows.
 - 212 Python / 388 Node pass; tools23/87 including64 actions. Original Merchant
   untouched; original Explorer2359326 retained. No turn or Gold spend.
+- `16943c7`: local civilian activities. Explicit Migrant expansion now implemented
+  from authoritative acquire-tile UI: exact current owned source city, native
+  RESETTLE offered plot/improvement pair, visible empty same-city/unowned destination,
+  no foreign/implicit tile transfer, known packing/reinforcement and selected
+  permission. Native duplicate trailing plots with missing type metadata do not
+  erase an earlier exact paired choice; conflicting provided metadata rejects.
+  Selected-unit logistics exposes the checked visible paired choices.
+- Actual typed Migrant5570622 consumed into Fishing Boat17694949 `(27,12)` in
+  Copan, exact improvement and population increase to42 verified; pending remains0.
+  No guessed city-centre resettle was submitted. 213 Python / 391 Node pass;
+  tools23/88 including65 actions, still T62/no Gold spend.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

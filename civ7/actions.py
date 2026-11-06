@@ -195,6 +195,14 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def resettle_migrant(unit_id: StrictInt, x: StrictInt, y: StrictInt, improvement: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Consume one exact Migrant into an explicitly chosen native expansion tile/improvement."""
+    if any(type(v) is not int or v<0 for v in (unit_id,x,y,expected_turn)) or not isinstance(improvement,str) or not improvement:
+        raise ValueError("Exact Migrant, expansion tile/improvement and expected turn required")
+    return await _execute_and_verify("resettle_migrant.js",{"unit_id":unit_id,"x":x,"y":y,"improvement":improvement,"expected_turn":expected_turn},
+        "population_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def local_civilian_action(unit_id: StrictInt, kind: Literal["found", "excavate", "research", "spread", "great_person", "resettle"], expected_turn: StrictInt, ability: StrictStr | None = None) -> dict[str, Any]:
     """Perform one fixed native civilian activity only at its proven current own/unowned location."""
     if (any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or kind not in ("found", "excavate", "research", "spread", "great_person", "resettle") or

@@ -43,6 +43,7 @@ from civ7.actions import (
     befriend_independent,
     choose_city_state_bonus,
     local_civilian_action,
+    resettle_migrant,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -259,6 +260,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="resettle_civ7_migrant",title="Resettle Civ VII Migrant into chosen improvement",
+            description=("CHANGE GAME STATE: consume exact ready owned Migrant unit_id into exact "
+                         "visible empty native expansion x/y and improvement with fresh expected_turn. "
+                         "Requires captured owned source settlement, known unpacked/nonreinforcing source, "
+                         "same-settlement or unowned destination (no tile transfer), matching paired native "
+                         "RESETTLE plot/improvement and selected permission without confirmation. Verifies "
+                         "Migrant consumption, one exact new improvement and population/pending increase in "
+                         "the captured city. No guessed city-centre target, overbuilding, specialist, "
+                         "foreign transfer or turn advancement. One submission,15-second readback, no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(resettle_migrant)
         server.tool(
             name="perform_civ7_local_civilian_action", title="Perform current-tile Civ VII civilian activity",
             description=("CHANGE GAME STATE: fixed kind found/excavate/research/spread/great_person/resettle "

@@ -26,7 +26,7 @@ function run(o = {}, script = 'unit_membership.js') {
     Armies: {get: id => ({owner: o.foreignArmy ? 1 : 0, localId: id.id,
       getCommanderId: () => component(id.id), getUnitIds: () => o.unknownArmy ? null :
         id.id === 30 ? [component(11), ...(packed ? [component(10)] : [])] : []})},
-    GameInfo: {Units: {lookup: type => ({Domain: o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+    GameInfo: {Constructibles:{lookup:()=>({ConstructibleType:'IMPROVEMENT_TEST',ConstructibleClass:'IMPROVEMENT'})},Units: {lookup: type => ({UnitType:o.migrant&&type===100?'UNIT_MIGRANT':`UNIT_${type}`,Domain: o.mixedDomain && type === 100 ? 'DOMAIN_LAND' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
       FormationClass: o.civilian ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_NAVAL', Packable: !o.notPackable})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getPlotDistance: () => o.distant ? 2 : o.origin ? 0 : 1,
       getIndexFromLocation: l => l.x + l.y * 10, getRevealedState: () => o.hidden ? 0 : 2,
@@ -37,7 +37,7 @@ function run(o = {}, script = 'unit_membership.js') {
       calls.push({kind: 'check', id, command, args, exclusion});
       if (o.changed) context.Game.turn++;
       if (o.changedOccupancy) o.occupied = true;
-      return {Success: !o.blocked, Plots: o.notOffered ? [] : [mode === 'join' || o.origin ? 33 : 32], RequiresConfirmation: o.confirm};
+      return {Success: !o.blocked, Plots: o.notOffered ? [] : [mode === 'join' || o.origin ? 33 : 32], ConstructibleTypes:[1], RequiresConfirmation: o.confirm};
     }, sendRequest: (id, command, args) => {calls.push({kind: 'send', id, command, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   let data;
   try {data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7', script), 'utf8'), context);}
@@ -127,4 +127,9 @@ test('selected naval logistics exposes checked same-domain fleet join/leave only
   for (const mode of ['join', 'leave']) {
     assert.deepEqual(run({sea: true, mode, landTile: true}, 'logistics.js').data.selectedUnit[mode === 'join' ? 'addToArmy' : 'removeFromArmy'].options, []);
   }
+});
+
+test('selected Migrant logistics exposes visible native expansion choices and exact improvement IDs',()=>{
+  const r=run({migrant:true},'logistics.js');assert.equal(r.data.selectedUnit.resettle.options[0].improvement,'IMPROVEMENT_TEST');
+  assert.equal(run({migrant:true,hidden:true},'logistics.js').data.selectedUnit.resettle.options.length,0);
 });
