@@ -349,6 +349,12 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   claimed. Native operation uses UNIT_PLUNDERTRADE sound; road-vs-trade-route
   semantics/effect visibility remain unresolved, not a positive native success.
 - 217 Python / 397 Node pass; tools23/93 including70 actions. T62 unchanged.
+- Follow-up route investigation confirmed the cause: installed GameInfo.UnitOperations
+  has **no PILLAGE_ROUTE definition**, despite legacy interface source and permissive
+  canStart replies. Loaded rules instead define UNITCOMMAND_PLUNDER_TRADE_ROUTE.
+  Added an installed-definition gate: legacy route requests now reject before any
+  submission. The single unknown was never repeated. Physical route destruction is
+  unsupported here; real trade plunder remains a separate implementation target.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

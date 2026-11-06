@@ -1423,6 +1423,11 @@ did not change: **outcome unknown, never retried**. Native road-vs-trade-route e
 semantics remain unresolved; no destruction/loot claim. Fixtures pass.
 **217 Python / 397 Node pass; tools23/93 (70 actions).**
 
+Follow-up: PILLAGE_ROUTE is absent from the loaded operation definitions despite
+legacy UI source/permissive canStart. An installed-definition gate now rejects it
+without submission. The active build instead defines PLUNDER_TRADE_ROUTE as a
+command; its trade-route semantics are a separate target. No second legacy request.
+
 ## One-shot export
 
 ```powershell

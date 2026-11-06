@@ -17,7 +17,7 @@ function run(o = {}, script = 'pillage_tile.js') {
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => [unit]},
       Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 30 : -1},
       Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace}, Treasury: {goldBalance: 1000}})},
-    GameInfo: {Routes:{lookup:n=>n===400?{RouteType:'ROUTE_TEST'}:null},Units: {lookup: () => ({Domain: o.sea || o.coastal ? 'DOMAIN_SEA' : 'DOMAIN_LAND', FormationClass: o.coastal ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
+    GameInfo: {UnitOperations:{lookup:()=>o.undefinedOperation?null:{OperationType:'UNITOPERATION_PILLAGE_ROUTE'}},Routes:{lookup:n=>n===400?{RouteType:'ROUTE_TEST'}:null},Units: {lookup: () => ({Domain: o.sea || o.coastal ? 'DOMAIN_SEA' : 'DOMAIN_LAND', FormationClass: o.coastal ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
       getOwner: () => o.ownTile ? 0 : 1, getIndexFromLocation: l => l.x + l.y * 10,
       getRouteType:()=>o.routeGone?-1:o.changedRoute?401:400,getPlotDistance: () => o.distant ? 2 : 1, isWater: x => x === 2}, RevealedStates: {VISIBLE: 2},
@@ -46,6 +46,7 @@ test('route pillage binds a separate route token and observes route departure, n
  const r=run({route:true,gone:true});assert.equal(r.data.status,'submitted');assert.equal(r.calls.at(-1).operation,'UNITOPERATION_PILLAGE_ROUTE');
  assert.equal(r.calls.filter(c=>c.kind==='read').length,0);
  assert.equal(run({route:true,noPlots:true}).data.status,'submitted','native current-tile route check can omit plot lists');
+ assert.equal(run({route:true,undefinedOperation:true}).data.status,'rejected','legacy UI source does not establish an installed operation');
  assert.equal(run({noPlots:true}).data.status,'rejected','constructible pillage picker remains unchanged');
  assert.equal(run({route:true,spent:true,routeGone:true},'pillage_state.js').data.routePillageObserved,true);
  for(const o of [{spent:false,routeGone:true},{spent:true,damaged:true},{spent:true,routeGone:true,hidden:true}])assert.equal(run({route:true,...o},'pillage_state.js').data.routePillageObserved,false);

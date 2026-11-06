@@ -3,6 +3,7 @@
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
   if (!["land", "coastal", "route"].includes(kind) || ![unitId, targetPlayer, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0) || typeof token !== "string" || !token || token.length > 100000) return reject("Exact unit, supported pillage kind, wartime tile, fresh target token and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
+  if (kind === "route" && GameInfo.UnitOperations.lookup("UNITOPERATION_PILLAGE_ROUTE")?.OperationType !== "UNITOPERATION_PILLAGE_ROUTE") return reject("Legacy PILLAGE_ROUTE operation is not defined in this installed ruleset; permissive canStart alone is insufficient");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
   if (!Number.isInteger(playerId) || playerId < 0 || !player || targetPlayer === playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || Game.turn !== expectedTurn ||
       player.Diplomacy.hasMet(targetPlayer) !== true || player.Diplomacy.isAtWarWith(targetPlayer) !== true) return reject("A fresh active local turn and existing met enemy war are required");
