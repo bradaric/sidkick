@@ -6,21 +6,21 @@ const {test} = require('node:test');
 
 function run(o = {}, script = 'commander_action.js') {
   const calls = [], commander = {id: {owner: o.foreign ? 1 : 0, id: 10, type: 26}, type: 100,
-    isCommanderUnit: !o.notCommander, isOnMap: !o.offMap, operationQueueSize: o.queued ? 1 : 0,
+    isCommanderUnit: !o.notCommander, isOnMap: !o.offMap, isEmbarked: Boolean(o.embarked), operationQueueSize: o.queued ? 1 : 0,
     armyId: {owner: 0, id: 10, type: 29}, location: {x: 2, y: 3}, Movement: {movementMovesRemaining: o.immobile ? 0 : 3}};
   const member = {id: {owner: 0, id: 20, type: 26}, type: 200, isOnMap: !o.packed, location: {x: 2, y: 3}};
   const members = () => o.packed ? [member.id] : [];
   const army = {owner: o.foreignArmy ? 1 : 0, getCommanderId: () => commander.id, getUnitIds: () => o.unknownMembers ? null : members()};
   const mode = o.mode ?? 'pack';
-  const context = {queryArguments: {mode, commander_id: 10, x: 2, y: 3, expected_turn: 62,
-      baseline_packed_unit_ids: mode === 'unpack' || (mode === 'move' && o.packed) ? [20] : [], baseline_unit_ids: [10, 20], component_type: 26, ...o.args},
-    UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false},
+  const context = {queryArguments: {mode, commander_id: 10, unit_id: 10, x: 2, y: 3, expected_turn: 62,
+      baseline_packed_unit_ids: mode === 'unpack' || (['move', 'rail'].includes(mode) && o.packed) ? [20] : [], baseline_unit_ids: [10, 20], component_type: 26, ...o.args},
+    UI: {isInGame: () => true}, Locale: {compose: x => x}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => [commander, member]}})},
     ...(o.missingArmyApi ? {} : {Armies: {get: () => army}}), GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10,
       getIndexFromLocation: loc => loc.x + loc.y * 10, getRevealedState: () => o.hidden ? 0 : 2, getOwner: () => o.foreignTile ? 1 : 0,
       getLocationFromIndex: i => ({x: i % 10, y: Math.floor(i / 10)}),
       isWater: x => o.shore && x === 3 ? true : false, getPlotDistance: () => 1},
-    GameInfo: {Units: {lookup: () => ({Domain: 'DOMAIN_LAND'})}}, MapUnits: {getUnits: () => o.occupied ? [member.id] : []},
+    GameInfo: {Units: {lookup: () => ({Domain: o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND'})}}, MapUnits: {getUnits: () => o.occupied ? [member.id] : []},
     Units: {getReachableMovement: () => o.notOffered ? [] : [33, 34], getReachableTargets: () => o.attack ? [33] : [],
       getPathTo: () => ({plots: o.longPath ? [32, 33, 34] : [32, 33], turns: o.futureTurn ? [1, 2] : o.longPath ? [1, 1, 1] : [1, 1]})},
     UnitOperationMoveModifiers: {NONE: 0}, UnitOperationTypes: {MOVE_TO: 900}, CombatTypes: {NO_COMBAT: -1},
@@ -33,7 +33,7 @@ function run(o = {}, script = 'commander_action.js') {
     UnitCommands: {canStart: (id, type, args, exclusion) => {
       calls.push({kind: 'check', id, type, args, exclusion});
       if (o.changed) context.Game.turn++;
-      return {Success: !o.blocked, Plots: o.notOffered ? [] : [32]};
+      return {Success: !o.blocked, Plots: o.notOffered ? [] : [mode === 'rail' ? 33 : 32], RequiresConfirmation: Boolean(o.confirm)};
     }, sendRequest: (id, type, args) => {calls.push({kind: 'send', id, type, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   let data;
   try {data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7', script), 'utf8'), context);}
@@ -75,6 +75,37 @@ test('commander move state reports actual commander location and native packed m
   const {data, calls} = run({mode: 'move', packed: true}, 'commander_action_state.js');
   assert.deepEqual(data.location, {x: 2, y: 3});
   assert.deepEqual(data.packedUnitIds, [20]); assert.equal(calls.length, 0);
+});
+
+test('commander rail uses one fixed native offered/selected command without simulating an ordinary path', () => {
+  for (const packed of [false, true]) {
+    const {data, calls} = run({mode: 'rail', packed, args: {x: 3, y: 3}});
+    assert.equal(data.status, 'submitted'); assert.deepEqual(data.expected.location, {x: 3, y: 3});
+    assert.equal(data.expected.queueSize, 0); assert.deepEqual(data.expected.packedUnitIds, packed ? [20] : []);
+    assert.deepEqual(calls.at(-1), {kind: 'send', id: {owner: 0, id: 10, type: 26}, type: 'UNITCOMMAND_MOVE_BY_RAIL', args: {X: 3, Y: 3}});
+    assert.equal(calls.filter(c => c.kind.startsWith('move')).length, 0);
+  }
+  assert.equal(run({mode: 'rail'}).data.status, 'already_active');
+  assert.equal(run({mode: 'rail'}, 'commander_action_state.js').data.queueSize, 0);
+});
+
+test('rail refuses hidden/foreign/water/occupied destinations and stale/native-ineligible sources', () => {
+  for (const o of [{foreign: true}, {offMap: true}, {notCommander: true}, {sea: true}, {embarked: true}, {queued: true}, {unknownMembers: true},
+    {hidden: true}, {foreignTile: true}, {shore: true}, {occupied: true}, {immobile: true}, {blocked: true}, {confirm: true}, {notOffered: true},
+    {changed: true}, {args: {expected_turn: 61}}, {args: {x: true}}]) {
+    const {data, calls} = run({mode: 'rail', args: {x: 3, y: 3}, ...o});
+    assert.equal(data.status, 'rejected', JSON.stringify(o)); assert.equal(calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('targeted commander logistics offers exact checked visible-owned empty land rail destinations', () => {
+  const {data, calls} = run({mode: 'rail'}, 'logistics.js');
+  assert.deepEqual(data.selectedUnit.rail.options[0].location, {x: 3, y: 3});
+  assert.equal(data.selectedUnit.rail.options[0].availableNow, true);
+  assert.equal(calls.filter(c => c.kind === 'send').length, 0);
+  for (const o of [{hidden: true}, {foreignTile: true}, {shore: true}, {occupied: true}]) {
+    assert.deepEqual(run({mode: 'rail', ...o}, 'logistics.js').data.selectedUnit.rail.options, []);
+  }
 });
 
 test('unpack requires a currently visible owned native-offered deployment plot and exact command permission', () => {

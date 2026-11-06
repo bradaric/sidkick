@@ -182,7 +182,7 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 |---|---|
 | Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
 | More commander abilities | Second Wind implemented/live-verified with debug-earned Valor; capped upgrade-all and direct/special commander attacks pending. Force March has UI text but no installed command definition, not exposed. |
-| Military transport and travel | Individual naval join/leave, full-fleet pack/deploy and packed-fleet movement live-tested with debug movement setup; city-only aircraft rebase implemented, positive live case pending. Air membership, fleet/squadron combat abilities, army naval transport, rail, longer unit paths, foreign/fog travel and packed shore crossings pending. |
+| Military transport and travel | Naval join/leave, full-fleet pack/deploy/movement and empty/packed commander rail live-tested with debug movement setup; city-only aircraft rebase implemented, positive live case pending. Ordinary-unit rail, air membership, fleet/squadron abilities, army naval transport, longer paths, foreign/fog travel and packed shore crossings pending. |
 | Broader warfare | Separate enemy-field ranged and native naval ship attacks implemented (positive live cases pending). City/district attacks, enemy-field melee, occupation/capture, pillage/coastal raids, shore bombardment/air strikes and full splash accounting pending. Other attacks retain own/unowned field boundaries. |
 | Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
 | Civilian/cultural/religious actions | Found/resettle, Merchant roads, archaeology excavation/research, religion/pantheon/beliefs/spread, Great People, Great Work swaps/archive. Direct Merchant routes and non-swap Great Work relocation already exist. |
@@ -324,6 +324,29 @@ remains deferred. Priorities: fixed native naval attacks, checked commander rail
   Gold4731.33984375→2731.33984375. Copan native purchase quote was blocked because
   its per-turn purchase was already used; no request submitted there. Stations in Copan,
   Bàakʼ and St. Petersburg; no station purchase/debug construction was necessary.
+- Native naval attack batch committed as `83816ba`.
+- Added rail_civ7_commander over fixed MOVE_BY_RAIL, not ordinary movement or an
+  inferred rail path. Land commander only, known captured packed membership,
+  mobile unqueued unembarked source, visible owned land endpoints, empty exact
+  destination and native offered/selected checks. Readback requires exact arrival,
+  preserved members and queue0. No station purchases, unpacking, foreign/fogged
+  destinations, ordinary-unit/naval/air rail or future-turn orders. Selected land
+  commander logistics exposes exact checked rail options.
+- Commander4128776 approached the actual St. Petersburg rail station by checked
+  ordinary movement `(19,9) → (20,10) → (19,11)`. Native rail was unavailable at
+  city centre but offered Bàakʼ/Copan station plots once on the station with movement.
+  Actual MCP empty rail `(19,11) → (13,4)` verified; no path guessed.
+- Existing Rifleman2490373 explicitly moved `(15,6) → (14,6) → (13,5)` by checked
+  unit steps and joined only the separate rail test commander. Actual MCP packed
+  rail `(13,4) → (26,11)` verified exact Rifleman membership and clear queue.
+  Movement privately restored for the separated cases and Rifleman positioning;
+  synthetic readiness, no attack/debug-tech grants or turn advancement.
+- 184 Python + 345 Node tests pass. Default23 read-only tools unchanged; write
+  mode68 tools including45 actions. New commander remains at Copan station with
+  Rifleman2490373 packed. Original land armies and fleet membership unchanged.
+- Native save `Sidkick_Playground_AfterNavalAttackRail_T62_1793967597361` confirmed
+  RESULT_OK/no overwrite. T62 active/sent=false; Gold2731.33984375 after the one
+  normal2000Gold commander purchase; original Merchant `(18,20)`/HP100 unchanged.
 
 ## Batch 1: settlement management
 

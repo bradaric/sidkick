@@ -20,6 +20,7 @@ from civ7.actions import (
     leave_fleet,
     rebase_aircraft,
     naval_attack_unit,
+    rail_commander,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -239,6 +240,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="rail_civ7_commander", title="Move Civ VII commander by rail",
+            description=("CHANGE GAME STATE: move exact owned deployed land commander_id and its captured "
+                         "packed army to exact x/y using native MOVE_BY_RAIL with fresh expected_turn. "
+                         "Requires mobile unqueued unembarked source, complete known owner-qualified packed "
+                         "membership, visible owned land endpoints, an empty destination and exact native "
+                         "offered/selected rail permission. Never infers railway connectivity, walks as a "
+                         "fallback, attacks or buys a station. Verifies exact commander arrival, unchanged "
+                         "packed membership and clear queue. No ordinary-unit rail, naval/air transport, "
+                         "foreign/fogged travel, turn advancement or future-turn arrival claim. Submits once, "
+                         "polls read-only for 15 seconds and never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(rail_commander)
         server.tool(
             name="naval_attack_civ7_unit", title="Attack Civ VII enemy combat ship",
             description=("CHANGE GAME STATE: one exact native NAVAL_ATTACK by owned unit_id against exact "
@@ -980,7 +995,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "or removeFromArmy with exact checked nearby-commander or individual deployment options "
             "on empty visible own/unowned leave tiles. Unknown commander membership "
             "stays unknown. Selected deployed land commanders additionally report secondWind native "
-            "permission and exact unambiguous checked own land-combat recipient options. Unknown membership "
+            "permission and exact unambiguous checked own land-combat recipient options, plus rail native "
+            "permission and exact checked empty visible-owned land destinations. Unknown membership "
             "withholds deployment checks/locations; a withheld location does not prove packing. "
             "Missing assignment APIs leave reinforcements null; missing arrival getters leave "
             "nativeArrivalTime null. Packed/off-map units are not queried as deployed. "

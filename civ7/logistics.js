@@ -82,6 +82,25 @@
       selectedUnit.unpack = {operationAllowed: unpack?.Success === true, options,
         failureReasons: (unpack?.FailureReasons ?? []).map(name).filter(Boolean)};
       if (def?.Domain === "DOMAIN_LAND") {
+        const railSource = unit.isEmbarked === false && typeof GameplayMap.isWater === "function" &&
+          GameplayMap.isWater(unit.location.x, unit.location.y) === false && typeof GameplayMap.getOwner === "function" &&
+          GameplayMap.getOwner(unit.location.x, unit.location.y) === id && typeof GameplayMap.getRevealedState === "function" &&
+          typeof RevealedStates !== "undefined" && GameplayMap.getRevealedState(id, unit.location.x, unit.location.y) === RevealedStates.VISIBLE;
+        const rail = railSource ? Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_MOVE_BY_RAIL", {}, false) : null, railOptions = [];
+        for (const index of [...new Set(rail?.Plots ?? [])]) {
+          if (!Number.isInteger(index) || index < 0 || index >= width * height) continue;
+          const l = GameplayMap.getLocationFromIndex(index);
+          if (!valid(l) || (l.x === unit.location.x && l.y === unit.location.y) ||
+              GameplayMap.getRevealedState(id, l.x, l.y) !== RevealedStates.VISIBLE || GameplayMap.getOwner(l.x, l.y) !== id ||
+              GameplayMap.isWater(l.x, l.y) !== false || typeof MapUnits === "undefined" ||
+              !Array.isArray(MapUnits.getUnits(l.x, l.y)) || MapUnits.getUnits(l.x, l.y).length !== 0) continue;
+          const check = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_MOVE_BY_RAIL", {X: l.x, Y: l.y}, false);
+          railOptions.push({location: {x: l.x, y: l.y}, availableNow: rail?.Success === true && check?.Success === true &&
+            check.RequiresConfirmation !== true && unit.operationQueueSize === 0 && unit.Movement?.movementMovesRemaining > 0,
+            failureReasons: (check?.FailureReasons ?? []).map(name).filter(Boolean)});
+        }
+        selectedUnit.rail = {operationAllowed: rail ? rail.Success === true : null, options: railOptions,
+          failureReasons: (rail?.FailureReasons ?? []).map(name).filter(Boolean)};
         const command = "UNITCOMMAND_GRANT_SECOND_WIND", wind = Game.UnitCommands.canStart(unit.id, command, {}, false), recipients = [];
         for (const index of [...new Set(wind?.Plots ?? [])]) {
           if (!Number.isInteger(index) || index < 0 || index >= width * height) continue;

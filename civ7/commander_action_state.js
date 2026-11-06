@@ -6,7 +6,7 @@
   if (!player) throw Error("No local player");
   const {mode, commander_id: commanderId, component_type: componentType,
     baseline_packed_unit_ids: baselinePacked, baseline_unit_ids: baselineOwned} = queryArguments;
-  if (!["pack", "unpack", "move", "overrun"].includes(mode) || ![commanderId, componentType].every(v => Number.isInteger(v) && v >= 0) ||
+  if (!["pack", "unpack", "move", "rail", "overrun"].includes(mode) || ![commanderId, componentType].every(v => Number.isInteger(v) && v >= 0) ||
       ![baselinePacked, baselineOwned].every(a => Array.isArray(a) && a.every(v => Number.isInteger(v) && v >= 0) && new Set(a).size === a.length) ||
       !baselineOwned.includes(commanderId) || baselinePacked.some(id => id === commanderId || !baselineOwned.includes(id))) throw Error("Invalid submitted commander baseline");
   const owned = player.Units.getUnits().filter(u => u.id.owner === playerId), matches = owned.filter(u => u.id.id === commanderId && u.id.type === componentType);
@@ -38,7 +38,7 @@
   return {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type, componentType,
     location: commander.isOnMap === true && Number.isInteger(commander.location?.x) && commander.location.x >= 0 &&
       Number.isInteger(commander.location?.y) && commander.location.y >= 0 ? {x: commander.location.x, y: commander.location.y} : null,
-    packedUnitIds: packed, newPackedUnitIds: added, deployedUnitIds: deployed, overrunObserved, targetLeftTile, killConfirmed: null,
+    packedUnitIds: packed, newPackedUnitIds: added, deployedUnitIds: deployed, queueSize: commander.operationQueueSize, overrunObserved, targetLeftTile, killConfirmed: null,
     packObserved: added.length > 0 && baselinePacked.every(id => packed.includes(id)) && added.every(id => baselineOwned.includes(id)),
     unpackObserved: baselinePacked.length > 0 && packed.length === 0 && deployed.length === baselinePacked.length};
 })()

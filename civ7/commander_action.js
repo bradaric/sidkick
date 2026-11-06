@@ -1,8 +1,8 @@
 (() => {
   const {mode, commander_id: commanderId, x, y, expected_turn: expectedTurn, max_steps: maxSteps = 1} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["pack", "unpack", "move"].includes(mode) || ![commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
-      (["unpack", "move"].includes(mode) && ![x, y].every(v => Number.isInteger(v) && v >= 0)) ||
+  if (!["pack", "unpack", "move", "rail"].includes(mode) || ![commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
+      (["unpack", "move", "rail"].includes(mode) && ![x, y].every(v => Number.isInteger(v) && v >= 0)) ||
       (mode === "move" && (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 8))) return reject("An owned commander, supported action/tile, bounded step cap and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
@@ -29,6 +29,37 @@
   if (members === null) return reject("Packed membership is unverified");
   const before = {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type,
     componentType: commander.id.type, packedUnitIds: members};
+  if (mode === "rail") {
+    const valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) &&
+      l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();
+    const visibleOwnedLand = l => valid(l) && GameplayMap.getRevealedState(playerId, l.x, l.y) === RevealedStates.VISIBLE &&
+      GameplayMap.getOwner(l.x, l.y) === playerId && GameplayMap.isWater(l.x, l.y) === false;
+    const source = commander.location, destination = {x, y};
+    if (GameInfo.Units.lookup(commander.type)?.Domain !== "DOMAIN_LAND" || commander.isEmbarked !== false || commander.isDead === true ||
+        !visibleOwnedLand(source) || !visibleOwnedLand(destination) || !Number.isFinite(commander.Movement?.movementMovesRemaining) ||
+        commander.Movement.movementMovesRemaining <= 0) return reject("Rail requires a mobile deployed land commander and currently visible owned land endpoints");
+    before.location = {x: source.x, y: source.y};
+    before.movesRemaining = commander.Movement.movementMovesRemaining;
+    if (source.x === x && source.y === y) return {status: "already_active", before};
+    const clear = () => visibleOwnedLand(destination) && Array.isArray(MapUnits.getUnits(x, y)) && MapUnits.getUnits(x, y).length === 0;
+    if (!clear()) return reject("Rail destination must be empty; no stacking, combat or capture");
+    const command = "UNITCOMMAND_MOVE_BY_RAIL", args = {X: x, Y: y};
+    const picker = Game.UnitCommands.canStart(commander.id, command, {}, false);
+    if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation(destination))) return reject("Native rail picker does not offer the exact destination; no inferred connection or ordinary movement fallback", picker?.FailureReasons ?? []);
+    const check = Game.UnitCommands.canStart(commander.id, command, args, false);
+    if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Exact native rail permission failed or needs confirmation", check?.FailureReasons ?? []);
+    if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
+        commander.id.owner !== playerId || commander.id.type !== before.componentType || commander.type !== before.commanderType ||
+        commander.isOnMap !== true || commander.operationQueueSize !== 0 || commander.location.x !== before.location.x || commander.location.y !== before.location.y ||
+        commander.Movement.movementMovesRemaining !== before.movesRemaining || JSON.stringify(membership()) !== JSON.stringify(members) ||
+        !visibleOwnedLand(commander.location) || !clear()) return reject("Commander, rail endpoints, packed membership or game context changed during validation");
+    const verificationArguments = {mode, commander_id: commanderId, component_type: before.componentType,
+      baseline_packed_unit_ids: members, baseline_unit_ids: baselineIds};
+    Game.UnitCommands.sendRequest(commander.id, command, args);
+    return {status: "submitted", before, expected: {commanderId, commanderType: before.commanderType, componentType: before.componentType,
+      location: destination, packedUnitIds: members, queueSize: 0}, verificationArguments,
+      verificationScope: "Exact native rail arrival, unchanged captured packed members and clear queue; no future-turn travel or inferred rail path"};
+  }
   if (mode === "move") {
     const valid = l => l && [l.x, l.y].every(v => Number.isInteger(v) && v >= 0) &&
       l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight();

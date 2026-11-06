@@ -401,6 +401,15 @@ async def move_commander(
     }, "commander_action_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def rail_commander(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Move an exact land commander and captured army using native rail permission only."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, x, y, expected_turn)):
+        raise ValueError("An owned commander, exact destination and expected turn are required")
+    return await _execute_and_verify("commander_action.js", {
+        "mode": "rail", "commander_id": commander_id, "x": x, "y": y, "expected_turn": expected_turn,
+    }, "commander_action_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def reinforce_unit(unit_id: StrictInt, commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Start native travel to one owned commander's army and verify assignment, not arrival."""
     if any(type(v) is not int or v < 0 for v in (unit_id, commander_id, expected_turn)) or unit_id == commander_id:

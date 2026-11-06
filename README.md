@@ -1109,6 +1109,29 @@ did not produce native targets; actual MCP type rejection was tested on a land
 target, not represented as firing coverage. **184 Python / 342 Node tests pass;
 write mode67 tools (44 actions), default23 read-only tools unchanged.**
 
+#### Commander and packed-army rail travel
+
+`rail_civ7_commander(commander_id, x, y, expected_turn)` uses exact native
+MOVE_BY_RAIL offered/selected permission. Requires a mobile unqueued unembarked
+land commander, known captured packed membership, visible owned land endpoints
+and an empty destination. It never infers connectivity, falls back to walking,
+buys a station, unpacks or advances a turn. Readback proves exact arrival, preserved
+members and queue0. Selected land commander logistics includes checked `rail` options.
+Ordinary-unit rail, naval/air transport and foreign/fogged destinations are excluded.
+
+Live MCP T62: separate commander4128776 was normally purchased in St. Petersburg
+for2000Gold, approached its actual station by checked movement, then rail-travelled
+empty `(19,11) → (13,4)`. Explicitly selected Rifleman2490373 joined it after two
+checked setup moves; packed rail `(13,4) → (26,11)` then verified member preservation
+and queue0. Movement was privately restored between cases/for positioning, not
+naturally renewed by turns. Both original land armies and the fleet were preserved.
+
+**184 Python / 345 Node tests pass; write mode68 tools (45 actions), default23
+read-only unchanged.** Final native save
+`Sidkick_Playground_AfterNavalAttackRail_T62_1793967597361` confirmed RESULT_OK,
+no overwrite. Still T62, Gold2731.33984375; original Merchant unchanged. The new
+rail test commander remains at Copan station with Rifleman2490373 packed.
+
 ## One-shot export
 
 ```powershell
