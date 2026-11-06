@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def clear_factory_resources(settlement: StrictStr, resource: StrictStr, target_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Explicit native bulk release of one city's current factory specialization, not atomic reassignment."""
+    if (not isinstance(settlement,str) or not settlement.strip() or not isinstance(resource,str) or not resource or not isinstance(target_token,str) or not target_token or len(target_token)>100000 or type(expected_turn) is not int or expected_turn<0):
+        raise ValueError("Exact city, factory resource, fresh selection token and expected turn required")
+    return await _execute_and_verify("clear_factory_resources.js",{"settlement":settlement.strip(),"resource":resource,"target_token":target_token,"expected_turn":expected_turn},"factory_resource_state.js")
+
+
 async def cross_commander_shore(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Cross one exact noncombat shore edge while retaining the captured packed army."""
     if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):

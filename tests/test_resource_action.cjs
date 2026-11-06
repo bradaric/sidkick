@@ -5,12 +5,13 @@ const vm = require('node:vm');
 const {test} = require('node:test');
 
 function run(options = {}, script = 'assign_resource.js') {
-  const resource = {value: 7, isOffMap: false};
+  const resource = {value: 7, isOffMap: false,uniqueResource:{resource:100}};
   const offMap = {value: 7, isOffMap: true};
   const owned = options.unknown ? [offMap] : [resource, offMap, ...(options.ambiguous ? [resource] : [])];
   const calls = [];
   const cities = [10, 20].map(id => ({id: {owner: 0, id}, owner: 0, name: id === 10 ? 'Home' : 'Target',
     Resources: {getAssignedResources: () => options.unassigned ? [] : id === (options.alreadyHere ? 20 : 10) ? [options.offMapAssigned ? offMap : resource] : [],
+      getFactoryResource:()=>options.differentFactory?200:100,getNumFactoryResources:()=>options.emptyFactory?0:1,
       getAssignedResourcesCap: () => options.full ? 0 : 2}}));
   const foreign = {id: {owner: 1, id: 20}};
   Object.defineProperty(foreign, 'Resources', {get: () => {throw Error('No foreign inventory reads');}});
@@ -19,6 +20,7 @@ function run(options = {}, script = 'assign_resource.js') {
     queryArguments: {resource_instance: 7, off_map: false, settlement: 'Target', expected_turn: 58, ...options.arguments},
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => false},
     Locale: {compose: value => value}, GameplayMap: {getLocationFromIndex: value => ({x: value, y: 0})},
+    GameInfo:{Resources:{lookup:n=>({ResourceClassType:options.factory?'RESOURCECLASS_FACTORY':'RESOURCECLASS_CITY',$hash:n??100})}},
     Players: {get: () => ({isTurnActive: true, Cities: {getCities: () => cities}, Resources: {
       getResources: () => owned, isResourceAssignmentLocked: () => options.locked ?? false,
     }})},
@@ -45,6 +47,12 @@ test('resource assignment uses one native request and a proven owned destination
     {kind: 'check', id: 0, operation: 'ASSIGN', args: {Location: {x: 7, y: 0}, City: 20, Flags: false, ID: -1}, exclusion: false},
     {kind: 'send', id: 0, operation: 'ASSIGN', args: {Location: {x: 7, y: 0}, City: 20, Flags: false, ID: -1}},
   ]);
+});
+
+test('ordinary factory assignment cannot silently change another producing factory specialization',()=>{
+ assert.equal(run({factory:true,differentFactory:true}).data.status,'rejected');
+ assert.equal(run({factory:true,differentFactory:true,emptyFactory:true}).data.status,'submitted');
+ assert.equal(run({factory:true}).data.status,'submitted');
 });
 
 test('off-map and map resources with the same number remain distinct', () => {

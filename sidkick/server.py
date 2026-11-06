@@ -52,6 +52,7 @@ from civ7.actions import (
     transfer_aircraft,
     air_attack_from_commander,
     cross_commander_shore,
+    clear_factory_resources,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -268,6 +269,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="clear_civ7_factory_resources",title="Clear one Civ VII factory specialization",
+            description=("CHANGE GAME STATE: explicit native factory Clear in exact settlement with current "
+                         "factory resource definition resource, commerce factory.clearToken as target_token "
+                         "and expected_turn. Requires active Modern turn, unlocked assignments, exact existing "
+                         "factory/type/count/resources, complete owned assignment ledger and native permission. "
+                         "Releases all of that city's selected factory resources. Verifies factory count zero, "
+                         "unchanged owned inventory and every other city/nonfactory assignment preserved. "
+                         "Use ordinary checked assignment afterwards; type-changing assignment refuses an "
+                         "existing different specialization. Clear/reassign is explicitly non-atomic; stop "
+                         "on failed/unknown stages. No GDP/yield forecast, automatic rollback or turn advance."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(clear_factory_resources)
         server.tool(
             name="cross_civ7_commander_shore",title="Cross one Civ VII shore with packed army",
             description=("CHANGE GAME STATE: fixed MOVE_TO of exact ready deployed land commander_id across "

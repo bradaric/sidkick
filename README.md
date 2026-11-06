@@ -1457,6 +1457,16 @@ disembarked `(4,6)`, exact member preserved. Synthetic movement readiness only
 between completed cases; no embarkation/membership forced.
 **220 Python / 400 Node pass; tools23/96 (73 actions).**
 
+`clear_civ7_factory_resources` explicitly clears one producing city's current
+factory type using a fresh commerce clearToken, native permission and full owned
+resource/assignment ledger verification. Ordinary assignment rejects implicit type
+replacement; clear/reassign is non-atomic, with no auto-rollback/GDP claim.
+Live Tin→clear→Coffee→clear verified and original assignments restored. Factory
+prerequisite was **debug-completed** over Copan Guildhall, after a new verified
+no-overwrite checkpoint; original Scout order preserved. This does not prove normal
+production/completion. Synthetic Factory remains. No turn/Gold spend.
+**221 Python / 402 Node pass; tools23/97 (74 actions).**
+
 ## One-shot export
 
 ```powershell

@@ -29,6 +29,13 @@
   const capacity = target.Resources.getAssignedResourcesCap();
   const used = target.Resources.getAssignedResources().length;
   if (mode === "assign" && (!Number.isInteger(capacity) || used >= capacity)) return reject("No known empty destination resource slot");
+  const resourceDef=GameInfo.Resources.lookup(player.Resources.getResources().find(matchesResource)?.uniqueResource?.resource);
+  const factorySafe=()=>{
+    if(mode!=="assign"||resourceDef?.ResourceClassType!=="RESOURCECLASS_FACTORY")return true;
+    const count=target.Resources.getNumFactoryResources();
+    return Number.isInteger(count)&&count>=0&&(count===0||GameInfo.Resources.lookup(target.Resources.getFactoryResource())?.$hash===resourceDef.$hash);
+  };
+  if(!factorySafe())return reject("Factory specialization is unknown/different; explicitly clear its factory resources first, never silently replace them");
   // Match the commerce UI, including the off-map identity flag and native ID.
   if (mode === "unassign" && (typeof PlayerOperationParameters === "undefined" || !Number.isInteger(PlayerOperationParameters.Deactivate))) return reject("Native deactivation parameter is unavailable");
   const args = {Location: GameplayMap.getLocationFromIndex(instance), City: target.id.id,
@@ -38,7 +45,7 @@
   if (check?.Success !== true || check.RequiresConfirmation === true) return {status: "rejected", reason: "Native resource command failed or needs confirmation", failureReasons: check?.FailureReasons ?? []};
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
-      player.Resources.isResourceAssignmentLocked() !== false ||
+      player.Resources.isResourceAssignmentLocked() !== false || !factorySafe() ||
       (mode === "unassign" && (player.Resources.getResources().filter(matchesResource).length !== 1 ||
         cities.filter(c => c.Resources.getAssignedResources().some(matchesResource)).length !== 1 ||
         !target.Resources.getAssignedResources().some(matchesResource)))) return reject("Game context or exact resource source changed during validation");

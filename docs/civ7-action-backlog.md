@@ -396,6 +396,25 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   embarkation false→true→true→false and queue0. Only movement readiness between
   completed cases restored synthetically; no placement/member/embarkation forced.
 - 220 Python / 400 Node pass; tools23/96 including73 actions. T62 unchanged.
+- `217c351`: packed shores/sea transport. Explicit native factory bulk Clear now
+  implemented with current resource/count/assignment token, Modern/lock/prerequisite
+  gates, exact native ResourceType/City/Clear arguments and full owned resource/
+  assignment ledger preservation. Ordinary assignment refuses a different producing
+  factory specialization rather than implicitly replacing it; clear then reassign
+  is explicitly non-atomic, no automatic retries/rollback or GDP claim.
+- No live factory initially existed. Preserved new checkpoint
+  `Sidkick_Playground_BeforeFactorySynthetic_T62_1793987169267` (RESULT_OK, no
+  overwrite). Native queued Factory over Guildhall `(25,11)`, swapped only that
+  test order to head, then **debug-completed** exact Factory with BuildQueue's
+  zero-argument completeProduction. Original Scout tail preserved/restored, not
+  completed. Factory is synthetic prerequisite; Guildhall replacement/completion
+  is not normal production verification, prior checkpoint preserved.
+- Normal Tin1378 assignment selected producing factory count1, native full Clear
+  verified count0 and exact owned ledger. Different Coffee assignment before clear
+  was capacity-rejected without submission (specialization gate covered by fixture).
+  After clear, normal Coffee1504 specialization and native Clear both verified.
+  Original resource assignments restored exactly; synthetic Factory remains.
+- 221 Python / 402 Node pass; tools23/97 including74 actions. T62/Gold unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -404,7 +423,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 |---|---|
 | Combat/capture and hostile diplomacy | Occupation/capture decisions and peace/deals remain unimplemented. Route operation wrapper/fixtures implemented, native route-effect semantics unresolved after one unknown submission. Enemy-field melee, naval shore fire/raids, explicit war declaration and capped no-secondary sanctions/espionage are implemented. |
 | Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
-| Construction/resources | Factory reassignment rules remain unimplemented. Advanced Wonder/repair/overbuild/improvement queue intents are implemented; completion/repair positive cases are separate verification gaps. Atomic swaps lack a live eligible pair. |
+| Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
 | Diplomacy/choices | Project cancellation, city-state levies, secondary targets/deals, paid/trial narrative and remaining hostile/mandatory variants remain unimplemented. Independent befriending and pending bonus choices implemented, positive live cases unavailable. |
 

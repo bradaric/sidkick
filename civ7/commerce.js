@@ -40,6 +40,8 @@
       resource: def ? {id: def.ResourceType, name: name(def.Name), description: name(def.Tooltip)} : null,
       resourceCount: count, producing: count > 0,
       assignedResourceCount: assigned.filter(record => record.class === "RESOURCECLASS_FACTORY").length,
+      clearToken: def && Number.isInteger(count) && count > 0 ? JSON.stringify({resourceType:def.ResourceType,count,
+        resources:assigned.filter(record=>record.class==="RESOURCECLASS_FACTORY").map(({instance,offMap})=>({instance,offMap})).sort((a,b)=>a.instance-b.instance||Number(a.offMap)-Number(b.offMap))}) : null,
       currentGDP: null, gdpChangeOnAssignment: null,
       note: "Native factory count and current assignment count are distinct evidence; no GDP rate or marginal production is inferred"
     };
