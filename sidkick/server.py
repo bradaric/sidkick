@@ -8,6 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import Icon, ToolAnnotations
 
 from civ7.actions import (
+    attack_unit,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -226,6 +227,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="attack_civ7_unit", title="Attack one visible Civ VII enemy unit",
+            description=("CHANGE GAME STATE: one melee/ranged attack by owned deployed unqueued noncommander "
+                         "unit_id against explicit target_player/target_unit_id at x/y, with fresh expected_turn. "
+                         "Read exact enemy IDs from get_civ7_combat_options.defender. Requires an existing war, "
+                         "single currently visible hostile combat unit on an owned/unowned field tile, "
+                         "no defensible district/civilian/stack, "
+                         "known unpacked/nonreinforcing attacker and native attack permission. Melee is adjacent; "
+                         "ranged requires a native attackable picker plot. No war declaration, city capture, "
+                         "embarked/air/group attacks or confirmation bypass. May damage or destroy either unit "
+                         "and consume movement. Verifies consumed attack/attacker loss plus visible target damage "
+                         "or departure, not a kill, predicted damage or safe outcome. Requires user authorization; "
+                         "submits once, never automatically retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(attack_unit)
         server.tool(
             name="reinforce_civ7_unit", title="Send Civ VII unit to commander",
             description=("CHANGE GAME STATE: send owned deployed packable unit_id as reinforcement to exact "

@@ -398,6 +398,19 @@ async def reinforce_unit(unit_id: StrictInt, commander_id: StrictInt, expected_t
     }, "reinforcement_state.js")
 
 
+async def attack_unit(
+    unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt,
+    kind: Literal["melee", "ranged"], expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Attack one exact visible enemy combat unit in an existing war, once."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, target_unit_id, x, y, expected_turn)) or kind not in ("melee", "ranged"):
+        raise ValueError("Exact attacker, target identity/tile, melee/ranged kind and expected turn are required")
+    return await _execute_and_verify("attack_unit.js", {
+        "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id,
+        "x": x, "y": y, "kind": kind, "expected_turn": expected_turn,
+    }, "unit_attack_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

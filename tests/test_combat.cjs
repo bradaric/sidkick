@@ -57,6 +57,9 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
 test('combat evidence exposes observable strength and native attack eligibility but never invents damage', () => {
   const { data } = run();
   assert.equal(data.defender.kind, 'unit');
+  assert.equal(data.defender.ownerId, 1);
+  assert.equal(data.defender.instanceId, 8);
+  assert.equal(data.defender.componentType, 26);
   assert.equal(data.attacker.health.current, 95);
   assert.equal(data.defender.strength.melee, 25);
   assert.equal(data.options.find(o => o.kind === 'ranged').availableNow, true);

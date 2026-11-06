@@ -776,6 +776,41 @@ read confirmed the same assignment with location withheld while travelling.
 Readiness was synthetic; arrival has not been tested. Gold is 6921.33984375;
 the original reviewed checkpoint remains separate. No turn advanced.
 
+#### Single-unit field combat
+
+`attack_civ7_unit(unit_id, target_player, target_unit_id, x, y, kind, expected_turn)`
+supports one explicit `melee` or `ranged` attack in an **existing war** against a
+single currently visible enemy combat-formation unit on an owned/unowned field
+tile. Exact owner-qualified defender IDs are now in `get_civ7_combat_options`.
+The attacker must be deployed, unqueued, unpacked, nonreinforcing, noncommander,
+land/sea, not embarked and ready. Melee requires an adjacent native attack target
+and melee combat test; ranged requires an attackable native picker plot. Both
+use exact native permission, fresh identity/health/turn checks, and fixed operation
+arguments, not the UI helper that can declare war or swap targets.
+
+Enemy territory, defensible districts, stacks, civilians (including native combat
+components on civilian formations), commanders, air/embarked attacks, declarations
+of war, captures and confirmation bypasses are excluded. Readback requires attack
+consumption/attacker disappearance **and** observed target damage or departure
+from the still-visible tile. A departure is not a kill claim; hidden state is
+never queried. Unknown/cancelled attacks are never repeated automatically.
+
+Default remains 23 read-only tools; write mode has 55 tools (32 actions).
+**156 Python and 311 Node tests pass.** T62 native ranged attack by Field Cannon
+983054 spent its attack and damaged Franklin's Field Gun 4063280 from 0 to 30.
+Native melee by Cuirassier 1245202 then spent its attack and the target left the
+visible tile; independent read showed Cuirassier HP87 and no defender there.
+Both typed operations verified. Preconditions were synthetic: a separate native
+war declaration against player4 and debug-restored movement between ordinary
+checked positioning steps. This is not naturally occurring campaign combat or
+reusable war-declaration coverage. Debug create/reposition probes produced no
+observed unit/location change. One positioning step returned unknown after its
+short verifier timed out; later read-only evidence confirmed arrival, no repeat.
+No turn advanced. Separate pre-war save
+`Sidkick_Playground_BeforeCombat_T62_1793950860208` confirmed RESULT_OK, no overwrite;
+the reviewed morning checkpoint also remains preserved. The test game is now at
+war with Franklin; the original Merchant was not moved or ordered.
+
 ## One-shot export
 
 ```powershell

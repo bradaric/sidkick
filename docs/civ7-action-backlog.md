@@ -40,7 +40,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
 | 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Pack-nearby, owned-plot unpack and reinforcement assignment implemented; other items pending |
-| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Pending |
+| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged field attacks implemented; other items pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
 
 Save/load recovery and WMD actions are separately scoped optional extensions.
@@ -223,3 +223,22 @@ Morning inspection/actions before this implementation batch:
   debug restored movement; typed reinforcement then verified army65536 assignment,
   native ETA9; independent logistics matched. Synthetic readiness, arrival untested.
   Gold6921.33984375, still T62, no turn advance. Original Merchant remains untouched.
+- Reinforcement batch committed as `a91e085`.
+- Field combat: 156 Python + 311 Node tests. Explicit target owner/instance/tile,
+  existing-war only, single visible combat-formation defender on owned/unowned
+  tiles, native adjacent melee / ranged picker checks. No districts, enemy-territory
+  attacks, civilians, stacks, commanders, air, war declaration or confirmation bypass.
+  Captured attack-count plus observed visible target damage/departure proves the
+  attack, not predicted damage or a kill. No hidden post-combat target reads.
+- Pre-war checkpoint `Sidkick_Playground_BeforeCombat_T62_1793950860208` confirmed
+  RESULT_OK, no overwrite. Sandbox native declaration made player4/Franklin hostile;
+  not typed war support. Debug create/reposition probes had no observed effect.
+  Field Cannon983054 positioned through ordinary typed movement to `(18,17)` with
+  debug-restored movement between steps. One step `(21,16) → (20,17)` timed out
+  unknown, later arrival confirmed read-only, never resubmitted. Typed ranged
+  attack on Field Gun4063280 at `(17,18)` verified damage0→30 and attacks1→0.
+  Cuirassier1245202 positioned `(15,15) → (16,16) → (16,17)` with restored movement;
+  typed melee on the same defender verified attack consumption and target departure.
+  Independent read: CuirassierHP87, no defender on target tile. These are real native
+  attacks under synthetic war/readiness, not naturally occurring campaign coverage.
+  Still T62; no turn advancement. Reviewed morning save and original Merchant preserved.

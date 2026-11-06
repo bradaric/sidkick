@@ -38,7 +38,8 @@
       const unit = Units.get(defenderId);
       if (unit) {
         const def = GameInfo.Units.lookup(unit.type);
-        defender = {kind: "unit", name: name(unit.name ?? def?.Name), type: def?.UnitType ?? unit.type,
+        defender = {kind: "unit", ownerId: defenderId.owner, instanceId: defenderId.id, componentType: defenderId.type,
+          name: name(unit.name ?? def?.Name), type: def?.UnitType ?? unit.type,
           civilization: name(Players.get(unit.owner)?.civilizationFullName), health: health(unit), strength: strength(unit)};
       }
     }
