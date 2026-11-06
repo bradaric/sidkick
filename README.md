@@ -1172,6 +1172,22 @@ Live MCP Rifleman2490373 travelled Copan station `(26,11)` → St. Petersburg st
 `(19,11)`, exact identity and queue0 verified with debug-restored movement.
 **187 Python / 352 Node tests pass; write mode70 tools (47 actions), default23 unchanged.**
 
+#### Resource unassignment and atomic swaps
+
+`unassign_civ7_resource(resource_instance, off_map, settlement, expected_turn)`
+deactivates only the exact resource in its exact current owned source settlement.
+Native locks/permission and map/off-map identity apply; no bulk/factory clearing.
+`swap_civ7_resources(first_resource_instance, first_off_map,
+second_resource_instance, second_off_map, expected_turn)` uses native atomic
+SWAP_RESOURCES, not two assignments. Both sources must be assigned; readback proves
+the complete owned resource ledger with precisely the requested exchange.
+
+Live Pearls618 unassignment/reassignment in Roskilde verified and restored the
+original slot. Positive atomic swaps remain fixture-only: native pair1063/618
+was rejected, and a bounded read-only search found no eligible tested pair with618.
+No rejected swap request was submitted or replaced with a non-atomic workaround.
+**191 Python / 356 Node tests pass; write mode72 tools (49 actions), default23 unchanged.**
+
 ## One-shot export
 
 ```powershell

@@ -166,6 +166,8 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "rail_civ7_commander",
             "upgrade_civ7_army",
             "rail_civ7_unit",
+            "unassign_civ7_resource",
+            "swap_civ7_resources",
         })
         tool = enabled["select_civ7_technology"]
         self.assertFalse(tool.annotations.read_only_hint)

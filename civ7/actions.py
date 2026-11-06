@@ -73,6 +73,24 @@ async def assign_resource(
     )
 
 
+async def unassign_resource(resource_instance: StrictInt, off_map: StrictBool, settlement: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Unassign one exact owned resource only from its explicit current source settlement."""
+    if type(resource_instance) is not int or resource_instance < 0 or type(off_map) is not bool or type(expected_turn) is not int or expected_turn < 0 or not isinstance(settlement, str) or not settlement.strip():
+        raise ValueError("An exact resource/off-map identity, source settlement and expected turn are required")
+    args = {"resource_instance": resource_instance, "off_map": off_map, "settlement": settlement.strip(), "expected_turn": expected_turn, "mode": "unassign"}
+    return await _execute_and_verify("assign_resource.js", args, "resource_assignment_state.js", state_arguments=args)
+
+
+async def swap_resources(first_resource_instance: StrictInt, first_off_map: StrictBool, second_resource_instance: StrictInt, second_off_map: StrictBool, expected_turn: StrictInt) -> dict[str, Any]:
+    """Atomically swap two exact assigned resources while preserving the entire owned ledger."""
+    if any(type(v) is not int or v < 0 for v in (first_resource_instance, second_resource_instance, expected_turn)) or any(type(v) is not bool for v in (first_off_map, second_off_map)) or (first_resource_instance, first_off_map) == (second_resource_instance, second_off_map):
+        raise ValueError("Two distinct exact resource/off-map identities and expected turn are required")
+    return await _execute_and_verify("swap_resources.js", {
+        "first_resource_instance": first_resource_instance, "first_off_map": first_off_map,
+        "second_resource_instance": second_resource_instance, "second_off_map": second_off_map, "expected_turn": expected_turn,
+    }, "resource_swap_state.js")
+
+
 async def buy_attribute_node(node: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Buy a first nonrepeatable leader perk using native point eligibility."""
     if not isinstance(node, str) or not node.strip():

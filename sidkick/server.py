@@ -26,6 +26,8 @@ from civ7.actions import (
     acknowledge_agenda,
     append_city_production,
     assign_resource,
+    unassign_resource,
+    swap_resources,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -242,6 +244,30 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="swap_civ7_resources", title="Swap two assigned Civ VII resources",
+            description=("CHANGE GAME STATE: atomically exchange first_resource_instance/first_off_map and "
+                         "second_resource_instance/second_off_map with fresh expected_turn. Both exact owned "
+                         "resources must be uniquely assigned to different owned settlements; assignments "
+                         "must be unlocked and native SWAP_RESOURCES must permit the exact pair. Same-city "
+                         "is a no-op; unassigned sources are rejected. Map/off-map identities stay distinct. "
+                         "Verifies both exchanged city assignments and complete preservation of every other "
+                         "owned resource assignment. No sequential unassign/reassign fallback, bulk clearing "
+                         "or turn advancement. Submits once; never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(swap_resources)
+        server.tool(
+            name="unassign_civ7_resource", title="Unassign one Civ VII resource",
+            description=("CHANGE GAME STATE: unassign exact owned resource_instance/off_map identity from "
+                         "its exact current source settlement with fresh expected_turn. Requires unlocked "
+                         "assignment and native ASSIGN_RESOURCE Deactivate permission. Rejects a different "
+                         "source; already unassigned is a no-op. No bulk clearing, factory clearing, swaps "
+                         "or turn advancement. Verifies the same resource remains owned and unassigned. "
+                         "Submits once; never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(unassign_resource)
         server.tool(
             name="rail_civ7_unit", title="Move ordinary Civ VII unit by rail",
             description=("CHANGE GAME STATE: native MOVE_BY_RAIL for exact owned ordinary land unit_id "

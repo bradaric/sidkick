@@ -41,6 +41,19 @@ claiming Group 1 complete. Force March remains unavailable in this build.
 - Group 1 checkpoint `Sidkick_Playground_BeforeGroupOne_T62_1793974033209`
   confirmed RESULT_OK/no overwrite. 187 Python + 352 Node tests pass; default23
   read-only tools, write mode70 tools including47 actions.
+- Ordinary rail committed as `2dd63c3`.
+- Resource unassignment and atomic swap implemented. Unassign requires exact owned
+  resource/off-map identity and current source settlement, native Deactivate and
+  unlocked assignment; no-op only when already unassigned. Native SWAP_RESOURCES
+  uses exact two identities, no sequential fallback, known full owned assignment
+  ledger and native permission; readback proves both changes and all unrelated
+  assignments preserved. Off-map/map same-number identities fixture-tested.
+- Actual MCP Pearls618 unassigned from Roskilde and reassigned back, both verified.
+  Pair1063/618 swap natively rejected with no request; bounded read-only probe of
+ 18 other assigned-resource pairs with618 also found no native permission. Positive
+  atomic swap execution is a Group 2 eligible-pair gap, not bypassed or claimed.
+  Roskilde's original slot restored; Gold/T62 unchanged.
+- 191 Python + 356 Node tests pass; default23 tools, write mode72 including49 actions.
 
 ## Existing baseline
 

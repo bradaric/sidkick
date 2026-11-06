@@ -10,7 +10,7 @@ function run(options = {}, script = 'assign_resource.js') {
   const owned = options.unknown ? [offMap] : [resource, offMap, ...(options.ambiguous ? [resource] : [])];
   const calls = [];
   const cities = [10, 20].map(id => ({id: {owner: 0, id}, owner: 0, name: id === 10 ? 'Home' : 'Target',
-    Resources: {getAssignedResources: () => id === (options.alreadyHere ? 20 : 10) ? [resource] : [],
+    Resources: {getAssignedResources: () => options.unassigned ? [] : id === (options.alreadyHere ? 20 : 10) ? [options.offMapAssigned ? offMap : resource] : [],
       getAssignedResourcesCap: () => options.full ? 0 : 2}}));
   const foreign = {id: {owner: 1, id: 20}};
   Object.defineProperty(foreign, 'Resources', {get: () => {throw Error('No foreign inventory reads');}});
@@ -22,12 +22,12 @@ function run(options = {}, script = 'assign_resource.js') {
     Players: {get: () => ({isTurnActive: true, Cities: {getCities: () => cities}, Resources: {
       getResources: () => owned, isResourceAssignmentLocked: () => options.locked ?? false,
     }})},
-    PlayerOperationTypes: {ASSIGN_RESOURCE: 'ASSIGN'},
+    PlayerOperationTypes: {ASSIGN_RESOURCE: 'ASSIGN'}, PlayerOperationParameters: {Deactivate: 0},
     Game: {turn: 58, age: 42, PlayerOperations: {
       canStart: (id, operation, args, exclusion) => {
         calls.push({kind: 'check', id, operation, args, exclusion});
         if (options.changed) context.Game.turn++;
-        return {Success: options.allowed ?? true, FailureReasons: ['Blocked']};
+        return {Success: options.allowed ?? true, RequiresConfirmation: Boolean(options.confirm), FailureReasons: ['Blocked']};
       },
       sendRequest: (id, operation, args) => calls.push({kind: 'send', id, operation, args}),
     }},
@@ -85,4 +85,17 @@ test('resource readback is targeted, owned-only and read-only', () => {
   assert.deepEqual(data, {turn: 58, age: 42, playerId: 0,
     resource: {instance: 7, offMap: false}, assignedCityId: 10});
   assert.equal(calls.length, 0);
+});
+
+test('one resource can be natively unassigned only from its exact current owned settlement', () => {
+  const {data, calls} = run({arguments: {mode: 'unassign', settlement: 'Home'}});
+  assert.equal(data.status, 'submitted'); assert.equal(data.expected.assignedCityId, null);
+  assert.deepEqual(calls.at(-1).args, {Location: {x: 7, y: 0}, City: 10, ID: -1, Action: 0});
+  assert.deepEqual(run({offMapAssigned: true, arguments: {mode: 'unassign', settlement: 'Home', off_map: true}}).calls.at(-1).args,
+    {Location: {x: 7, y: 0}, City: 10, ID: 7, Action: 0});
+  assert.equal(run({unassigned: true, locked: true, arguments: {mode: 'unassign', settlement: 'Home'}}).data.status, 'already_inactive');
+  for (const options of [{arguments: {mode: 'unassign', settlement: 'Target'}}, {locked: true}, {allowed: false}, {confirm: true}]) {
+    const r = run({arguments: {mode: 'unassign', settlement: 'Home'}, ...options});
+    assert.equal(r.data.status, 'rejected'); assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
+  }
 });

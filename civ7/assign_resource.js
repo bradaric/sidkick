@@ -1,7 +1,7 @@
 (() => {
-  const {resource_instance: instance, off_map: offMap, settlement, expected_turn: expectedTurn} = queryArguments;
+  const {resource_instance: instance, off_map: offMap, settlement, expected_turn: expectedTurn, mode = "assign"} = queryArguments;
   const reject = reason => ({status: "rejected", reason});
-  if (!Number.isInteger(instance) || instance < 0 || typeof offMap !== "boolean" ||
+  if (!["assign", "unassign"].includes(mode) || !Number.isInteger(instance) || instance < 0 || typeof offMap !== "boolean" ||
       typeof settlement !== "string" || !settlement.trim() || !Number.isInteger(expectedTurn) || expectedTurn < 0) {
     return reject("A resource identity, exact owned settlement name and expected turn are required");
   }
@@ -21,20 +21,27 @@
   if (assigned.length > 1) return reject("Resource assignment is ambiguous");
   const before = {turn: Game.turn, age: Game.age, playerId, resource: {instance, offMap},
     assignedCityId: assigned[0]?.id.id ?? null};
-  if (before.assignedCityId === target.id.id) return {status: "already_active", before};
+  if (mode === "unassign") {
+    if (before.assignedCityId === null) return {status: "already_inactive", before};
+    if (before.assignedCityId !== target.id.id) return reject("Resource is not assigned to the exact requested source settlement");
+  } else if (before.assignedCityId === target.id.id) return {status: "already_active", before};
   if (player.Resources.isResourceAssignmentLocked() !== false) return reject("Resource assignment is currently locked");
   const capacity = target.Resources.getAssignedResourcesCap();
   const used = target.Resources.getAssignedResources().length;
-  if (!Number.isInteger(capacity) || used >= capacity) return reject("No known empty destination resource slot");
+  if (mode === "assign" && (!Number.isInteger(capacity) || used >= capacity)) return reject("No known empty destination resource slot");
   // Match the commerce UI, including the off-map identity flag and native ID.
+  if (mode === "unassign" && (typeof PlayerOperationParameters === "undefined" || !Number.isInteger(PlayerOperationParameters.Deactivate))) return reject("Native deactivation parameter is unavailable");
   const args = {Location: GameplayMap.getLocationFromIndex(instance), City: target.id.id,
-    Flags: offMap, ID: offMap ? instance : -1};
+    ID: offMap ? instance : -1, ...(mode === "assign" ? {Flags: offMap} : {Action: PlayerOperationParameters.Deactivate})};
   const operation = PlayerOperationTypes.ASSIGN_RESOURCE;
   const check = Game.PlayerOperations.canStart(playerId, operation, args, false);
-  if (check?.Success !== true) return {status: "rejected", reason: "Native resource assignment check failed", failureReasons: check?.FailureReasons ?? []};
+  if (check?.Success !== true || check.RequiresConfirmation === true) return {status: "rejected", reason: "Native resource command failed or needs confirmation", failureReasons: check?.FailureReasons ?? []};
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
-      player.Resources.isResourceAssignmentLocked() !== false) return reject("Game context changed during validation");
+      player.Resources.isResourceAssignmentLocked() !== false ||
+      (mode === "unassign" && (player.Resources.getResources().filter(matchesResource).length !== 1 ||
+        cities.filter(c => c.Resources.getAssignedResources().some(matchesResource)).length !== 1 ||
+        !target.Resources.getAssignedResources().some(matchesResource)))) return reject("Game context or exact resource source changed during validation");
   Game.PlayerOperations.sendRequest(playerId, operation, args);
-  return {status: "submitted", before, expected: {resource: {instance, offMap}, assignedCityId: target.id.id}};
+  return {status: "submitted", before, expected: {resource: {instance, offMap}, assignedCityId: mode === "unassign" ? null : target.id.id}};
 })()
