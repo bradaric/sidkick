@@ -381,6 +381,21 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   spent attack1→0, damage51→67 (16), exact surviving source membership preserved.
   Carrier5767185 now holds4456493 and5898306. No interception/splash/kill claim.
 - 219 Python / 399 Node pass; tools23/95 including72 actions, T62/no Gold spend.
+- `5a60a8f`: commander-source air strikes. Explicit packed-army shore crossing
+  implemented: one direct current-turn native noncombat edge, visible empty
+  own/unowned destination, consistent embarkation, stable member inventory and
+  exact arrival/embark/disembark/clear-queue readback. Navigable rivers are excluded
+  from this explicit ocean-shore mode: native river units may be embarked even
+  though isWater=false. Existing same-water river travel remains unchanged.
+- Synthetic Commander5963843/Rifleman6029380 packed at navigable river `(24,13)`,
+  then moved to flat `(25,13)` normally; adjacent ocean goal required native detour
+  and future turn, rejected without a shore request. Preserved as separate test army.
+- Distinct synthetic Commander6094917/Rifleman6160454 at owned coastal city `(4,6)`
+  joined normally, then packed embark `(3,5)`, same-water transport `(4,5)` and
+  disembark back `(4,6)` all normally verified with the exact sole member preserved,
+  embarkation false→true→true→false and queue0. Only movement readiness between
+  completed cases restored synthetically; no placement/member/embarkation forced.
+- 220 Python / 400 Node pass; tools23/96 including73 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -388,7 +403,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | Occupation/capture decisions and peace/deals remain unimplemented. Route operation wrapper/fixtures implemented, native route-effect semantics unresolved after one unknown submission. Enemy-field melee, naval shore fire/raids, explicit war declaration and capped no-secondary sanctions/espionage are implemented. |
-| Military transport | Squadron/carrier missions, whole-squadron travel, army naval transport, packed shores and broader travel remain unimplemented. Exact single-aircraft base/carrier/squadron transfer guards implemented; carrier transfer/return verified, squadron target not natively offered in test setup. |
+| Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
 | Construction/resources | Factory reassignment rules remain unimplemented. Advanced Wonder/repair/overbuild/improvement queue intents are implemented; completion/repair positive cases are separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
 | Diplomacy/choices | Project cancellation, city-state levies, secondary targets/deals, paid/trial narrative and remaining hostile/mandatory variants remain unimplemented. Independent befriending and pending bonus choices implemented, positive live cases unavailable. |

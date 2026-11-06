@@ -13,14 +13,14 @@ function run(o = {}, script = 'commander_action.js') {
   const army = {owner: o.foreignArmy ? 1 : 0, getCommanderId: () => commander.id, getUnitIds: () => o.unknownMembers ? null : members()};
   const mode = o.mode ?? 'pack';
   const context = {queryArguments: {mode, commander_id: 10, unit_id: 10, x: 2, y: 3, expected_turn: 62,
-      baseline_packed_unit_ids: mode === 'unpack' || (['move', 'rail'].includes(mode) && o.packed) ? [20] : [], baseline_unit_ids: [10, 20], component_type: 26, ...o.args},
+      baseline_packed_unit_ids: mode === 'unpack' || (['move', 'rail','shore'].includes(mode) && o.packed) ? [20] : [], baseline_unit_ids: [10, 20], component_type: 26, ...o.args},
     UI: {isInGame: () => true}, Locale: {compose: x => x}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => [commander, member]}})},
     ...(o.missingArmyApi ? {} : {Armies: {get: () => army}}), GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10,
       getIndexFromLocation: loc => loc.x + loc.y * 10, getRevealedState: () => o.hidden ? 0 : 2, getOwner: () => o.foreignTile ? 1 : 0,
       getLocationFromIndex: i => ({x: i % 10, y: Math.floor(i / 10)}),
-      isWater: x => o.shore && x === 3 ? true : false, getPlotDistance: () => 1},
-    GameInfo: {Units: {lookup: () => ({Domain: o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND'})}}, MapUnits: {getUnits: () => o.occupied ? [member.id] : []},
+      getTerrainType:()=>o.river?1:0,isWater: x => o.disembark?x===2:Boolean(o.shore&&x===3), getPlotDistance: () => 1},
+    GameInfo: {Terrains:{lookup:n=>({TerrainType:n===1?'TERRAIN_NAVIGABLE_RIVER':'TERRAIN_FLAT'})},Units: {lookup: () => ({Domain: o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND'})}}, MapUnits: {getUnits: () => o.occupied ? [member.id] : []},
     Units: {getReachableMovement: () => o.notOffered ? [] : [33, 34], getReachableTargets: () => o.attack ? [33] : [],
       getPathTo: () => ({plots: o.longPath ? [32, 33, 34] : [32, 33], turns: o.futureTurn ? [1, 2] : o.longPath ? [1, 1, 1] : [1, 1]})},
     UnitOperationMoveModifiers: {NONE: 0}, UnitOperationTypes: {MOVE_TO: 900}, CombatTypes: {NO_COMBAT: -1},
@@ -58,6 +58,19 @@ test('commander movement preserves captured packed membership and uses one bound
     assert.deepEqual(calls.at(-1), {kind: 'moveSend', id: {owner: 0, id: 10, type: 26}, type: 900, args: {X: 3, Y: 3, Modifiers: 0}});
   }
   assert.equal(run({mode: 'move', longPath: true, args: {x: 4, y: 3, max_steps: 2}}).data.status, 'submitted');
+  assert.equal(run({mode:'move',embarked:true,river:true,args:{x:3,y:3}}).data.status,'submitted','existing same-water river travel cannot assume isWater equals embarkation');
+});
+
+test('explicit packed shore crossing uses one direct noncombat path and proves embarkation with unchanged army',()=>{
+ for(const disembark of [false,true]){
+  const o={mode:'shore',packed:true,shore:true,disembark,embarked:disembark,args:{x:3,y:3}};
+  const r=run(o);assert.equal(r.data.status,'submitted');assert.equal(r.data.expected.embarked,!disembark);assert.equal(r.data.expected.queueSize,0);assert.deepEqual(r.data.expected.packedUnitIds,[20]);
+  assert.equal(r.calls.at(-1).type,900);
+ }
+ for(const o of [{shore:false},{sea:true},{river:true},{embarked:true},{longPath:true},{futureTurn:true},{occupied:true},{combat:true},{attack:true},{unknownMembers:true},{changed:true}]){
+  const r=run({mode:'shore',packed:true,shore:true,args:{x:3,y:3},...o});assert.equal(r.data.status,'rejected');assert.equal(r.calls.filter(c=>c.kind==='moveSend').length,0);
+ }
+ assert.equal(run({mode:'shore',packed:true,embarked:true},'commander_action_state.js').data.embarked,true);
 });
 
 test('commander movement rejects future-turn, long, hostile, occupied, shore and stale paths without queueing', () => {

@@ -51,6 +51,7 @@ from civ7.actions import (
     pillage_route,
     transfer_aircraft,
     air_attack_from_commander,
+    cross_commander_shore,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -267,6 +268,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="cross_civ7_commander_shore",title="Cross one Civ VII shore with packed army",
+            description=("CHANGE GAME STATE: fixed MOVE_TO of exact ready deployed land commander_id across "
+                         "one adjacent land/water edge to empty visible own/unowned x/y with expected_turn. "
+                         "Requires consistent native source embarkation, direct current-turn path, reachable "
+                         "noncombat tile, native NO_COMBAT and selected permission. Captures packed members "
+                         "and verifies exact arrival, embark/disembark state, clear queue and unchanged army. "
+                         "For same-water embarked travel use existing bounded commander movement. No landing "
+                         "attack, foreign territory, capture, implicit packing or future-turn orders. "
+                         "One submission,15-second readback; never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(cross_commander_shore)
         server.tool(
             name="air_attack_civ7_from_commander",title="Strike Civ VII field unit from captured air commander",
             description=("CHANGE GAME STATE: fixed native AIR_ATTACK by exact aircraft unit_id stationed in "

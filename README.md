@@ -1447,6 +1447,16 @@ Native carriers also set the squadron flag: definition-first classification now
 enforces carrier water guards in missions and transfers.
 **219 Python / 399 Node pass; tools23/95 (72 actions).**
 
+`cross_civ7_commander_shore` crosses one direct native noncombat ocean shore edge,
+preserving captured packed members and verifying arrival, embarkation and queue0.
+Visible empty own/unowned destinations only; no attack/capture/future-turn order.
+Navigable rivers are excluded from this explicit mode because their embarkation
+does not equal isWater; existing bounded river travel remains unchanged.
+Live test6094917 with6160454 embarked `(4,6)→(3,5)`, transported to `(4,5)` and
+disembarked `(4,6)`, exact member preserved. Synthetic movement readiness only
+between completed cases; no embarkation/membership forced.
+**220 Python / 400 Node pass; tools23/96 (73 actions).**
+
 ## One-shot export
 
 ```powershell

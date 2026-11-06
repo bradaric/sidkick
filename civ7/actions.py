@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def cross_commander_shore(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Cross one exact noncombat shore edge while retaining the captured packed army."""
+    if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):
+        raise ValueError("Exact land commander, adjacent shore tile and expected turn required")
+    return await _execute_and_verify("commander_action.js",{"commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn,"mode":"shore"},"commander_action_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def air_attack_from_commander(unit_id: StrictInt, source_commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Strike one exact visible field target with aircraft from a captured Aerodrome/squadron/carrier."""
     if any(type(v) is not int or v<0 for v in (unit_id,source_commander_id,target_player,target_unit_id,x,y,expected_turn)) or unit_id==source_commander_id:
