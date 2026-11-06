@@ -21,6 +21,10 @@ CASES = [
      {"unit_id": 20, "x": 10, "y": 15, "expected_turn": 59, "mode": "rail"},
      "move_unit.js", "unit_position_state.js", {},
      {"unitId": 20, "unitType": 201, "componentType": 26, "location": {"x": 10, "y": 15}, "queueSize": 0}),
+    ("advance_civ7_unit", "advance_unit", (20, 4, 10, 15, 59),
+     {"unit_id": 20, "target_player": 4, "x": 10, "y": 15, "expected_turn": 59, "mode": "advance"},
+     "move_unit.js", "unit_position_state.js", {},
+     {"unitId": 20, "unitType": 201, "componentType": 26, "location": {"x": 10, "y": 15}, "queueSize": 0}),
 ]
 BEFORE = {"turn": 59, "age": 42, "playerId": 0}
 

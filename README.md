@@ -1220,6 +1220,20 @@ attacks1→0 with all three packed members preserved. Synthetic prerequisites we
 1HP test defender to full health. No attack/ability effect was debug-forced.
 **197 Python / 361 Node tests pass; write mode74 tools (51 actions), default23 unchanged.**
 
+#### Non-capturing wartime field advance
+
+`advance_civ7_unit(unit_id, target_player, x, y, expected_turn)` enters one exact
+empty adjacent visible enemy field with MOVE_TO/NONE in an existing met war.
+Requires ready unqueued unpacked/nonreinforcing land/sea combat unit, same terrain,
+no embarkation, native reachable direct noncombat path and no district/city at the
+destination. No implicit war, capture, stacking, foreign third party, fog or turn
+advance. Existing ordinary movement's own/unowned boundary remains unchanged.
+
+Live MCP Field Gun2818084 advanced `(18,18) → (18,19)` into Franklin's empty field,
+exact identity/unembarked/queue0 verified, movement2→1 and attack1 retained. Approach
+used checked steps and private movement restoration, not extra attack points.
+**197 Python / 362 Node tests pass; write mode75 tools (52 actions), default23 unchanged.**
+
 ## One-shot export
 
 ```powershell

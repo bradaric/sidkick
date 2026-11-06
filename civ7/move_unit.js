@@ -1,7 +1,8 @@
 (() => {
-  const {unit_id: unitId, x, y, expected_turn: expectedTurn, mode = "step"} = queryArguments;
+  const {unit_id: unitId, x, y, expected_turn: expectedTurn, mode = "step", target_player: targetPlayer} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["step", "rail"].includes(mode) || [unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0)) return reject("Exact owned unit, supported move/tile and expected turn are required");
+  if (!["step", "rail", "advance"].includes(mode) || [unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0) ||
+      (mode === "advance" && (!Number.isInteger(targetPlayer) || targetPlayer < 0))) return reject("Exact owned unit, supported move/tile/enemy and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
   if (!Number.isInteger(playerId) || playerId < 0) return reject("No local player");
@@ -63,7 +64,13 @@
       GameplayMap.getRevealedState(playerId, unit.location.x, unit.location.y) !== RevealedStates.VISIBLE ||
       GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE) return reject("Only an adjacent currently visible step is supported");
   const owner = GameplayMap.getOwner(x, y);
-  if (owner !== -1 && owner !== playerId) return reject("Foreign territory is not supported");
+  const enemyField = () => owner === targetPlayer && targetPlayer !== playerId && player.Diplomacy.hasMet(targetPlayer) === true && player.Diplomacy.isAtWarWith(targetPlayer) === true &&
+    typeof MapCities !== "undefined" && typeof MapCities.getDistrict === "function" && MapCities.getDistrict(x, y) === null;
+  if (mode === "advance") {
+    if (!enemyField() || unit.isOnMap !== true || unit.isDead === true || unit.operationQueueSize !== 0 || unit.isEmbarked !== false || shore ||
+        (domain === "DOMAIN_LAND" && fromWater !== false) || unit.Combat?.isCombat !== true ||
+        !["FORMATION_CLASS_LAND_COMBAT", "FORMATION_CLASS_NAVAL"].includes(GameInfo.Units.lookup(unit.type)?.FormationClass)) return reject("Advance requires an unqueued land/sea combat unit and an empty-field target owned by an exact met wartime enemy; no district/city or shore crossing");
+  } else if (owner !== -1 && owner !== playerId) return reject("Foreign territory is not supported");
   const occupants = MapUnits.getUnits(x, y);
   if (!Array.isArray(occupants) || occupants.length) return reject("An empty destination is required; no captures or swaps");
   const plot = GameplayMap.getIndexFromLocation(destination);
@@ -80,17 +87,18 @@
     location: {x: unit.location.x, y: unit.location.y}, movesRemaining: unit.Movement.movementMovesRemaining,
     embarked: typeof unit.isEmbarked === "boolean" ? unit.isEmbarked : null};
   const check = Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO, args, false);
-  if (check?.Success !== true) return reject("Native movement check failed", check?.FailureReasons ?? []);
+  if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native movement check failed or needs confirmation", check?.FailureReasons ?? []);
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || unit.id.owner !== playerId ||
       unit.location.x !== before.location.x || unit.location.y !== before.location.y ||
       (shore && (unit.isEmbarked !== before.embarked || GameplayMap.isWater(x, y) !== toWater ||
         GameplayMap.isWater(before.location.x, before.location.y) !== fromWater)) ||
       unit.Movement.movementMovesRemaining !== before.movesRemaining || GameplayMap.getOwner(x, y) !== owner ||
+      (mode === "advance" && (!enemyField() || unit.id.type !== before.componentType || unit.type !== before.unitType || unit.isOnMap !== true || unit.isDead === true || unit.operationQueueSize !== 0 || unit.isEmbarked !== false)) ||
       MapUnits.getUnits(x, y)?.length !== 0) return reject("Game context, unit or destination changed during validation");
   // Do not invoke WorldInput: its helper can attack, declare war or swap units.
   Game.UnitOperations.sendRequest(unit.id, UnitOperationTypes.MOVE_TO, args);
   return {status: "submitted", before, expected: {unitId, unitType: unit.type, componentType: unit.id.type, location: {x, y},
-    ...(shore ? {embarked: toWater} : {})},
+    ...(shore ? {embarked: toWater} : {}), ...(mode === "advance" ? {queueSize: 0, embarked: false} : {})},
     verificationArguments: {unit_id: unitId}};
 })()

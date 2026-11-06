@@ -30,6 +30,7 @@ from civ7.actions import (
     swap_resources,
     edit_production_queue,
     commander_attack,
+    advance_unit,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -246,6 +247,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="advance_civ7_unit", title="Advance Civ VII combat unit into enemy field",
+            description=("CHANGE GAME STATE: move exact owned ordinary land/sea combat unit_id one adjacent "
+                         "step into an empty visible non-district field owned by exact met wartime target_player "
+                         "at x/y with fresh expected_turn. Requires ready deployed unqueued unembarked, unpacked "
+                         "nonreinforcing source, direct reachable noncombat native path and MOVE_TO/NONE "
+                         "permission. No new war, third-party territory, fog, civilians, stacking, district/"
+                         "city entry, captures, shore transitions or turn advancement. Existing ordinary move "
+                         "tool's own/unowned boundary is unchanged. Verifies exact unit arrival, unembarked "
+                         "state and clear queue. Submits once; polls read-only for 15 seconds, never retries "
+                         "unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(advance_unit)
         server.tool(
             name="attack_civ7_commander", title="Use Civ VII direct commander attack",
             description=("CHANGE GAME STATE: exact native COMMANDER_ATTACK/Heroic Assault from deployed "

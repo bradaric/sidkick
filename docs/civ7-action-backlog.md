@@ -80,6 +80,20 @@ claiming Group 1 complete. Force March remains unavailable in this build.
   0→40, source movement3→2 and attacks1→0, stable `(15,18)`/queue0 and packed
   2621473/3801103/4063242 unchanged. No attack/ability effect forced or turn advanced.
 - 197 Python + 361 Node tests pass; default23 tools, write mode74 including51 actions.
+- Heroic Assault committed as `a67b249`.
+- Checked wartime field advance completed: explicit target_player, existing met
+  war, ordinary ready unqueued unpacked/nonreinforcing land/sea combat unit,
+  adjacent visible empty same-terrain non-district field owned by that exact enemy,
+  direct reachable native noncombat path and MOVE_TO/NONE. No city/district entry,
+  capture, shore change, third-party territory, war declaration or turn advance.
+  Existing ordinary movement keeps its own/unowned boundary. Exact identity,
+  location, unembarked state and queue0 are verified.
+- Field Gun2818084 positioned by checked own/unowned steps `(14,18) → (14,17) →
+  (15,17) → (16,16) → (17,16) → (17,17) → (18,18)`, restored movement between
+  setup steps, then actual MCP advance to Franklin field `(18,19)` verified with
+  normal native permission (movement2→1, attack1 retained). No additional attack
+  points granted; native district-ranged permission toward `(18,21)` is now offered.
+- 197 Python + 362 Node tests pass; default23 tools, write mode75 including52 actions.
 
 ## Existing baseline
 

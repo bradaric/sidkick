@@ -8,7 +8,8 @@ function run(o = {}, script = 'move_unit.js') {
   const calls = [];
   const unit = {id: {owner: o.foreignUnit ? 1 : 0, id: 20, type: 26}, type: 201,
     location: {x: 9, y: 15}, isOnMap: !o.offMap, isCommanderUnit: o.commander ?? false,
-    isEmbarked: o.args?.mode === 'rail' ? false : undefined, operationQueueSize: 0,
+    isEmbarked: ['rail', 'advance'].includes(o.args?.mode) ? false : undefined, operationQueueSize: 0,
+    Combat: o.combatUnit ? {isCombat: true} : undefined,
     Movement: {movementMovesRemaining: o.moves ?? 3}, ...o.unit};
   if (o.embark || o.disembark) unit.isEmbarked = Boolean(o.disembark);
   if (o.unknownEmbarkation) unit.isEmbarked = undefined;
@@ -19,9 +20,12 @@ function run(o = {}, script = 'move_unit.js') {
   const context = {queryArguments: {unit_id: 20, x: 10, y: 15, expected_turn: 59, ...o.args},
     UI: {isInGame: () => !o.notInGame}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sentTurn ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => units},
+      Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace},
       Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 7 : -1}})},
     Armies: {get: () => o.unknownPacking ? null : {owner: 0, getUnitIds: () => [unit.id]}},
-    GameInfo: {Units: {lookup: () => ({Domain: o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND'})}},
+    GameInfo: {Units: {lookup: () => ({Domain: o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
+      FormationClass: o.sea ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
+    MapCities: {getDistrict: () => o.district ? {owner: 4, id: 99, type: 4} : null},
     GameplayMap: {getGridWidth: () => 74, getGridHeight: () => 50,
       getRevealedState: (id, x) => o.hidden || (o.foggedTarget && x === 10) ? 0 : 2,
       getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: loc => loc.x === 9 ? 1 : 2,
@@ -44,7 +48,7 @@ function run(o = {}, script = 'move_unit.js') {
         if (o.changedTurn) context.Game.turn++;
         if (o.changedLocation) unit.location.x++;
         if (o.changedOccupancy) occupants = [{owner: 0, id: 31, type: 26}];
-        return {Success: !o.nativeBlocked};
+        return {Success: !o.nativeBlocked, RequiresConfirmation: Boolean(o.confirm)};
       },
       sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');},
     }},
@@ -144,5 +148,16 @@ test('ordinary-unit rail uses only the exact native rail command and verifies cl
     {unit: {isEmbarked: true}}, {args: {mode: 'raw'}}]) {
     const r = run({ownedPlot: true, args: {mode: 'rail'}, ...o});
     assert.equal(r.data.status, 'rejected', JSON.stringify(o)); assert.equal(r.calls.filter(c => c.kind === 'railSend').length, 0);
+  }
+});
+
+test('explicit wartime advance enters only an empty visible enemy non-district field with NONE', () => {
+  const {data, calls} = run({combatUnit: true, foreignPlot: true, args: {mode: 'advance', target_player: 4}});
+  assert.equal(data.status, 'submitted'); assert.deepEqual(calls.at(-1).args, {X: 10, Y: 15, Modifiers: 0});
+  assert.equal(data.expected.queueSize, 0);
+  for (const o of [{combatUnit: false}, {peace: true}, {unmet: true}, {district: true}, {occupied: true}, {hidden: true}, {confirm: true},
+    {combat: true}, {foreignPlot: false}, {unit: {operationQueueSize: 1}}, {args: {mode: 'advance', target_player: 3}}]) {
+    const r = run({combatUnit: true, foreignPlot: true, args: {mode: 'advance', target_player: 4}, ...o});
+    assert.equal(r.data.status, 'rejected', JSON.stringify(o)); assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
   }
 });

@@ -237,6 +237,15 @@ async def rail_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_tur
     }, "unit_position_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def advance_unit(unit_id: StrictInt, target_player: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Advance one ordinary combat unit into an exact empty adjacent wartime enemy field."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, x, y, expected_turn)):
+        raise ValueError("Exact owned unit, wartime enemy/tile and expected turn are required")
+    return await _execute_and_verify("move_unit.js", {
+        "unit_id": unit_id, "target_player": target_player, "x": x, "y": y, "expected_turn": expected_turn, "mode": "advance",
+    }, "unit_position_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def set_town_focus(settlement: StrictStr, focus: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Select an offered town focus or return to Growing Town."""
     if not isinstance(focus, str) or not focus.strip():
