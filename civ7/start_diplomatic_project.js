@@ -8,7 +8,8 @@
       "DIPLOMACY_ACTION_CS_BOLSTER_MILITARY", "DIPLOMACY_ACTION_CS_INCORPORATE", "DIPLOMACY_ACTION_CS_LEVY_UNIT"] : kind === "independent" ? ["DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN"] : kind === "hostile" ? [
         "DIPLOMACY_ACTION_DENOUNCE", "DIPLOMACY_ACTION_DENOUNCE_MILITARY_PRESENCE", "DIPLOMACY_ACTION_SABOTAGE_TREASURY", "DIPLOMACY_ACTION_SABOTAGE_MORALE",
         "DIPLOMACY_ACTION_SABOTAGE_RESEARCH", "DIPLOMACY_ACTION_SABOTAGE_CIVIC_STUDY", "DIPLOMACY_ACTION_SABOTAGE_MILITARY_PRODUCTION", "DIPLOMACY_ACTION_COUNTER_SPY",
-        "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC", "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION"] : [];
+        "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_SABOTAGE", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_TECH", "DIPLOMACY_ACTION_ESPIONAGE_STEAL_CIVIC", "DIPLOMACY_ACTION_ESPIONAGE_MILITARY_INFILTRATION"] : kind === "targeted-major" ? ["DIPLOMACY_ACTION_SEND_GOLD","DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION"] : kind === "targeted-independent" ? ["DIPLOMACY_ACTION_INCITE_RAID"] : [];
+  const targeted=["targeted-major","targeted-independent"].includes(kind),aid=targeted&&action==="DIPLOMACY_ACTION_SEND_GOLD";
   if (!allowed.includes(action) || !Number.isInteger(targetId) || targetId < 0 ||
       typeof maximumCost !== "number" || !Number.isFinite(maximumCost) || maximumCost < 0 ||
       !Number.isInteger(expectedTurn) || expectedTurn < 0) return reject("Unsupported project or invalid target, budget or turn");
@@ -18,12 +19,12 @@
   const player = Players.get(playerId);
   if (!player || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false) return reject("Local turn is not active");
   if (Game.turn !== expectedTurn) return reject("The observed turn is stale");
-  const known = () => player.Diplomacy.hasMet(targetId) === true || (kind === "independent" && Game.IndependentPowers?.independentVillageDiscoveredByPlayer(targetId, playerId) === true);
+  const known = () => player.Diplomacy.hasMet(targetId) === true || (["independent","targeted-independent"].includes(kind) && Game.IndependentPowers?.independentVillageDiscoveredByPlayer(targetId, playerId) === true);
   if (targetId === playerId || !known()) return reject("A met foreign target or discovered independent power is required");
   const target = Players.get(targetId);
-  if (!target || (["major", "hostile"].includes(kind) ? target.isMajor !== true : kind === "city-state" ? target.isMinor !== true : target.isIndependent !== true)) return reject("Target is not the requested player kind");
+  if (!target || (["major", "hostile","targeted-major"].includes(kind) ? target.isMajor !== true : kind === "city-state" ? target.isMinor !== true : target.isIndependent !== true)) return reject("Target is not the requested player kind");
   const war = player.Diplomacy.isAtWarWith(targetId);
-  if (!["independent", "hostile"].includes(kind) && war) return reject("This handler does not initiate cooperative projects during war");
+  if (!["independent", "hostile","targeted-major","targeted-independent"].includes(kind) && war) return reject("This handler does not initiate cooperative projects during war");
   const levy = action === "DIPLOMACY_ACTION_CS_LEVY_UNIT", requiresSuzerainty = levy || action === "DIPLOMACY_ACTION_CS_INCORPORATE";
   if (requiresSuzerainty && target.Influence?.getSuzerain() !== playerId) return reject("Local suzerainty is required for incorporation/levy");
   const definition = GameInfo.DiplomacyActions.lookup(action);
@@ -51,14 +52,32 @@
       project.actionType !== definition.$hash || !Number.isInteger(project.operationType)) return reject("Project is not currently offered");
   const noTargetTypes = [DiplomacyActionTargetTypes.NO_DIPLOMACY_TARGET,
     DiplomacyActionTargetTypes.DIPLOMACY_TARGET_NONE].filter(Number.isInteger);
-  if (!Array.isArray(project.targetList2) || (!levy && (project.targetList2.length || !noTargetTypes.includes(project.target2Type)))) return reject("Secondary-target actions require a separate exact supported family");
+  if (!Array.isArray(project.targetList2) || (!levy && !targeted && (project.targetList2.length || !noTargetTypes.includes(project.target2Type)))) return reject("Secondary-target actions require a separate exact supported family");
   const primary = (project.targetList1 ?? []).filter(value => value.targetID === targetId);
   if (primary.length !== 1) return reject("No unique selected primary target is offered");
   function unitInventory(){
     const records=player.Units.getUnits().filter(u=>u.id.owner===playerId).map(u=>({instanceId:u.id.id,componentType:u.id.type,unitType:u.type})).sort((a,b)=>a.instanceId-b.instanceId);
     return records.length<=1024&&records.every(r=>Number.isInteger(r.instanceId)&&r.instanceId>=0&&Number.isInteger(r.componentType)&&r.componentType>=0&&Number.isInteger(r.unitType))&&new Set(records.map(r=>r.instanceId)).size===records.length?records:null;
   }
-  let selected = primary[0], levyType = null;
+  let selected = primary[0], levyType = null,secondaryParameter=null;
+  function secondaryValid(){
+    if(!targeted)return true;
+    const value=queryArguments.secondary_value;
+    if(!Number.isInteger(value)||value<0||selected.targetID!==value||selected.parameterName!==secondaryParameter)return false;
+    if(aid)return value>0&&player.Diplomacy.hasAllied(targetId)===true&&war===false&&Number.isFinite(queryArguments.max_gold_cost)&&queryArguments.max_gold_cost>=value&&Number.isFinite(player.Treasury?.goldBalance)&&player.Treasury.goldBalance>=value;
+    if(secondaryParameter==="Player3")return value!==playerId&&value!==targetId&&player.Diplomacy.hasMet(value)===true&&Players.get(value)?.isMajor===true;
+    const {secondary_owner:owner,x,y}=queryArguments,plot=selected.targetPlot;
+    if(owner!==targetId||![x,y].every(v=>Number.isInteger(v)&&v>=0)||x>=GameplayMap.getGridWidth()||y>=GameplayMap.getGridHeight()||plot?.x!==x||plot?.y!==y||GameplayMap.getRevealedState(playerId,x,y)!==RevealedStates.VISIBLE)return false;
+    const id=MapCities.getCity(x,y);if(id?.owner!==owner||id.id!==value||!Number.isInteger(id.type)||id.type<0)return false;
+    const c=Cities.get(id);return c?.owner===owner&&c.id?.owner===owner&&c.id.id===value&&c.id.type===id.type&&c.location?.x===x&&c.location?.y===y;
+  }
+  if(targeted){
+    secondaryParameter=aid?"Amount2":action==="DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION"?"City":"Player3";
+    const options=project.targetList2.filter(t=>t.parameterName===secondaryParameter&&t.targetID===queryArguments.secondary_value);
+    if(primary[0].costYieldD!==0||options.length!==1)return reject("One exact secondary choice and known zero primary cost required; no guessed total quote");
+    selected=options[0];if(!secondaryValid())return reject("Secondary amount/city/player identity, visibility, alliance or Gold cap is unverified");
+    if(aid)before.gold=player.Treasury.goldBalance;
+  }
   if(levy){
     const {target_unit_id:unitId,unit_type:unitType}=queryArguments,def=GameInfo.Units.lookup(unitType);
     if(!Number.isInteger(unitId)||unitId<0||def?.UnitType!==unitType||!Number.isInteger(def.$hash)||primary[0].costYieldD!==0)return reject("Exact public unit type/offered ID and known zero primary cost required; no guessed total cost");
@@ -76,18 +95,18 @@
   if (!Number.isFinite(before.influence) || before.influence < quotedCost) return reject("Insufficient or unverified Influence balance");
   // The quick-start UI supplies both Player2 and ID, including for city-states.
   // Incorporation's operationType is distinct; use the matched native project.
-  const args = {Amount: 1, Player1: playerId, Type: project.actionType, Player2: targetId, ...(levy ? {Unit:selected.targetID} : {ID:targetId})};
+  const args = {Amount: 1, Player1: playerId, Type: project.actionType, Player2: targetId, ...(levy ? {Unit:selected.targetID} : targeted ? {[secondaryParameter]:selected.targetID} : {ID:targetId})};
   const check = Game.PlayerOperations.canStart(playerId, project.operationType, args, false);
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native project start failed or requires confirmation", check?.FailureReasons ?? []);
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
-      !known() || (kind === "independent" ? target.isIndependent !== true : player.Diplomacy.isAtWarWith(targetId) !== war) ||
-      (requiresSuzerainty && target.Influence?.getSuzerain() !== playerId) || (levy && primary[0].costYieldD !== 0) ||
+      !known() || (["independent","targeted-independent"].includes(kind) ? target.isIndependent !== true : player.Diplomacy.isAtWarWith(targetId) !== war) ||
+      (requiresSuzerainty && target.Influence?.getSuzerain() !== playerId) || ((levy||targeted) && primary[0].costYieldD !== 0) || !secondaryValid() || (aid&&player.Treasury.goldBalance!==before.gold) ||
       (levy && JSON.stringify(unitInventory()) !== JSON.stringify(before.unitInventory)) ||
       selected.costYieldD !== quotedCost || player.DiplomacyTreasury.diplomacyBalance < quotedCost) return reject("Game context, target or cost changed during validation");
-  const verificationArguments = {...queryArguments, baseline_event_ids: before.eventIds,...(levy?{baseline_units:before.unitInventory,expected_unit_type:levyType,before_influence:before.influence,quoted_cost:quotedCost}:{})};
+  const verificationArguments = {...queryArguments, baseline_event_ids: before.eventIds,...(levy?{baseline_units:before.unitInventory,expected_unit_type:levyType,before_influence:before.influence,quoted_cost:quotedCost}:{}),...(aid?{before_gold:before.gold,before_influence:before.influence,quoted_cost:quotedCost}:{})};
   Game.PlayerOperations.sendRequest(playerId, project.operationType, args);
   return {status: "submitted", targetPlayerId: targetId, action, quotedInfluenceCost: quotedCost, before,
-    expected: {targetPlayerId: targetId, ...(levy?{levyObserved:true}:{targetKind:kind,action,newProjectObserved:true})}, verificationArguments,
-    ...(levy ? {verificationScope:"Exactly one new chosen-type owned unit with all prior unit identities/types preserved and exact selected Influence spend under continued suzerainty. Native offered unit bound at submission; not prior foreign HP/experience, full transfer-side effect or persistent-project accounting"} : {})};
+    expected: {targetPlayerId: targetId, ...(levy?{levyObserved:true}:aid?{aidObserved:true}:{targetKind:kind,action,newProjectObserved:true})}, verificationArguments,
+    ...(levy ? {verificationScope:"Exactly one new chosen-type owned unit with all prior unit identities/types preserved and exact selected Influence spend under continued suzerainty. Native offered unit bound at submission; not prior foreign HP/experience, full transfer-side effect or persistent-project accounting"} : targeted?{verificationScope:aid?"Exact capped own Gold/Influence debit while alliance preserved; not a foreign private treasury read or complete recipient/relationship effect accounting":"One new owned project after exact native selected secondary city/player submission; not completed food denial/raid or independent secondary effects accounting"}:{})};
 })()

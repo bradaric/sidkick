@@ -494,6 +494,22 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   found and zero TRIAL definitions in active Modern rules. No narrative mutation
   submitted; positive paid/trial execution unavailable here, fixtures cover it.
 - 227 Python / 410 Node pass; tools23/103 including80 actions. T62 unchanged.
+- `eaa97f7`: extended narrative. Fixed paired-secondary diplomacy implemented for
+  capped allied Gold aid (Amount2), exact visible owner-qualified Hinder Food city,
+  and met-major raid victim of a met/discovered independent source (Player3). Known
+  zero primary quote plus exact secondary Influence quote/cap, native pairing and
+  selected permission; no guessed combined total, foreign city inventory or arbitrary
+  argument names. Aid verifies own exact Gold/Influence debits under preserved
+  alliance, not foreign private treasury. Other actions verify new own event/start,
+  not completed secondary effects. Independent readout exposes met raid victims only.
+- Native private setup formed alliance with1 (bilaterally verified), no currency
+  spend and wars4/5 unchanged; this is not yet a typed alliance-tool claim. Normal
+  native offered50-Gold aid via typed action positively verified exact50 Gold debit,
+  zero Influence debit and alliance preserved. Gold2081.33984375, Influence54.82421875.
+  Hinder Food not natively offered for visible Franklin centre; rejected without
+  request. Converted city-state7 rejected as a raid source; no known independent
+  source. Positive Hinder Food/raid cases unavailable, fixtures implemented.
+- 228 Python / 411 Node pass; tools23/104 including81 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

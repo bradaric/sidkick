@@ -59,6 +59,7 @@ from civ7.actions import (
     levy_city_state_unit,
     plunder_trade_route,
     choose_extended_narrative,
+    start_targeted_diplomacy,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -275,6 +276,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="start_civ7_targeted_diplomacy",title="Start exact secondary-target Civ VII diplomacy",
+            description=("CHANGE GAME STATE: fixed action send_gold/hinder_food/incite_raid for exact "
+                         "target_player_id, native offered secondary_value, max_influence_cost and "
+                         "expected_turn. Requires known zero primary cost, exact secondary quote/cap, "
+                         "native offered pair and selected permission. Aid requires allied major and "
+                         "max_gold_cost covering the exact offered Gold amount; verifies own exact debits, "
+                         "not foreign private treasury. Hinder food additionally requires secondary_owner "
+                         "equal to primary, exact offered city ID and currently visible centre x/y; no "
+                         "foreign inventory scan. Incite raid targets a met/discovered independent power "
+                         "and exact offered met-major victim. Project readback proves one new owned event, "
+                         "not completed raid/food effects. No arbitrary parameters, new war or turn advance. "
+                         "One submission; never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(start_targeted_diplomacy)
         server.tool(
             name="choose_civ7_extended_narrative",title="Choose capped paid or acknowledged trial narrative",
             description=("CHANGE GAME STATE: exact owned pending narrative instance_id/instance_type, choice "

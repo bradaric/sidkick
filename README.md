@@ -1514,6 +1514,15 @@ rewards/gross debit or Age effects. Current Modern has no pending paid story or
 TRIAL definition; positive cases remain fixture-only, no narrative mutation sent.
 **227 Python / 410 Node pass; tools23/103 (80 actions).**
 
+`start_civ7_targeted_diplomacy` binds fixed aid amount, visible owner-qualified
+Hinder Food city or met-major independent-raid victim to native paired choices and
+exact caps; zero primary quote required rather than guessing combined costs.
+Normal50-Gold aid to1 verified after native alliance setup, with zero Influence
+debit; Gold2081.33984375. Foreign treasury/secondary completed effects not claimed.
+Hinder Food unavailable, no known independent raid source; guards/fixtures cover
+both. Native alliance setup is not a typed alliance-tool capability claim.
+**228 Python / 411 Node pass; tools23/104 (81 actions).**
+
 ## One-shot export
 
 ```powershell

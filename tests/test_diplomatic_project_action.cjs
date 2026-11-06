@@ -20,25 +20,27 @@ function run(options = {}, script = 'start_diplomatic_project.js') {
     targetList1: options.wrongTarget ? [{targetID: 99, costYieldD: 1}] : [
       {targetID: 99, costYieldD: 1}, {targetID: 3, costYieldD: options.cost === null ? undefined : options.cost ?? 150,
         resultData: {FailureReasons: options.targetReasons ?? []}},
-    ], targetList2: options.levy?[{parameterName:'Unit',targetID:55,targetName:'UNIT_SCOUT',costYieldD:options.levyCost??60,resultData:{FailureReasons:[]}}]:options.secondary ? [{targetID: 99, targetPlot: {x: 9999, y: 9999}}] : [],
+    ], targetList2: options.targeted?[{parameterName:options.targeted,targetID:options.targeted==='City'?55:options.targeted==='Amount2'?100:4,targetPlot:{x:3,y:3},costYieldD:options.secondaryCost??60,resultData:{FailureReasons:[]}}]:options.levy?[{parameterName:'Unit',targetID:55,targetName:'UNIT_SCOUT',costYieldD:options.levyCost??60,resultData:{FailureReasons:[]}}]:options.secondary ? [{targetID: 99, targetPlot: {x: 9999, y: 9999}}] : [],
     resultData: {FailureReasons: options.projectReasons ?? []}};
   const local = {isTurnActive: options.activeTurn ?? true,
     Units:{getUnits:()=>[{id:{owner:0,id:10,type:26},type:200},...(options.levyArrived?[{id:{owner:0,id:30,type:26},type:100}]:[])]},
     DiplomacyTreasury: {diplomacyBalance: options.balance ?? (options.levyArrived?940:1000)},
-    Diplomacy: {hasMet: id => id === 3 && !options.unmet, isAtWarWith: () => options.atWar ?? false}};
+    Treasury:{goldBalance:options.aidApplied?900:1000},
+    Diplomacy: {hasAllied:()=>options.allied??true,hasMet: id => (id === 3 ||options.targeted&&id===4) && !options.unmet, isAtWarWith: () => options.atWar ?? false}};
   const context = {
     queryArguments: {target_kind: kind, target_player_id: 3, action, max_influence_cost: 150,
-      expected_turn: 58, baseline_event_ids: options.baseline ?? [],...(options.levy?{target_unit_id:55,unit_type:'UNIT_SCOUT',expected_unit_type:100,before_influence:1000,quoted_cost:60,baseline_units:[{instanceId:10,componentType:26,unitType:200}]}:{}), ...options.arguments},
+      expected_turn: 58, baseline_event_ids: options.baseline ?? [],...(options.targeted?{secondary_value:options.targeted==='City'?55:options.targeted==='Amount2'?100:4,secondary_owner:3,x:3,y:3,max_gold_cost:100,before_gold:1000,before_influence:1000,quoted_cost:0}:{}),...(options.levy?{target_unit_id:55,unit_type:'UNIT_SCOUT',expected_unit_type:100,before_influence:1000,quoted_cost:60,baseline_units:[{instanceId:10,componentType:26,unitType:200}]}:{}), ...options.arguments},
     UI: {isInGame: () => options.inGame !== false},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => options.sentTurn ?? false},
     Players: {get: id => {
       playerReads.push(id);
       if (id === 0) return local;
+      if(options.targeted&&id===4)return{isMajor:true};
       assert.ok(!options.unmet || options.discovered, 'undiscovered unmet targets must not be inspected');
       assert.equal(id, 3);
-      return {isMajor: options.wrongKind ? !['major','hostile'].includes(kind) : ['major','hostile'].includes(kind),
+      return {isMajor: options.wrongKind ? !['major','hostile','targeted-major'].includes(kind) : ['major','hostile','targeted-major'].includes(kind),
         isMinor: options.wrongKind ? kind !== 'city-state' : kind === 'city-state',
-        isIndependent: options.wrongKind ? kind !== 'independent' : kind === 'independent',
+        isIndependent: options.wrongKind ? !['independent','targeted-independent'].includes(kind) : ['independent','targeted-independent'].includes(kind),
         Influence: {getSuzerain: () => options.suzerain ?? 0}};
     }},
     GameInfo: {Units:{lookup:n=>n==='UNIT_SCOUT'?{UnitType:'UNIT_SCOUT',$hash:100}:null},DiplomacyActions: {lookup: value => value === action || value === -101
@@ -46,6 +48,8 @@ function run(options = {}, script = 'start_diplomatic_project.js') {
     DiplomacyProjectStatus: {PROJECT_AVAILABLE: 0, PROJECT_ACTIVE: 1, PROJECT_BLOCKED: -1, PROJECT_NOT_UNLOCKED: -2},
     DiplomacyActionTargetTypes: {NO_DIPLOMACY_TARGET: -1, DIPLOMACY_TARGET_NONE: 0},
     DiplomacyActionGroups: {NO_DIPLOMACY_ACTION_GROUP: -1},
+    GameplayMap:{getGridWidth:()=>10,getGridHeight:()=>10,getRevealedState:()=>options.hiddenSecondary?0:2},RevealedStates:{VISIBLE:2},
+    MapCities:{getCity:()=>({owner:3,id:55,type:1})},Cities:{get:()=>({owner:3,id:{owner:3,id:55,type:1},location:{x:3,y:3}})},
     Game: {turn: 58, age: 42, IndependentPowers: {independentVillageDiscoveredByPlayer: () => Boolean(options.discovered)}, Diplomacy: {
       getProjectDataForUI: (id, target) => {
         assert.equal(id, 0); assert.equal(target, 3);
@@ -87,6 +91,17 @@ test('major project start uses selected-target cost and exact quick-start UI arg
     {kind: 'send', id: 0, operation: 77, args: {Amount: 1, Player1: 0, Type: -101, Player2: 3, ID: 3}},
   ]);
   assert.deepEqual(data.verificationArguments.baseline_event_ids, []);
+});
+
+test('fixed secondary diplomacy binds offered amount/visible qualified city/met raid victim with zero primary quote',()=>{
+ for(const [kind,action,parameter]of[['targeted-major','DIPLOMACY_ACTION_SEND_GOLD','Amount2'],['targeted-major','DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION','City'],['targeted-independent','DIPLOMACY_ACTION_INCITE_RAID','Player3']]){
+  const r=run({kind,action,targeted:parameter,cost:0,secondaryType:9,secondaryCost:0});assert.equal(r.data.status,'submitted',action);assert.equal(r.calls.at(-1).args[parameter],parameter==='City'?55:parameter==='Amount2'?100:4);
+ }
+ const opts={kind:'targeted-major',action:'DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION',targeted:'City',cost:0,secondaryType:9};
+ for(const o of [{hiddenSecondary:true},{cost:1},{secondaryCost:151},{arguments:{secondary_owner:1}},{arguments:{secondary_value:56}}])assert.equal(run({...opts,...o}).data.status,'rejected');
+ assert.equal(run({kind:'targeted-major',action:'DIPLOMACY_ACTION_SEND_GOLD',targeted:'Amount2',cost:0,allied:false}).data.status,'rejected');
+ assert.equal(run({kind:'targeted-major',action:'DIPLOMACY_ACTION_SEND_GOLD',targeted:'Amount2',cost:0,arguments:{max_gold_cost:99}}).data.status,'rejected');
+ assert.equal(run({kind:'targeted-major',targeted:'Amount2',aidApplied:true,secondaryCost:0},'diplomatic_aid_state.js').data.aidObserved,true);
 });
 
 test('city-state levy binds one exact offered unit ID and public type to its own secondary quote',()=>{

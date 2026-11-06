@@ -42,6 +42,12 @@
           const blocked=reasons(project.resultData,target.resultData,t.resultData,result);
           return[{offeredUnitId:t.targetID,unitType:def.UnitType,name:name(def.Name),quotedInfluenceCost:cost(t.costYieldD),availableNow:project.projectStatus===DiplomacyProjectStatus.PROJECT_AVAILABLE&&!blocked.length&&result?.Success===true&&result.RequiresConfirmation!==true,failureReasons:blocked}];
         }):[];
+        const secondaryPlayers=project.actionTypeName==="DIPLOMACY_ACTION_INCITE_RAID"&&target?.costYieldD===0?(project.targetList2??[]).flatMap(t=>{
+          if(t.parameterName!=="Player3"||!Number.isInteger(t.targetID)||t.targetID<0||t.targetID===id||t.targetID===otherId||diplomacy.hasMet(t.targetID)!==true)return[];
+          const victim=Players.get(t.targetID);if(victim?.isMajor!==true)return[];
+          const result=Game.PlayerOperations.canStart(id,project.operationType,{Amount:1,Player1:id,Player2:otherId,Type:project.actionType,Player3:t.targetID},false),blocked=reasons(project.resultData,target.resultData,t.resultData,result);
+          return[{playerId:t.targetID,civilization:name(victim.civilizationFullName),quotedInfluenceCost:cost(t.costYieldD),availableNow:project.projectStatus===DiplomacyProjectStatus.PROJECT_AVAILABLE&&!blocked.length&&cost(t.costYieldD)!==null&&result?.Success===true&&result.RequiresConfirmation!==true,failureReasons:blocked}];
+        }):[];
         return {
           id: project.actionTypeName,
           name: name(project.actionTypeName === "DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN"
@@ -54,6 +60,7 @@
           costDescription: name(project.costDescription),
           requiresSecondaryTarget,
           levyUnits,
+          secondaryPlayers,
           failureReasons
         };
       });
