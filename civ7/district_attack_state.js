@@ -21,7 +21,11 @@
       if (Number.isFinite(d.getDamage)) districtDamage = d.getDamage;
     }
   }
+  const applied=spent&&(districtLeftTile===true||districtDamage!==null&&districtDamage>beforeDamage);
+  let combatObservation=queryArguments.observation_token&&typeof combatObserver!=="undefined"?combatObserver.read(queryArguments.observation_token):null;
+  const observationQuiescent=Boolean(combatObservation?.available&&combatObservation.quiescent&&applied);
+  if(observationQuiescent)combatObservation=combatObserver.read(queryArguments.observation_token,true);
   return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, districtId, attacksRemaining: attacks, attackConsumedOrAttackerLost: spent,
-    districtDamage, districtLeftTile, districtAttackObserved: spent && (districtLeftTile === true || (districtDamage !== null && districtDamage > beforeDamage)),
+    districtDamage, districtLeftTile,districtDestroyed:null, districtAttackObserved:applied,...(combatObservation?{combatObservation,observationQuiescent}:{}),
     note: "A district departing a visible tile is not proof of destruction or capture; no hidden district state is queried"};
 })()

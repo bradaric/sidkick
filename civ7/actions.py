@@ -799,12 +799,12 @@ async def melee_attack_enemy_field(unit_id: StrictInt, target_player: StrictInt,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def bombard_shore_district(unit_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+async def bombard_shore_district(unit_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """Ranged naval attack from water against an exact visible hostile land district."""
-    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, district_id, x, y, expected_turn)):
+    if type(observe_effects) is not bool or any(type(v) is not int or v < 0 for v in (unit_id, target_player, district_id, x, y, expected_turn)):
         raise ValueError("Exact naval attacker, wartime land district/tile and expected turn are required")
     return await _execute_and_verify("ranged_district_attack.js", {
-        "unit_id": unit_id, "target_player": target_player, "district_id": district_id, "x": x, "y": y, "expected_turn": expected_turn, "domain": "DOMAIN_SEA",
+        "unit_id": unit_id, "target_player": target_player, "district_id": district_id, "x": x, "y": y, "expected_turn": expected_turn, "domain": "DOMAIN_SEA",**({"observe_effects":True} if observe_effects else {}),
     }, "district_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -844,12 +844,12 @@ async def pillage_tile(unit_id: StrictInt, target_player: StrictInt, x: StrictIn
     }, "pillage_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def bombard_district(unit_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+async def bombard_district(unit_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, observe_effects: StrictBool = False) -> dict[str, Any]:
     """Ranged-only attack on an exact visible hostile defensible district; never enters/captures."""
-    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, district_id, x, y, expected_turn)):
+    if type(observe_effects) is not bool or any(type(v) is not int or v < 0 for v in (unit_id, target_player, district_id, x, y, expected_turn)):
         raise ValueError("Exact attacker, hostile district identity/tile and expected turn are required")
     return await _execute_and_verify("ranged_district_attack.js", {
-        "unit_id": unit_id, "target_player": target_player, "district_id": district_id, "x": x, "y": y, "expected_turn": expected_turn,
+        "unit_id": unit_id, "target_player": target_player, "district_id": district_id, "x": x, "y": y, "expected_turn": expected_turn,**({"observe_effects":True} if observe_effects else {}),
     }, "district_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 

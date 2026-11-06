@@ -861,7 +861,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "selected checks as district bombardment. Existing met war only. Verifies attack "
                          "consumption/loss plus primary district damage/departure; garrison/retaliation/"
                          "splash not completely verified. No landing/capture, air strike, new war or turn "
-                         "advancement. One submission,15-second readback, never retry unknown/cancelled."),
+                         "advancement. Optional observe_effects=true adds bounded visible-unit health/native "
+                         "unit-kill evidence and500ms captured-event quiet, not district destruction or complete "
+                         "global effects. One submission,15-second readback, never retry unknown/cancelled."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(bombard_shore_district)
@@ -924,7 +926,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "retaliation/secondary effects may occur; verifies only attacker attack consumption/"
                          "loss and primary district damage/departure. No damage forecast, city entry/capture, "
                          "destruction claim, naval/air bombardment, war declaration or turn advancement. "
-                         "Submits once, polls read-only for 15 seconds, never retries unknown/cancelled calls."),
+                         "Optional observe_effects=true adds bounded visible garrison/nearby-unit health and "
+                         "native exact unit-kill evidence plus500ms captured-event quiet, never district "
+                         "destruction or full global effects. Submits once, polls read-only for15 seconds, "
+                         "never retries unknown/cancelled calls."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(bombard_district)

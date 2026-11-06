@@ -1662,6 +1662,15 @@ spent, original54.82421875 balance retained; next quote270. New separate MassAir
 T62 save confirmed RESULT_OK before this test.
 **246 Python / 446 Node pass; tools24/124 (100 actions).**
 
+District bombardment accepts optional `observe_effects=true`, keeping primary
+district effects separate from visible garrison/nearby health. Native Field Gun
+verified damage10→25 with nearby units and original Merchant unchanged.
+Further native checks: Katyusha14 primary +3 adjacent splash; observed Fighter Sweep;
+packed Squadron relocation; observed fortified Carpet Bomb0→33. Creation/readiness
+setup labelled; no damage/eligibility forced. Fortified naval attempts rejected
+before submission, no fallback. Full hidden/global effects remain unclaimed.
+**247 Python / 447 Node pass; tool counts unchanged.**
+
 ## One-shot export
 
 ```powershell

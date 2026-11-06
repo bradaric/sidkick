@@ -775,6 +775,30 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   `Sidkick_Playground_GroupOneMassAirTravel_T62_1793999240784` confirmed RESULT_OK
   before support budget setup, no overwrite.246 Python /446 Node pass; tools24/124
   including100 actions. T62 unchanged.
+- `6e0793d`: runtime-capped own-war support. Optional bounded combat observation
+  extended to existing land/naval district bombardment, without new tools or
+  relaxed target/attack checks. Captures visible garrison/nearby-unit health and
+  exact native unit-kill evidence, with500ms captured-event quiet. District damage/
+  departure stays separate; district destruction/capture never inferred.
+- Native observed fresh Field Gun8847471 `(19,20)` attacked196610 `(18,21)`, district
+  damage10→25, attack consumed, quiet566ms; original Merchant3473432 and captured
+  visible garrison/nearby units unchanged. No damage/attack effects forced.
+- Positive splash-observation gap closed: fresh Katyusha8519786 dealt14 to5570624
+  `(17,13)` and3 to adjacent5636161 `(18,12)`. Captured nearby friendlies unchanged,
+  quiet1719ms, exact primary Combat event, no kill claimed. Fresh creation only.
+- Optional observed Fighter Sweep now positive native: Fighter8585323 mission
+  consumed with stable full memberships/base, quiet1078ms and no enemy Combat event
+  (not an interception claim). Test Squadron7798879 then normally relocated packed
+  from `(22,11)→(19,18)`; only Squadron movement restored after completed operations.
+  Fresh Bomber8650860 normally Carpet Bombed fortified150HP district4063293 `(15,23)`
+  damage0→33, mission consumed, base/membership stable and quiet2660ms. No fortified
+  HP/eligibility/effects forced. Fortified Carpet Bomb no longer fixture-only.
+- Fortified naval positive still unavailable: isolated visible Coast `(16,19)` was
+  the only nearby empty water; fresh range2 Dreadnought8716397 native-rejected, no
+  eligible upgrade/exit. Distinct range3 Battleship8781934 actually appeared there
+  beside that labelled test ship, but both native naval/ranged pickers rejected.
+  No bombardment request, range/HP override or fallback submitted; not a normal
+  naval source-placement proof.247 Python /447 Node pass; counts unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -782,7 +806,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
-| Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Squadron Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Fortified bomb and optional observed Sweep/Bomb positive cases remain separate verification gaps. |
+| Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Observed Sweep and fortified Carpet Bomb now verified; fortified naval positive remains native-blocked. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
 | Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |
@@ -793,8 +817,9 @@ and live atomic-swap eligibility; natural-use verification for debug-created air
 combat cases. Multi-participant Focus Fire and coordinated melee now have positive
 synthetic native execution, no longer fixture-only. Bounded independent kill/visible
 collateral accounting exists for explicit observed field/land-group/fleet/air
-strikes, with positive native kill/retaliation evidence. Remaining combat-family integration and positive
-native nonzero splash remain separate implementation/verification work; full hidden/
+strikes, with positive native kill/retaliation/splash evidence, plus optional district
+bombardment observation. Direct-commander/capture observation integration remains
+implementation work; full hidden/
 global effects are not promised.
 
 ## Existing baseline

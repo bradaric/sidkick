@@ -1,6 +1,8 @@
 (() => {
   const {unit_id: unitId, target_player: targetPlayer, district_id: districtId, x, y, expected_turn: expectedTurn, domain = "DOMAIN_LAND"} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
+  const {observe_effects:observe=false}=queryArguments;
+  if(typeof observe!=="boolean")return reject("Combat observation must be an explicit boolean");
   if (!["DOMAIN_LAND", "DOMAIN_SEA"].includes(domain) || ![unitId, targetPlayer, districtId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact attacker, hostile district identity/tile, supported domain and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
@@ -56,7 +58,14 @@
       !fresh || fresh.type !== before.districtType || fresh.id.type !== before.districtComponentType || fresh.getDamage !== before.districtDamage || fresh.getMaxDamage !== before.districtMaxDamage) return reject("Attacker, district, packing or context changed during validation");
   const verificationArguments = {unit_id: unitId, attacker_type: before.unitType, attacker_component_type: before.componentType, before_attacks: before.attacks,
     target_player: targetPlayer, district_id: districtId, district_type: before.districtType, district_component_type: before.districtComponentType, before_district_damage: before.districtDamage, x, y};
-  Game.UnitOperations.sendRequest(unit.id, operation, args);
-  return {status: "submitted", before, expected: {unitId, targetPlayer, districtId, districtAttackObserved: true}, verificationArguments,
-    verificationScope: "Attack spent/attacker lost plus visible primary district damage/departure. Native garrison, retaliation or secondary effects may occur and are not completely verified; no entry/capture or destruction claim"};
+  if(observe){
+    if(typeof combatObserver==="undefined")return reject("Fixed native combat observer unavailable");
+    const baseline=combatObserver.capture(playerId,x,y,1,unit.id);
+    if(!baseline)return reject("Bounded visible district-bombardment baseline unavailable");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||unit.Combat.attacksRemaining!==before.attacks||target()?.getDamage!==before.districtDamage||!packingClear())return reject("Bombardment changed during observation capture");
+    try{verificationArguments.observation_token=combatObserver.start(playerId,unit.id,baseline,15000);}catch(error){return reject("Native district-bombardment observation unavailable");}
+  }
+  try{Game.UnitOperations.sendRequest(unit.id, operation, args);}catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
+  return {status: "submitted", before, expected: {unitId, targetPlayer, districtId, districtAttackObserved: true,...(observe?{observationQuiescent:true}:{})}, verificationArguments,
+    verificationScope: "Attack spent/lost plus primary district effect. Optional bounded visible garrison/nearby-unit health and exact native unit-kill evidence waits500ms captured-event quiet; not full retaliation/splash/global effects, district destruction or capture"};
 })()

@@ -69,7 +69,7 @@ function run(o = {}, script = 'attack_unit.js') {
     context.MapUnits.getUnits=(x,y)=>x===2&&y===3?[attacker.id]:x===3&&y===3&&!gone?[target.id]:[];
     context.combatObserver=vm.runInNewContext(fs.readFileSync('civ7/combat_observation.js','utf8'),context);
     context.Game.UnitOperations.sendRequest=(id,operation,args)=>{
-      calls.push({kind:'send',id,operation,args});attacker.Combat.attacksRemaining=0;target.Health.damage=30;
+      calls.push({kind:'send',id,operation,args});attacker.Combat.attacksRemaining=0;target.Health.damage=30;district.getDamage=30;
       for(const cb of listeners.Combat??[])cb({attacker:attacker.id,defender:target.id});
       if(o.nativeKill){for(const cb of listeners.UnitKilledInCombat??[])cb({unitKiller:attacker.id,unitKilled:target.id});gone=true;}
     };
@@ -83,7 +83,7 @@ function run(o = {}, script = 'attack_unit.js') {
   attacker.Combat.rangedStrength = o.noRanged ? 0 : 40;
   try {data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7', script), 'utf8'), context);}
   catch (e) {if (!o.sendThrows) throw e; data = {error: e.message};}
-  let after=null;if(o.observe&&data.status==='submitted'){if(!o.deferQuiet)context.advanceObservationClock();context.queryArguments=data.verificationArguments;after=vm.runInNewContext(fs.readFileSync('civ7/unit_attack_state.js','utf8'),context);}
+  let after=null;if(o.observe&&data.status==='submitted'){if(!o.deferQuiet)context.advanceObservationClock();context.queryArguments=data.verificationArguments;after=vm.runInNewContext(fs.readFileSync(`civ7/${script==='ranged_district_attack.js'?'district_attack_state.js':'unit_attack_state.js'}`,'utf8'),context);}
   return JSON.parse(JSON.stringify({data, calls,after}));
 }
 
@@ -91,6 +91,11 @@ test('observed field strikes keep native single submission and attribute primary
  const damaged=run({observe:true});assert.equal(damaged.data.status,'submitted');assert.ok(damaged.data.verificationArguments.observation_token);assert.equal(damaged.after.killConfirmed,null);assert.equal(damaged.after.combatObservation.units.find(u=>u.instanceId===20).damageDelta,30);
  const killed=run({observe:true,nativeKill:true});assert.equal(killed.after.killConfirmed,true);assert.equal(killed.after.combatObservation.closed,true);assert.equal(killed.calls.filter(c=>c.kind==='send').length,1);
  const inFlight=run({observe:true,deferQuiet:true});assert.equal(inFlight.after.attackObserved,true);assert.equal(inFlight.after.observationQuiescent,false);assert.equal(inFlight.after.combatObservation.closed,false,'first primary damage must not close event capture while native group effects may still resolve');
+});
+test('observed district bombardment keeps primary district accounting separate from captured visible garrison deltas',()=>{
+ const base={observe:true,district:true,enemyTile:true,args:{district_id:99}};
+ const r=run(base,'ranged_district_attack.js');assert.equal(r.data.status,'submitted');assert.equal(r.data.expected.observationQuiescent,true);assert.equal(r.after.districtAttackObserved,true);assert.equal(r.after.observationQuiescent,true);assert.equal(r.after.combatObservation.units.find(u=>u.instanceId===20).damageDelta,30);assert.equal(r.after.districtDamage,30);assert.equal(r.after.districtDestroyed,null);
+ const early=run({...base,deferQuiet:true},'ranged_district_attack.js');assert.equal(early.after.observationQuiescent,false);assert.equal(early.after.combatObservation.closed,false);
 });
 
 test('single melee/ranged unit attacks bind explicit hostile component and fixed native arguments', () => {
