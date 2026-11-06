@@ -29,9 +29,12 @@ function run(o = {}, script = 'attack_unit.js') {
       Units: {lookup: type => ({UnitType: type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: o.air ? 'DOMAIN_AIR' : 'DOMAIN_LAND',
       FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
-      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.enemyTile ? 1 : -1,
+      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.tileOwner ?? (o.enemyTile ? 1 : -1),
       isWater: () => o.waterTarget ?? false},
     RevealedStates: {VISIBLE: 2}, Visibility: {isVisible: () => !o.invisible},
+    MapCities: {getCity: () => o.noCity ? null : {owner: 1, id: 9, type: 1},
+      getDistrict: () => o.undefendedDistrict ? {owner: 1, id: 8, type: 4} : null},
+    Cities: {get: () => o.unknownCity ? null : {owner: 1, location: o.cityCentre ? {x: 3, y: 3} : {x: 4, y: 4}}},
     MapUnits: {getUnits: () => o.gone ? [] : o.stacked ? [target.id, {owner: 1, id: 21, type: 26}] : [target.id]},
     Armies: {get: () => o.unknownArmy ? null : {owner: 0, getCommanderId: () => commander.id, getUnitIds: () => o.packedGroup ? [attacker.id] : []}},
     Units: {get: id => {calls.push({kind: 'readTarget', id}); return target;}, getReachableTargets: () => o.unreachable ? [] : [33],
@@ -54,6 +57,7 @@ function run(o = {}, script = 'attack_unit.js') {
           Plots: o.unreachable ? [] : [33], Modifiers: [o.blockedPlot ? 8 : 9]};
       }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
   let data;
+  if (o.hiddenCentre) context.GameplayMap.getRevealedState = (p, x, y) => x === 4 && y === 4 ? 0 : 2;
   attacker.Combat.rangedStrength = o.noRanged ? 0 : 40;
   try {data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7', script), 'utf8'), context);}
   catch (e) {if (!o.sendThrows) throw e; data = {error: e.message};}
@@ -69,6 +73,20 @@ test('single melee/ranged unit attacks bind explicit hostile component and fixed
     assert.equal(data.expected.attackObserved, true);
     assert.equal(data.verificationArguments.before_target_damage, 0);
   }
+});
+
+test('explicit enemy-field ranged mode allows only positively classified visible non-city wartime fields', () => {
+  const args = {kind: 'ranged', target_territory: 'enemy_field'};
+  const {data, calls} = run({enemyTile: true, args});
+  assert.equal(data.status, 'submitted'); assert.equal(calls.filter(c => c.kind === 'send').length, 1);
+  assert.equal(data.before.targetTerritory, 'enemy_field');
+  for (const o of [{district: true}, {undefendedDistrict: true}, {cityCentre: true}, {unknownCity: true}, {noCity: true}, {hiddenCentre: true},
+    {tileOwner: 2}, {enemyTile: false}, {stacked: true}, {hidden: true}, {peace: true}, {civilianDefinition: true},
+    {args: {...args, kind: 'melee'}}, {args: {...args, target_territory: 'arbitrary'}}]) {
+    const result = run({enemyTile: true, args, ...o});
+    assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
+  }
+  assert.equal(run({enemyTile: true, args: {kind: 'ranged'}}).data.status, 'rejected', 'default boundary is unchanged');
 });
 
 test('packed land army Overrun uses exact offered target and native weaker-target permission, not guessed odds', () => {

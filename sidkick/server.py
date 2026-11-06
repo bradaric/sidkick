@@ -13,6 +13,7 @@ from civ7.actions import (
     army_melee_attack,
     army_overrun,
     grant_second_wind,
+    ranged_attack_enemy_field,
     join_commander,
     leave_commander,
     acknowledge_agenda,
@@ -234,6 +235,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="ranged_attack_civ7_enemy_field", title="Fire at Civ VII enemy-owned field unit",
+            description=("CHANGE GAME STATE: one ranged attack by exact owned unit_id against exact wartime "
+                         "target_player/target_unit_id on visible enemy-owned x/y with fresh expected_turn. "
+                         "Separate from the own/unowned-field attack tool. Requires a ready deployed unqueued "
+                         "nonreinforcing land/sea noncommander, one visible hostile combat target, a positively "
+                         "identified non-centre field whose owning city centre is also visible, no defensible "
+                         "district, and exact native ranged-picker/selected-target permission. No third-party "
+                         "territory, stacks, civilians, city/district attacks, melee entry/capture, war or turn "
+                         "advancement. Native splash may affect additional enemies; only captured attack "
+                         "consumption/loss and primary-target damage/departure are verified, not kills or "
+                         "complete secondary effects. Submits once; polls read-only for 15 seconds and never "
+                         "retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(ranged_attack_enemy_field)
         server.tool(
             name="grant_civ7_second_wind", title="Grant Civ VII Second Wind",
             description=("CHANGE GAME STATE: grant native Second Wind from exact owned commander_id to "

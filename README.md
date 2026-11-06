@@ -1019,6 +1019,26 @@ Force March is not exposed: localization/UI remnants exist but no corresponding
 command definition is installed. **173 Python / 335 Node tests pass; 62 tools
 (39 actions) in write mode, default23 read-only tools unchanged.**
 
+#### Ranged attacks on enemy-owned fields
+
+`ranged_attack_civ7_enemy_field(unit_id, target_player, target_unit_id, x, y,
+expected_turn)` is a separate ranged-only tool; the existing attack tool's own/
+unowned boundary is unchanged. Tile ownership must match the exact met wartime
+target player. Native MapCities must identify a non-district field with a known
+owning city and a visible, different centre. Undefended urban districts are also
+excluded, not just defensible districts. All existing ready attacker, one visible
+combat defender and exact native ranged-picker/selected-target checks still apply.
+No city/district damage, melee entry/capture, stacks, civilians, third-party
+territory, war declaration or turn advancement is supported. Primary-target-only
+verification retains the existing splash/kill limitations.
+
+Positive enemy-field execution is fixture-only. Actual MCP correctly rejected
+Heavy Artillery3407914 on the urban district at `(15,20)` without firing. Nearby
+other targets were stacks; private native test-unit creation returned false, so
+no manufactured positive execution is claimed. **176 Python / 336 Node tests
+pass; write mode63 tools (40 actions), default23 read-only tools unchanged.**
+Army-wide upgrades remain pending: no eligible native aggregate quote was available.
+
 ## One-shot export
 
 ```powershell

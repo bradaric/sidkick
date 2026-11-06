@@ -1,8 +1,10 @@
 (() => {
-  const {unit_id: unitId, target_player: targetPlayer, target_unit_id: targetId, x, y, kind, expected_turn: expectedTurn} = queryArguments;
+  const {unit_id: unitId, target_player: targetPlayer, target_unit_id: targetId, x, y, kind, expected_turn: expectedTurn,
+    target_territory: territory = "own_unowned"} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
   if (![unitId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
-      !["melee", "ranged"].includes(kind)) return reject("Exact owned attacker, hostile target identity/tile, melee/ranged kind and expected turn are required");
+      !["melee", "ranged"].includes(kind) || !["own_unowned", "enemy_field"].includes(territory) ||
+      (territory === "enemy_field" && kind !== "ranged")) return reject("Exact owned attacker, hostile target identity/tile, supported kind/territory and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
   if (!Number.isInteger(playerId) || playerId < 0 || targetPlayer === playerId) return reject("An enemy of the local player is required");
@@ -32,9 +34,20 @@
     if (GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE ||
         GameplayMap.getRevealedState(playerId, unit.location.x, unit.location.y) !== RevealedStates.VISIBLE) return null;
     const owner = GameplayMap.getOwner(x, y);
-    // Keep this first combat family in owned/unowned fields, excluding enemy
-    // settlement tiles even when an undefended centre has no defensible district.
-    if (![playerId, -1].includes(owner)) return null;
+    if (territory === "own_unowned") {
+      if (![playerId, -1].includes(owner)) return null;
+    } else {
+      // This separate ranged-only family cannot enter/capture a settlement. Still
+      // positively exclude undefended centres, not just defensible districts.
+      if (owner !== targetPlayer || typeof MapCities === "undefined" || typeof MapCities.getCity !== "function" ||
+          typeof MapCities.getDistrict !== "function" || MapCities.getDistrict(x, y) !== null ||
+          typeof Cities === "undefined" || typeof Cities.get !== "function") return null;
+      const cityId = MapCities.getCity(x, y);
+      if (cityId?.owner !== targetPlayer || !Number.isInteger(cityId.id) || cityId.id < 0) return null;
+      const city = Cities.get(cityId), centre = city?.location;
+      if (city?.owner !== targetPlayer || !valid(centre) || (centre.x === x && centre.y === y) ||
+          GameplayMap.getRevealedState(playerId, centre.x, centre.y) !== RevealedStates.VISIBLE) return null;
+    }
     const district = Game.Combat.getDefensibleDistrict(location);
     if (!district || district.owner !== -1 || district.id !== -1) return null;
     const ids = MapUnits.getUnits(x, y), defender = Game.Combat.getBestDefender(location, unit.id);
@@ -48,11 +61,11 @@
     return enemy;
   }
   const enemy = target();
-  if (!enemy) return reject("Target is not the exact single visible hostile combat unit on an undefended-district tile; no civilian, stack or city attacks");
+  if (!enemy) return reject("Target is not the exact single visible hostile combat unit on an allowed field tile; no civilian, stack, district or city attacks");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
     location: {x: unit.location.x, y: unit.location.y}, moves: unit.Movement.movementMovesRemaining,
     attacks: unit.Combat.attacksRemaining, hasAttacked: unit.Combat.hasAttacked ?? null,
-    targetPlayer, targetUnitId: targetId, targetType: enemy.type, targetComponentType: enemy.id.type, targetDamage: enemy.Health.damage};
+    targetPlayer, targetUnitId: targetId, targetType: enemy.type, targetComponentType: enemy.id.type, targetDamage: enemy.Health.damage, targetTerritory: territory};
   const args = {X: x, Y: y}, plot = GameplayMap.getIndexFromLocation(location);
   const operation = kind === "melee" ? UnitOperationTypes.MOVE_TO : UnitOperationTypes.RANGE_ATTACK;
   if (kind === "melee") {

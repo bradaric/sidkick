@@ -423,6 +423,18 @@ async def attack_unit(
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def ranged_attack_enemy_field(
+    unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Attack a visible enemy-owned non-city field without entry/capture or implicit war."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, target_player, target_unit_id, x, y, expected_turn)):
+        raise ValueError("Exact attacker, enemy identity/tile and expected turn are required")
+    return await _execute_and_verify("attack_unit.js", {
+        "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
+        "expected_turn": expected_turn, "kind": "ranged", "target_territory": "enemy_field",
+    }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def join_commander(unit_id: StrictInt, commander_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Add one explicit nearby land unit to an owned commander, preserving other memberships."""
     if any(type(v) is not int or v < 0 for v in (unit_id, commander_id, expected_turn)) or unit_id == commander_id:
