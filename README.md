@@ -1564,6 +1564,15 @@ Native10-turn peace cooldown rejected live editing before mutation; positive
 negotiation remains fixture-only. Asset concessions are not supported here.
 **233 Python / 420 Node pass; tools23/110 (87 actions).**
 
+`found_civ7_adjacent_settlement` binds native offered adjacent empty unowned land,
+including embarked founders; verifies consumed founder/new exact city and old-city
+preservation. `spread_civ7_foreign_religion` binds an exact visible met foreign
+centre under the Missionary and verifies own charge/unit consumption only, without
+reading foreign private effects. Test7077972's native adjacent picker rejected
+before request; current Modern has no Missionary definition. Positive cases remain
+fixture-only; no founding/spread effects forced.
+**234 Python / 421 Node pass; tools23/112 (89 actions).**
+
 ## One-shot export
 
 ```powershell

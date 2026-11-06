@@ -579,6 +579,22 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   before draft/offer mutation, not bypassed or counted as positive execution.
   Specific positive economic negotiation remains a deferred eligibility case.
 - 233 Python / 420 Node pass; tools23/110 including87 actions, T62 unchanged.
+- `b59cd74`: economic peace. Native adjacent founding and explicit foreign-centre
+  spread now separate typed intents, retaining local-only default activity tool.
+  Adjacent founding accepts a ready embarked founder, exact visible empty unowned
+  adjacent land and native offered/selected permission; verifies consumed founder,
+  exact new city and preserved prior settlement IDs. No ability/path substitution.
+  Foreign spread requires exact owner-qualified met foreign centre under the ready
+  missionary, visible source/no foreign stack/positive native charges. Only metadata
+  identity checked; no foreign population/yields/religion inventory reads. Verifies
+  own charge/unit consumption, not complete spread effects.
+- Synthetic Settler7077972 appeared embarked at `(8,15)` as requested. Native
+  adjacent founding picker/selected `(9,16)` both rejected; typed handler rejected
+  before request. No alternative operation/founding effect forced. Active Modern
+  still has no spread-capable unit definitions, so no synthetic Missionary invented.
+  Positive adjacent-found/foreign-spread cases remain specific eligibility gaps,
+  implementations and fixtures present. 234 Python / 421 Node pass; tools23/112
+  including89 actions, T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -588,7 +604,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Combat/capture and hostile diplomacy | White-peace and capped economic concession handlers implemented, native-cooldown blocked. Asset concessions/other transfer variants remain. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent and rejects. Empty-centre city assault/capture decisions live-verified, garrison/civilian/stack variants remain outside scope. |
 | Military transport | Broader travel/transport variants remain to assess. Squadron establishment/packed relocation, aircraft transfers, grouped Ground Attack, Fighter Sweep and Carpet Bomb implemented/live-verified. Single-aircraft carrier missions and packed-army ocean travel live-verified. Multi-aircraft Ground Attack/fortified district bombing cases fixture-tested. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
-| Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
+| Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
 | Diplomacy/choices | Asset concessions, nonzero-penalty/multi-support withdrawal and remaining hostile/mandatory variants remain. Economic concession editing/submission/response handlers implemented. Fixed secondary aid/food/raid and sole-own zero-penalty project withdrawal implemented; aid/cancellation/levy live-verified. Paid/trial/independent/bonus positive gaps kept separate. |
 
 Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,

@@ -207,6 +207,20 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def found_adjacent_settlement(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Found at an explicit native-offered adjacent plot; source may be embarked."""
+    if any(type(v) is not int or v<0 for v in (unit_id,x,y,expected_turn)):
+        raise ValueError("Exact founder, adjacent destination and expected turn required")
+    return await _execute_and_verify("local_civilian_action.js",{"kind":"found_adjacent","unit_id":unit_id,"x":x,"y":y,"expected_turn":expected_turn},"local_civilian_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def spread_foreign_religion(unit_id: StrictInt, target_player: StrictInt, target_city_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Spread only at the unit's exact visible met foreign centre; observe own charge/unit consumption."""
+    if any(type(v) is not int or v<0 for v in (unit_id,target_player,target_city_id,expected_turn)):
+        raise ValueError("Exact missionary, foreign centre owner/ID and expected turn required")
+    return await _execute_and_verify("local_civilian_action.js",{"kind":"foreign_spread","unit_id":unit_id,"target_player":target_player,"target_city_id":target_city_id,"expected_turn":expected_turn},"local_civilian_state.js")
+
+
 async def peace_concession(target_player_id: StrictInt, action: Literal["add", "remove", "propose", "accept", "reject"], deal_token: StrictStr, max_gold_cost: StrictFloat, max_influence_cost: StrictFloat, expected_turn: StrictInt, item_token: StrictStr | None = None, item_id: StrictInt | None = None) -> dict[str, Any]:
     """Edit/propose/respond to exact peace plus native-offered economic terms under gross currency caps."""
     if (any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or action not in ("add","remove","propose","accept","reject") or not isinstance(deal_token,str) or not deal_token or len(deal_token)>100000 or

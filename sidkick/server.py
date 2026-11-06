@@ -66,6 +66,8 @@ from civ7.actions import (
     sweep_air_location,
     bombard_air_district,
     peace_concession,
+    found_adjacent_settlement,
+    spread_foreign_religion,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -282,6 +284,28 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="found_civ7_adjacent_settlement",title="Found exact native-offered adjacent Civ VII settlement",
+            description=("CHANGE GAME STATE: fixed FOUND_CITY_ADJACENT_PLOT by exact ready founder unit_id "
+                         "at adjacent visible empty unowned land x/y with expected_turn. Source may be "
+                         "embarked, but must be visible own/unowned, unqueued/unpacked/nonreinforcing with "
+                         "no foreign stack. Native offered/selected permission required. Verifies consumed "
+                         "founder and one new exact owned settlement preserving all prior settlement "
+                         "identities. No automatic movement, capture, ability substitution or turn advance. "
+                         "One submission,15-second readback; never retry unknown."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(found_adjacent_settlement)
+        server.tool(
+            name="spread_civ7_foreign_religion",title="Spread religion at exact visible foreign Civ VII centre",
+            description=("CHANGE GAME STATE: fixed SPREAD_RELIGION by exact missionary unit_id already at "
+                         "target_player/target_city_id currently visible met foreign centre, expected_turn. "
+                         "Ready unembarked unqueued unpacked/nonreinforcing role unit, no foreign stack, "
+                         "known positive native charges and permission without confirmation required. "
+                         "Verifies own charge/unit consumption only, not complete foreign religion/"
+                         "population/yield effects. No private foreign inventory, automatic movement, new "
+                         "war or turn advance. One submission; no unknown retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(spread_foreign_religion)
         server.tool(
             name="manage_civ7_peace_concession",title="Edit or negotiate capped Civ VII economic peace terms",
             description=("CHANGE GAME STATE: exact target_player_id, action add/remove/propose/accept/reject, "
