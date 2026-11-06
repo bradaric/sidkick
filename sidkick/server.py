@@ -39,6 +39,7 @@ from civ7.actions import (
     bombard_shore_district,
     naval_attack_land_unit,
     append_advanced_construction,
+    choose_religious_action,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -255,6 +256,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="choose_civ7_religious_action", title="Choose Civ VII pantheon, belief or religion",
+            description=("CHANGE GAME STATE: one fixed kind pantheon/belief/found with exact choice "
+                         "BeliefType or ReligionType and expected_turn. Requires fresh active local turn, "
+                         "known current selections and native exact permission without confirmation. "
+                         "Pantheon requires unlocked choice; beliefs require founded religion, claimability "
+                         "and a genuinely free UI belief-class slot, not ADD_BELIEF permission alone. Found "
+                         "requires native canCreateReligion and unclaimed exact religion. Verifies exact "
+                         "selection collections/religion with prior choices preserved. Found does not pick "
+                         "beliefs automatically; subsequent mandatory choices remain. No rename, spread, "
+                         "foreign religion mutation or turn advance. One submission, never retry unknown."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(choose_religious_action)
         server.tool(
             name="append_civ7_advanced_construction", title="Queue advanced Civ VII construction",
             description=("CHANGE GAME STATE: append one exact item/settlement/x/y with explicit "

@@ -1356,6 +1356,14 @@ verified, then only new tails cancelled and original Scout queue restored. Repai
 is fixture-only after a native-blocked setup attempt. Completion/effects require
 later turns, not claimed. **209 Python / 381 Node pass; tools23/83 (60 actions).**
 
+`choose_civ7_religious_action(kind, choice, expected_turn)` supports fixed pantheon,
+belief and religion-founding operations. Exact IDs, unlocked pantheon choice or
+claimable/free UI-class belief slot, founding eligibility and native permission
+are required. Readback verifies exact selections/religion and prior collections.
+Founding leaves mandatory belief choices for separate checked actions. Current
+Modern save has no eligible choice: positive execution is deferred, fixtures pass.
+**210 Python / 383 Node pass; tools23/84 (61 actions).**
+
 ## One-shot export
 
 ```powershell

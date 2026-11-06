@@ -183,6 +183,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def choose_religious_action(kind: Literal["pantheon", "belief", "found"], choice: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Select one exact available pantheon/belief, or found one unclaimed named religion."""
+    if kind not in ("pantheon", "belief", "found") or not isinstance(choice, str) or not choice or type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("Supported religious action, exact definition ID and expected turn are required")
+    return await _execute_and_verify("religious_choice.js", {"kind": kind, "choice": choice, "expected_turn": expected_turn}, "religious_choice_state.js")
+
+
 async def append_advanced_construction(settlement: StrictStr, item: StrictStr, construction_intent: Literal["wonder", "repair", "overbuild", "improvement"], x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt, replace_improvement: StrictBool = False) -> dict[str, Any]:
     """Append one explicitly acknowledged advanced placement/repair, never purchase or complete it."""
     if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item or

@@ -247,6 +247,16 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
 - Building-placement readout now includes native offered improvements and fresh
   visible target tokens; fogged locations have no mutation token. 209 Python / 381
   Node pass; tools23/83,60 actions; no Gold spend/turn.
+- `0f43944`: advanced construction. Pantheon selection, class-slotted belief
+  selection and religion founding are now implemented as three fixed typed intents.
+  Exact definitions, native permission and current slot/claimability gates; founding
+  never auto-adds beliefs. Exact local selections/religion readback with prior
+  collections preserved, single submission. Fixtures cover native ADD_BELIEF
+  permission not overriding UI class capacity. Current Modern save has zero unlocked
+  pantheons, zero earned beliefs, an existing religion and no available belief;
+  positive earlier-Age choice execution is Group 2, not claimed here.
+- 210 Python / 383 Node pass; tools23/84 including61 actions. No turn or religion
+  mutated in the live inspection.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
