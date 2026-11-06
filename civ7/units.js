@@ -40,6 +40,8 @@
             seenPromotions.add(key);
             if (experience.hasPromotion(set.UnitPromotionDisciplineType, promotion.UnitPromotionType)) {
               promotions.push({
+                id: promotion.UnitPromotionType,
+                disciplineId: set.UnitPromotionDisciplineType,
                 discipline: name(discipline?.Name),
                 name: name(promotion.Name),
                 description: name(promotion.Description),
@@ -54,6 +56,7 @@
               const prerequisites = [...new Set(details.filter(value => value.UnitPromotionType === promotion.UnitPromotionType)
                 .map(value => value.PrereqUnitPromotion).filter(Boolean))];
               promotionChoices.push({
+                disciplineId: set.UnitPromotionDisciplineType,
                 id: promotion.UnitPromotionType, name: name(promotion.Name), description: name(promotion.Description),
                 discipline: name(discipline.Name), commendation: Boolean(promotion.Commendation),
                 prerequisites: prerequisites.map(type => ({id: type,

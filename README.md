@@ -683,6 +683,23 @@ notifications cannot authorize a choice. **141 Python and 289 Node tests pass.**
 The already-completed choice was a verified no-op with the corrected handler;
 another pending case is needed for positive typed live coverage.
 
+#### Earned unit promotions
+
+`promote_civ7_unit(unit_id, discipline, promotion, expected_turn)` requires exact
+IDs from `get_civ7_units`, a unique owned deployed unit with no queued order,
+membership in its native promotion-class/discipline tree, native picker eligibility
+and exact PROMOTE permission. It verifies that promotion was acquired on the same
+unit and returns point balances; no experience grants, automatic choices or
+predicted combat results are exposed. Unit readouts now include exact discipline
+IDs and acquired-promotion IDs as well as localized names.
+
+Default remains 23 read-only tools; write mode has 50 tools (27 actions).
+**144 Python and 293 Node tests pass.** Live native Initiative acquisition on
+commander 65536 verified, with promotion points 1 → 0. Eligibility was synthetic:
+the private authorized debug setup granted 41 XP (level 2 → 3), not combat-earned
+experience. The reviewed morning state is separately preserved in native save
+`Sidkick_Playground_ReviewedMorning_T62_1793948595702` (RESULT_OK, no overwrite).
+
 ## One-shot export
 
 ```powershell

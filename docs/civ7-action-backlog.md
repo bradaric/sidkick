@@ -34,7 +34,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 |---|---|---|---|
 | 1 | Settlement management | Town focus, town-to-city upgrades, specialists | Implemented; live-verified (synthetic prerequisites for upgrade/specialist) |
 | 2 | Mandatory choices | Government, celebrations, tradition/crisis slots, policy swaps, narrative/crisis responses and blocking pickers | Picker/review/agenda/card-group, zero-cost non-trial narrative and cooperative project responses implemented; paid/trial/hostile/deal responses pending |
-| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders implemented; travel/promotions/upgrades pending |
+| 3 | Everyday unit control | Skip/sleep/wake/fortify/heal, promotions/upgrades, longer paths, shore transitions, peaceful foreign travel/exploration | Basic orders and promotions implemented; travel/upgrades pending |
 | 4 | Guarded turn completion | Exact one-turn submission, blocker handling and next-local-turn readback; stop on unsupported blockers | Implemented; native 59 → 60 verified |
 | 5 | Advanced construction/resources | Queue edits, Wonders, repairs, overbuilding, unique improvements, unassignment/swaps/factory rules | Pending |
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
@@ -185,3 +185,14 @@ Morning inspection/actions before this implementation batch:
   still needs another genuine pending case.
 - Reviewed morning state preserved in separate save
   `Sidkick_Playground_ReviewedMorning_T62_1793948595702`, RESULT_OK, no overwrite.
+- Promotions: exact native class/discipline/choice checks, one PROMOTE command,
+  captured-unit acquired-promotion readback and exact discipline IDs in unit
+  readout. 144 Python + 293 Node tests pass. No naturally eligible promotion was
+  available. Authorized debug Units.changeExperience granted 41 XP to commander
+  65536 (level 2 → 3, point 0 → 1); normal typed Initiative promotion verified
+  acquired and point 1 → 0. Synthetic eligibility, not naturally earned combat XP.
+- Upgrade discovery: all ordinary units initially had zero movement. Debug
+  Units.restoreMovement restored movement for commander 65536 and Cuirassier
+  1310739. The latter now offers Landship, native English quote 200 Gold, with
+  target definition index 26. No upgrade submitted yet. A debug create probe for
+  Line Infantry produced no observed new unit and is not counted as setup.

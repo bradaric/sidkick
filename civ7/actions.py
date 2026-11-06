@@ -350,6 +350,17 @@ async def respond_diplomatic_project(
     }, "diplomatic_response_state.js")
 
 
+async def promote_unit(unit_id: StrictInt, discipline: StrictStr, promotion: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Spend earned points on one exact native class/discipline promotion."""
+    if any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or any(
+        not isinstance(v, str) or not v.strip() for v in (discipline, promotion)
+    ):
+        raise ValueError("An owned unit, exact discipline/promotion IDs and expected turn are required")
+    return await _execute_and_verify("promote_unit.js", {
+        "unit_id": unit_id, "discipline": discipline.strip(), "promotion": promotion.strip(), "expected_turn": expected_turn,
+    }, "unit_promotion_state.js")
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

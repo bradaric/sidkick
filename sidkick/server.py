@@ -21,6 +21,7 @@ from civ7.actions import (
     move_great_work,
     move_unit,
     place_population,
+    promote_unit,
     purchase_city_item,
     review_resources,
     review_policies,
@@ -221,6 +222,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="promote_civ7_unit", title="Promote Civ VII unit",
+            description=("CHANGE GAME STATE: spend earned promotion/commendation eligibility on one exact "
+                         "owned deployed unit_id, discipline ID and promotion ID from get_civ7_units, with "
+                         "fresh expected_turn. Requires native unit class/discipline membership, picker "
+                         "eligibility and exact PROMOTE permission. Rejects queued/off-map units; no point "
+                         "grants, raw commands or automatic tree choices. Verifies acquired promotion on the "
+                         "same unit, not predicted combat bonuses. Requires user authorization; submits once, "
+                         "never retries unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(promote_unit)
         server.tool(
             name="respond_civ7_diplomatic_project", title="Respond to Civ VII cooperative project",
             description=("CHANGE GAME STATE: accept, support or reject one exact incoming action_id from "
