@@ -76,6 +76,7 @@ from civ7.actions import (
     join_airlift,
     leave_airlift,
     airdrop_infantry,
+    airdrop_infantry_group,
     travel_unit,
     assign_specialist,
     buy_attribute_node,
@@ -294,6 +295,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="airdrop_civ7_infantry_group",title="Airdrop exact complete Civ VII Infantry payload",
+            description=("CHANGE GAME STATE: exact complete2–7 packed Infantry unit_ids, promoted Airborne "
+                         "Forces Squadron commander_id, native offered target x/y and expected_turn. One "
+                         "native UNIT_AIR_DROP deploys the whole Infantry payload, never per-unit commands. "
+                         "All seven target/adjacent landing cells must be currently visible empty own/unowned "
+                         "flat/hill land without districts; no guessing native per-unit tiles. Verifies every "
+                         "exact Infantry in distinct captured landing cells, one on selected target, health "
+                         "unchanged, Squadron stationary/unqueued, all other memberships and retained aircraft "
+                         "health/missions/movement preserved. No other ground payload, fog/foreign/combat "
+                         "landing, turn or retry.15-second bounded readback; unknown is never resubmitted."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(airdrop_infantry_group)
         server.tool(
             name="travel_civ7_unit",title="Travel a bounded Civ VII ordinary-unit current-turn path",
             description=("CHANGE GAME STATE: exact noncommander unit_id, destination x/y, expected_turn "

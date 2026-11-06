@@ -80,10 +80,10 @@
       selectedUnit.establishBase={operationAllowed:picker?.Success===true,options,failureReasons:(picker?.FailureReasons??[]).map(name).filter(Boolean)};
       if(airliftSquadron(unit)){
         const operation="UNITOPERATION_UNIT_AIR_DROP",picker=Game.UnitOperations.canStart(unit.id,operation,{},false),payload=records.find(r=>r.unit.id.id===unit.id.id)?.packedUnitIds,options=[];
-        const infantryIds=payload?.filter(id=>infantry(byId.get(id)))??[],aircraftIds=payload?.filter(id=>{
+        const infantryIds=payload?.filter(id=>infantry(byId.get(id))).sort((a,b)=>a-b)??[],aircraftIds=payload?.filter(id=>{
           const u=byId.get(id),d=u&&GameInfo.Units.lookup(u.type);return d?.Domain==="DOMAIN_AIR"&&d.FormationClass==="FORMATION_CLASS_AIR";
         })??[];
-        const supported=infantryIds.length===1&&payload?.length===infantryIds.length+aircraftIds.length&&payload.length<=16&&unit.operationQueueSize===0&&
+        const supported=infantryIds.length>=1&&infantryIds.length<=7&&payload?.length===infantryIds.length+aircraftIds.length&&payload.length<=16&&unit.operationQueueSize===0&&
           GameplayMap.getRevealedState(id,unit.location.x,unit.location.y)===RevealedStates.VISIBLE&&[-1,id].includes(GameplayMap.getOwner(unit.location.x,unit.location.y))&&GameplayMap.isWater(unit.location.x,unit.location.y)===false;
         if(supported)for(const index of [...new Set(picker?.Plots??[])]){
           if(!Number.isInteger(index)||index<0||index>=width*height)continue;
@@ -91,12 +91,18 @@
           if(!valid(l)||GameplayMap.getRevealedState(id,l.x,l.y)!==RevealedStates.VISIBLE||![-1,id].includes(GameplayMap.getOwner(l.x,l.y))||GameplayMap.isWater(l.x,l.y)!==false||
               !["TERRAIN_FLAT","TERRAIN_HILL"].includes(GameInfo.Terrains.lookup(GameplayMap.getTerrainType(l.x,l.y))?.TerrainType))continue;
           const ids=MapUnits.getUnits(l.x,l.y);if(!Array.isArray(ids)||ids.length)continue;
+          const landingZone=[];
+          if(infantryIds.length>1){
+            for(let yy=l.y-1;yy<=l.y+1;yy++)for(let xx=l.x-1;xx<=l.x+1;xx++)if(GameplayMap.getPlotDistance(l.x,l.y,xx,yy)<=1)landingZone.push({x:xx,y:yy});
+            if(landingZone.length!==7||!landingZone.every(t=>valid(t)&&GameplayMap.getRevealedState(id,t.x,t.y)===RevealedStates.VISIBLE&&[-1,id].includes(GameplayMap.getOwner(t.x,t.y))&&GameplayMap.isWater(t.x,t.y)===false&&
+                ["TERRAIN_FLAT","TERRAIN_HILL"].includes(GameInfo.Terrains.lookup(GameplayMap.getTerrainType(t.x,t.y))?.TerrainType)&&MapCities.getDistrict(t.x,t.y)===null&&Array.isArray(MapUnits.getUnits(t.x,t.y))&&MapUnits.getUnits(t.x,t.y).length===0))continue;
+          }
           const check=Game.UnitOperations.canStart(unit.id,operation,{X:l.x,Y:l.y},false);
-          options.push({location:{x:l.x,y:l.y},availableNow:picker?.Success===true&&check?.Success===true&&check.RequiresConfirmation!==true&&unit.Movement?.movementMovesRemaining>0,
+          options.push({location:{x:l.x,y:l.y},...(landingZone.length?{landingZone}:{}),availableNow:picker?.Success===true&&check?.Success===true&&check.RequiresConfirmation!==true&&unit.Movement?.movementMovesRemaining>0,
             failureReasons:(check?.FailureReasons??[]).map(name).filter(Boolean)});
         }
         selectedUnit.airdrop={payloadUnitIds:payload===null?null:infantryIds,retainedAircraftIds:aircraftIds,supportedPayload:Boolean(supported),operationAllowed:picker?.Success===true,options,
-          failureReasons:(picker?.FailureReasons??[]).map(name).filter(Boolean),scope:"Exactly one packed Infantry; stationed aircraft must stay packed/healthy/unspent. No other ground payload or automatic action"};
+          failureReasons:(picker?.FailureReasons??[]).map(name).filter(Boolean),scope:"Exact complete1–7 Infantry payload; mass drop requires all seven landing cells safe. Stationed aircraft must stay packed/unchanged. No other ground payload or automatic action"};
       }
     }
     if (unit.isCommanderUnit && deployed(unit) && typeof Game.UnitCommands?.canStart === "function") {

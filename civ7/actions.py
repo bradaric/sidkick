@@ -207,6 +207,14 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def airdrop_infantry_group(unit_ids: list[StrictInt], commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """Drop one exact complete2–7 Infantry payload into an entirely safe native landing footprint."""
+    if not isinstance(unit_ids,list) or not 2<=len(unit_ids)<=7 or any(type(v) is not int or v<0 for v in unit_ids) or len(set(unit_ids))!=len(unit_ids) or any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)) or commander_id in unit_ids:
+        raise ValueError("Exact2–7 distinct owned Infantry IDs, Squadron, landing target and expected turn required")
+    ids=sorted(unit_ids)
+    return await _execute_and_verify("unit_membership.js",{"mode":"airdrop_group","unit_id":ids[0],"payload_unit_ids":ids,"commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn,"air_transport":True},"unit_membership_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def airdrop_infantry(unit_id: StrictInt, commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Drop exactly one Infantry from a promoted Squadron; captured stationed aircraft stay unchanged."""
     if any(type(v) is not int or v<0 for v in (unit_id,commander_id,x,y,expected_turn)) or unit_id==commander_id:

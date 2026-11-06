@@ -742,6 +742,23 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   unchanged. Initial spent-Squadron readiness rejected before a write; only test
   Infantry/Squadron movement restored for setup, aircraft counters untouched.
   244 Python /442 Node pass; tools24/122 including98 actions, still T62.
+- `82fc4c0`: retained-aircraft Airdrop. Mass Infantry Airdrop implemented with exact
+  complete2–7 payload IDs, only known stationed aircraft allowed alongside, and a
+  fully visible/empty own-unowned seven-cell flat/hill footprint without districts.
+  Native can choose individual cells; verifies distinct observed payload landings
+  inside the captured footprint, one on selected target, unchanged payload health,
+  base position/health/queue, all other memberships and retained aircraft counters.
+  Selected logistics exposes exact payload and guarded landing footprint; no inferred
+  per-unit slot assignment, hidden landing, foreign occupation or automatic retries.
+- Private native schema probe8257638/8323175 at target `(17,13)` established actual
+  spread to target and `(16,13)`, retaining both aircraft. Separate typed test used
+  new8388712/8454249 and target `(17,14)`; both native landings verified at `(17,14)`
+  and `(16,14)`, retained8126564/8192101 unchanged, base still `(22,11)`, queue0.
+  Probe units moved away through normal native movement after labelled readiness
+  restoration. Fresh payload creation and Squadron movement restoration only; no
+  health/landing/membership forced. Test aircraft8061027 was normally transferred
+  to Carrier5767185 to free base capacity, with its spent attack retained.
+  245 Python /443 Node pass; tools24/123 including99 actions, T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -749,7 +766,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
-| Military transport | Mass Infantry Airdrop remains to assess/implement; single Infantry with retained aircraft now verified. Ordinary bounded/peaceful travel, Squadron join/leave/Airdrop, fleet/army commands, squadron relocation/air missions and packed-army sea travel verified. Some fortified bomb/observed Sweep-Bomb cases fixture-only. |
+| Military transport | Bounded/peaceful ordinary travel, single/mass Infantry Squadron Airdrop with retained aircraft, membership, fleet/army commands, squadron relocation/air missions and packed-army sea travel implemented/native-verified. Fortified bomb and optional observed Sweep/Bomb positive cases remain separate verification gaps. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
 | Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |

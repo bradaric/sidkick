@@ -3,8 +3,10 @@
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
   const {air_transport:airTransport=false}=queryArguments;
   if(typeof airTransport!=="boolean"||airTransport&&domain!=="DOMAIN_LAND")return reject("Air transport is an explicit Infantry/Squadron intent only");
-  const airdrop=mode==="airdrop";
-  if (!["DOMAIN_LAND", "DOMAIN_SEA"].includes(domain) || !["join", "leave", "airdrop"].includes(mode) || airdrop&&!airTransport || ![unitId, commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
+  const groupDrop=mode==="airdrop_group",airdrop=mode==="airdrop"||groupDrop;
+  const dropIds=groupDrop?queryArguments.payload_unit_ids:[unitId];
+  if(groupDrop&&(!Array.isArray(dropIds)||dropIds.length<2||dropIds.length>7||dropIds.some(id=>!Number.isInteger(id)||id<0)||new Set(dropIds).size!==dropIds.length||dropIds[0]!==unitId))return reject("Exact2–7 distinct Infantry payload IDs with first selected unit required");
+  if (!["DOMAIN_LAND", "DOMAIN_SEA"].includes(domain) || !["join", "leave", "airdrop", "airdrop_group"].includes(mode) || airdrop&&!airTransport || ![unitId, commanderId, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
       unitId === commanderId || (mode !== "join" && ![x, y].every(v => Number.isInteger(v) && v >= 0))) return reject("Distinct owned unit/commander IDs, supported membership action/tile and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
@@ -36,7 +38,7 @@
   const baseline = armies(), selected = baseline?.find(a => a.commanderId === commanderId), containing = baseline?.filter(a => a.packedUnitIds.includes(unitId));
   if (!selected || !containing || containing.length > 1) return reject("Owned army identity and complete packed membership must be known");
   function retainedAircraft(){
-    const records=[];for(const id of selected.packedUnitIds.filter(id=>id!==unitId)){
+    const records=[];for(const id of selected.packedUnitIds.filter(id=>!dropIds.includes(id))){
       const u=owned.find(u=>u.id.id===id),def=u&&GameInfo.Units.lookup(u.type);
       if(!u||u.isCommanderUnit||u.isDead===true||u.isOnMap!==false||u.operationQueueSize!==0||def?.Domain!=="DOMAIN_AIR"||def.FormationClass!=="FORMATION_CLASS_AIR"||
           !sameArmy(u.armyId,commander.armyId)||!Number.isFinite(u.Health?.damage)||!Number.isInteger(u.Combat?.attacksRemaining)||u.Combat.attacksRemaining<0||!Number.isFinite(u.Movement?.movementMovesRemaining)||u.Movement.movementMovesRemaining<0)return null;
@@ -44,8 +46,17 @@
     }return records;
   }
   const sameArmy=(a,b)=>a?.owner===playerId&&a.owner===b?.owner&&a.id===b.id&&a.type===b.type;
+  function payload(){
+    const records=[];for(const id of dropIds){
+      const u=owned.find(u=>u.id.id===id),def=u&&GameInfo.Units.lookup(u.type);
+      if(!u||u.isCommanderUnit||u.isDead===true||u.isOnMap!==false||u.operationQueueSize!==0||!selected.packedUnitIds.includes(id)||!sameArmy(u.armyId,commander.armyId)||def?.Packable!==true||def.Domain!=="DOMAIN_LAND"||def.FormationClass!=="FORMATION_CLASS_LAND_COMBAT"||
+          GameInfo.TypeTags.filter(t=>t.Type===def.UnitType&&t.Tag==="UNIT_CLASS_INFANTRY").length===0||!Number.isFinite(u.Health?.damage)||player.Armies?.getUnitReinforcementCommanderId?.(u.id,playerId)!==-1)return null;
+      records.push({unitId:id,componentType:u.id.type,unitType:u.type,damage:u.Health.damage});
+    }return records;
+  }
+  const dropPayload=airdrop?payload():null;
   const retained=airdrop?retainedAircraft():null;
-  if(airdrop&&(!containing.length||!selected.packedUnitIds.includes(unitId)||retained===null||selected.packedUnitIds.length>16||unit.isOnMap!==false||
+  if(airdrop&&(!containing.length||dropPayload===null||retained===null||selected.packedUnitIds.length>16||unit.isOnMap!==false||
       !Number.isFinite(unit.Health?.damage)||!Number.isFinite(commander.Health?.damage)))return reject("Airdrop requires exactly one packed Infantry, optionally known stationed aircraft retained unchanged; no other payload");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
     commanderId, commanderType: commander.type, commanderComponentType: commander.id.type, armies: baseline,
@@ -60,6 +71,11 @@
   const destination = mode === "join" ? before.commanderLocation : {x, y};
   const visible = l => valid(l) && GameplayMap.getRevealedState(playerId, l.x, l.y) === RevealedStates.VISIBLE;
   const water = l => valid(l) && typeof GameplayMap.isWater === "function" && GameplayMap.isWater(l.x, l.y) === true;
+  const landingZone=[];
+  if(groupDrop)for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(GameplayMap.getPlotDistance(x,y,xx,yy)<=1)landingZone.push({x:xx,y:yy});
+  const safeZone=()=>!groupDrop||landingZone.length===7&&landingZone.every(l=>visible(l)&&[-1,playerId].includes(GameplayMap.getOwner(l.x,l.y))&&
+    ["TERRAIN_FLAT","TERRAIN_HILL"].includes(GameInfo.Terrains.lookup(GameplayMap.getTerrainType(l.x,l.y))?.TerrainType)&&GameplayMap.isWater(l.x,l.y)===false&&MapCities.getDistrict(l.x,l.y)===null&&Array.isArray(MapUnits.getUnits(l.x,l.y))&&MapUnits.getUnits(l.x,l.y).length===0);
+  if(!safeZone())return reject("Mass Airdrop requires the entire seven-tile landing footprint visible/empty own-unowned flat/hill land without districts");
   if (!visible(before.commanderLocation) || !visible(destination) || ![-1, playerId].includes(GameplayMap.getOwner(destination.x, destination.y))) return reject("Commander and destination must be currently visible on an own/unowned destination");
   if (domain === "DOMAIN_SEA" && (!water(before.commanderLocation) || !water(destination) || (mode === "join" && !water(before.unitLocation)))) return reject("Fleet commander, joining ship and deployment destination must be on water");
   const airLandSafe=()=>!airTransport||[-1,playerId].includes(GameplayMap.getOwner(before.commanderLocation.x,before.commanderLocation.y))&&GameplayMap.isWater(before.commanderLocation.x,before.commanderLocation.y)===false&&GameplayMap.isWater(destination.x,destination.y)===false&&(mode!=="join"||unit.isEmbarked===false&&GameplayMap.isWater(before.unitLocation.x,before.unitLocation.y)===false);
@@ -90,16 +106,17 @@
       commander.location.x !== before.commanderLocation.x || commander.location.y !== before.commanderLocation.y ||
       JSON.stringify(armies()) !== JSON.stringify(baseline) || !visible(destination) || ![-1, playerId].includes(GameplayMap.getOwner(destination.x, destination.y)) ||
       !airLandSafe()||(airTransport&&commander.Experience.hasPromotion("DISCIPLINE_SQUADRON_AIRLIFT_OPERATIONS","PROMOTION_SQUADRON_AIRBORNE_FORCES")!==true)||
-      (airdrop&&(unit.isOnMap!==false||unit.Health.damage!==before.unitDamage||commander.Health.damage!==before.commanderDamage||commander.Movement.movementMovesRemaining<=0||JSON.stringify(retainedAircraft())!==JSON.stringify(retained)))||
+      (airdrop&&(unit.isOnMap!==false||unit.Health.damage!==before.unitDamage||commander.Health.damage!==before.commanderDamage||commander.Movement.movementMovesRemaining<=0||JSON.stringify(retainedAircraft())!==JSON.stringify(retained)||JSON.stringify(payload())!==JSON.stringify(dropPayload)||!safeZone()))||
       (domain === "DOMAIN_SEA" && (!water(before.commanderLocation) || !water(destination) || (mode === "join" && !water(before.unitLocation)))) ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1 ||
       (mode === "join" ? unit.isOnMap !== true || unit.location.x !== before.unitLocation.x || unit.location.y !== before.unitLocation.y : !deploymentClear())) return reject("Unit, commander, membership, destination or game context changed during validation");
   const expectedArmies = baseline.map(a => ({...a, packedUnitIds: a.commanderId !== commanderId ? a.packedUnitIds :
-    mode === "join" ? [...a.packedUnitIds, unitId].sort((a, b) => a - b) : a.packedUnitIds.filter(id => id !== unitId)}));
+    mode === "join" ? [...a.packedUnitIds, unitId].sort((a, b) => a - b) : a.packedUnitIds.filter(id => !(groupDrop?dropIds:[unitId]).includes(id))}));
   const verificationArguments = {unit_id: unitId, commander_id: commanderId, component_type: before.componentType, unit_type: before.unitType,
-    commander_component_type: before.commanderComponentType, commander_type: before.commanderType,...(airdrop?{retained_aircraft:retained}:{})};
+    commander_component_type: before.commanderComponentType, commander_type: before.commanderType,...(airdrop?{retained_aircraft:retained}:{}),...(groupDrop?{airdrop_payload:dropPayload,landing_zone:landingZone,landing_target:destination}:{})};
   api.sendRequest(source.id, command, args);
   return {status: "submitted", before, expected: {unitId, unitType: before.unitType, componentType: before.componentType,
     commanderId, commanderType: before.commanderType, commanderComponentType: before.commanderComponentType, packed: mode === "join", armies: expectedArmies,
-    ...(mode !== "join" ? {location: destination} : {}),...(airdrop?{commanderLocation:before.commanderLocation,unitDamage:before.unitDamage,commanderDamage:before.commanderDamage,unitQueueSize:0,commanderQueueSize:0,retainedAircraftPreserved:true}:{})}, verificationArguments};
+    ...(mode !== "join"&&!groupDrop ? {location: destination} : {}),...(airdrop?{commanderLocation:before.commanderLocation,unitDamage:before.unitDamage,commanderDamage:before.commanderDamage,unitQueueSize:0,commanderQueueSize:0,retainedAircraftPreserved:true}:{}),...(groupDrop?{massAirdropApplied:true}:{})}, verificationArguments,
+    ...(groupDrop?{verificationScope:"One native mass Infantry drop with exact complete payload. All seven possible landing cells safe before submission; verifies distinct observed landings within captured footprint, one at selected target, unchanged health and retained aircraft/memberships. Does not promise per-unit predetermined tiles"}:{})};
 })()

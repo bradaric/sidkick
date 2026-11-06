@@ -29,10 +29,17 @@
     const u=owned.find(u=>u.id.id===p.unitId),c=commanders[0];return u?.id.type===p.componentType&&u.type===p.unitType&&u.isOnMap===false&&u.isDead!==true&&u.operationQueueSize===0&&
       selected.packedUnitIds.includes(p.unitId)&&u.armyId?.owner===playerId&&u.armyId.id===c.armyId?.id&&u.armyId.type===c.armyId.type&&u.Health?.damage===p.damage&&u.Combat?.attacksRemaining===p.attacks&&u.Movement?.movementMovesRemaining===p.moves;
   });
+  const payload=queryArguments.airdrop_payload,zone=queryArguments.landing_zone,target=queryArguments.landing_target??{x:queryArguments.x,y:queryArguments.y};
+  if(payload!==undefined&&(!Array.isArray(payload)||payload.length<2||payload.length>7||!Array.isArray(zone)))throw Error("Invalid captured mass Airdrop payload/footprint");
+  const deployedPayload=payload?.map(p=>{const u=owned.find(u=>u.id.id===p.unitId);return{unitId:p.unitId,location:u?.location?{x:u.location.x,y:u.location.y}:null,
+    verified:u?.id.type===p.componentType&&u.type===p.unitType&&u.isOnMap===true&&u.isDead!==true&&u.operationQueueSize===0&&!seen.has(p.unitId)&&u.Health?.damage===p.damage&&
+      zone.some(l=>u.location?.x===l.x&&u.location?.y===l.y)&&GameplayMap.getRevealedState(playerId,u.location.x,u.location.y)===RevealedStates.VISIBLE&&[-1,playerId].includes(GameplayMap.getOwner(u.location.x,u.location.y))&&u.isEmbarked===false};});
+  const massAirdropApplied=deployedPayload?.every(p=>p.verified)&&new Set(deployedPayload.map(p=>`${p.location.x}:${p.location.y}`)).size===payload.length&&deployedPayload.some(p=>p.location.x===target.x&&p.location.y===target.y);
   return {turn: Game.turn, age: Game.age, playerId, unitId, unitType, componentType, commanderId, commanderType, commanderComponentType,
     commanderLocation:{x:commanders[0].location?.x,y:commanders[0].location?.y},unitDamage:unit.Health?.damage??null,commanderDamage:commanders[0].Health?.damage??null,
     unitQueueSize:unit.operationQueueSize,commanderQueueSize:commanders[0].operationQueueSize,
     ...(retained!==undefined?{retainedAircraftPreserved}:{}),
+    ...(payload!==undefined?{massAirdropApplied:Boolean(massAirdropApplied),deployedPayload}:{}),
     packed: selected.packedUnitIds.includes(unitId), armies,
     location: !seen.has(unitId) && unit.isOnMap === true && Number.isInteger(unit.location?.x) && unit.location.x >= 0 &&
       Number.isInteger(unit.location?.y) && unit.location.y >= 0 ? {x: unit.location.x, y: unit.location.y} : null};

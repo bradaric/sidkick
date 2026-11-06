@@ -1646,6 +1646,14 @@ rejected without a write; labelled Infantry/Squadron movement restoration only.
 Multiple Infantry/other ground payloads still reject.
 **244 Python / 442 Node pass; tool counts unchanged.**
 
+`airdrop_civ7_infantry_group` binds the exact complete2–7 Infantry payload and
+requires an entirely visible empty safe seven-cell landing footprint. Native picks
+individual cells; readback verifies every landing/health, one at selected target,
+stationary base and retained aircraft/memberships unchanged. Distinct typed two-unit
+drop to `(17,14)`/`(16,14)` verified after a separately labelled schema probe.
+Creation/readiness prerequisites only, no landing effects forced or turns advanced.
+**245 Python / 443 Node pass; tools24/123 (99 actions).**
+
 ## One-shot export
 
 ```powershell
