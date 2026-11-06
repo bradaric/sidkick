@@ -827,6 +827,24 @@ Initial direct request to `(24,4)` was rejected: native reachability/path requir
 a detour, which this action correctly does not queue. Preconditions used restored
 movement, not a naturally refreshed turn. No turn advanced; tool counts unchanged.
 
+#### Katyusha and delayed combat readback
+
+Katyusha2621473 fired normally from `(13,17)` at Franklin Cuirassier2687012 on
+`(15,19)`: attack count1→0 and observed damage0→18. Only movement readiness was
+privately restored. The two-second verifier returned unknown before native combat
+effects appeared; later read-only evidence resolved it, with no repeated shot.
+Combat verification now polls read-only evidence for up to **15 seconds** after
+its single submission; other generic action windows are unchanged. Cancellation,
+timeout and unknown outcomes still never resubmit. **158 Python and 312 Node
+tests pass**, including a delayed-effect regression. The fixed longer window's
+positive live submission remains to be tested on a distinct case.
+
+User has explicitly deferred all turn advancement while unit/army/combat coverage
+continues. Current sandbox checkpoint:
+`Sidkick_Playground_BeforeArmyCombat_T62_1793956687710` (RESULT_OK, no overwrite).
+Manual user checks confirmed T62 after war Continue, both Landships and Cuirassier
+87/100. Original morning and pre-war saves remain preserved.
+
 ## One-shot export
 
 ```powershell

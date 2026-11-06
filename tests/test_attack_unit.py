@@ -8,6 +8,21 @@ from sidkick.server import create_server
 
 
 class AttackUnitTests(unittest.IsolatedAsyncioTestCase):
+    async def test_combat_waits_past_short_generic_window_without_resubmitting(self):
+        before = {'turn': 62, 'age': 42, 'playerId': 0}
+        expected = {'attackObserved': True}
+        async def native(script, arguments):
+            if script == 'attack_unit.js':
+                return {'status': 'submitted', 'before': before, 'expected': expected, 'verificationArguments': {}}
+            await asyncio.sleep(0.02)
+            return {**before, **expected}
+        with patch('civ7.actions._VERIFICATION_TIMEOUT', 0.005), patch(
+            'civ7.actions._COMBAT_VERIFICATION_TIMEOUT', 0.1, create=True,
+        ), patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=native) as run:
+            result = await actions.attack_unit(10, 1, 20, 3, 3, 'ranged', 62)
+        self.assertEqual(result['status'], 'verified_applied')
+        self.assertEqual([call.args[0] for call in run.await_args_list], ['attack_unit.js', 'unit_attack_state.js'])
+
     async def test_attack_submits_once_and_verifies_captured_combat_evidence(self):
         self.assertTrue(callable(getattr(actions, 'attack_unit', None)))
         args = {'unit_id': 10, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3, 'kind': 'melee', 'expected_turn': 62}

@@ -14,6 +14,7 @@ _action_lock = asyncio.Lock()
 _VERIFICATION_TIMEOUT = 2.0
 _VERIFICATION_INTERVAL = 0.1
 _TURN_VERIFICATION_TIMEOUT = 60.0
+_COMBAT_VERIFICATION_TIMEOUT = 15.0
 
 
 async def select_technology(technology: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
@@ -408,13 +409,14 @@ async def attack_unit(
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id,
         "x": x, "y": y, "kind": kind, "expected_turn": expected_turn,
-    }, "unit_attack_state.js")
+    }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,
     state_arguments: dict[str, Any] | None = None,
+    *, verification_timeout: float | None = None,
 ) -> dict[str, Any]:
     # Only the typed wrappers above select these fixed scripts and expectations.
     async with _action_lock:
@@ -433,7 +435,7 @@ async def _execute_and_verify(
             read_arguments = result.get("verificationArguments", state_arguments)
             if read_arguments is not None and not isinstance(read_arguments, dict):
                 raise ValueError("Invalid action verification arguments")
-            async with asyncio.timeout(_VERIFICATION_TIMEOUT):
+            async with asyncio.timeout(_VERIFICATION_TIMEOUT if verification_timeout is None else verification_timeout):
                 while True:
                     after = (await run_script(state_script) if read_arguments is None
                              else await run_script(state_script, read_arguments))

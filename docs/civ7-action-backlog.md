@@ -46,6 +46,27 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 Save/load recovery and WMD actions are separately scoped optional extensions.
 Not every native/DLC action ID is confirmed usable in the current ruleset.
 
+### Current user override, 2026-11-06
+
+Defer turn advancement until further instruction. Use the existing Franklin war
+and available units to extend unit/army/combat coverage first, explicitly including
+Katyusha ranged fire. Continue focused tested batches: native unit firing, bounded
+commander/packed-army movement and broader hostile-target handling as supported.
+Private readiness setup is permitted by the existing Playground agreement but
+must not be confused with normal turn refresh or normal eligibility. User manually
+confirmed war-screen Continue preserved T62, both Landships and Cuirassier87/100.
+New checkpoint `Sidkick_Playground_BeforeArmyCombat_T62_1793956687710` saved with
+  RESULT_OK and no overwrite; previous morning/pre-war checkpoints remain intact.
+- Katyusha2621473 at `(13,17)` fired its normal native ranged operation at visible
+  Franklin Cuirassier2687012 at `(15,19)`. Movement was privately restored; no attack
+  point was granted. The original two-second verifier timed out with no effect yet
+  visible, and the call was never retried. Later read-only evidence proved attacks
+  1→0 and target damage0→18. Exact captured-state verifier independently returned
+  attackObserved=true. Fix: combat alone gets bounded 15-second read-only polling;
+  other generic actions retain two seconds. Delayed-read regression failed before
+  the fix; 158 Python + 312 Node tests passed. Longer-window positive submission
+  still needs a distinct target/attacker case; this shot was not resubmitted.
+
 ## Batch 1: settlement management
 
 Use the existing Python action lock/verifier and fixed bundled scripts; do not

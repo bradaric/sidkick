@@ -239,7 +239,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "embarked/air/group attacks or confirmation bypass. May damage or destroy either unit "
                          "and consume movement. Verifies consumed attack/attacker loss plus visible target damage "
                          "or departure, not a kill, predicted damage or safe outcome. Requires user authorization; "
-                         "submits once, never automatically retries unknown/cancelled outcomes."),
+                         "submits once, then polls read-only combat evidence for up to 15 seconds; "
+                         "never automatically retries unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(attack_unit)
