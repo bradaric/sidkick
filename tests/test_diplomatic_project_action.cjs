@@ -9,7 +9,7 @@ const INCORPORATE = 'DIPLOMACY_ACTION_CS_INCORPORATE';
 
 function run(options = {}, script = 'start_diplomatic_project.js') {
   const kind = options.kind ?? 'major';
-  const action = options.action ?? (kind === 'major' ? RESEARCH : INCORPORATE);
+  const action = options.action ?? (kind === 'major' ? RESEARCH : kind === 'independent' ? 'DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN' : INCORPORATE);
   const calls = [], playerReads = [], completionReads = [];
   const event = (overrides = {}) => ({uniqueID: 40, initialPlayer: 0, targetPlayer: 3,
     actionType: -101, actionTypeName: action, gameTurnStart: 58, gameTurnEnd: -1, failed: false,
@@ -33,10 +33,11 @@ function run(options = {}, script = 'start_diplomatic_project.js') {
     Players: {get: id => {
       playerReads.push(id);
       if (id === 0) return local;
-      assert.equal(options.unmet, undefined, 'unmet targets must not be inspected');
+      assert.ok(!options.unmet || options.discovered, 'undiscovered unmet targets must not be inspected');
       assert.equal(id, 3);
       return {isMajor: options.wrongKind ? kind !== 'major' : kind === 'major',
         isMinor: options.wrongKind ? kind !== 'city-state' : kind === 'city-state',
+        isIndependent: options.wrongKind ? kind !== 'independent' : kind === 'independent',
         Influence: {getSuzerain: () => options.suzerain ?? 0}};
     }},
     GameInfo: {DiplomacyActions: {lookup: value => value === action || value === -101
@@ -44,7 +45,7 @@ function run(options = {}, script = 'start_diplomatic_project.js') {
     DiplomacyProjectStatus: {PROJECT_AVAILABLE: 0, PROJECT_ACTIVE: 1, PROJECT_BLOCKED: -1, PROJECT_NOT_UNLOCKED: -2},
     DiplomacyActionTargetTypes: {NO_DIPLOMACY_TARGET: -1, DIPLOMACY_TARGET_NONE: 0},
     DiplomacyActionGroups: {NO_DIPLOMACY_ACTION_GROUP: -1},
-    Game: {turn: 58, age: 42, Diplomacy: {
+    Game: {turn: 58, age: 42, IndependentPowers: {independentVillageDiscoveredByPlayer: () => Boolean(options.discovered)}, Diplomacy: {
       getProjectDataForUI: (id, target) => {
         assert.equal(id, 0); assert.equal(target, 3);
         const rows = options.ambiguous ? [project, project] : [project];
@@ -85,6 +86,13 @@ test('major project start uses selected-target cost and exact quick-start UI arg
     {kind: 'send', id: 0, operation: 77, args: {Amount: 1, Player1: 0, Type: -101, Player2: 3, ID: 3}},
   ]);
   assert.deepEqual(data.verificationArguments.baseline_event_ids, []);
+});
+
+test('independent befriending binds one met/discovered power to its native offered capped start, not a major-player action', () => {
+  for (const o of [{}, {unmet: true, discovered: true}, {atWar: true}]) {
+    const r = run({kind: 'independent', ...o}); assert.equal(r.data.status, 'submitted'); assert.equal(r.calls.at(-1).args.ID, 3);
+  }
+  for (const o of [{unmet: true}, {wrongKind: true}, {cost: 151}, {secondary: true}]) assert.equal(run({kind: 'independent', ...o}).data.status, 'rejected');
 });
 
 test('incorporation uses its distinct native operation and requires local suzerainty', () => {

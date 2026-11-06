@@ -257,6 +257,17 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   positive earlier-Age choice execution is Group 2, not claimed here.
 - 210 Python / 383 Node pass; tools23/84 including61 actions. No turn or religion
   mutated in the live inspection.
+- `c12fa72`: religious choices. Independent befriending now uses the exact native
+  offered GIVE_INFLUENCE_TOKEN project, met/discovered independent-only target,
+  selected Influence quote/cap and single-submission new-event verification. Native
+  independent hostility is not incorrectly treated as a cooperative major-player
+  war prohibition. No secondary targets or inferred completion/suzerainty.
+- Pending city-state bonus selection implemented with exact current picker target,
+  met minor/local suzerainty, canHaveBonus and selected native permission. Readback
+  proves selected bonus plus consumed picker and preserved suzerainty; not every
+  secondary yield/unit/resource effect. Live readout has no known independent and
+  no pending bonus selection; positive cases remain unavailable, fixtures pass.
+  211 Python / 385 Node pass; tools23/86 including63 actions; T62/no spend.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.

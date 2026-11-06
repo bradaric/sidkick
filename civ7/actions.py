@@ -134,7 +134,7 @@ async def start_city_state_project(
 
 
 async def _start_project(
-    kind: Literal["major", "city-state"], target_player_id: int, action: str,
+    kind: Literal["major", "city-state", "independent"], target_player_id: int, action: str,
     max_influence_cost: float, expected_turn: int,
 ) -> dict[str, Any]:
     if type(target_player_id) is not int or target_player_id < 0:
@@ -148,6 +148,18 @@ async def _start_project(
     arguments = {"target_kind": kind, "target_player_id": target_player_id, "action": action.strip(),
                  "max_influence_cost": max_influence_cost, "expected_turn": expected_turn}
     return await _execute_and_verify("start_diplomatic_project.js", arguments, "diplomatic_project_state.js")
+
+
+async def befriend_independent(target_player_id: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Start one exact known independent-power befriending project under a native Influence cap."""
+    return await _start_project("independent", target_player_id, "DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN", max_influence_cost, expected_turn)
+
+
+async def choose_city_state_bonus(city_state_id: StrictInt, bonus: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Choose one exact native-eligible pending city-state bonus under local suzerainty."""
+    if any(type(v) is not int or v < 0 for v in (city_state_id, expected_turn)) or not isinstance(bonus, str) or not bonus:
+        raise ValueError("Exact city-state, bonus definition and expected turn are required")
+    return await _execute_and_verify("choose_city_state_bonus.js", {"city_state_id": city_state_id, "bonus": bonus, "expected_turn": expected_turn}, "city_state_bonus_state.js")
 
 
 async def append_city_production(

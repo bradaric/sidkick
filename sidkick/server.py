@@ -40,6 +40,8 @@ from civ7.actions import (
     naval_attack_land_unit,
     append_advanced_construction,
     choose_religious_action,
+    befriend_independent,
+    choose_city_state_bonus,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -256,6 +258,29 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="befriend_civ7_independent", title="Befriend one known Civ VII independent power",
+            description=("CHANGE GAME STATE: start one fixed native GIVE_INFLUENCE_TOKEN project for "
+                         "exact met/discovered independent target_player_id with max_influence_cost and "
+                         "fresh expected_turn. Uses exact offered native project/primary-target quote and "
+                         "operation, no secondary target, sufficient known Influence and selected permission. "
+                         "Independent hostility may change through befriending; no guessed diplomacy costs "
+                         "or major-player war action. Verifies one new local project/event; completion, "
+                         "suzerainty or future-turn progress not claimed. One submission, no unknown retry."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(befriend_independent)
+        server.tool(
+            name="choose_civ7_city_state_bonus", title="Choose pending Civ VII city-state bonus",
+            description=("CHANGE GAME STATE: select exact bonus definition for exact city_state_id and "
+                         "expected_turn. Requires met minor, local suzerainty, that exact pending bonus "
+                         "picker, native canHaveBonus and selected operation permission. Verifies chosen "
+                         "bonus and consumed pending choice under preserved suzerainty, not every resulting "
+                         "yield/unit/resource effect. No levy, forced suzerainty or turn advancement. "
+                         "One submission, never retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(choose_city_state_bonus)
         server.tool(
             name="choose_civ7_religious_action", title="Choose Civ VII pantheon, belief or religion",
             description=("CHANGE GAME STATE: one fixed kind pantheon/belief/found with exact choice "

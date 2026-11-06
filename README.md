@@ -1364,6 +1364,13 @@ Founding leaves mandatory belief choices for separate checked actions. Current
 Modern save has no eligible choice: positive execution is deferred, fixtures pass.
 **210 Python / 383 Node pass; tools23/84 (61 actions).**
 
+`befriend_civ7_independent` starts one native offered, capped befriending project
+for an exact met/discovered independent power; verifies a new local event, not
+completion. `choose_civ7_city_state_bonus` requires the exact pending picker, local
+suzerainty and native bonus eligibility; verifies selected bonus/consumed picker.
+Current save has no known independent or pending picker, so positive live cases
+remain unavailable. **211 Python / 385 Node pass; tools23/86 (63 actions).**
+
 ## One-shot export
 
 ```powershell

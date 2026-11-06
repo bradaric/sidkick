@@ -5,9 +5,10 @@
   const player = Players.get(playerId);
   if (!player) throw Error("No local player");
   const {target_kind: kind, target_player_id: targetId, action, baseline_event_ids: baseline} = queryArguments;
-  if (!Number.isInteger(targetId) || targetId < 0 || targetId === playerId || !player.Diplomacy.hasMet(targetId)) throw Error("A met foreign target is required");
+  if (!Number.isInteger(targetId) || targetId < 0 || targetId === playerId || !(player.Diplomacy.hasMet(targetId) ||
+      kind === "independent" && Game.IndependentPowers?.independentVillageDiscoveredByPlayer(targetId, playerId) === true)) throw Error("A known foreign target is required");
   const target = Players.get(targetId);
-  if (!target || (kind === "major" ? target.isMajor !== true : kind !== "city-state" || target.isMinor !== true)) throw Error("Target kind is unverified");
+  if (!target || (kind === "major" ? target.isMajor !== true : kind === "city-state" ? target.isMinor !== true : kind !== "independent" || target.isIndependent !== true)) throw Error("Target kind is unverified");
   const definition = GameInfo.DiplomacyActions.lookup(action);
   if (definition?.DiplomacyActionType !== action || !Number.isInteger(definition.$hash)) throw Error("Project identity is unavailable");
   if (!Array.isArray(baseline) || baseline.some(id => !Number.isInteger(id) || id < 0)) throw Error("Pre-submit event identities are required");
