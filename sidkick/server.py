@@ -63,6 +63,8 @@ from civ7.actions import (
     withdraw_project_support,
     establish_air_base,
     group_air_attack,
+    sweep_air_location,
+    bombard_air_district,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -279,6 +281,29 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="sweep_civ7_air_location",title="Execute Civ VII Fighter Sweep at exact location",
+            description=("CHANGE GAME STATE: one native Fighter Sweep by exact squadron/carrier commander_id "
+                         "at visible own/unowned x/y with expected_turn. Requires ready role-tagged packed "
+                         "Fighters, complete army inventory and native offered/selected permission. Native "
+                         "chooses scouts/intercepting combat, not a direct attack on a named enemy unit. "
+                         "Verifies fighter movement/attack consumption or loss and exact surviving army "
+                         "memberships/stable base, not interception, kill or new visibility gain. One "
+                         "submission,15-second readback; no hidden inventory, new war, turn advance or retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(sweep_air_location)
+        server.tool(
+            name="bombard_civ7_air_district",title="Carpet-bomb exact Civ VII enemy district",
+            description=("CHANGE GAME STATE: one native Carpet Bomb by exact squadron/carrier commander_id "
+                         "against target_player/district_id at x/y with expected_turn. Existing met war, "
+                         "visible exact empty hostile district, role-tagged ready packed Bombers, full army "
+                         "inventory and exact native offered/selected permission required. Verifies primary "
+                         "district damage/departure (or newly damaged/departed rural constructible) plus at least one captured Bomber attack consumption/"
+                         "loss, stable base and exact surviving memberships. Some/all consumption separate; "
+                         "Rural zero-HP district requires fresh combat-options pillage.targetToken as target_token. No full interception/splash, capture/destruction, recharge or turn claim. One "
+                         "submission,15-second readback; never retry unknown."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(bombard_air_district)
         server.tool(
             name="group_civ7_air_attack",title="Execute one Civ VII grouped ground-attack air mission",
             description=("CHANGE GAME STATE: exact squadron/carrier commander_id, mission land, "

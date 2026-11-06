@@ -207,6 +207,20 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def sweep_air_location(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
+    """One native Fighter Sweep at an exact visible own/unowned location; no invented enemy-unit target."""
+    if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):
+        raise ValueError("Exact air commander, sweep location and expected turn required")
+    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":"sweep","x":x,"y":y,"expected_turn":expected_turn},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
+async def bombard_air_district(commander_id: StrictInt, target_player: StrictInt, district_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, target_token: StrictStr | None = None) -> dict[str, Any]:
+    """One native Carpet Bomb mission against an exact visible empty enemy district."""
+    if any(type(v) is not int or v<0 for v in (commander_id,target_player,district_id,x,y,expected_turn)) or target_token is not None and (not isinstance(target_token,str) or not target_token or len(target_token)>100000):
+        raise ValueError("Exact air commander, hostile district and expected turn required")
+    return await _execute_and_verify("group_air_attack.js",{"commander_id":commander_id,"mission":"bomb","target_player":target_player,"district_id":district_id,"x":x,"y":y,"expected_turn":expected_turn,**({"target_token":target_token} if target_token is not None else {})},"group_air_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def group_air_attack(commander_id: StrictInt, mission: Literal["land"], target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """One native grouped ground-attack mission from an exact packed squadron/carrier."""
     if any(type(v) is not int or v<0 for v in (commander_id,target_player,target_unit_id,x,y,expected_turn)) or mission!="land":

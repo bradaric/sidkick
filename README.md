@@ -1547,6 +1547,14 @@ different location mission. Live6881361 dealt17 to5177402 and consumed its attac
 all armies preserved. One eligible attacker live; multi-aircraft cases fixture-tested.
 **231 Python / 416 Node pass; tools23/107 (84 actions).**
 
+`sweep_civ7_air_location` uses native Fighter Sweep at an exact visible own/unowned
+location; live both Fighters consumed missions, all memberships retained. No
+interception/kill/new sight claim. `bombard_civ7_air_district` uses native Carpet
+Bomb against exact empty visible enemy district. Rural zero-HP districts require
+fresh constructible token; live7012435 damaged7340143 at `(23,21)` and consumed its
+attack, all armies retained. Synthetic aircraft/readiness, native effects.
+**232 Python / 417 Node pass; tools23/109 (86 actions).**
+
 ## One-shot export
 
 ```powershell

@@ -551,6 +551,20 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   consumed its attack and preserved all army memberships. This live case had one
   eligible Ground Attacker; multi-participant partial/all cases fixture-verified.
 - 231 Python / 416 Node pass; tools23/107 including84 actions, T62 unchanged.
+- `4302803`: grouped Ground Attack. Fighter Sweep and Carpet Bomb now separate
+  typed intents using native role-tagged fighters/bombers and same full membership
+  guards. Sweep targets a visible own/unowned location, not a guessed enemy aircraft.
+  Native sweep by6750287/6815824 at `(23,15)` consumed both missions with stable base
+  and exact memberships. No interception/kill/new sight gain claimed. Only squadron
+  movement restored after prior completed Ground Attack; Fighter counters untouched.
+- Fresh Bomber7012435 transferred normally into Carrier5767185, movement restored
+  only. Attempted synthetic Town at `(21,20)` produced no observed city. Native
+  offered existing empty enemy district2424868 `(23,21)` instead: rural maxHP0 with
+  intact constructible7340143. Rural bombing requires its fresh full constructible
+  token and verifies new damage/departure rather than invented district HP. Native
+  Carpet Bomb consumed Bomber attack and damaged that constructible, all armies
+  preserved. Fortified district HP variant fixture-tested, no positive nearby case.
+- 232 Python / 417 Node pass; tools23/109 including86 actions, T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -558,7 +572,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | Concession-bearing deals remain unimplemented; white-peace handlers are native-cooldown blocked. Real native trade plunder implemented/fixture-tested, no eligible current source; legacy physical-route operation absent and rejects. Empty-centre city melee/occupation and keep/raze live-verified, garrison/civilian/stack variants remain outside scope. |
-| Military transport | Fighter Sweep, Carpet Bomb and broader movement variants remain. Native squadron establishment/packed relocation, squadron aircraft transfer and grouped Ground Attack implemented/live-verified after establishing base. Single-aircraft carrier missions/transfers and packed-army ocean travel live-verified. Multi-aircraft consumption cases fixture-tested. |
+| Military transport | Broader travel/transport variants remain to assess. Squadron establishment/packed relocation, aircraft transfers, grouped Ground Attack, Fighter Sweep and Carpet Bomb implemented/live-verified. Single-aircraft carrier missions and packed-army ocean travel live-verified. Multi-aircraft Ground Attack/fortified district bombing cases fixture-tested. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |
 | Diplomacy/choices | Concession editing, nonzero-penalty/multi-support withdrawal and remaining hostile/mandatory variants remain. Fixed loaded secondary aid/food/raid handlers and sole-own zero-penalty project withdrawal/cancellation implemented; aid/cancellation/levy live-verified. Paid/trial, independent befriending and bonus handlers implemented with unavailable positive cases kept separate. |
