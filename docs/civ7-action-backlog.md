@@ -937,6 +937,10 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   source retired and ledgers/balances retained. Fresh creation only; no ability,
   XP, health, movement or Gold effect forced. 254 Python /457 Node pass;
   all24 default read-only tools passed fresh real stdio calls. Counts unchanged.
+- `f37ab05`: Villa grant. Latest separate checkpoint
+  `Sidkick_Playground_GroupOneVillaSanctions_T62_1794004265576` confirmed RESULT_OK,
+  no overwrite. Still T62; original Merchant3473432 `(18,20)`/100HP,
+  Gold2081.33984375, Influence54.82421875, alliance1 and peace with3 intact.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
