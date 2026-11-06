@@ -701,6 +701,22 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
 - 242 Python / 437 Node pass; tools24/121 including97 actions. Separate progress
   save `Sidkick_Playground_GroupOneFleetAirlift_T62_1793997593881` confirmed RESULT_OK,
   no overwrite. Merchant3473432 `(18,20)`/100HP independently intact; still T62.
+- `05e497b`: single-payload Squadron airlift. Ordinary unit bounded travel now
+  implemented as a separate intent:1–8 native current-turn edges, every destination
+  visible/empty/same land-water surface/reachable/noncombat, no queued future order,
+  no shore crossing/fog exploration. Optional exact peaceful counterpart permits
+  that met nonwartime owner's non-district fields only. Authoritative world-input
+  uses `willMoveStartWar(unit.id,{x,y})`; every path edge must return Success=false,
+  with exact native MOVE_TO permission and no confirmation. Never infer open borders.
+  Revalidates path/diplomacy/readiness and verifies clear queue, health/embarkation,
+  exact destination and preserved selected peace.
+- Native Scout7995490 moved `(19,18)→(19,19)`; test Frigate7929953 travelled2 edges
+  `(54,36)→(53,35)→(54,34)`, preserving peace with1, health and queue0. Immediate
+  two-edge return with only1 movement rejected before submission (future-turn path).
+  After labelled restoration of only this test ship's movement, distinct two-edge
+  native return into player1 `(54,36)` verified; no border access/location forced.
+  Synthetic unit creation only for outbound cases, no turns. 243 Python /439 Node
+  pass; tools24/122 including98 actions.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -708,7 +724,7 @@ blockers or start Group 2 turns simply because these completed batches passed.
 | Group 1 implementation still needed | Current boundary |
 |---|---|
 | Combat/capture and hostile diplomacy | White/economic/single visible OFFER-city peace handlers implemented, native-cooldown blocked. Great Work deal offers still need implementation; own unit/captive/tech offer lists empty. Native trade plunder fixture-tested with no eligible source; legacy physical-route operation absent. Empty-centre city assault/capture decisions live-verified. |
-| Military transport | Broader travel, mass/mixed Infantry Airdrop remain to assess/implement. Single Infantry Squadron join/leave/Airdrop now native-verified. Heavy/Light Fleet and observed land-group attacks verified. Squadron relocation/transfers/air missions and packed-army ocean travel verified. Some multi-aircraft/fortified bomb cases fixture-only. |
+| Military transport | Mass/mixed Infantry Airdrop remains to assess/implement. Ordinary bounded current-turn travel and explicit peaceful foreign travel now native-verified. Single Infantry Squadron join/leave/Airdrop, fleet/army commands, squadron relocation/air missions and packed-army sea travel verified. Some fortified bomb cases fixture-only. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding including adjacent intent, explicit resettle, Merchant roads, bounded local archaeology/Great Person, own/foreign-centre spread, religious choices and archive-buffer work exchange handlers implemented. Adjacent-found test natively blocked; Modern has no Missionary. Fuller effect accounting/other abilities remain; original Merchant untouched. |
 | Diplomacy/choices | Great Work concessions and remaining hostile/mandatory variants remain. Single visible city/economic concession editing and capped own withdrawal implemented; cancellation and2→1 support live-verified. Last-own-token withdrawal with others deliberately rejects. Fixed secondary handlers present; positive paid/trial/independent/bonus gaps separate. |
@@ -732,7 +748,7 @@ direct Merchant route, population placement, resource assignment and adjacent
 embarked movement. Positive ordinary-policy toggles and attribute purchases still
 need a suitable live case. Land-only/naval movement currently has fixture coverage.
 
-## Priority order
+## Historical baseline priority order (superseded by current Group 1 table above)
 
 | # | Capability family | Remaining work | Status |
 |---|---|---|---|

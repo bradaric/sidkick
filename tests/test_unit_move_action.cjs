@@ -8,7 +8,7 @@ function run(o = {}, script = 'move_unit.js') {
   const calls = [];
   const unit = {id: {owner: o.foreignUnit ? 1 : 0, id: 20, type: 26}, type: 201,
     location: {x: 9, y: 15}, isOnMap: !o.offMap, isCommanderUnit: o.commander ?? false,
-    isEmbarked: ['rail', 'advance'].includes(o.args?.mode) ? false : undefined, operationQueueSize: 0,
+    isEmbarked: ['rail', 'advance','travel'].includes(o.args?.mode) ? false : undefined, operationQueueSize: 0,Health:{damage:0,maxDamage:100},
     Combat: o.combatUnit ? {isCombat: true} : undefined,
     Movement: {movementMovesRemaining: o.moves ?? 3}, ...o.unit};
   if (o.embark || o.disembark) unit.isEmbarked = Boolean(o.disembark);
@@ -20,7 +20,7 @@ function run(o = {}, script = 'move_unit.js') {
   const context = {queryArguments: {unit_id: 20, x: 10, y: 15, expected_turn: 59, ...o.args},
     UI: {isInGame: () => !o.notInGame}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sentTurn ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => units},
-      Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace},
+      Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace,willMoveStartWar:()=>({Success:Boolean(o.startsWar)})},
       Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 7 : -1}})},
     Armies: {get: () => o.unknownPacking ? null : {owner: 0, getUnitIds: () => [unit.id]}},
     GameInfo: {Units: {lookup: () => ({Domain: o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
@@ -28,14 +28,14 @@ function run(o = {}, script = 'move_unit.js') {
     MapCities: {getDistrict: () => o.district ? {owner: 4, id: 99, type: 4} : null},
     GameplayMap: {getGridWidth: () => 74, getGridHeight: () => 50,
       getRevealedState: (id, x) => o.hidden || (o.foggedTarget && x === 10) ? 0 : 2,
-      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: loc => loc.x === 9 ? 1 : 2,
-      getLocationFromIndex: index => ({x: index === 1 ? 9 : 10, y: 15}),
+      getPlotDistance: (x,y,a,b) => o.travel?Math.abs(x-a):o.distant ? 2 : 1, getIndexFromLocation: loc => o.travel?loc.x-8:loc.x === 9 ? 1 : 2,
+      getLocationFromIndex: index => ({x:o.travel?index+8:index === 1 ? 9 : 10, y: 15}),
       getOwner: () => o.foreignPlot ? 4 : o.ownedPlot ? 0 : -1,
       isWater: x => o.unknownWater ? undefined : Boolean(o.sea || o.embarked ||
         (o.embark && x === 10) || (o.disembark && x === 9))},
     RevealedStates: {HIDDEN: -1, VISIBLE: 2}, MapUnits: {getUnits: () => occupants},
-    Units: {getReachableMovement: () => o.unreachable ? [] : [2], getReachableTargets: () => o.attack ? [2] : [],
-      getPathTo: () => ({plots: o.detour ? [1, 3, 2] : o.emptyPath ? [] : [1, 2]})},
+    Units: {getReachableMovement: () => o.unreachable ? [] : o.travel?[2,3]:[2], getReachableTargets: () => o.attack ? [2] : [],
+      getPathTo: () => ({plots:o.travel?[1,2,3]: o.detour ? [1, 3, 2] : o.emptyPath ? [] : [1, 2],...(o.travel?{turns:o.future?[1,1,2]:[1,1,1]}:{})})},
     UnitOperationMoveModifiers: {NONE: o.noModifier ? undefined : 0}, UnitOperationTypes: {MOVE_TO: 900}, CombatTypes: {NO_COMBAT: 0},
     Game: {turn: 59, age: 42, Combat: {testAttackInto: () => o.combat ? 1 : 0}, UnitCommands: {
       canStart: (id, operation, args, exclusion) => {calls.push({kind: 'railCheck', id, operation, args, exclusion});
@@ -68,6 +68,20 @@ test('one-tile land and sea movement explicitly uses NONE and never calls the at
     assert.deepEqual(data.expected.location, {x: 10, y: 15});
     assert.equal(calls.filter(c => c.kind === 'send').length, 1);
   }
+});
+test('bounded ordinary travel validates every native current-turn edge and submits MOVE_TO once',()=>{
+ for(const sea of [false,true]){
+  const r=run({travel:true,sea,unit:{isEmbarked:false},args:{mode:'travel',x:11,max_steps:2}});assert.equal(r.data.status,'submitted');assert.equal(r.calls.filter(c=>c.kind==='send').length,1);assert.equal(r.data.expected.queueSize,0);assert.deepEqual(r.data.path,[{x:9,y:15},{x:10,y:15},{x:11,y:15}]);
+ }
+ for(const o of [{future:true},{foggedTarget:true},{occupied:true},{attack:true},{combat:true},{changedTurn:true},{changedOccupancy:true},{unit:{operationQueueSize:1}},{unreachable:true},{args:{mode:'travel',x:11,max_steps:1}}]){
+  const r=run({travel:true,args:{mode:'travel',x:11,max_steps:2},...o});assert.equal(r.data.status,'rejected');assert.equal(r.calls.some(c=>c.kind==='send'),false);
+ }
+});
+test('peaceful foreign travel binds exact met owner and positive native nonwar/noncombat evidence',()=>{
+ const base={travel:true,foreignPlot:true,peace:true,args:{mode:'travel',x:11,max_steps:2,peaceful_player_id:4}};
+ assert.equal(run(base).data.status,'submitted');
+ for(const extra of [{startsWar:true},{peace:false},{unmet:true},{district:true},{nativeBlocked:true},{confirm:true},{args:{...base.args,peaceful_player_id:3}},{args:{mode:'travel',x:11,max_steps:2}}])assert.equal(run({...base,...extra}).data.status,'rejected');
+ const r=run({...base,unit:{location:{x:11,y:15}}},'unit_position_state.js');assert.equal(r.data.peacePreserved,true);
 });
 
 test('an already-embarked land unit can take a water-to-water step without changing embarkation state', () => {

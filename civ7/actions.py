@@ -496,6 +496,13 @@ async def place_population(
     return await _execute_and_verify("place_population.js", arguments, "population_state.js")
 
 
+async def travel_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt, max_steps: StrictInt = 1, peaceful_player_id: StrictInt | None = None) -> dict[str, Any]:
+    """One bounded current-turn ordinary-unit path, optionally through exact native-permitted peaceful territory."""
+    if any(type(v) is not int or v<0 for v in (unit_id,x,y,expected_turn)) or type(max_steps) is not int or not 1<=max_steps<=8 or (peaceful_player_id is not None and (type(peaceful_player_id) is not int or peaceful_player_id<0)):
+        raise ValueError("Exact owned unit/destination/turn, max_steps1–8 and optional exact peaceful counterpart required")
+    return await _execute_and_verify("move_unit.js",{"unit_id":unit_id,"x":x,"y":y,"expected_turn":expected_turn,"mode":"travel","max_steps":max_steps,"peaceful_player_id":peaceful_player_id},"unit_position_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def move_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Move one owned unit a single visible, empty, noncombat land/sea step."""
     if any(type(value) is not int or value < 0 for value in (unit_id, x, y, expected_turn)):

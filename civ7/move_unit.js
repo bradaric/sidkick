@@ -1,7 +1,7 @@
 (() => {
   const {unit_id: unitId, x, y, expected_turn: expectedTurn, mode = "step", target_player: targetPlayer} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["step", "rail", "advance"].includes(mode) || [unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0) ||
+  if (!["step", "rail", "advance", "travel"].includes(mode) || [unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0) ||
       (mode === "advance" && (!Number.isInteger(targetPlayer) || targetPlayer < 0))) return reject("Exact owned unit, supported move/tile/enemy and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
@@ -34,6 +34,49 @@
   }
   if (typeof player.Armies?.getUnitReinforcementCommanderId !== "function" ||
       player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) !== -1) return reject("Unit reinforcement state is active or unverified");
+  if(mode==="travel"){
+    const {max_steps:maxSteps=1,peaceful_player_id:peacefulId=null}=queryArguments;
+    const peace=()=>peacefulId===null||Number.isInteger(peacefulId)&&peacefulId>=0&&peacefulId!==playerId&&player.Diplomacy.hasMet(peacefulId)===true&&player.Diplomacy.isAtWarWith(peacefulId)===false;
+    if(!Number.isInteger(maxSteps)||maxSteps<1||maxSteps>8||!peace()||unit.isOnMap!==true||unit.isDead===true||unit.operationQueueSize!==0||shore||
+        domain==="DOMAIN_LAND"&&unit.isEmbarked!==fromWater||!Number.isFinite(unit.Health?.damage)||!Number.isInteger(UnitOperationMoveModifiers.NONE)||typeof player.Diplomacy.willMoveStartWar!=="function")return reject("Bounded unqueued same-surface current-turn travel and explicit known peaceful counterpart required");
+    const source={x:unit.location.x,y:unit.location.y},visible=l=>valid(l)&&GameplayMap.getRevealedState(playerId,l.x,l.y)===RevealedStates.VISIBLE;
+    const allowed=l=>{
+      if(!visible(l)||GameplayMap.isWater(l.x,l.y)!==fromWater)return false;
+      const owner=GameplayMap.getOwner(l.x,l.y);
+      if([-1,playerId].includes(owner))return true;
+      return owner===peacefulId&&peace()&&MapCities.getDistrict(l.x,l.y)===null;
+    };
+    if(!allowed(source))return reject("Visible own/unowned or exact peaceful non-district source required");
+    const path=Units.getPathTo(unit.id,destination),width=GameplayMap.getGridWidth(),height=GameplayMap.getGridHeight();
+    if(!Array.isArray(path?.plots)||path.plots.length<2||path.plots.length>maxSteps+1||new Set(path.plots).size!==path.plots.length||path.plots.some(i=>!Number.isInteger(i)||i<0||i>=width*height)||
+        !Array.isArray(path.turns)||path.turns.length!==path.plots.length||path.turns.some(t=>t!==1))return reject("Exact bounded current-turn native path required; no queued future turns");
+    const locations=path.plots.map(i=>GameplayMap.getLocationFromIndex(i));
+    if(locations.some(l=>!valid(l))||locations[0].x!==source.x||locations[0].y!==source.y||locations.at(-1).x!==x||locations.at(-1).y!==y)return reject("Native travel endpoints mismatch");
+    const reachable=Units.getReachableMovement(unit.id),attacks=Units.getReachableTargets(unit.id);
+    const clear=l=>allowed(l)&&Array.isArray(MapUnits.getUnits(l.x,l.y))&&MapUnits.getUnits(l.x,l.y).length===0;
+    const noWar=l=>player.Diplomacy.willMoveStartWar(unit.id,{x:l.x,y:l.y})?.Success===false;
+    const safePath=()=>{
+      if(!allowed(source)||!peace())return false;
+      for(let i=1;i<locations.length;i++){
+        const l=locations[i],previous=locations[i-1];
+        if(!clear(l)||GameplayMap.getPlotDistance(previous.x,previous.y,l.x,l.y)!==1||!reachable.includes(path.plots[i])||attacks.includes(path.plots[i])||!noWar(l)||
+            Game.Combat.testAttackInto(unit.id,{X:l.x,Y:l.y,Modifiers:UnitOperationMoveModifiers.NONE})!==CombatTypes.NO_COMBAT)return false;
+      }return true;
+    };
+    if(!Array.isArray(reachable)||!Array.isArray(attacks)||!safePath())return reject("Every travel edge must be visible, empty, natively reachable and positively nonwar/noncombat");
+    const before={turn:Game.turn,age:Game.age,playerId,unitId,unitType:unit.type,componentType:unit.id.type,location:source,movesRemaining:unit.Movement.movementMovesRemaining,embarked:unit.isEmbarked,damage:unit.Health.damage},args={X:x,Y:y,Modifiers:UnitOperationMoveModifiers.NONE};
+    const check=Game.UnitOperations.canStart(unit.id,UnitOperationTypes.MOVE_TO,args,false);
+    if(check?.Success!==true||check.RequiresConfirmation===true)return reject("Native travel permission rejected or requires confirmation",check?.FailureReasons??[]);
+    const packingClear=()=>player.Units.getUnits().filter(u=>u.id.owner===playerId&&u.isCommanderUnit).every(c=>{
+      const a=Armies.get(c.armyId),ids=a?.owner===playerId?a.getUnitIds?.():null;return Array.isArray(ids)&&!ids.some(id=>sameId(id,unit.id));
+    });
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||player.isTurnActive!==true||GameContext.hasSentTurnComplete()!==false||unit.id.owner!==playerId||unit.id.type!==before.componentType||unit.type!==before.unitType||
+        unit.isOnMap!==true||unit.isDead===true||unit.operationQueueSize!==0||unit.location.x!==source.x||unit.location.y!==source.y||unit.Movement.movementMovesRemaining!==before.movesRemaining||unit.isEmbarked!==before.embarked||unit.Health.damage!==before.damage||
+        !packingClear()||player.Armies.getUnitReinforcementCommanderId(unit.id,playerId)!==-1||JSON.stringify(Units.getPathTo(unit.id,destination))!==JSON.stringify(path)||!safePath())return reject("Travel identity, readiness, packing, path, diplomacy or context changed during validation");
+    Game.UnitOperations.sendRequest(unit.id,UnitOperationTypes.MOVE_TO,args);
+    return{status:"submitted",before,expected:{unitId,unitType:before.unitType,componentType:before.componentType,location:destination,queueSize:0,damage:before.damage,...(domain==="DOMAIN_LAND"?{embarked:before.embarked}:{}),...(peacefulId!==null?{peacePreserved:true}:{})},
+      verificationArguments:{unit_id:unitId,...(peacefulId!==null?{peaceful_player_id:peacefulId}:{})},path:locations.map(l=>({x:l.x,y:l.y})),verificationScope:"One bounded current-turn MOVE_TO; all path edges verified visible/empty/nonwar/noncombat, no shore crossing/fog exploration or future orders. Explicit peaceful counterpart never implies new access permission"};
+  }
   if (mode === "rail") {
     const visibleOwnedLand = l => valid(l) && GameplayMap.getRevealedState(playerId, l.x, l.y) === RevealedStates.VISIBLE &&
       GameplayMap.getOwner(l.x, l.y) === playerId && GameplayMap.isWater(l.x, l.y) === false;

@@ -76,6 +76,7 @@ from civ7.actions import (
     join_airlift,
     leave_airlift,
     airdrop_infantry,
+    travel_unit,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -293,6 +294,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="travel_civ7_unit",title="Travel a bounded Civ VII ordinary-unit current-turn path",
+            description=("CHANGE GAME STATE: exact noncommander unit_id, destination x/y, expected_turn "
+                         "and max_steps1–8. Optional peaceful_player_id explicitly permits only that met "
+                         "nonwartime owner's empty non-district territory in addition to own/unowned. "
+                         "Every native current-turn path edge must be visible, empty, same water/land "
+                         "surface, reachable, nonattack and positively confirmed not to start war. "
+                         "Native MOVE_TO permission required; no inferred open borders or diplomatic "
+                         "changes. Unqueued deployed/unpacked/nonreinforcing unit only. Verifies exact "
+                         "destination, no queued orders, unchanged health/embarkation and selected peace "
+                         "preserved. No fog exploration, shore crossing, captures, future orders or turn. "
+                         "One native request,15-second readback; never retry unknown outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(travel_unit)
         server.tool(
             name="airdrop_civ7_infantry",title="Airdrop exactly one packed Civ VII Infantry",
             description=("CHANGE GAME STATE: exact sole packed Infantry unit_id, Airborne Forces Squadron "

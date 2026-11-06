@@ -1622,6 +1622,14 @@ mixed payloads still reject. Separate FleetAirlift T62 save confirmed RESULT_OK;
 original Merchant intact, no turns advanced.
 **242 Python / 437 Node pass; tools24/121 (97 actions).**
 
+`travel_civ7_unit` executes one1–8-edge current-turn native path with all edges
+visible, empty, same-surface, reachable and noncombat. Explicit peaceful counterpart
+intent additionally requires native no-war checks per edge, never inferred access.
+Native Scout move and two-edge Frigate out/return into player1 verified with health,
+peace and queue0 preserved. Spent-readiness return rejected before submission;
+distinct return used labelled test-ship movement restoration, no turns/access forced.
+**243 Python / 439 Node pass; tools24/122 (98 actions).**
+
 ## One-shot export
 
 ```powershell
