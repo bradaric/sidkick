@@ -80,5 +80,5 @@
     target_component_type: before.targetComponentType, target_type: before.targetType, before_target_damage: before.targetDamage, x, y};
   Game.UnitOperations.sendRequest(unit.id, operation, args);
   return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, attackObserved: true}, verificationArguments,
-    verificationScope: "Attack consumed/attacker lost plus visible target damage or departure from tile; not a damage forecast, kill or capture claim"};
+    verificationScope: "Attack consumed/attacker lost plus visible primary-target damage or departure; not a damage forecast, kill or capture claim. Native splash and other side effects may affect additional units and are not fully verified"};
 })()

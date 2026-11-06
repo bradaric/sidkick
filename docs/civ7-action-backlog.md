@@ -40,7 +40,7 @@ need a suitable live case. Land-only/naval movement currently has fixture covera
 | 6 | Civilian/cultural actions | Found/resettle, Merchant travel/roads, archaeology, religion/beliefs/spread, Great People, Great Work swaps/archive | Pending |
 | 7 | Fuller diplomacy | Responses/support/cancellation, independent befriending, city-state bonuses/levies, secondary targets and deals | Incoming cooperative response/support implemented; other items pending |
 | 8 | Military logistics | Commander movement, packing/unpacking/formations, reinforcement, rail/rebase/transport | Bounded commander/packed-army movement, pack-nearby, owned-plot unpack and reinforcement assignment implemented; other items pending |
-| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged field attacks implemented; other items pending |
+| 9 | Combat/hostile actions | Attacks/captures/pillage/raids, war/peace, espionage, each separately validated | Single-unit melee/ranged and commander land-ranged Focus Fire field attacks implemented; other items pending |
 | 10 | Campaign boundaries | Age-transition civilization/legacy/Dedication and carry-over; post-victory continuation for tests | Pending |
 
 Save/load recovery and WMD actions are separately scoped optional extensions.
@@ -75,6 +75,32 @@ New checkpoint `Sidkick_Playground_BeforeArmyCombat_T62_1793956687710` saved wit
   verified `[3080232]` unchanged and independent logistics confirmed. Private
   movement restoration manufactured readiness; no turn advanced. Army remains
   packed there, with reinforcement3932172 still assigned (arrival untested).
+- Bounded commander movement committed as `a6c2462`.
+- Focus Fire: typed fixed command, actual UNIT_CLASS_RANGED tags, captured deployed
+  ready radius participants and exact native target permission. No district/stack/
+  civilian primary targets or enemy-territory attacks. Participant attack consumption
+  plus visible primary effect required; commander movement loss alone is not firing.
+  Native splash/secondary effects explicitly excluded from complete verification.
+  161 Python + 320 Node tests; 57 write-mode tools including34 actions, default23.
+- Setup commander3997707 purchased normally in Ur for1200; further Ur purchases
+  correctly rejected (one purchase per turn). Katyusha4063242 purchased normally in
+  Chichen Itza for990. New commander positioned `(15,17)` and Katyusha `(16,17)`;
+  all moves checked, private movement restoration only, no extra attack points.
+  Initial native-permitted Focus Fire with siege-only Katyusha spent commander
+  movement but did not fire, returned unknown after15s. Never blindly repeated.
+  Authoritative source tags show Katyusha=UNIT_CLASS_SIEGE, not UNIT_CLASS_RANGED;
+  Focus Fire text explicitly requires Ranged. Eligibility regression catches this.
+- Existing Field Gun2818084 moved from `(26,12)` to `(14,17)` via checked land/shore
+  steps with restored movement; failed all-land routes were not bypassed. Distinct
+  actual Ranged-class Focus Fire case verified attack1→0 and Cuirassier2687012
+  damage18→38 in0.502s. Direct new Katyusha shot then verified attack1→0 and damage
+  38→57 in2.588s, positively exercising the longer combat window. Independent read:
+  both attacks exhausted, enemyHP43. Multi-participant firing fixture-only so far.
+  Gold4731.33984375. Still T62, no turn advanced, original Merchant untouched.
+- Ordinary heal-order probe on combat-damaged Cuirassier1245202 returned unknown:
+  native state is HOLD with one exact REST_UNTIL_HEALED operation queued andHP87.
+  Existing verifier only accepts HEAL/OPERATION activity; this is a concrete queued-
+  order recognition bug to correct separately, not proof of restored health.
 
 ## Batch 1: settlement management
 

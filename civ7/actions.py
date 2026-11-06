@@ -423,6 +423,18 @@ async def attack_unit(
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def army_ranged_attack(
+    commander_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Order native focused land-ranged fire; verify captured participant/primary-target effects."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, target_player, target_unit_id, x, y, expected_turn)):
+        raise ValueError("Exact commander, enemy identity/tile and expected turn are required")
+    return await _execute_and_verify("army_ranged_attack.js", {
+        "commander_id": commander_id, "target_player": target_player, "target_unit_id": target_unit_id,
+        "x": x, "y": y, "expected_turn": expected_turn,
+    }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def _execute_and_verify(
     action_script: str, arguments: dict[str, Any], state_script: str,
     expected_fields: dict[str, Any] | None = None,

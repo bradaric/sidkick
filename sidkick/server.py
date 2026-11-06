@@ -9,6 +9,7 @@ from mcp.types import Icon, ToolAnnotations
 
 from civ7.actions import (
     attack_unit,
+    army_ranged_attack,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -229,6 +230,24 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
     )(research_and_government)
     if enable_writes:
         server.tool(
+            name="ranged_attack_civ7_army", title="Order Civ VII focused land-ranged attack",
+            description=("CHANGE GAME STATE: native focused land-ranged fire from deployed commander_id at "
+                         "exact visible target_player/target_unit_id on x/y, with fresh expected_turn. Requires "
+                         "an existing war, one combat-formation primary target on an own/unowned field, "
+                         "no district/stack/civilian primary target, an unpacked unqueued land commander, "
+                         "known deployed ready UNIT_CLASS_RANGED participants in its native command radius "
+                         "(siege-only units such as Katyusha are not Focus Fire participants), offered "
+                         "target and exact selected-command permission. Engine selects participating units; "
+                         "authorization covers all eligible nearby ranged units, not a per-unit subset. "
+                         "May consume multiple attacks and damage/destroy units; native splash can affect "
+                         "adjacent enemies. Verifies at least one captured participant's attack consumption/loss "
+                         "plus primary-target damage/departure, not every shot/splash effect or a kill. "
+                         "No war, city capture, raw command, unpacking, turn advancement or confirmation bypass. "
+                         "Submits once, polls read-only for 15 seconds, never retries unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(army_ranged_attack)
+        server.tool(
             name="move_civ7_commander", title="Move Civ VII commander and packed army",
             description=("CHANGE GAME STATE: move an owned deployed unqueued commander_id and all its packed "
                          "members to x/y with fresh expected_turn and explicit max_steps (default1, maximum8). "
@@ -251,7 +270,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "no defensible district/civilian/stack, "
                          "known unpacked/nonreinforcing attacker and native attack permission. Melee is adjacent; "
                          "ranged requires a native attackable picker plot. No war declaration, city capture, "
-                         "embarked/air/group attacks or confirmation bypass. May damage or destroy either unit "
+                         "embarked/air/group attacks or confirmation bypass. Native splash may also damage "
+                         "adjacent enemies; readback verifies only the primary-target effect. May damage or destroy either unit "
                          "and consume movement. Verifies consumed attack/attacker loss plus visible target damage "
                          "or departure, not a kill, predicted damage or safe outcome. Requires user authorization; "
                          "submits once, then polls read-only combat evidence for up to 15 seconds; "
@@ -839,7 +859,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "are exposed. Returns read-only melee/ranged/naval/air attack checks and observable "
             "health/non-contextual strength. Includes attacker readiness, whitelisted local "
             "reported modifiers, visible terrain definition values and a separate commander-attack "
-            "command check requiring this target in native plots. Reported modifiers are not "
+            "command check requiring this target in native plots. focusedLandRangedAttack also "
+            "checks native offered/selected-target Focus Fire permission; this alone does not "
+            "prove eligible Ranged-class participants (siege-only Katyusha is excluded by the action). "
+            "Reported modifiers are not "
             "applied contextual totals. Damage predictions, contextual strengths and outcomes "
             "are unknown, not simulated. Never attacks, declares war, selects units or invokes "
             "asynchronous simulation requests."

@@ -60,7 +60,7 @@
         failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)});
     }
   }
-  let commanderAttack = null;
+  let commanderAttack = null, focusedLandRangedAttack = null;
   if (defender && deployed && attacker.isCommanderUnit) {
     const result = Game.UnitCommands.canStart(attacker.id, "UNITCOMMAND_COMMANDER_ATTACK", {}, false);
     const targetInNativePlots = (result?.Plots ?? []).includes(GameplayMap.getIndexFromLocation(location));
@@ -69,6 +69,14 @@
       availableNow: Boolean(result?.Success) && targetInNativePlots,
       failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)
     };
+    const focused = Game.UnitCommands.canStart(attacker.id, "UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED", {}, false);
+    const offered = Array.isArray(focused?.Plots) && focused.Plots.includes(GameplayMap.getIndexFromLocation(location));
+    const selected = focused?.Success === true && offered
+      ? Game.UnitCommands.canStart(attacker.id, "UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED", {X: x, Y: y}, false) : null;
+    focusedLandRangedAttack = {operationAllowed: focused?.Success === true, targetInNativePlots: offered,
+      selectedTargetAllowed: selected?.Success === true, availableNow: focused?.Success === true && offered && selected?.Success === true,
+      failureReasons: [...(focused?.FailureReasons ?? []), ...(selected?.FailureReasons ?? [])].map(name).filter(Boolean),
+      scope: "Engine-selected nearby land-ranged units; primary target only, native splash may affect adjacent enemies"};
   }
   const terrain = GameInfo.Terrains.lookup(GameplayMap.getTerrainType(x, y));
   const feature = GameInfo.Features.lookup(GameplayMap.getFeatureType(x, y));
@@ -99,7 +107,7 @@
       },
       reportedModifiers: reportedModifiers ? Object.fromEntries(modifierKeys.map(key => [key, reportedModifiers[key] ?? null])) : null
     },
-    location, targetTerrain, defender, options, commanderAttack,
+    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack,
     contextualStrength: null,
     expectedDamageToAttacker: null, expectedDamageToDefender: null, outcome: null,
     note: "Visible hostile target and read-only operation/commander-command checks only. Strengths, local reported modifiers and terrain definition values are separate evidence, not contextual totals or a damage simulation. Commander availability requires this target in the native plot list; no other plots are returned. No asynchronous simulation or attack request is issued"

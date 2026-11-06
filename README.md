@@ -836,8 +836,9 @@ effects appeared; later read-only evidence resolved it, with no repeated shot.
 Combat verification now polls read-only evidence for up to **15 seconds** after
 its single submission; other generic action windows are unchanged. Cancellation,
 timeout and unknown outcomes still never resubmit. **158 Python and 312 Node
-tests pass**, including a delayed-effect regression. The fixed longer window's
-positive live submission remains to be tested on a distinct case.
+tests pass**, including a delayed-effect regression. A subsequent distinct direct
+Katyusha shot verified after **2.588 seconds**, spending its attack and increasing
+the primary target's damage38→57; the longer window now has positive live coverage.
 
 User has explicitly deferred all turn advancement while unit/army/combat coverage
 continues. Current sandbox checkpoint:
@@ -862,7 +863,47 @@ edges `(28,30) → (28,29) → (29,29)` and returned. It packed Rifleman3080232,
 repeated the two-edge move with `[3080232]` preserved; independent logistics read
 confirmed location and membership. Movement was privately restored for the tests;
 no turn refresh or advancement is claimed. The packed army currently remains at
-`(29,29)`, and reinforcement3932172 still targets this army (arrival untested).
+  `(29,29)`, and reinforcement3932172 still targets this army (arrival untested).
+
+#### Commander Focus Fire and actual unit roles
+
+`ranged_attack_civ7_army(commander_id, target_player, target_unit_id, x, y,
+expected_turn)` issues the fixed native land-ranged Focus Fire command. It requires
+a known unpacked land commander, at least one deployed ready **UNIT_CLASS_RANGED**
+unit in native command radius with exact individual ranged permission, and the
+native offered/selected target checks. Primary targets retain the field-combat
+restrictions: one visible hostile combat-formation unit, existing war, own/unowned
+tile, no district/stack/civilian primary target. The engine chooses participants;
+authorization covers the eligible nearby group, not an arbitrary per-unit subset.
+
+Readback captures participant identities/attack counts and requires at least one
+participant to consume an attack/disappear, plus observed primary-target damage or
+departure. Commander movement loss or permissive native command checks alone do
+not prove firing. Native splash can affect adjacent enemies; neither this action
+nor the individual attack verifier claims to verify every splash/secondary effect.
+`get_civ7_combat_options.focusedLandRangedAttack` exposes native command evidence,
+but is not proof of eligible participant roles. No raw command dispatcher exists.
+
+Katyusha is siege-only, not Ranged-class: source tags and Focus Fire's description
+explain why a native-permitted siege-only attempt spent commander movement without
+firing. That initial attempt returned unknown and was not blindly repeated. The
+action now rejects siege-only participant sets. In a distinct Ranged-class case,
+commander3997707 ordered existing Field Gun2818084 to fire: attacks1→0 and target
+Cuirassier2687012 damage18→38, verified in0.502s. New Katyusha4063242 then fired
+normally, attacks1→0 and damage38→57, verified in2.588s. Independent reads confirmed
+both spent attacks and enemy HP43. Multiple eligible participants are fixture-tested;
+multi-unit simultaneous firing has not yet been live-verified.
+
+Setup: commander3997707 normally purchased in Ur for1200 Gold; Katyusha4063242
+purchased in Chichen Itza for990 after Ur correctly rejected further same-turn
+purchases. Existing Field Gun2818084 travelled from `(26,12)` to `(14,17)` through
+checked individual moves and shore crossings. Private movement restoration created
+readiness; no attack-point grant, hidden-map reveal or turn advancement was used.
+The original army's blocked all-land route was not bypassed; it remains packed at
+`(29,29)`. Original Merchant3473432 remains untouched at `(18,20)`. Gold4731.33984375.
+Default23 read-only tools; write mode57 tools (34 actions). **161 Python and 320 Node
+tests pass.** Still T62. Enemy-territory/city attacks, coordinated melee, naval/air
+commands and reinforcement arrival remain outside this verified batch.
 
 ## One-shot export
 
