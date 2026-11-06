@@ -69,6 +69,7 @@ from civ7.actions import (
     found_adjacent_settlement,
     spread_foreign_religion,
     withdraw_capped_project_support,
+    observed_field_attack,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -285,6 +286,19 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="observe_civ7_field_attack",title="Attack Civ VII field unit with bounded combat effect observations",
+            description=("CHANGE GAME STATE: same fixed guarded melee/ranged field strike for exact unit_id, "
+                         "target_player/target_unit_id at x/y, kind, expected_turn; optional observation_radius "
+                         "1–3. Existing met war, single visible enemy combat defender on own/unowned "
+                         "nondefensible field and native permission required; no capture/new war. Captures "
+                         "previously visible units in bounded radius, returns health deltas/departures and "
+                         "native Combat/UnitKilledInCombat evidence tied to this exact local attacker. "
+                         "Death is confirmed only by exact native attribution, never disappearance. No hidden "
+                         "unit reads, damage forecasts or complete out-of-radius/interception/global effect "
+                         "claim. One native request,15-second readback; bounded listeners closed/replaced, no retry."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(observed_field_attack)
         server.tool(
             name="withdraw_civ7_capped_project_support",title="Withdraw one Civ VII own token under acknowledged penalty caps",
             description=("CHANGE GAME STATE: exact own active event_id/target_player_id, max_cancel_penalty, "

@@ -67,9 +67,11 @@
       sourceMovementSpent, sourceAttackSpent, packingPreserved, movesRemaining: currentMoves ?? null, attacksRemaining: attacks,
       abilityAttackObserved: sourceStayed && attacker.operationQueueSize === 0 && packingPreserved && (sourceMovementSpent || sourceAttackSpent) && targetEffect};
   }
-  return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId,
+  const combatObservation=queryArguments.observation_token&&typeof combatObserver!=="undefined"?combatObserver.read(queryArguments.observation_token,consumed&&(targetLeftTile===true||targetDamage!=null&&targetDamage>beforeDamage)):null;
+  const killConfirmed=combatObservation?.available===true&&combatObservation.nativeKills.some(e=>e.unitKilled.owner===targetPlayer&&e.unitKilled.id===targetUnitId&&e.unitKilled.type===targetComponentType)?true:null;
+  return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId,killConfirmed,...(combatObservation?{combatObservation}:{}),
     attackerPresent: Boolean(attacker), attacksRemaining: attacks, attackConsumedOrAttackerLost: consumed, consumedUnitIds,
     participantObservations, allCapturedParticipantsConsumed: participantObservations ? participantObservations.every(p => p.attackConsumedOrLost) : null,
     targetDamage, targetLeftTile, attackObserved: consumed && (targetLeftTile === true || (targetDamage != null && targetDamage > beforeDamage)),
-    note: "A target leaving a visible tile is not proof of destruction; no hidden target state or damage forecast is queried"};
+    note: "A target leaving a visible tile is not proof of destruction. Only an optional captured exact native kill event confirms death; hidden target state and damage forecasts are not queried"};
 })()

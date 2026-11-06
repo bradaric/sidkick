@@ -2,6 +2,8 @@
   const {unit_id: unitId, target_player: targetPlayer, target_unit_id: targetId, x, y, kind, expected_turn: expectedTurn,
     target_territory: territory = "own_unowned"} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
+  const {observe_effects:observe=false,observation_radius:radius=1}=queryArguments;
+  if(typeof observe!=="boolean"||!Number.isInteger(radius)||radius<1||radius>3)return reject("Optional combat observation must have a bounded1–3 tile radius");
   if (![unitId, targetPlayer, targetId, x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0) ||
       !["melee", "ranged", "naval", "shore"].includes(kind) || !["own_unowned", "enemy_field"].includes(territory) ||
       (territory === "enemy_field" && !["ranged", "melee", "shore"].includes(kind))) return reject("Exact owned attacker, hostile target identity/tile, supported kind/territory and expected turn are required");
@@ -101,7 +103,17 @@
   const verificationArguments = {unit_id: unitId, attacker_component_type: before.componentType, attacker_type: before.unitType,
     before_attacks: before.attacks, target_player: targetPlayer, target_unit_id: targetId,
     target_component_type: before.targetComponentType, target_type: before.targetType, before_target_damage: before.targetDamage, x, y};
-  Game.UnitOperations.sendRequest(unit.id, operation, args);
+  if(observe){
+    if(typeof combatObserver==="undefined")return reject("Fixed internal combat observer is unavailable");
+    const observed=combatObserver.capture(playerId,x,y,radius,unit.id);
+    if(!observed?.some(u=>u.owner===targetPlayer&&u.instanceId===targetId&&u.componentType===before.targetComponentType))return reject("Complete bounded visible observation baseline unavailable");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||unit.Combat.attacksRemaining!==before.attacks||target()?.Health.damage!==before.targetDamage)return reject("Combat changed while capturing observation baseline");
+    try{verificationArguments.observation_token=combatObserver.start(playerId,unit.id,observed,15000);}
+    catch(error){return reject("Native bounded combat event observation unavailable");}
+    before.observedUnitCount=observed.length;before.observationRadius=radius;
+  }
+  try{Game.UnitOperations.sendRequest(unit.id, operation, args);}
+  catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
   return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, attackObserved: true}, verificationArguments,
-    verificationScope: "Attack consumed/attacker lost plus visible primary-target damage or departure; not a damage forecast, kill or capture claim. Native splash and other side effects may affect additional units and are not fully verified"};
+    verificationScope: observe?"Attack consumption/loss plus primary effect, with captured visible-unit health deltas/departures and exact native local-attack kill attributions. Unknown departures are not kills. Observation is bounded, not complete hidden/out-of-radius/interception/global effect accounting":"Attack consumed/attacker lost plus visible primary-target damage or departure; not a damage forecast, kill or capture claim. Native splash and other side effects may affect additional units and are not fully verified"};
 })()

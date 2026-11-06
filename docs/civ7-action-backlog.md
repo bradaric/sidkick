@@ -615,6 +615,26 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   New no-overwrite progress save `Sidkick_Playground_GroupOneAirDiplomacy_T62_1793994262110`
   confirmed RESULT_OK before budget setup; no unrelated checkpoints overwritten.
 - 235 Python / 422 Node pass; tools23/113 including90 actions, still T62.
+- `8844bf2`: capped/multi-token withdrawal. Bounded independent field-combat
+  observations implemented: fixed internal bundled helper (no caller JavaScript),
+  1–3 radius visible known-unit health snapshot, attacker retaliation/nearby health
+  deltas, exact native Combat and UnitKilledInCombat attribution. Native schema
+  established through ordinary attacks: Combat supplies attacker/defender/interceptor/
+  antiAir IDs, kill event supplies unitKilled/unitKiller. No guessed damage schema.
+  Death confirmed only for a captured known unit killed by this exact local attacker
+  (or attacker killed by captured enemy); disappearance/visibility loss stays unknown.
+  Bounded64-event buffers, one active observer, replacement/expiry/context cleanup
+  and successful-read closure; no hidden/unmet unit-instance reads. Full hidden,
+  out-of-radius, district/interception/global effects remain explicitly unaccounted.
+- Native typed observed Tanks7274583/7340120 attacked fresh test Rifleman5242939
+  `(22,16)`: first observed damage0→40 plus attacker retaliation14, then second
+  attack positively confirmed native kill5242939 by7340120 plus retaliation15.
+  Nearby old Tank7143509 and first attacker preserved/health unchanged on second
+  read. No damage/kill/attack counters forced. Actual nonzero secondary splash is
+  fixture-tested, not claimed as a positive native case. Earlier private schema
+  probes used distinct Tanks7143509/7209046 against normally damaged5177402; all
+  diagnostic listeners cleared, never used as typed-observer verification proof.
+- 237 Python / 427 Node pass; tools23/114 including91 actions. Still T62.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
@@ -631,8 +651,11 @@ Group 2 remains deferred: normal turn refresh/healing/reinforcement arrival,
 recharge/completion, unattended turns and Age transitions; positive native Overrun
 and live atomic-swap eligibility; natural-use verification for debug-created air/
 combat cases. Multi-participant Focus Fire and coordinated melee now have positive
-synthetic native execution, no longer fixture-only. Full independent kill/splash
-accounting still needs implementation as well as live verification.
+synthetic native execution, no longer fixture-only. Bounded independent kill/visible
+collateral accounting exists for explicit observed field strikes, with positive
+native kill/retaliation evidence. Extending it to other combat families and positive
+native nonzero splash remain separate implementation/verification work; full hidden/
+global effects are not promised.
 
 ## Existing baseline
 

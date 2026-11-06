@@ -1582,6 +1582,15 @@ retained. Multi-token setup used disposable Influence then reset its original
 progress save confirmed RESULT_OK. Definition penalties are not currency quotes.
 **235 Python / 422 Node pass; tools23/113 (90 actions).**
 
+`observe_civ7_field_attack` adds bounded visible-unit health deltas and exact native
+kill attribution to one guarded melee/ranged strike. Departures/hidden units are
+never guessed as dead; observers are bounded and closed/replaced, no raw-JS tool.
+Live first strike observed40 damage/14 retaliation; distinct second strike confirmed
+native kill5242939 by7340120 and15 retaliation, nearby captured units unchanged.
+No HP/kill/counters forced. Nonzero secondary splash fixture-tested only; hidden/
+out-of-radius/interception/global effects remain explicitly incomplete.
+**237 Python / 427 Node pass; tools23/114 (91 actions).**
+
 ## One-shot export
 
 ```powershell

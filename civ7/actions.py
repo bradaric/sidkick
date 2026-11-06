@@ -207,6 +207,13 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def observed_field_attack(unit_id: StrictInt, target_player: StrictInt, target_unit_id: StrictInt, x: StrictInt, y: StrictInt, kind: Literal["melee", "ranged"], expected_turn: StrictInt, observation_radius: StrictInt = 1) -> dict[str, Any]:
+    """One guarded field strike with bounded visible collateral observations and native kill attribution."""
+    if any(type(v) is not int or v<0 for v in (unit_id,target_player,target_unit_id,x,y,expected_turn)) or kind not in ("melee","ranged") or type(observation_radius) is not int or not 1<=observation_radius<=3:
+        raise ValueError("Exact field attacker/target, melee/ranged kind, radius1–3 and expected turn required")
+    return await _execute_and_verify("attack_unit.js",{"unit_id":unit_id,"target_player":target_player,"target_unit_id":target_unit_id,"x":x,"y":y,"kind":kind,"expected_turn":expected_turn,"observe_effects":True,"observation_radius":observation_radius},"unit_attack_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def withdraw_capped_project_support(event_id: StrictInt, target_player_id: StrictInt, max_cancel_penalty: StrictInt, max_unsupport_penalty: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Withdraw one own token under acknowledged native-definition penalty caps, preserving other support."""
     if any(type(v) is not int or v<0 for v in (event_id,target_player_id,max_cancel_penalty,max_unsupport_penalty,expected_turn)):

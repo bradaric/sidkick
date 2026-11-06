@@ -61,14 +61,31 @@ function run(o = {}, script = 'attack_unit.js') {
         if (o.changedDistrict) district.getDamage++;
         return {Success: !o.blocked, RequiresConfirmation: o.confirm ?? false,
           Plots: o.unreachable ? [] : [33], ...(o.noModifiers ? {} : {Modifiers: [o.blockedPlot ? 8 : 9]})};
-      }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
+       }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
+  if(o.observe){
+    args.observe_effects=true;args.observation_radius=1;let gone=false;const listeners={};
+    context.engine={on:(name,cb)=>{(listeners[name]??=[]).push(cb);return{clear:()=>{listeners[name]=listeners[name].filter(c=>c!==cb);}};}};
+    context.MapUnits.getUnits=(x,y)=>x===2&&y===3?[attacker.id]:x===3&&y===3&&!gone?[target.id]:[];
+    context.combatObserver=vm.runInNewContext(fs.readFileSync('civ7/combat_observation.js','utf8'),context);
+    context.Game.UnitOperations.sendRequest=(id,operation,args)=>{
+      calls.push({kind:'send',id,operation,args});attacker.Combat.attacksRemaining=0;target.Health.damage=30;
+      for(const cb of listeners.Combat??[])cb({attacker:attacker.id,defender:target.id});
+      if(o.nativeKill){for(const cb of listeners.UnitKilledInCombat??[])cb({unitKiller:attacker.id,unitKilled:target.id});gone=true;}
+    };
+  }
   let data;
   if (o.hiddenCentre) context.GameplayMap.getRevealedState = (p, x, y) => x === 4 && y === 4 ? 0 : 2;
   attacker.Combat.rangedStrength = o.noRanged ? 0 : 40;
   try {data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7', script), 'utf8'), context);}
   catch (e) {if (!o.sendThrows) throw e; data = {error: e.message};}
-  return JSON.parse(JSON.stringify({data, calls}));
+  let after=null;if(o.observe&&data.status==='submitted'){context.queryArguments=data.verificationArguments;after=vm.runInNewContext(fs.readFileSync('civ7/unit_attack_state.js','utf8'),context);}
+  return JSON.parse(JSON.stringify({data, calls,after}));
 }
+
+test('observed field strikes keep native single submission and attribute primary kill only to the exact kill event',()=>{
+ const damaged=run({observe:true});assert.equal(damaged.data.status,'submitted');assert.ok(damaged.data.verificationArguments.observation_token);assert.equal(damaged.after.killConfirmed,null);assert.equal(damaged.after.combatObservation.units.find(u=>u.instanceId===20).damageDelta,30);
+ const killed=run({observe:true,nativeKill:true});assert.equal(killed.after.killConfirmed,true);assert.equal(killed.after.combatObservation.closed,true);assert.equal(killed.calls.filter(c=>c.kind==='send').length,1);
+});
 
 test('single melee/ranged unit attacks bind explicit hostile component and fixed native arguments', () => {
   for (const kind of ['melee', 'ranged']) {
