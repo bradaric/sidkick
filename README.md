@@ -1477,6 +1477,15 @@ and native razing started; completed destruction is turn-deferred. Garrison/stac
 civilian attacks, full conquest effects and liberation remain outside this family.
 **222 Python / 404 Node pass; tools23/99 (76 actions).**
 
+`manage_civ7_white_peace_deal` provides separate prepare/propose/accept/reject
+steps, one native write each. Exact met major, existing war, native peace eligibility
+and a single MAKE_PEACE agreement only; no concessions/demands. Fresh draft tokens
+bind submissions/responses; preparation never discards existing working data.
+Pending negotiation is not peace; acceptance readback requires bilateral peace.
+Both current wars are natively cooldown-blocked for10 turns: guard rejection only,
+no draft/submission sent or eligibility bypass. Positive execution is deferred.
+**223 Python / 406 Node pass; tools23/100 (77 actions).**
+
 ## One-shot export
 
 ```powershell

@@ -436,13 +436,26 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   and raze start verified; debug damage is not normal assault proof, raze completion
   remains turn-deferred. Garrison/civilian/stack targets remain outside this family.
 - 222 Python / 404 Node pass; tools23/99 including76 actions. T62 unchanged.
+- `1240f5b`: settlement assault/occupation/keep/raze. White-peace deal family now
+  implemented as separate prepare/propose/accept/reject steps. Each uses one native
+  addItem/sendWorkingDeal write, exact met major/war/native peace eligibility and
+  a captured single MAKE_PEACE agreement token; no demands or Gold/Influence/city/
+  unit/captive concessions. Prepare never clears/replaces existing working data.
+  Propose verifies pending negotiation or actual bilateral peace; accept verifies
+  bilateral peace; reject verifies pending cleared with war retained. Readout adds
+  only supported white-peace incoming/outgoing tokens, no raw foreign city terms.
+- Current wars4/5 both natively prohibit peace for10 more turns. Guarded prepare
+  rejected both without draft/proposal writes. No cooldown bypass or turn advance;
+  positive proposal/acceptance belongs to specific deferred eligibility verification,
+  implementation and fixtures are present. Concession editing remains Group 1.
+- 223 Python / 406 Node pass; tools23/100 including77 actions. T62 unchanged.
 
 **Group 1 is not complete.** Do not relabel unimplemented features as verification
 blockers or start Group 2 turns simply because these completed batches passed.
 
 | Group 1 implementation still needed | Current boundary |
 |---|---|
-| Combat/capture and hostile diplomacy | Peace/deals and trade-route plunder remain unimplemented; legacy physical-route operation is absent from loaded rules and now rejects. Empty-centre city melee/occupation and keep/raze implemented/live-verified, garrison/civilian/stack variants remain outside scope. Enemy-field melee, shore fire/raids, explicit war and capped no-secondary sanctions/espionage implemented. |
+| Combat/capture and hostile diplomacy | Concession-bearing deals and trade-route plunder remain unimplemented; white-peace draft/proposal/responses implemented, live eligibility blocked by10-turn native cooldown. Legacy physical-route operation absent and now rejects. Empty-centre city melee/occupation and keep/raze implemented/live-verified, garrison/civilian/stack variants remain outside scope. |
 | Military transport | Grouped air missions/whole-squadron travel and broader movement variants remain. Single-aircraft base/carrier/squadron guards and explicit commander-source strikes implemented; carrier transfers/missions verified, squadron destination not offered in setup. Packed-army ocean embark/sea travel/disembark implemented and live-verified. |
 | Construction/resources | Advanced Wonder/repair/overbuild/improvement queue intents and explicit factory clear/reassign rules implemented. Factory switch/reset verified with synthetic structure prerequisite; normal completion/repair positive cases remain separate verification gaps. Atomic swaps lack a live eligible pair. |
 | Civilian/cultural/religious | Founding, explicit resettle, Merchant roads, bounded local archaeology/spread/Great Person activities, religious choices and archive-buffer work exchanges are implemented. Adjacent founding/foreign spread and fuller effect accounting remain. Original Merchant must stay untouched. |

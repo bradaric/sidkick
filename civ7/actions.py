@@ -207,6 +207,14 @@ async def _city_construction(
     return await _execute_and_verify("apply_city_construction.js", arguments, "city_construction_state.js")
 
 
+async def peace_deal_action(target_player_id: StrictInt, action: Literal["prepare", "propose", "accept", "reject"], expected_turn: StrictInt, deal_token: StrictStr | None = None) -> dict[str, Any]:
+    """One native white-peace draft/proposal/response step, never concessions or automatic acceptance."""
+    if (any(type(v) is not int or v<0 for v in (target_player_id,expected_turn)) or action not in ("prepare","propose","accept","reject") or
+            action!="prepare" and (not isinstance(deal_token,str) or not deal_token or len(deal_token)>100000)):
+        raise ValueError("Exact target, supported white-peace action, fresh token for submission/response and expected turn required")
+    return await _execute_and_verify("peace_deal_action.js",{"target_player_id":target_player_id,"action":action,"expected_turn":expected_turn,"deal_token":deal_token},"peace_deal_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def assault_city(unit_id: StrictInt, target_player: StrictInt, target_city_id: StrictInt, x: StrictInt, y: StrictInt, mode: Literal["melee", "occupy"], expected_turn: StrictInt) -> dict[str, Any]:
     """Explicit adjacent settlement assault/occupation, never an implicit field-action capture."""
     if any(type(v) is not int or v<0 for v in (unit_id,target_player,target_city_id,x,y,expected_turn)) or mode not in ("melee","occupy"):

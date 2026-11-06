@@ -55,6 +55,7 @@ from civ7.actions import (
     clear_factory_resources,
     assault_city,
     resolve_city_capture,
+    peace_deal_action,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -271,6 +272,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="manage_civ7_white_peace_deal",title="Prepare propose or respond to Civ VII white peace",
+            description=("CHANGE GAME STATE: one action prepare/propose/accept/reject for exact met major "
+                         "target_player_id and expected_turn. Requires active existing war and native "
+                         "canMakePeaceWith eligibility, including cooldown. Prepare adds one MAKE_PEACE "
+                         "agreement only to an empty outgoing draft; preserves/reports existing white-peace "
+                         "draft, never clears other work. Other actions require exact fresh deal_token from "
+                         "prepared result or diplomacy whitePeace incoming/outgoing readout. No demands, "
+                         "Gold/Influence/settlement/unit/captive concessions or other items. Propose proves "
+                         "pending negotiation or peace, not guaranteed acceptance; accept verifies bilateral "
+                         "peace; reject verifies cleared pending deal with war retained. No turn advance or "
+                         "full cascade accounting. One native write,15-second readback; never retry unknown."),
+            annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
+        )(peace_deal_action)
         server.tool(
             name="assault_civ7_city",title="Explicitly assault or occupy Civ VII settlement centre",
             description=("CHANGE GAME STATE: adjacent land combat unit_id against exact met wartime "

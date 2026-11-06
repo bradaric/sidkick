@@ -185,6 +185,15 @@
       });
   }
 
+  function whitePeaceDraft(otherId,direction){
+    if(typeof Game.DiplomacyDeals.getWorkingDeal!=="function"||typeof Game.DiplomacyDeals.getWorkingDealItem!=="function"||typeof DiplomacyDealDirection==="undefined")return null;
+    const workingDealId={direction,player1:localId,player2:otherId},d=Game.DiplomacyDeals.getWorkingDeal(workingDealId);
+    if(!d||d.isDemand!==false||d.isEnacted!==false||!Number.isInteger(d.id)||!Array.isArray(d.itemIds)||d.itemIds.length!==1||![d.player1,d.player2].includes(localId)||![d.player1,d.player2].includes(otherId)||d.player1===d.player2)return null;
+    const item=Game.DiplomacyDeals.getWorkingDealItem(workingDealId,d.itemIds[0]);
+    if(!item||item.id!==d.itemIds[0]||item.type!==DiplomacyDealItemTypes.AGREEMENTS||item.agreementType!==DiplomacyDealItemAgreementTypes.MAKE_PEACE)return null;
+    return{dealToken:JSON.stringify({workingDealId,dealId:d.id,items:[JSON.parse(JSON.stringify(item))]}),scope:"Exact white-peace agreement only; no concessions or unfiltered city terms"};
+  }
+
   const majorPlayers = [];
   for (const otherId of Players.getAliveIds()) {
     if (otherId === localId || !diplomacy.hasMet(otherId)) continue;
@@ -201,6 +210,7 @@
       atWar: Boolean(diplomacy.isAtWarWith(otherId)),
       allied: Boolean(diplomacy.hasAllied(otherId)),
       pendingDeal: Boolean(Game.DiplomacyDeals.hasPendingDeal(localId, otherId)),
+      whitePeace:typeof DiplomacyDealDirection!=="undefined"?{outgoing:whitePeaceDraft(otherId,DiplomacyDealDirection.OUTGOING),incoming:whitePeaceDraft(otherId,DiplomacyDealDirection.INCOMING)}:null,
       relationshipModifiers: (diplomacy.getPlayerRelationshipHistory(otherId) ?? []).map(event => ({
         name: name(event.eventType),
         amount: event.amount
@@ -215,7 +225,7 @@
     scope: "Local player and met major counterparts; secondary choices are visibility-filtered",
     netInfluencePerTurn: player.Stats.getNetYield(YieldTypes.YIELD_DIPLOMACY),
     dealCount: (Game.DiplomacyDeals.getDealIds(localId) ?? []).length,
-    detailNote: "Secondary choices include only met/local players, offered owned settlements with a matching revealed centre plot, offered currently visible settlement centres of the met primary counterpart, public unit types and offered amounts. City choices carry owner-qualified settlement identity; IDs alone cannot prove ownership. Hidden/fogged foreign centres, unrelated owners, ambiguous/missing plots, unsupported choices and raw target plots are omitted. No foreign city inventory or private yields/queues are queried. Exact selected-argument checks do not establish complete total costs; quoted secondary influence is not added to the primary quote. Project terms are definitions; duration/completion quotes are not guaranteed final expiry dates. Progress uses native event scores, not a duration formula. Incoming hidden/espionage events are omitted rather than attributed. Enacted peace-deal item terms and working-deal negotiations remain unsupported; no deal is created, changed or sent",
+    detailNote: "Secondary choices include only met/local players, offered owned settlements with a matching revealed centre plot, offered currently visible settlement centres of the met primary counterpart, public unit types and offered amounts. City choices carry owner-qualified settlement identity; IDs alone cannot prove ownership. Hidden/fogged foreign centres, unrelated owners, ambiguous/missing plots, unsupported choices and raw target plots are omitted. No foreign city inventory or private yields/queues are queried. Exact selected-argument checks do not establish complete total costs; quoted secondary influence is not added to the primary quote. Project terms are definitions; duration/completion quotes are not guaranteed final expiry dates. Progress uses native event scores, not a duration formula. Incoming hidden/espionage events are omitted rather than attributed. Only exact single-agreement white-peace working drafts expose tokens; concessions and enacted deal item accounting remain unsupported. This readout never creates, changes or sends a deal",
     majorPlayers
   };
 })()
