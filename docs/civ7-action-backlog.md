@@ -181,7 +181,7 @@ Overrun does not yet have positive live coverage. Do not conflate those statuses
 | Area | Remaining implementation / verification |
 |---|---|
 | Immediate military verification | Obtain a genuinely native-eligible positive Overrun case; simultaneous multi-participant Focus Fire/coordinated melee; reinforcement arrival; HP recovery through turns; post-attack packed movement with normal readiness. No turn advancement until user lifts deferral. |
-| More commander abilities | Second Wind implemented/live-verified with debug-earned Valor; capped upgrade-all and direct/special commander attacks pending. Force March has UI text but no installed command definition, not exposed. |
+| More commander abilities | Second Wind and capped all-packed-member upgrades implemented/live-verified (naval upgrade group). Direct/special commander attacks pending. Force March has UI text but no installed command definition, not exposed. |
 | Military transport and travel | Naval join/leave, full-fleet pack/deploy/movement and empty/packed commander rail live-tested with debug movement setup; city-only aircraft rebase implemented, positive live case pending. Ordinary-unit rail, air membership, fleet/squadron abilities, army naval transport, longer paths, foreign/fog travel and packed shore crossings pending. |
 | Broader warfare | Separate enemy-field ranged and native naval ship attacks implemented (positive live cases pending). City/district attacks, enemy-field melee, occupation/capture, pillage/coastal raids, shore bombardment/air strikes and full splash accounting pending. Other attacks retain own/unowned field boundaries. |
 | Diplomacy | War/peace, deals and secondary-target execution, project cancellation/hostile responses/espionage, independent befriending, city-state bonus selection/levying. Cooperative starts/support and incoming cooperative responses exist; some response variants still lack positive live tests. |
@@ -347,6 +347,34 @@ remains deferred. Priorities: fixed native naval attacks, checked commander rail
 - Native save `Sidkick_Playground_AfterNavalAttackRail_T62_1793967597361` confirmed
   RESULT_OK/no overwrite. T62 active/sent=false; Gold2731.33984375 after the one
   normal2000Gold commander purchase; original Merchant `(18,20)`/HP100 unchanged.
+- Rail batch committed as `c7cb56d`.
+- Revisited group-upgrade eligibility using actual fleet members: each of the three
+  existing Frigates quoted direct Dreadnought/200Gold while deployed. Exact typed
+  joins of1703961/1769498/1835035 into Fleet Commander131073 made native UPGRADE_ARMY
+  eligible with `Upgrade 3 units: 600 [icon:YIELD_GOLD] Gold`. The former pending
+  case was an empty/no-eligible-member fleet, not a missing game capability.
+- Added upgrade_civ7_army with exact commander, finite Gold cap and fresh turn;
+  requires every one of1..16 packed land/naval combat members to have a complete
+  native direct-target/price quote. Strict observed English group count/Gold text
+  must reconcile with all member quotes. No guessed costs, mixed eligibility,
+  subset selection, queued member, implicit unpack or turn advancement. Fresh full
+  owned inventory/membership/quotes/balance must agree before one submission.
+- Readback proves all member types within the same army (including replacement
+  IDs), exact Gold spend, all unaffected unit identities/types and other armies
+  preserved. Duplicate-type replacements are verified as a multiset, not falsely
+  paired to each original unit. Selected commander logistics exposes the native
+  aggregate count/Gold quote; per-member reconciliation remains action-specific.
+- Actual MCP cap599 rejected without request; cap600 verified three Frigates →
+  three Dreadnoughts. New IDs4194311/4259882/4325419 remain packed in commander131073
+  at `(46,30)`, HP100 each; original Frigate IDs disappeared. Gold2731.33984375→
+  2131.33984375. Other unit identities/types and three other armies preserved.
+  Eligibility setup used restored movement only, not free upgrades/debug tech.
+- 187 Python + 351 Node tests pass; default23 read-only tools, write mode69 tools
+  including46 actions. Native save
+  `Sidkick_Playground_AfterGroupUpgrade_T62_1793968151444` confirmed RESULT_OK/no
+  overwrite. Still T62 active/sent=false, every commander queue0, original Merchant
+  `(18,20)`/HP100 unchanged. Land group upgrades and mixed-type replacements remain
+  fixture-only; mixed upgradeable/non-upgradeable armies are deliberately unsupported.
 
 ## Batch 1: settlement management
 

@@ -537,6 +537,15 @@ async def army_overrun(
     }, "commander_action_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def upgrade_army(commander_id: StrictInt, max_gold_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Upgrade every captured packed member using reconciled native member and group quotes."""
+    if any(type(v) is not int or v < 0 for v in (commander_id, expected_turn)) or type(max_gold_cost) not in (int, float) or not math.isfinite(max_gold_cost) or max_gold_cost < 0:
+        raise ValueError("An exact owned commander, finite Gold cap and expected turn are required")
+    return await _execute_and_verify("upgrade_army.js", {
+        "commander_id": commander_id, "max_gold_cost": max_gold_cost, "expected_turn": expected_turn,
+    }, "army_upgrade_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def grant_second_wind(commander_id: StrictInt, unit_id: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
     """Grant native Second Wind to one unambiguous deployed land combat recipient."""
     if any(type(v) is not int or v < 0 for v in (commander_id, unit_id, expected_turn)) or commander_id == unit_id:

@@ -21,6 +21,7 @@ from civ7.actions import (
     rebase_aircraft,
     naval_attack_unit,
     rail_commander,
+    upgrade_army,
     acknowledge_agenda,
     append_city_production,
     assign_resource,
@@ -240,6 +241,23 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="upgrade_civ7_army", title="Upgrade all packed Civ VII army members",
+            description=("CHANGE GAME STATE: native UPGRADE_ARMY for exact owned deployed commander_id "
+                         "with max_gold_cost and fresh expected_turn. Requires a visible owned source tile "
+                         "and 1..16 captured packed land/naval combat members, all directly upgradeable. "
+                         "Every member's exact native English upgrade target/price must reconcile with the "
+                         "exact native English aggregate count/Gold quote, within cap and treasury. Mixed/"
+                         "unknown eligibility, unsupported price formats, queues or confirmations are rejected. "
+                         "Authorization covers every packed member. Verifies all quoted target types in the "
+                         "same army (including native replacement IDs), exact Gold spend, preserved unaffected "
+                         "owned inventory/types and other army memberships; duplicate-type replacements are "
+                         "verified as a multiset, not individually paired. No purchase, unpack, walking or "
+                         "turn advancement. Submits once, polls read-only for 15 seconds and never retries "
+                         "unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(upgrade_army)
         server.tool(
             name="rail_civ7_commander", title="Move Civ VII commander by rail",
             description=("CHANGE GAME STATE: move exact owned deployed land commander_id and its captured "
@@ -991,7 +1009,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "destinations, filtered to explicitly revealed/visible tiles; unknown visibility "
             "withholds destinations, not native permission. A selected deployed commander also "
             "reports native pack-nearby permission and exact checked unpack destinations restricted "
-            "to currently visible owned plots. A selected packable land unit or naval combat ship also reports addToArmy "
+            "to currently visible owned plots, plus native upgradeArmy aggregate count/Gold quote when the "
+            "exact English price format is supported; per-member reconciliation remains action-specific. "
+            "A selected packable land unit or naval combat ship also reports addToArmy "
             "or removeFromArmy with exact checked nearby-commander or individual deployment options "
             "on empty visible own/unowned leave tiles. Unknown commander membership "
             "stays unknown. Selected deployed land commanders additionally report secondWind native "

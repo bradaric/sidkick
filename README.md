@@ -1037,7 +1037,8 @@ Heavy Artillery3407914 on the urban district at `(15,20)` without firing. Nearby
 other targets were stacks; private native test-unit creation returned false, so
 no manufactured positive execution is claimed. **176 Python / 336 Node tests
 pass; write mode63 tools (40 actions), default23 read-only tools unchanged.**
-Army-wide upgrades remain pending: no eligible native aggregate quote was available.
+At this point army-wide upgrades were pending; a later packed-fleet case below
+provides the missing native aggregate quote and positive execution coverage.
 
 #### Individual fleet join/leave
 
@@ -1131,6 +1132,35 @@ read-only unchanged.** Final native save
 `Sidkick_Playground_AfterNavalAttackRail_T62_1793967597361` confirmed RESULT_OK,
 no overwrite. Still T62, Gold2731.33984375; original Merchant unchanged. The new
 rail test commander remains at Copan station with Rifleman2490373 packed.
+
+#### Capped all-member army/fleet upgrades
+
+`upgrade_civ7_army(commander_id, max_gold_cost, expected_turn)` uses native
+UPGRADE_ARMY for1..16 packed land/naval combat members, **all directly upgradeable**.
+Each exact native target/English price must reconcile with the native aggregate
+count/Gold quote, within cap and treasury. Mixed eligibility, unsupported/localized
+price formats, queues and confirmations are rejected. Authorization covers the
+whole captured group; there is no subset selection, purchase, unpack or turn advance.
+
+Readback requires every quoted target type in the same army, exact Gold spend,
+preserved unaffected owned unit identities/types and unchanged other armies.
+Native replacement IDs are supported. Duplicate-type replacements are proved as
+a multiset, not assigned speculative one-to-one original identities. Selected
+commander logistics exposes `upgradeArmy` native count/Gold quote; this does not
+replace the action's per-member reconciliation.
+
+Live MCP T62: three exact Frigates joined Fleet Commander131073 through typed
+naval membership. Each quoted Dreadnought/200Gold; group quoted600Gold. Cap599
+rejected, then cap600 verified three replacement Dreadnoughts4194311/4259882/4325419,
+all packed at `(46,30)`/HP100. Gold2731.33984375→2131.33984375; unaffected inventory
+and the other three armies preserved. Movement readiness was privately restored;
+no free upgrades/debug tech or extra turns. Land/mixed-type group execution remains
+fixture-only; mixed eligible/ineligible groups are deliberately excluded.
+
+**187 Python / 351 Node tests pass; write mode69 tools (46 actions), default23
+read-only unchanged.** Native save
+`Sidkick_Playground_AfterGroupUpgrade_T62_1793968151444` confirmed RESULT_OK,
+no overwrite. Still T62; original Merchant unchanged. Earlier checkpoints preserved.
 
 ## One-shot export
 

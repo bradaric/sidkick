@@ -81,6 +81,14 @@
         failureReasons: (pack?.FailureReasons ?? []).map(name).filter(Boolean)};
       selectedUnit.unpack = {operationAllowed: unpack?.Success === true, options,
         failureReasons: (unpack?.FailureReasons ?? []).map(name).filter(Boolean)};
+      const upgrade = Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_UPGRADE_ARMY", {X: -9999, Y: -9999, UnitAbilityType: -1}, false);
+      const upgradeText = Array.isArray(upgrade?.AdditionalDescription) && upgrade.AdditionalDescription.length === 1 ? upgrade.AdditionalDescription[0] : null;
+      const upgradeQuote = typeof upgradeText === "string" ? /^Upgrade ([1-9][0-9]*) units: (0|[1-9][0-9]*) \[icon:YIELD_GOLD\] Gold$/.exec(upgradeText) : null;
+      const quoteKnown = upgradeQuote && Number.isSafeInteger(Number(upgradeQuote[1])) && Number.isSafeInteger(Number(upgradeQuote[2]));
+      selectedUnit.upgradeArmy = {operationAllowed: upgrade?.Success === true, quotedUnitCount: quoteKnown ? Number(upgradeQuote[1]) : null,
+        quotedGoldCost: quoteKnown ? Number(upgradeQuote[2]) : null, quoteSource: quoteKnown ? "exact-native-English-group-description" : null,
+        failureReasons: (upgrade?.FailureReasons ?? []).map(name).filter(Boolean),
+        scope: "Native aggregate quote only; per-member direct target/price reconciliation and full inventory guards are enforced by the action"};
       if (def?.Domain === "DOMAIN_LAND") {
         const railSource = unit.isEmbarked === false && typeof GameplayMap.isWater === "function" &&
           GameplayMap.isWater(unit.location.x, unit.location.y) === false && typeof GameplayMap.getOwner === "function" &&

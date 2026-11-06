@@ -159,6 +159,7 @@ test('targeted commander readout includes native pack permission and only visibl
   assert.ok(data.selectedUnit.pack);
   assert.equal(data.selectedUnit.pack.operationAllowed, true);
   assert.deepEqual(data.selectedUnit.unpack.options, [{location: {x: 1, y: 0}, availableNow: true, failureReasons: []}]);
-  assert.deepEqual(calls, ['UNITCOMMAND_PACK_ARMY', 'UNITCOMMAND_UNPACK_ARMY', 'UNITCOMMAND_UNPACK_ARMY']);
+  assert.deepEqual(calls, ['UNITCOMMAND_PACK_ARMY', 'UNITCOMMAND_UNPACK_ARMY', 'UNITCOMMAND_UNPACK_ARMY', 'UNITCOMMAND_UPGRADE_ARMY']);
+  assert.equal(data.selectedUnit.upgradeArmy.quotedGoldCost, null, 'a native flag without a complete supported quote never invents a price');
   assert.equal(run({unitId: 1, commanderCommands: true, allowed: false, visibility: [0, 2, 2]}).data.selectedUnit.unpack.options[0].availableNow, false);
 });
