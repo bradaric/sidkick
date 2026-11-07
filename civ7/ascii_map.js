@@ -23,19 +23,7 @@
     (id.owner === playerId || player.Diplomacy.hasMet(id.owner) === true);
   const terrainGlyphs = {TERRAIN_FLAT: ".", TERRAIN_HILL: "^", TERRAIN_MOUNTAIN: "M", TERRAIN_COAST: "~",
     TERRAIN_OCEAN: "O", TERRAIN_NAVIGABLE_RIVER: "="};
-  const yDigits = String(bounds.maxY).length;
-  const cellWidth = Math.max(4, 2 * Math.ceil((String(bounds.maxX).length + 1) / 2));
-  const half = cellWidth / 2, rowStep = half + 2;
-  const canvas = Array.from({length: (bounds.maxY - bounds.minY) * rowStep + 2 * half + 3},
-    () => Array((bounds.maxX - bounds.minX + 1) * cellWidth + half + 1).fill(" "));
-  const put = (cx, cy, character) => {canvas[cy][cx] = character;};
-  let header = "x".padStart(yDigits) + " | ";
-  for (let tx = bounds.minX; tx <= bounds.maxX; tx++) {
-    const label = String(tx);
-    header += label.padStart(half + Math.ceil(label.length / 2)).padEnd(cellWidth);
-  }
-  const rows = [header.trimEnd()];
-  // North-up, absolute odd rows offset right; neighboring hexes share their edges.
+  const cells = [];
   for (let ty = bounds.maxY; ty >= bounds.minY; ty--) {
     for (let tx = bounds.minX; tx <= bounds.maxX; tx++) {
       const state = GameplayMap.getRevealedState(playerId, tx, ty);
@@ -83,35 +71,52 @@
         }
         cell = glyph + overlay + (visible ? "." : ":");
       }
-      const left = (tx - bounds.minX) * cellWidth + (ty % 2 ? half : 0);
-      const top = (bounds.maxY - ty) * rowStep;
-      for (const [cx, cy] of [[half, 0], [0, half], [cellWidth, half], [0, half + 2],
-        [cellWidth, half + 2], [half, 2 * half + 2]]) put(left + cx, top + cy, "+");
-      for (let i = 1; i < half; i++) {
-        put(left + half - i, top + i, "/");
-        put(left + half + i, top + i, "\\");
-        put(left + i, top + half + 2 + i, "\\");
-        put(left + cellWidth - i, top + half + 2 + i, "/");
-      }
-      put(left, top + half + 1, "|");
-      put(left + cellWidth, top + half + 1, "|");
-      for (let i = 0; i < cell.length; i++) put(left + half - 1 + i, top + half + 1, cell[i]);
+      // Native odd-row offset -> axial coordinates -> flat-top projection.
+      // This preserves all six native neighbors; geographic north projects upper-left.
+      const q = tx - Math.floor(ty / 2);
+      cells.push({x: tx, y: ty, text: cell, left: 6 * q, top: -4 * ty - 2 * q});
     }
   }
+  const minLeft = Math.min(...cells.map(cell => cell.left)), minTop = Math.min(...cells.map(cell => cell.top));
+  const canvasWidth = Math.max(...cells.map(cell => cell.left)) - minLeft + 9;
+  const canvasHeight = Math.max(...cells.map(cell => cell.top)) - minTop + 5;
+  const canvas = Array.from({length: canvasHeight}, () => Array(canvasWidth).fill(" "));
+  const coordinateRows = new Map();
+  const put = (cx, cy, character) => {
+    if (canvas[cy][cx] !== " " && canvas[cy][cx] !== character) throw Error("Conflicting hex edges or contents");
+    canvas[cy][cx] = character;
+  };
+  for (const cell of cells) {
+    const left = cell.left - minLeft, top = cell.top - minTop;
+    for (let i = 0; i < 5; i++) {
+      const character = i === 0 || i === 4 ? "+" : "-";
+      put(left + 2 + i, top, character);
+      put(left + 2 + i, top + 4, character);
+    }
+    for (const [cx, cy, character] of [[1, 1, "/"], [7, 1, "\\"], [0, 2, "+"],
+      [8, 2, "+"], [1, 3, "\\"], [7, 3, "/"]]) put(left + cx, top + cy, character);
+    for (let i = 0; i < cell.text.length; i++) put(left + 3 + i, top + 2, cell.text[i]);
+    if (!coordinateRows.has(top + 2)) coordinateRows.set(top + 2, []);
+    coordinateRows.get(top + 2).push(cell);
+  }
+  const rows = [`center (${x},${y}); N=upper-left E=upper-right`];
   for (let cy = 0; cy < canvas.length; cy++) {
-    const tileRow = (cy - half - 1) / rowStep;
-    const prefix = Number.isInteger(tileRow) && tileRow >= 0 && tileRow <= bounds.maxY - bounds.minY
-      ? String(bounds.maxY - tileRow).padStart(yDigits) + " | " : " ".repeat(yDigits + 3);
-    rows.push((prefix + canvas[cy].join("")).trimEnd());
+    let line = canvas[cy].join("").trimEnd();
+    const coordinates = coordinateRows.get(cy);
+    if (coordinates) line = line.padEnd(canvasWidth) + "  " + coordinates.sort((a, b) => a.left - b.left)
+      .map(cell => `(${cell.x},${cell.y})`).join(" ");
+    rows.push(line);
   }
   if (Game.turn !== turn || Game.age !== age || GameContext.localPlayerID !== playerId || !UI.isInGame())
     throw Error("Game context changed while reading the ASCII map; request fresh state");
   return {turn, age, playerId, mapWidth, mapHeight, center: {x, y}, requestedSize: {width, height}, bounds,
     ascii: rows.join("\n"), settlements, units, coverage,
+    projection: {style: "flat-top", north: "upper-left", east: "upper-right",
+      coordinates: "Native (x,y) labels at the right of each tile-content line, ordered left-to-right"},
     legend: {cell: "terrain + overlay + visibility; city markers take precedence, but all observed units remain listed",
       terrain: {".": "flat land", "^": "hill", M: "mountain", "~": "coast", O: "ocean", "=": "navigable river", "?": "unknown terrain"},
       overlay: {C: "own city centre", c: "met foreign city centre", U: "own unit", u: "met foreign nonwar unit", "!": "met enemy unit",
         ".": "no displayed entity", " ": "entities withheld in fog", "?": "entity APIs/data unavailable"},
       visibility: {".": "currently visible", ":": "explored but currently fogged", "???": "unrevealed or unknown visibility"}},
-    scope: "Connected north-up odd-row-offset hex grid with shared edges, clipped without wrapping. Base terrain only; no features, biomes, resources, yields or route/safety predictions. Fog contains no current city/unit details; invisible/unmet entities are omitted. An absent entity marker is not proof a tile is empty or safe. Coverage describes visible entity lookup availability within this viewport only"};
+    scope: "Connected flat-top hex projection with +---+ outer caps and shared edges. Native odd-row coordinates and six-neighbor topology are preserved; north is upper-left, east upper-right. Requested native-coordinate bounds are clipped without wrapping; the projected outline is oblique, not rectangular. Base terrain only; no features, biomes, resources, yields or route/safety predictions. Fog contains no current city/unit details; invisible/unmet entities are omitted. An absent entity marker is not proof a tile is empty or safe. Coverage describes visible entity lookup availability within this viewport only"};
 })()

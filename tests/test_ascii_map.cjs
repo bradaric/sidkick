@@ -42,38 +42,67 @@ function run(o = {}) {
   return JSON.parse(JSON.stringify({data, reads}));
 }
 
-test('renders connected north-up hexes with shared edges and absolute odd-row offsets', () => {
+test('renders wider flat-topped hexes with shared edges and explicit native coordinate labels', () => {
   const {data, reads} = run();
   assert.deepEqual(data.center, {x: 2, y: 2});
   assert.deepEqual(data.bounds, {minX: 1, maxX: 3, minY: 1, maxY: 3});
   assert.equal(data.turn, 7);
   const lines = data.ascii.split('\n');
-  assert.equal(lines[0], 'x |   1   2   3');
+  assert.equal(lines[0], 'center (2,2); N=upper-left E=upper-right');
   assert.equal(lines.length, 16);
-  assert.equal(lines[4], '3 |   |...|...|...|');
-  assert.equal(lines[8], '2 | |...|...|...|');
-  assert.equal(lines[12], '1 |   |...|...|...|');
-  for (const index of [4, 8, 12]) {
-    assert.equal((lines[index].slice(4).match(/\|/g) ?? []).length, 4, 'three adjacent tiles share four sides, not six');
-  }
+  assert.ok(lines[7].startsWith('+  ...  +---+  ...  +'), 'adjacent content rows interlock with a shared cap');
+  assert.ok(lines[7].endsWith('(1,3) (3,2)'), 'native odd-row coordinates survive the oblique projection');
+  assert.ok(!data.ascii.includes('|'), 'no vertical dividers or internal bars');
+  assert.equal(data.projection.style, 'flat-top');
+  assert.equal(data.projection.north, 'upper-left');
+  assert.equal(data.projection.east, 'upper-right');
   assert.equal(reads.filter(read => read.kind === 'terrain').length, 9);
   assert.equal(data.settlements.length, 0);
   assert.equal(data.units.length, 0);
   assert.match(data.ascii, /^[\x20-\x7e\n]+$/);
 });
 
-test('a single hex has six outlined sides around the unchanged terrain/entity/visibility token', () => {
+test('a single hex has +---+ outer caps, sloping sides and a centered unchanged token', () => {
   const data = run({args: {width: 1, height: 1}}).data;
   assert.equal(data.ascii, [
-    'x |   2',
-    '      +',
-    '     / \\',
-    '    +   +',
-    '2 | |...|',
-    '    +   +',
-    '     \\ /',
-    '      +',
+    'center (2,2); N=upper-left E=upper-right',
+    '  +---+',
+    ' /     \\',
+    '+  ...  +  (2,2)',
+    ' \\     /',
+    '  +---+',
   ].join('\n'));
+});
+
+test('all six native neighbors share drawn edges, with each native coordinate labelled exactly once', () => {
+  const lines = run().data.ascii.split('\n'), positions = new Map();
+  for (let row = 1; row < lines.length; row++) {
+    const labels = lines[row].match(/\(\d+,\d+\)/g) ?? [];
+    const contents = [...lines[row].matchAll(/\+  \.\.\.  \+/g)];
+    assert.equal(contents.length, labels.length);
+    for (let i = 0; i < labels.length; i++) {
+      assert.equal(positions.has(labels[i]), false);
+      positions.set(labels[i], {x: contents[i].index + 4, y: row});
+    }
+  }
+  assert.equal(positions.size, 9);
+  const boundary = ({x, y}) => new Set([
+    ...[-2, -1, 0, 1, 2].flatMap(dx => [`${x + dx},${y - 2}`, `${x + dx},${y + 2}`]),
+    `${x - 3},${y - 1}`, `${x + 3},${y - 1}`, `${x - 4},${y}`, `${x + 4},${y}`,
+    `${x - 3},${y + 1}`, `${x + 3},${y + 1}`,
+  ]);
+  const center = boundary(positions.get('(2,2)'));
+  for (const label of ['(1,2)', '(3,2)', '(1,1)', '(2,1)', '(1,3)', '(2,3)']) {
+    const shared = [...boundary(positions.get(label))].filter(point => center.has(point));
+    assert.ok(shared.length === 3 || shared.length === 5, `${label} must share a diagonal or horizontal edge`);
+    for (const point of shared) {
+      const [column, row] = point.split(',').map(Number);
+      assert.match(lines[row][column], /[+\-/\\]/);
+    }
+  }
+  for (const label of ['(3,1)', '(3,3)']) {
+    assert.equal([...boundary(positions.get(label))].some(point => center.has(point)), false);
+  }
 });
 
 test('explored fog retains terrain but never queries entities; hidden/unknown tiles are opaque', () => {
@@ -109,7 +138,7 @@ test('even the largest viewport scans only its bounded area, not the world', () 
   const {data, reads} = run({mapWidth: 200, mapHeight: 200, args: {x: 100, y: 100, width: 31, height: 21}});
   assert.equal(reads.filter(read => read.kind === 'terrain').length, 31 * 21);
   assert.deepEqual(data.bounds, {minX: 85, maxX: 115, minY: 90, maxY: 110});
-  assert.equal(data.ascii.split('\n').length, 88);
+  assert.equal(data.ascii.split('\n').length, 126);
 });
 
 test('visible own/met cities and units have coordinates and markers; city overlay wins without losing unit evidence', () => {

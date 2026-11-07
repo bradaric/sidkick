@@ -2063,16 +2063,23 @@ session. Tool counts remain **25 default /130 opt-in (105 actions)**.
 
 ### Centered ASCII map
 
-`get_civ7_ascii_map(x, y, width=15, height=9)` returns a north-up, connected hex
-honeycomb in `ascii`, plus its legend, bounds, settlement/unit lists and
+`get_civ7_ascii_map(x, y, width=15, height=9)` returns a connected flat-top hex
+honeycomb with `+---+` outer caps in `ascii`, plus projection metadata, legend,
+native bounds, settlement/unit lists and
 entity-lookup coverage. Choose the center tile of the area you want to inspect.
 Width and height must be odd, at most 31 and 21 respectively (651 tiles maximum).
-Edges are clipped, not wrapped or shifted to fill the requested size. Absolute
-odd-numbered rows shift right, matching the native map debug renderer.
-Hex outlines share edges: there are no decorative gaps between neighboring tiles.
-The outlined view is taller than the original compact triplets; width/height still
-refer to map tiles, not text characters/lines. Coordinates label each tile-content
-row, and the terrain/entity/visibility triplets remain unchanged inside the hexes.
+Edges are clipped, not wrapped or shifted to fill the requested size. Selection
+uses native odd-row-offset coordinates; the flat-top projection preserves all six
+native neighbor relationships. **North is upper-left and east upper-right**, not
+straight up/right. This is explicit in the header and `projection` metadata.
+Native `(x,y)` labels at the right of each tile-content line identify its cells
+left-to-right, rather than misleading rectangular row/column axes. The requested
+native-coordinate rectangle therefore has an oblique projected outline.
+
+Hexes share horizontal caps and sloping edges, with no decorative gaps or bars
+through their interiors. Terrain/entity/visibility triplets remain centered inside
+the wider tiles. Width/height still refer to map tiles, not text characters/lines;
+small viewports are best for chat readability.
 
 Each cell contains **terrain / entity / visibility**, for example `^U.` is a
 currently visible hill with an owned unit, and `M :` is an explored, fogged
@@ -2093,7 +2100,7 @@ reading current hidden details or inferring remembered changes.
 This is a separate read-only tool, not an addition to snapshots/exports or a
 full-world scan. Reconnect Sidkick when idle to load its registration. Verification
 is local source/fixture testing only; no live map probes or game actions were used.
-**280 Python /512 Node tests pass**. Tool counts are
+**280 Python /513 Node tests pass**. Tool counts are
 **26 default /132 opt-in (106 actions)**.
 
 ### Movement and founding-site evidence
