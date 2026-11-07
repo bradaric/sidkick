@@ -756,13 +756,17 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(clear_factory_resources)
         server.tool(
-            name="cross_civ7_commander_shore",title="Cross one Civ VII shore with packed army",
+            name="cross_civ7_commander_shore",title="Cross one Civ VII shore or river edge with packed army",
             description=("CHANGE GAME STATE: fixed MOVE_TO of exact ready deployed land commander_id across "
-                         "one adjacent land/water edge to empty visible own/unowned x/y with expected_turn. "
-                         "Requires consistent native source embarkation, direct current-turn path, reachable "
+                         "one adjacent shore or navigable-river endpoint edge to empty visible own/unowned x/y with expected_turn. "
+                         "For ordinary shores requires consistent source embarkation; river endpoints do not "
+                         "equate isWater with embarkation or require opposite land/water classes. Requires direct current-turn path, reachable "
                          "noncombat tile, native NO_COMBAT and selected permission. Captures packed members "
-                         "and verifies exact arrival, embark/disembark state, clear queue and unchanged army. "
-                         "For same-water embarked travel use existing bounded commander movement. No landing "
+                         "and verifies exact arrival, clear queue and unchanged army. Ordinary shores verify "
+                         "the destination embark/disembark state; river crossings require observed native "
+                         "embarkation and report it without inferring its value from isWater. For other "
+                         "same-water-class travel use bounded commander movement; a true embarked flag on "
+                         "a navigable river alone does not force a shore-tool call. No landing "
                          "attack, foreign territory, capture, implicit packing or future-turn orders. "
                          "One submission,15-second readback; never retry unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
@@ -1330,7 +1334,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "members to x/y with fresh expected_turn and explicit max_steps (default1, maximum8). "
                          "Requires known owner-qualified army membership, positive movement, a native "
                          "current-turn path with every edge reachable, visible, empty, owned/unowned, "
-                         "same land/water terrain and noncombat. Uses fixed MOVE_TO/NONE, not an attack/war "
+                         "same land/water classification and noncombat. A land commander on a navigable "
+                         "river may be embarked while isWater is false; that alone does not block this tool. "
+                         "For an adjacent river-endpoint crossing requiring different water classes, use "
+                         "cross_civ7_commander_shore. Uses fixed MOVE_TO/NONE, not an attack/war "
                          "helper. No shore transitions, foreign territory, occupied tiles, future-turn orders "
                          "or turn advancement. Verifies exact commander position and unchanged packed "
                          "membership. Requires authorization for moving the whole packed army; submits once "

@@ -436,9 +436,9 @@ async def clear_factory_resources(settlement: StrictStr, resource: StrictStr, ta
 
 
 async def cross_commander_shore(commander_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
-    """Cross one exact noncombat shore edge while retaining the captured packed army."""
+    """Cross one exact noncombat shore/river-endpoint edge, retaining the captured packed army."""
     if any(type(v) is not int or v<0 for v in (commander_id,x,y,expected_turn)):
-        raise ValueError("Exact land commander, adjacent shore tile and expected turn required")
+        raise ValueError("Exact land commander, adjacent shore/river tile and expected turn required")
     return await _execute_and_verify("commander_action.js",{"commander_id":commander_id,"x":x,"y":y,"expected_turn":expected_turn,"mode":"shore"},"commander_action_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 

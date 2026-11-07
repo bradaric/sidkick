@@ -46,6 +46,7 @@
   }
   return {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type, componentType,establishmentObserved,
     embarked:typeof commander.isEmbarked === "boolean" ? commander.isEmbarked : null,
+    embarkationObserved: mode === "shore" && typeof commander.isEmbarked === "boolean",
     location: commander.isOnMap === true && Number.isInteger(commander.location?.x) && commander.location.x >= 0 &&
       Number.isInteger(commander.location?.y) && commander.location.y >= 0 ? {x: commander.location.x, y: commander.location.y} : null,
     packedUnitIds: packed, newPackedUnitIds: added, deployedUnitIds: deployed, queueSize: commander.operationQueueSize, overrunObserved, targetLeftTile, killConfirmed: null,

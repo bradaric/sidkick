@@ -18,7 +18,7 @@ function run(options = {}, script = 'move_unit.js') {
     Configuration: {getGame: () => ({isAnyMultiplayer: Boolean(options.multiplayer)})},
     Players: {get: () => ({isTurnActive: !options.inactive, Units: {getUnits: () => options.missing ? [] : [unit]},
       Diplomacy: {willMoveStartWar: () => options.warUnknown ? {} : {Success: Boolean(options.war)}}})},
-    GameInfo: {Units: {lookup: () => ({Domain: options.domain ?? 'DOMAIN_LAND'})}},
+    GameInfo: {Units: {lookup: () => ({Domain: options.domain ?? 'DOMAIN_LAND', UnitType: options.unitType})}},
     GameplayMap: {getGridWidth: () => 80, getGridHeight: () => 50,
       getRevealedState: () => options.visibility ?? -1,
       isWater: forbidden, getOwner: forbidden, getTerrainType: forbidden},
@@ -59,6 +59,20 @@ test('native orders can replace an existing queue and queue movement with no mov
     assert.equal(run(options).data.status, 'submitted');
   }
   assert.equal(run({warUnknown: true}).data.status, 'submitted', 'like native UI, only an explicit war indication blocks movement');
+});
+
+test('ordinary movement has no river/embarkation terrain gate for civilian or combat unit roles', () => {
+  for (const unitType of ['UNIT_SCOUT', 'UNIT_SETTLER', 'UNIT_MERCHANT', 'UNIT_MISSIONARY', 'UNIT_EXPLORER', 'UNIT_RIFLEMAN']) {
+    const options = {unitType, visibility: 2, unit: {isEmbarked: true}};
+    const allowed = run(options);
+    assert.equal(allowed.data.status, 'submitted', unitType);
+    assert.equal(allowed.calls.filter(call => call.kind === 'send').length, 1);
+    // Fixture isWater/getTerrainType throw: normal movement must rely on native legality.
+    const blocked = run({...options, blocked: true});
+    assert.equal(blocked.data.status, 'rejected');
+    assert.equal(blocked.data.rejectionSource, 'native');
+    assert.equal(blocked.calls.some(call => call.kind === 'send'), false);
+  }
 });
 
 test('native legality, war/attack confirmation and stale identity guards remain with clear rejection sources', () => {

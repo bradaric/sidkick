@@ -7,7 +7,8 @@ const {test} = require('node:test');
 function run(o = {}, script = 'commander_action.js') {
   const calls = [], commander = {id: {owner: o.foreign ? 1 : 0, id: 10, type: 26}, type: 100,
     isCommanderUnit: !o.notCommander, isOnMap: !o.offMap, isEmbarked: Boolean(o.embarked), operationQueueSize: o.queued ? 1 : 0,
-    armyId: {owner: 0, id: 10, type: 29}, location: o.baseArrived?{x:3,y:3}:{x: 2, y: 3}, Health:{damage:0,maxDamage:100},Movement: {movementMovesRemaining: o.immobile || o.baseArrived ? 0 : 3}};
+    armyId: {owner: 0, id: 10, type: 29}, location: o.baseArrived||o.arrived?{x:3,y:3}:{x: 2, y: 3}, Health:{damage:0,maxDamage:100},Movement: {movementMovesRemaining: o.immobile || o.baseArrived ? 0 : 3}};
+  if (o.unknownEmbarkation) commander.isEmbarked = undefined;
   const member = {id: {owner: 0, id: 20, type: 26}, type: 200, isOnMap: !o.packed, location: {x: 2, y: 3}};
   const members = () => o.packed ? [member.id] : [];
   const army = {owner: o.foreignArmy ? 1 : 0, getCommanderId: () => commander.id, getUnitIds: () => o.unknownMembers ? null : members()};
@@ -18,10 +19,13 @@ function run(o = {}, script = 'commander_action.js') {
     UI: {isInGame: () => true}, Locale: {compose: x => x}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => o.sent ?? false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => [commander, member]}})},
     ...(o.missingArmyApi ? {} : {Armies: {get: () => army}}), GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10,
-      getIndexFromLocation: loc => loc.x + loc.y * 10, getRevealedState: () => o.hidden ? 0 : 2, getOwner: () => o.foreignTile ? 1 : 0,
+      getIndexFromLocation: loc => loc.x + loc.y * 10, getRevealedState: (id,x) => o.hidden || o.hiddenTarget && x===3 ? 0 : 2, getOwner: () => o.foreignTile ? 1 : 0,
       getLocationFromIndex: i => ({x: i % 10, y: Math.floor(i / 10)}),
-      getTerrainType:()=>o.river?1:0,isWater: x => o.disembark?x===2:Boolean(o.shore&&x===3), getPlotDistance: () => 1},
-    GameInfo: {UnitOperations:{lookup:()=>o.undefinedBase?null:{OperationType:'UNITOPERATION_ESTABLISH_BASE'}},Terrains:{lookup:n=>({TerrainType:n===1?'TERRAIN_NAVIGABLE_RIVER':'TERRAIN_FLAT'})},Units: {lookup: () => ({UnitType:o.air?'UNIT_SQUADRON_COMMANDER':'UNIT_TEST',Domain:o.air?'DOMAIN_AIR': o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND'})}}, MapUnits: {getUnits: () => o.occupied ? [member.id] : []},MapConstructibles:{getConstructibles:()=>o.constructed?[{owner:0,id:1,type:2}]:[]},
+      getTerrainType: x => {
+        assert.ok(!o.hiddenTarget || x!==3, 'never inspect hidden destination terrain');
+        return o.unknownTerrain ? 2 : o.river || o.riverAt==='source' && x===2 || o.riverAt==='target' && x===3 ? 1 : 0;
+      }, isWater: x => o.disembark?x===2:Boolean(o.shore&&x===3), getPlotDistance: () => 1},
+    GameInfo: {UnitOperations:{lookup:()=>o.undefinedBase?null:{OperationType:'UNITOPERATION_ESTABLISH_BASE'}},Terrains:{lookup:n=>n===2?null:{TerrainType:n===1?'TERRAIN_NAVIGABLE_RIVER':'TERRAIN_FLAT'}},Units: {lookup: () => ({UnitType:o.air?'UNIT_SQUADRON_COMMANDER':'UNIT_TEST',Domain:o.air?'DOMAIN_AIR': o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND'})}}, MapUnits: {getUnits: () => o.occupied ? [member.id] : []},MapConstructibles:{getConstructibles:()=>o.constructed?[{owner:0,id:1,type:2}]:[]},
     Units: {getReachableMovement: () => o.notOffered ? [] : [33, 34], getReachableTargets: () => o.attack ? [33] : [],
       getPathTo: () => ({plots: o.longPath ? [32, 33, 34] : [32, 33], turns: o.futureTurn ? [1, 2] : o.longPath ? [1, 1, 1] : [1, 1]})},
     UnitOperationMoveModifiers: {NONE: 0}, UnitOperationTypes: {MOVE_TO: 900}, CombatTypes: {NO_COMBAT: -1},
@@ -29,6 +33,7 @@ function run(o = {}, script = 'commander_action.js') {
     Game: {turn: 62, age: 42, Combat: {testAttackInto: () => o.combat ? 0 : -1}, UnitOperations: {canStart: (id, type, args, exclusion) => {
       calls.push({kind: 'moveCheck', id, type, args, exclusion});
       if (o.changed) context.Game.turn++;
+      if (o.changedRiver) o.riverAt = undefined;
       return {Success: !o.blocked,RequiresConfirmation:Boolean(o.confirm),Plots:o.notOffered?[]:[33]};
     }, sendRequest: (id, type, args) => {calls.push({kind: 'moveSend', id, type, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}},
     UnitCommands: {canStart: (id, type, args, exclusion) => {
@@ -83,10 +88,46 @@ test('explicit packed shore crossing uses one direct noncombat path and proves e
   const r=run(o);assert.equal(r.data.status,'submitted');assert.equal(r.data.expected.embarked,!disembark);assert.equal(r.data.expected.queueSize,0);assert.deepEqual(r.data.expected.packedUnitIds,[20]);
   assert.equal(r.calls.at(-1).type,900);
  }
- for(const o of [{shore:false},{sea:true},{river:true},{embarked:true},{longPath:true},{futureTurn:true},{occupied:true},{combat:true},{attack:true},{unknownMembers:true},{changed:true}]){
+ for(const o of [{shore:false},{sea:true},{unknownTerrain:true},{embarked:true},{longPath:true},{futureTurn:true},{occupied:true},{combat:true},{attack:true},{unknownMembers:true},{changed:true}]){
   const r=run({mode:'shore',packed:true,shore:true,args:{x:3,y:3},...o});assert.equal(r.data.status,'rejected');assert.equal(r.calls.filter(c=>c.kind==='moveSend').length,0);
  }
  assert.equal(run({mode:'shore',packed:true,embarked:true},'commander_action_state.js').data.embarked,true);
+});
+
+test('river-to-land and land-to-river commander transitions defer to native movement, not isWater embarkation guesses', () => {
+  for (const packed of [false, true]) for (const riverAt of ['source', 'target']) {
+    const {data, calls} = run({mode: 'shore', packed, riverAt, embarked: riverAt==='source', args: {x:3,y:3}});
+    assert.equal(data.status, 'submitted');
+    assert.equal(Object.hasOwn(data.expected, 'embarked'), false, 'never infer a river embarkation outcome from isWater');
+    assert.equal(data.expected.embarkationObserved, true);
+    assert.equal(data.expected.queueSize, 0);
+    assert.deepEqual(data.expected.packedUnitIds, packed ? [20] : []);
+    assert.deepEqual(calls.at(-1), {kind:'moveSend',id:{owner:0,id:10,type:26},type:900,args:{X:3,Y:3,Modifiers:0}});
+    assert.equal(calls.filter(call=>call.kind==='moveSend').length, 1);
+  }
+});
+
+test('river commander exceptions preserve native, visibility, safety and stale-state rejection', () => {
+  for (const extra of [{blocked:true},{confirm:true},{notOffered:true},{occupied:true},{combat:true},{attack:true},
+    {foreignTile:true},{hiddenTarget:true},{futureTurn:true},{longPath:true},{unknownMembers:true},{unknownEmbarkation:true},
+    {changed:true},{changedRiver:true},{queued:true}]) {
+    const {data,calls}=run({mode:'shore',packed:true,riverAt:'source',embarked:true,args:{x:3,y:3},...extra});
+    assert.equal(data.status,'rejected',JSON.stringify(extra));
+    assert.equal(calls.some(call=>call.kind==='moveSend'),false);
+  }
+  assert.equal(run({mode:'shore',riverAt:'source',embarked:true,args:{x:3,y:3},sendThrows:true}).calls.filter(call=>call.kind==='moveSend').length,1);
+});
+
+test('river transition readback reports actual native embarkation and withholds success for unknown evidence', () => {
+  for (const embarked of [false,true]) {
+    const {data,calls}=run({mode:'shore',packed:true,arrived:true,embarked},'commander_action_state.js');
+    assert.equal(data.embarked,embarked);
+    assert.equal(data.embarkationObserved,true);
+    assert.deepEqual(data.location,{x:3,y:3});
+    assert.deepEqual(data.packedUnitIds,[20]);
+    assert.equal(calls.length,0);
+  }
+  assert.equal(run({mode:'shore',unknownEmbarkation:true},'commander_action_state.js').data.embarkationObserved,false);
 });
 
 test('commander movement rejects future-turn, long, hostile, occupied, shore and stale paths without queueing', () => {

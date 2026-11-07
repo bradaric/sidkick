@@ -391,9 +391,14 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
 - `5a60a8f`: commander-source air strikes. Explicit packed-army shore crossing
   implemented: one direct current-turn native noncombat edge, visible empty
   own/unowned destination, consistent embarkation, stable member inventory and
-  exact arrival/embark/disembark/clear-queue readback. Navigable rivers are excluded
+  exact arrival/embark/disembark/clear-queue readback. Navigable rivers were initially excluded
   from this explicit ocean-shore mode: native river units may be embarked even
-  though isWater=false. Existing same-water river travel remains unchanged.
+  though isWater=false. The current Commander river-endpoint fix removes that
+  exclusion using native permission and observed (not inferred) embarkation;
+  see README's bounded Commander movement section. Local source/fixtures only
+  for the fix, without live moves/probes/turns. Existing same-water river travel
+  remains unchanged; the separate strict ordinary-travel source assumption is
+  still recorded as a limitation, not fixed by this patch.
 - Synthetic Commander5963843/Rifleman6029380 packed at navigable river `(24,13)`,
   then moved to flat `(25,13)` normally; adjacent ocean goal required native detour
   and future turn, rejected without a shore request. Preserved as separate test army.

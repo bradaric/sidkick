@@ -89,12 +89,20 @@
         GameplayMap.getRevealedState(playerId, source.x, source.y) !== RevealedStates.VISIBLE) return reject("A mobile deployed land/sea commander with visible source/destination is required");
     const water = GameplayMap.isWater(source.x, source.y);
     const targetWater = GameplayMap.isWater(x,y), shore = mode === "shore";
-    if (typeof water !== "boolean" || typeof targetWater !== "boolean" || (domain === "DOMAIN_SEA" && !water) ||
-        (shore && commander.isEmbarked !== water) ||
-        (shore && (domain !== "DOMAIN_LAND" || targetWater === water))) return reject("Commander source terrain/embarkation or explicit shore destination is unverified");
+    if (typeof water !== "boolean" || typeof targetWater !== "boolean" || (domain === "DOMAIN_SEA" && !water))
+      return reject("Commander source/destination water classification is unverified or unsupported for its domain");
+    let endpointTerrains = null, riverTransition = false;
     if (shore) {
-      const terrains=[source,destination].map(l=>GameInfo.Terrains.lookup(GameplayMap.getTerrainType(l.x,l.y))?.TerrainType);
-      if(terrains.some(t=>typeof t!=="string"||t==="TERRAIN_NAVIGABLE_RIVER"))return reject("Explicit embark/disembark crossing excludes unknown or navigable-river terrain");
+      if (domain !== "DOMAIN_LAND" || typeof commander.isEmbarked !== "boolean" ||
+          GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE)
+        return reject("A land commander with known embarkation and a visible crossing destination is required");
+      endpointTerrains = [source, destination].map(l => GameInfo.Terrains.lookup(GameplayMap.getTerrainType(l.x, l.y))?.TerrainType);
+      if (endpointTerrains.some(t => typeof t !== "string")) return reject("Crossing endpoint terrain is unverified");
+      riverTransition = endpointTerrains.includes("TERRAIN_NAVIGABLE_RIVER");
+      // Navigable-river embarkation is not equivalent to isWater. Let the exact
+      // native MOVE_TO check decide legality, then observe the actual state.
+      if (!riverTransition && (commander.isEmbarked !== water || targetWater === water))
+        return reject("Non-river shore crossing requires consistent source embarkation and a land/water edge");
     }
     const path = Units.getPathTo(commander.id, destination);
     if (!Array.isArray(path?.plots) || path.plots.length < 2 || path.plots.length > (shore ? 2 : maxSteps + 1) ||
@@ -124,13 +132,18 @@
         GameContext.hasSentTurnComplete() !== false || commander.id.owner !== playerId || commander.type !== before.commanderType ||
         commander.isOnMap !== true || commander.operationQueueSize !== 0 || commander.location.x !== before.location.x || commander.location.y !== before.location.y ||
         commander.Movement.movementMovesRemaining !== before.movesRemaining || commander.isEmbarked !== before.embarked || GameplayMap.isWater(before.location.x,before.location.y) !== water || JSON.stringify(membership()) !== JSON.stringify(members) ||
-        !locations.slice(1).every(clear)) return reject("Commander, packed membership, path or game context changed during validation");
+        !locations.slice(1).every(clear) || shore && (
+          GameplayMap.getRevealedState(playerId, source.x, source.y) !== RevealedStates.VISIBLE ||
+          JSON.stringify([source, destination].map(l => GameInfo.Terrains.lookup(GameplayMap.getTerrainType(l.x, l.y))?.TerrainType)) !== JSON.stringify(endpointTerrains)))
+      return reject("Commander, packed membership, path, crossing terrain or game context changed during validation");
     const verificationArguments = {mode, commander_id: commanderId, component_type: commander.id.type,
       baseline_packed_unit_ids: members, baseline_unit_ids: baselineIds};
     Game.UnitOperations.sendRequest(commander.id, UnitOperationTypes.MOVE_TO, args);
     return {status: "submitted", before, expected: {commanderId, commanderType: before.commanderType,
-      componentType: before.componentType, location: destination, packedUnitIds: members, ...(shore ? {embarked:targetWater,queueSize:0} : {})}, verificationArguments,
-      path: locations.map(l => ({x: l.x, y: l.y}))};
+      componentType: before.componentType, location: destination, packedUnitIds: members,
+      ...(shore ? {queueSize: 0, ...(riverTransition ? {embarkationObserved: true} : {embarked: targetWater})} : {})}, verificationArguments,
+      path: locations.map(l => ({x: l.x, y: l.y})),
+      ...(riverTransition ? {verificationScope: "One native adjacent noncombat river-endpoint MOVE_TO. Verifies arrival, clear queue, preserved packed army and observed native embarkation; never infers river embarkation from isWater. No future-turn order or retry"} : {})};
   }
   const operation = mode === "pack" ? "UNITCOMMAND_PACK_ARMY" : "UNITCOMMAND_UNPACK_ARMY";
   let args = {X: -9999, Y: -9999, UnitAbilityType: -1};

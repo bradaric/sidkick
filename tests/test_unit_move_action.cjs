@@ -77,6 +77,12 @@ test('bounded ordinary travel validates every native current-turn edge and submi
   const r=run({travel:true,args:{mode:'travel',x:11,max_steps:2},...o});assert.equal(r.data.status,'rejected');assert.equal(r.calls.some(c=>c.kind==='send'),false);
  }
 });
+test('audit: strict travel still rejects embarked land on isWater-false source before checking native permission', () => {
+  const {data, calls} = run({travel:true, unit:{isEmbarked:true}, args:{mode:'travel',x:11,max_steps:2}});
+  assert.equal(data.status,'rejected');
+  assert.match(data.reason,/same-surface/);
+  assert.equal(calls.length,0,'remaining strict-travel guard, not a native rejection; use normal movement instead');
+});
 test('peaceful foreign travel binds exact met owner and positive native nonwar/noncombat evidence',()=>{
  const base={travel:true,foreignPlot:true,peace:true,args:{mode:'travel',x:11,max_steps:2,peaceful_player_id:4}};
  assert.equal(run(base).data.status,'submitted');

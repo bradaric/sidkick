@@ -899,11 +899,34 @@ Manual user checks confirmed T62 after war Continue, both Landships and Cuirassi
 `move_civ7_commander(commander_id, x, y, expected_turn, max_steps=1)` accepts a
 native current-turn path of at most the explicitly capped number of edges (1–8).
 Every edge must be reachable, visible, empty, own/unowned, on unchanged land/water
-terrain and explicitly noncombat. It rejects queued/off-map commanders, unknown
+classification and explicitly noncombat. A navigable-river land commander may
+be embarked while `isWater` is false; this alone does not block ordinary bounded
+Commander movement. It rejects queued/off-map commanders, unknown
 or foreign army membership, shore crossings, foreign territory and future-turn
 orders. One fixed MOVE_TO/NONE request is followed by up to 15 seconds of read-only
 verification of commander identity, destination and exact preserved packed IDs.
 Authorization covers the commander and **all** packed members, not a selected subset.
+
+For an adjacent navigable-river endpoint transition, `cross_civ7_commander_shore`
+also accepts native-permitted movement when both endpoints report the same
+`isWater` value. It no longer equates river embarkation with `isWater`; the
+destination embarkation state is observed, not predicted. Readback requires exact
+arrival, unchanged packed membership, a clear queue and a known observed native embarkation
+boolean. Ordinary non-river shores retain their existing embark/disembark checks.
+Visibility, empty own/unowned destination, native current-turn reachability,
+noncombat/confirmation, freshness and no-retry checks remain. Unknown endpoint
+terrain or changed river state still rejects; no extra move or turn is submitted.
+
+Related-guard audit: normal `move_civ7_unit` bypasses terrain/embarkation inference
+for civilian and combat roles. The optional strict `travel_civ7_unit` still
+contains `isEmbarked == isWater` source validation; a local fixture reproduces
+that pre-native rejection. Use normal movement for river travel; the remaining
+strict-travel limitation is not silently relaxed by this Commander-only patch.
+Unembarked-only combat/rail/ability boundaries were not proven to be false native
+restrictions and were not removed. This is a targeted audit, not a whole-toolset
+guarantee. The fix and audit use local source/fixtures only, with no live probes,
+moves or turns.
+Regression verification: **281 Python /518 Node tests pass**.
 
 Default remains 23 read-only tools; write mode has 56 tools (33 actions).
 **158 Python and 315 Node tests pass.** Native commander65536 moved empty over two
@@ -1498,8 +1521,9 @@ enforces carrier water guards in missions and transfers.
 `cross_civ7_commander_shore` crosses one direct native noncombat ocean shore edge,
 preserving captured packed members and verifying arrival, embarkation and queue0.
 Visible empty own/unowned destinations only; no attack/capture/future-turn order.
-Navigable rivers are excluded from this explicit mode because their embarkation
-does not equal isWater; existing bounded river travel remains unchanged.
+Navigable rivers were initially excluded because their embarkation does not equal
+isWater; the current river-endpoint fix described above removes that restriction
+without predicting river embarkation. Existing bounded river travel is unchanged.
 Live test6094917 with6160454 embarked `(4,6)→(3,5)`, transported to `(4,5)` and
 disembarked `(4,6)`, exact member preserved. Synthetic movement readiness only
 between completed cases; no embarkation/membership forced.
