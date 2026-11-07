@@ -14,7 +14,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         if urlsplit(self.path).path != "/" + PREVIEW_NAME:
             self.send_error(404)
             return None
-        # Always return current bytes, even if a browser cached the old demo.
+        # Always return current bytes, even if a browser cached an earlier view.
         for header in ("If-Modified-Since", "If-None-Match"):
             if header in self.headers:
                 del self.headers[header]

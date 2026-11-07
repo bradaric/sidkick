@@ -2191,7 +2191,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "terrain is dimmed/hatched under fog; unknown tiles have no terrain or entity data. Only currently "
             "visible own/met city centres and individually visible on-map units appear. Escapes all labels; "
             "no scripts or external assets. Atomically replaces only Sidkick's owned temporary preview file "
-            "and returns the fixed previewUrl http://127.0.0.1:8765/sidkick-svg-demo.svg plus turn/bounds/coverage. "
+            "and returns the fixed previewUrl http://127.0.0.1:8765/sidkick-map.svg plus turn/bounds/coverage. "
             "This cache write is not a game action. Latest successful call wins; a failed read/render leaves "
             "the previous image intact. The separate static loopback viewer and SSH tunnel must already be "
             "running; this tool never starts servers, opens browsers, polls the game, exposes control endpoints, "

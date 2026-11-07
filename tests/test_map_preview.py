@@ -25,11 +25,11 @@ class PreviewServerTests(unittest.TestCase):
             root = Path(directory)
             (root / PREVIEW_NAME).write_text('<svg/>')
             (root / 'secret.txt').write_text('DO NOT SERVE')
-            result = self.request(directory)
+            result = self.request(directory, '/sidkick-map.svg')
             self.assertIn(b'200 OK', result)
             self.assertIn(b'image/svg+xml', result)
             self.assertTrue(result.endswith(b'<svg/>'))
-            for path in ['/', '/secret.txt', '/../secret.txt', '/%2e%2e/secret.txt', '/control', '/refresh-game']:
+            for path in ['/', '/secret.txt', '/../secret.txt', '/%2e%2e/secret.txt', '/control', '/refresh-game', '/sidkick-svg-demo.svg']:
                 result = self.request(directory, path)
                 self.assertIn(b'404', result)
                 self.assertNotIn(b'DO NOT SERVE', result)

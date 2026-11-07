@@ -2165,8 +2165,8 @@ Keep the SSH tunnel from your browser machine to the game host:
 ssh -N -L 127.0.0.1:8765:127.0.0.1:8765 user@game-host
 ```
 
-Open **http://127.0.0.1:8765/sidkick-svg-demo.svg**. The name preserves the original
-demo URL; future map-tool calls update its contents. Ask the play agent for a new
+Open **http://127.0.0.1:8765/sidkick-map.svg**. Future map-tool calls update its
+contents at that fixed URL. Ask the play agent for a new
 SVG viewport, then refresh that same browser URL. Refreshing alone never queries
 the game. No host configuration, credentials, public/LAN listener or OpenCode
 configuration is created or modified. On Linux the tool-owned cache is

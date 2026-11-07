@@ -91,6 +91,8 @@ class SvgRenderingTests(unittest.TestCase):
         self.assertEqual(len(root.findall('.//{http://www.w3.org/2000/svg}g')),651)
 
     def test_atomic_publication_reuses_only_the_fixed_preview_name_and_keeps_last_good_on_failure(self):
+        self.assertEqual(PREVIEW_NAME,'sidkick-map.svg')
+        self.assertEqual(PREVIEW_URL,'http://127.0.0.1:8765/sidkick-map.svg')
         data = view()
         data['tiles'][0]['terrain'] = None
         with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:

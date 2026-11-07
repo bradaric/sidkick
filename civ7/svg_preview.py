@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 
 PREVIEW_DIR = Path(tempfile.gettempdir()) / "opencode" / "sidkick-svg-preview"
-PREVIEW_NAME = "sidkick-svg-demo.svg"  # Preserve the already-shared browser URL.
+PREVIEW_NAME = "sidkick-map.svg"
 PREVIEW_URL = f"http://127.0.0.1:8765/{PREVIEW_NAME}"
 TERRAINS = {
     "TERRAIN_FLAT": ("#6caa70", "LAND", ""),
