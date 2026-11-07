@@ -116,6 +116,7 @@ from civ7.actions import (
 )
 from civ7.player import snapshot
 from civ7.queries import (
+    civilopedia,
     peace_city_offer,
     age_transition,
     archaeology,
@@ -175,9 +176,30 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Culture-victory points are Tourism, not Culture yield or a per-turn rate. Visible "
             "threats are discovered only on tiles visible this turn. Inspect snapshotStatus "
             "before using a player snapshot: partial, inconsistent or unverified results are "
-            "not a complete coherent game state, even when the tool call succeeds."
+            "not a complete coherent game state, even when the tool call succeeds. "
+            "Use get_civ7_civilopedia for sourced public mechanics/requirement references from "
+            "the loaded game, then relevant live tools to check actual legality. Missing/partial "
+            "Civilopedia content is unknown, not proof that there is no requirement."
         ),
     )
+    server.tool(
+        name="get_civ7_civilopedia", title="Search or read the loaded Civ VII Civilopedia",
+        description=(
+            "Read-only public reference from the loaded game's Civilopedia definitions/localization. "
+            "No arguments lists sections; query searches titles/IDs plus the existing native search index "
+            "when available; section_id browses a section. Read an article using exact section_id and "
+            "page_id from results, not a guessed name. limit 1–20 and offset bound results. Includes "
+            "localized chapters and bounded public definition/requirement links; preserves native markup. "
+            "Inspect complete/warnings for unavailable or truncated content. Requirements are NOT a live "
+            "eligibility evaluator: missing links do not prove no requirements, unlock sources are not "
+            "assumed to be an AND chain, and definition costs are not runtime spending quotes. Use relevant "
+            "live decision tools for actual legality. Never navigates UI, initializes search, inspects "
+            "hidden players, executes caller SQL, changes game state or contacts online profile services."
+        ),
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False,
+                                    idempotentHint=True, openWorldHint=False),
+        structured_output=True,
+    )(civilopedia)
     server.tool(
         name="get_civ7_player_snapshot",
         title="Get Civ VII player snapshot",

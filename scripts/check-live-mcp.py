@@ -59,6 +59,25 @@ async def main() -> None:
                 result = await session.call_tool(tool.name, arguments)
                 if result.is_error:
                     raise RuntimeError(f"{tool.name} returned an MCP error")
+                if tool.name == "get_civ7_civilopedia":
+                    pedia = result.structured_content or {}
+                    if pedia.get("available") is not True or not pedia.get("sections"):
+                        raise RuntimeError("Loaded Civilopedia sections are unavailable")
+                    section = pedia["sections"][0]["id"]
+                    browse = await session.call_tool(tool.name, {"section_id": section, "limit": 1})
+                    pages = (browse.structured_content or {}).get("results", [])
+                    if browse.is_error or not pages:
+                        raise RuntimeError("Civilopedia section browsing failed")
+                    page = pages[0]
+                    search = await session.call_tool(tool.name, {
+                        "query": page["pageId"], "section_id": page["sectionId"], "limit": 1,
+                    })
+                    article = await session.call_tool(tool.name, {
+                        "section_id": page["sectionId"], "page_id": page["pageId"],
+                    })
+                    if (search.is_error or not (search.structured_content or {}).get("results")
+                            or article.is_error or not (article.structured_content or {}).get("article")):
+                        raise RuntimeError("Civilopedia search/exact article read failed")
                 if tool.name == "get_civ7_player_snapshot":
                     status = (result.structured_content or {}).get("snapshotStatus")
                     if (

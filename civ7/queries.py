@@ -2,11 +2,29 @@
 
 from typing import Any
 
+from pydantic import StrictInt, StrictStr
+
 from civ7.connection import run_script
 
 
 async def empire() -> dict[str, Any]:
     return await run_script("empire.js")
+
+
+async def civilopedia(
+    query: StrictStr | None = None, section_id: StrictStr | None = None,
+    page_id: StrictStr | None = None, limit: StrictInt = 10, offset: StrictInt = 0,
+) -> dict[str, Any]:
+    """Search/browse loaded public Civilopedia pages, or read one exact article."""
+    if (any(value is not None and (not isinstance(value, str) or not value.strip() or len(value) > 200)
+            for value in (query, section_id, page_id))
+            or page_id is not None and (section_id is None or query is not None)
+            or type(limit) is not int or not 1 <= limit <= 20
+            or type(offset) is not int or not 0 <= offset <= 10000):
+        raise ValueError("Bounded search text, a section, or exact section/page IDs required")
+    return await run_script("civilopedia.js", {
+        "query": query, "section_id": section_id, "page_id": page_id, "limit": limit, "offset": offset,
+    })
 
 
 async def peace_city_offer(target_player_id: int, city_owner: int, city_id: int, x: int, y: int) -> dict[str, Any]:

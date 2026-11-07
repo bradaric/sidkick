@@ -1972,6 +1972,49 @@ Crisis stages are enumerated using the engine's stage count for crisis index `0`
 
 `carryOverRules` provides **source-inspected estimates**, not a final-state simulation. For the installed post-load script's ORIGINAL and KEEP_MORE settings, the next Exploration/Modern gold and Influence cap estimates use the native game-speed adjustment. `currentGoldAboveCap` and `currentInfluenceAboveCap` compare today's balances with those estimates, not predicted losses. The script's non-capital-city regression precedes retention cards; final city/town status, retained units, dynamic card effects and other transition outcomes are not predicted. Unknown modes/next Ages return unknown caps. No transition is performed to verify these estimates. Transition planning data is also included as `ageTransition` in snapshots/exports.
 
+### Civilopedia reference lookup
+
+`get_civ7_civilopedia` is read-only and available by default. It reads the loaded
+game's public Civilopedia definitions/localization, including loaded mod/DLC
+changes, rather than substituting remembered mechanics or a web encyclopedia.
+
+- No arguments: list public section IDs.
+- `query: "University"`: search; optionally restrict with `section_id`.
+- `section_id: "BUILDINGS"`: browse a section.
+- `section_id: "BUILDINGS", page_id: "BUILDING_UNIVERSITY"`: read the exact page
+  returned by search/browse. Ambiguous search results are never auto-selected.
+- `limit` is 1–20; `offset` paginates bounded results. Native search uses an
+  existing index only (up to 100 candidates); title/ID matching still works if
+  that index is unavailable. The tool never initializes or changes the UI index.
+
+Articles retain localized chapter headings/paragraphs, localization keys and
+source labels, public scalar definition fields where supported, and bounded
+unlock-node/depth, required-constructible and civilization-association references.
+UI exclusions are honored; no player inventories or hidden game identities are
+read. Native markup is returned as text. Only guarded, row-bounded SELECT queries
+from installed Civilopedia definitions execute; callers cannot supply SQL.
+
+Inspect `complete`, `warnings` and chapter `contentAvailable` before relying on
+the result. Unsupported query shapes, failed/missing localization and truncation
+are explicit. Article output is capped at 20 chapters, 64 paragraphs, 4000
+characters per paragraph and 24000 chapter-text characters; query rows, catalog
+size and requirement-link lists are also bounded. Graphical sidebars and every
+derived modifier/statistic are not recreated.
+
+**This is reference evidence, not a live requirement evaluator.**
+`article.requirements.complete` is always false and `evaluatedEligibility` null:
+unlock sources are not presumed to be an AND chain, empty lists do not prove no
+requirements, and definition costs are not runtime purchase quotes. Use the
+relevant live decision/placement/research tools for actual legality. Civilopedia
+lookups are intentionally excluded from broad snapshots.
+
+Verification: **266 Python /481 Node tests pass**; all **25 default tools** passed
+fresh real stdio calls, including Civilopedia section browsing, exact-ID search
+and article reads. Opt-in registration is **130 tools /105 actions**. Live
+Exploration T1 reads verified the University article with its Education unlock
+reference, Merchant text and Ocean Exploration paragraphs. No UI screen was
+opened, search index rebuilt, profile contacted or game action/turn issued.
+
 ### Dedication card selection
 
 `get_civ7_age_transition.dedications` reports native `deckSize`, `openSlotCount`,
