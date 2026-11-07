@@ -22,7 +22,7 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 
 ### Opt-in gameplay actions (OpenCode first)
 
-The normal server exposes **25 read-only tools**. Starting it with both
+The normal server exposes **26 read-only tools**. Starting it with both
 `--transport stdio --enable-writes` additionally registers
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
@@ -2060,6 +2060,37 @@ Verification: **270 Python /488 Node tests pass**. This change is source/fixture
 verified, not positively live-movement-tested. No live probes, game actions,
 turns or save/load operations were issued while the user played in another
 session. Tool counts remain **25 default /130 opt-in (105 actions)**.
+
+### Centered ASCII map
+
+`get_civ7_ascii_map(x, y, width=15, height=9)` returns a north-up, staggered hex
+coordinate grid in `ascii`, plus its legend, bounds, settlement/unit lists and
+entity-lookup coverage. Choose the center tile of the area you want to inspect.
+Width and height must be odd, at most 31 and 21 respectively (651 tiles maximum).
+Edges are clipped, not wrapped or shifted to fill the requested size. Absolute
+odd-numbered rows shift right, matching the native map debug renderer.
+
+Each cell contains **terrain / entity / visibility**, for example `^U.` is a
+currently visible hill with an owned unit, and `M :` is an explored, fogged
+mountain with current entities withheld. `???` means unrevealed/unknown visibility.
+Terrain: `.` flat land, `^` hills, `M` mountains, `~` coast, `O` ocean and `=`
+navigable river. Overlays: `C/c` own/met foreign city centre, `U/u` own/met foreign
+nonwar unit, `!` met enemy unit, `.` no displayed entity, `?` unavailable entity
+lookup. City markers take precedence; units on those tiles remain in the unit list.
+
+Explored base terrain is included under fog, marked `:` rather than the visible
+`.`. No terrain getters run for hidden/unknown tiles; no city/unit lookups run in
+fog. Foreign entities require a met owner, and units also require individual
+visibility and matching on-map coordinates. Districts are not labelled as city
+centres. Missing markers never prove a tile is empty or safe. This view omits
+features, biomes, resources, yields and movement/path forecasts, rather than
+reading current hidden details or inferring remembered changes.
+
+This is a separate read-only tool, not an addition to snapshots/exports or a
+full-world scan. Reconnect Sidkick when idle to load its registration. Verification
+is local source/fixture testing only; no live map probes or game actions were used.
+**280 Python /511 Node tests pass**. Tool counts are
+**26 default /132 opt-in (106 actions)**.
 
 ### Movement and founding-site evidence
 

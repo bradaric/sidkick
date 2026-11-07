@@ -147,3 +147,11 @@ async def age_transition() -> dict[str, Any]:
 
 async def explored_map() -> dict[str, Any]:
     return await run_script("map.js")
+
+
+async def ascii_map(x: StrictInt, y: StrictInt, width: StrictInt = 15, height: StrictInt = 9) -> dict[str, Any]:
+    """Render a bounded view of explored terrain with currently visible entity overlays."""
+    if (any(type(value) is not int for value in (x, y, width, height)) or x < 0 or y < 0
+            or not 1 <= width <= 31 or width % 2 != 1 or not 1 <= height <= 21 or height % 2 != 1):
+        raise ValueError("Nonnegative center coordinates and odd width 1-31 / height 1-21 are required")
+    return await run_script("ascii_map.js", {"x": x, "y": y, "width": width, "height": height})

@@ -128,6 +128,7 @@ from civ7.queries import (
     diplomacy,
     empire,
     explored_map,
+    ascii_map,
     growth,
     great_works,
     known_world,
@@ -2152,6 +2153,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(explored_map)
+    server.tool(
+        name="get_civ7_ascii_map", title="Get a centered Civ VII ASCII map",
+        description=(
+            "Render a read-only north-up staggered hex-coordinate ASCII map centered on exact x,y. "
+            "Optional odd width 1-31 and height 1-21 default to 15x9; edges clip without wrapping. "
+            "Explored base terrain remains visible under fog (marked :); hidden/unknown tiles are ???. "
+            "City centres and individually visible on-map units are overlaid/listed only on currently "
+            "visible tiles and only for the local player or met owners. No hidden/unmet entity details. "
+            "Returns ascii, legend, bounds, center, coordinates/identities of observed settlements/units, "
+            "and entity-lookup coverage. City markers take precedence over unit markers. Missing markers "
+            "never prove an empty/safe tile; no movement checks, resources, yields or route predictions. "
+            "Independent of the large explored-map query and player snapshots; never moves/selects anything."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(ascii_map)
     return server
 
 
