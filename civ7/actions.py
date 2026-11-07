@@ -645,15 +645,15 @@ async def _manage_settlement(arguments: dict[str, Any]) -> dict[str, Any]:
 
 
 async def set_unit_order(
-    unit_id: StrictInt, order: Literal["skip", "sleep", "wake", "fortify", "heal", "alert", "cancel"], expected_turn: StrictInt,
+    unit_id: StrictInt, order: Literal["skip", "sleep", "wake", "fortify", "heal", "alert", "cancel", "auto_explore"], expected_turn: StrictInt,
 ) -> dict[str, Any]:
-    """Issue one bounded non-target unit order without replacing queued orders implicitly."""
+    """Issue a fixed native order; explicit Scout auto-explore may replace its old order."""
     if any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or not isinstance(order, str) or order not in {
-        "skip", "sleep", "wake", "fortify", "heal", "alert", "cancel",
+        "skip", "sleep", "wake", "fortify", "heal", "alert", "cancel", "auto_explore",
     }:
         raise ValueError("An owned unit, supported non-target order and expected turn are required")
     return await _execute_and_verify("unit_order.js", {"unit_id": unit_id, "order": order, "expected_turn": expected_turn},
-                                     "unit_order_state.js")
+                                     "unit_order_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT if order == "auto_explore" else None)
 
 
 async def end_turn(expected_turn: StrictInt) -> dict[str, Any]:

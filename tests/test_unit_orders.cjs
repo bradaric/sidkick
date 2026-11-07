@@ -11,14 +11,16 @@ function run(o = {}, script = 'unit_order.js') {
   const context = {queryArguments: {unit_id: 20, order: 'sleep', expected_turn: 59, ...o.args},
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => false},
     Players: {get: () => ({isTurnActive: !o.inactive, Units: {getUnits: () => o.missing ? [] : [u]}})},
+    Configuration: {getGame: () => ({isAnyMultiplayer: Boolean(o.multiplayer)})},
+    GameInfo: {Units: {lookup: () => ({UnitType: o.notScout ? 'UNIT_SETTLER' : 'UNIT_SCOUT'})}},
     UnitActivityTypes: {AWAKE: 1, NONE: -1, SLEEP: 2, HEAL: 3, SENTRY: 4, OPERATION: 5, HOLD: 6},
-    UnitOperationTypes: {SKIP_TURN: 10, SLEEP: 11, FORTIFY: 12, REST_UNTIL_HEALED: 13, ALERT: 14},
+    UnitOperationTypes: {SKIP_TURN: 10, SLEEP: 11, FORTIFY: 12, REST_UNTIL_HEALED: 13, ALERT: 14, AUTOMATE_EXPLORE: 15},
     Game: {turn: 59, age: 42},
   };
   const api = label => ({canStart: (id, type, args, exclusion) => {
     calls.push({kind: 'check', label, id, type, args, exclusion});
     if (o.changed) context.Game.turn++;
-    return {Success: !o.blocked};
+    return {Success: !o.blocked, RequiresConfirmation: Boolean(o.confirm)};
   }, sendRequest: (id, type, args) => {calls.push({kind: 'send', label, id, type, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}});
   context.Game.UnitOperations = api('operation'); context.Game.UnitCommands = api('command');
   let data;
@@ -35,6 +37,54 @@ test('only bounded non-target orders use exact native UI arguments once', () => 
     assert.deepEqual(calls[1],{kind:'send',label,id:{owner:0,id:20,type:26},type,args:{X:-9999,Y:-9999,UnitAbilityType:-1}});
     assert.equal(data.expected.orderActive,true);
   }
+});
+
+test('Scout auto-explore sends exactly the native persistent operation, including replacement of another order', () => {
+  for (const old of [{}, {queue: 1, operation: 99}]) {
+    const {data, calls} = run({...old, args: {order: 'auto_explore'}});
+    assert.equal(data.status, 'submitted');
+    assert.deepEqual(calls[1], {kind: 'send', label: 'operation', id: {owner: 0, id: 20, type: 26},
+      type: 'UNITOPERATION_AUTOMATE_EXPLORE', args: {X: -9999, Y: -9999, UnitAbilityType: -1}});
+    assert.equal(calls.filter(call => call.kind === 'send').length, 1);
+  }
+  for (const invalid of [{notScout: true}, {blocked: true}, {confirm: true}, {multiplayer: true},
+    {foreign: true}, {offMap: true}, {inactive: true}, {changed: true}]) {
+    const {data, calls} = run({...invalid, args: {order: 'auto_explore'}});
+    assert.equal(data.status, 'rejected');
+    assert.equal(calls.some(call => call.kind === 'send'), false);
+  }
+});
+
+test('auto-explore activation is native operation evidence, never movement or an arbitrary queue', () => {
+  for (const state of [{activity: 5, operation: 15}, {activity: 6, queue: 1, operation: 15}]) {
+    const read = run({...state, args: {order: 'auto_explore'}}, 'unit_order_state.js');
+    assert.equal(read.data.orderActive, true);
+    assert.equal(read.calls.length, 0);
+    assert.equal(run({...state, args: {order: 'auto_explore'}}).data.status, 'already_active');
+  }
+  for (const state of [{activity: 1, operation: 15}, {activity: 6, queue: 1, operation: 14}]) {
+    assert.equal(run({...state, args: {order: 'auto_explore'}}, 'unit_order_state.js').data.orderActive, false);
+  }
+});
+
+test('Scout inventory exposes read-only auto-explore permission and exact active-operation evidence', () => {
+  const checks = [];
+  const scout = {id: {owner: 0, id: 20, type: 26}, type: 201, isOnMap: true,
+    activityType: 5, operationQueueSize: 1, getOperationType: () => 15, location: {x: 1, y: 1}};
+  const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/units.js'), 'utf8'), {
+    UI: {isInGame: () => true}, GameContext: {localPlayerID: 0}, Locale: {compose: key => key},
+    Players: {get: () => ({Units: {getUnits: () => [scout]}})},
+    GameInfo: {Units: {lookup: () => ({UnitType: 'UNIT_SCOUT'})}, Unit_Stats: {lookup: () => null}},
+    UnitActivityTypes: {OPERATION: 5}, UnitOperationTypes: {AUTOMATE_EXPLORE: 15},
+    Game: {turn: 59, UnitOperations: {canStart: (id, operation, args, visible) => {
+      checks.push(operation); assert.equal(operation, 'UNITOPERATION_AUTOMATE_EXPLORE');
+      assert.equal(args.X, -9999); assert.equal(visible, false); return {Success: false, FailureReasons: ['Native blocker']};
+    }}},
+  });
+  assert.equal(data.units[0].autoExplore.active, true);
+  assert.equal(data.units[0].autoExplore.operationAllowed, false);
+  assert.deepEqual(Array.from(data.units[0].autoExplore.failureReasons), ['Native blocker']);
+  assert.deepEqual(checks, ['UNITOPERATION_AUTOMATE_EXPLORE']);
 });
 test('foreign/off-map, stale, blocked and raw operations cannot submit', () => {
   for (const o of [{foreign:true},{offMap:true},{missing:true},{inactive:true},{blocked:true},{changed:true},

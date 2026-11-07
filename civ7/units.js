@@ -4,6 +4,19 @@
   if (!Number.isInteger(id) || id < 0) throw Error("No local player");
   const player = Players.get(id);
   const name = key => key ? Locale.compose(key) : null;
+  function autoExplore(unit, def) {
+    if (def?.UnitType !== "UNIT_SCOUT") return null;
+    const type = typeof UnitOperationTypes === "undefined" ? null : UnitOperationTypes.AUTOMATE_EXPLORE;
+    const activity = unit.activityType, queue = unit.operationQueueSize;
+    const operation = typeof unit.getOperationType === "function" ? unit.getOperationType(0) : null;
+    const active = Number.isInteger(type) && Number.isInteger(activity) && Number.isInteger(queue) && queue >= 0 && Number.isInteger(operation) &&
+      typeof UnitActivityTypes !== "undefined" ? operation === type && (activity === UnitActivityTypes.OPERATION || queue > 0) : null;
+    const result = unit.isOnMap === true && unit.isDead !== true && typeof Game.UnitOperations?.canStart === "function"
+      ? Game.UnitOperations.canStart(unit.id, "UNITOPERATION_AUTOMATE_EXPLORE", {X: -9999, Y: -9999, UnitAbilityType: -1}, false) : null;
+    return {active, operationAllowed: result ? result.Success === true : null,
+      failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+      note: "Native Scout auto-explore permission/operation evidence only; engine-selected movement may persist on later turns. No future coverage or safety is guaranteed"};
+  }
   function upgrade(unit, def) {
     if (unit.isOnMap !== true || typeof Game.UnitCommands?.canStart !== "function" ||
         typeof UnitCommandTypes === "undefined" || !Number.isInteger(UnitCommandTypes.UPGRADE)) return null;
@@ -96,6 +109,7 @@
         name: name(unit.name ?? def?.Name),
         typeName: name(def?.Name),
         upgrade: upgrade(unit, def),
+        autoExplore: autoExplore(unit, def),
         formationClass: def?.FormationClass ?? null,
         promotionClass: def?.PromotionClass ?? null,
         domain: def?.Domain ?? null,

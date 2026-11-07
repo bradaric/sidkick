@@ -7,6 +7,20 @@ from sidkick.server import create_server
 
 BEFORE={'turn':59,'age':42,'playerId':0}
 class UnitOrdersAndTurnTests(unittest.IsolatedAsyncioTestCase):
+ async def test_scout_auto_explore_is_an_explicit_order_with_one_submission_and_targeted_readback(self):
+  args={'unit_id':20,'order':'auto_explore','expected_turn':59}
+  expected={'unitId':20,'order':'auto_explore','orderActive':True}
+  with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
+   {'status':'submitted','before':BEFORE,'expected':expected,'verificationArguments':{'unit_id':20,'order':'auto_explore'}},
+   {**BEFORE,**expected}])as run:
+   result=await create_server(enable_writes=True).call_tool('set_civ7_unit_order',args)
+  self.assertFalse(result.is_error)
+  self.assertEqual(result.structured_content['status'],'verified_applied')
+  self.assertEqual([call.args for call in run.await_args_list],[('unit_order.js',args),('unit_order_state.js',{'unit_id':20,'order':'auto_explore'})])
+  with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=TimeoutError)as run:
+   self.assertEqual((await actions.set_unit_order(20,'auto_explore',59))['status'],'unknown')
+   self.assertEqual(run.await_count,1)
+
  async def test_unit_order_uses_shared_targeted_verifier(self):
   self.assertTrue(callable(getattr(actions,'set_unit_order',None)))
   expected={'unitId':20,'order':'sleep','orderActive':True}

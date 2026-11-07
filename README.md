@@ -486,11 +486,12 @@ The agreed backlog and ongoing results are in
 
 #### Everyday unit orders and guarded turn completion
 
-- `set_civ7_unit_order(unit_id, order, expected_turn)` supports only `skip`,
-  `sleep`, `wake`, `fortify`, `heal`, `alert` and `cancel`. Uses native non-target
+- `set_civ7_unit_order(unit_id, order, expected_turn)` supports `skip`,
+  `sleep`, `wake`, `fortify`, `heal`, `alert`, `cancel` and Scout-only `auto_explore`. Uses native non-target
   operations/commands and verifies current activity/operation, not eventual
   healing or future defense bonuses. Existing queues require explicit cancel or
-  wake; no raw operation IDs, attacks, disbanding or automation are exposed.
+  wake, except an explicit Scout auto-explore order can replace its old order if
+  the native check allows it. No raw operation IDs, attacks or disbanding are exposed.
 - `end_civ7_turn(expected_turn)` requires a verified single-player active local
   turn, no native blockers and no ready unit needing an order. Submits once and
   polls for at most 60 seconds for exactly the next active local turn, same Age
@@ -1931,6 +1932,34 @@ Identity follow-up verification: **266 Python /484 Node tests pass**, and all
 returned Washington, D.C. as player 4/city 65536 with an already active route;
 another player's city independently used 65536. No trade route or game action
 was submitted to obtain this evidence.
+
+### Scout auto-explore
+
+Use `set_civ7_unit_order(unit_id, "auto_explore", expected_turn)` to explicitly
+enable native auto-exploration for one owned, on-map `UNIT_SCOUT` in single-player.
+This submits `UNITOPERATION_AUTOMATE_EXPLORE` once with the native UI's non-target
+arguments, not assistant-chosen destinations or a scripted exploration loop. A
+different existing order may be replaced if natively permitted. Native failures
+and confirmation requirements are respected; already-active automation is a no-op.
+
+The engine may move that Scout immediately and on later user-advanced turns.
+It may encounter danger or stop; future coverage, safety and arrival are not
+predicted. Use `cancel` or `wake` through the same tool to stop the order. The
+tool itself never advances turns, enables autoplay, chooses first-meet replies
+or automates other units/empire decisions.
+
+Activation readback requires the exact native `AUTOMATE_EXPLORE` operation in
+progress or queued, not merely changed coordinates or an arbitrary queue. It is
+bounded to 15 seconds; unknown/cancelled outcomes are never automatically retried.
+`get_civ7_units.units[].autoExplore` reports Scout-only native permission/blockers
+and nullable active-operation evidence. This read-only inspection never enables
+auto-explore. Non-Scouts are outside this writer's scope even if their native UI
+offers automation.
+
+Verification: **271 Python /491 Node tests pass**. Activation/replacement/blocker
+and exact-operation readback cases are fixture-tested; future-turn exploration
+has not been live-verified. No live probes, Scout orders or turns were issued
+while the user played in another session. Tool counts remain **25/130 (105 actions)**.
 
 ### Normal movement and exploration
 
