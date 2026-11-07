@@ -9,6 +9,20 @@ from sidkick.server import create_server, server_icon
 
 
 class ServerTests(unittest.TestCase):
+    def test_victory_metadata_describes_anonymous_scoreboard_and_tourism(self) -> None:
+        for enable_writes in (False, True):
+            with self.subTest(enable_writes=enable_writes):
+                server = create_server(enable_writes=enable_writes)
+                tool = next(tool for tool in server._tool_manager.list_tools()
+                            if tool.name == "get_civ7_victory_progress")
+                self.assertIn("anonymous unmet majors", server.instructions)
+                self.assertIn("Tourism, not Culture yield", server.instructions)
+                self.assertIn("anonymous unmet major players", tool.description)
+                self.assertIn("scoring history", tool.description)
+                self.assertIn("Culture pointsLabel is Tourism", tool.description)
+                self.assertNotIn("met major players only", tool.description)
+                self.assertTrue(tool.annotations.read_only_hint)
+
     def test_advertises_embedded_png_icon(self) -> None:
         icon = server_icon()
         self.assertEqual(icon.mime_type, "image/png")

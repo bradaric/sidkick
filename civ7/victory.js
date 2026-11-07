@@ -249,16 +249,20 @@
   const players = [];
   for (const playerId of Players.getAliveIds()) {
     const isLocal = playerId === localId;
-    if (!isLocal && !diplomacy?.hasMet(playerId)) continue;
+    const hasMet = isLocal || diplomacy?.hasMet(playerId) === true;
     const player = Players.get(playerId);
     if (!player?.isMajor || !player.Victories) continue;
-    const leader = GameInfo.Leaders.lookup(player.leaderType);
+    // The native victory scoreboard includes unmet majors, but masks their identity.
+    const civilization = hasMet ? name(player.civilizationFullName) : null;
+    const leader = hasMet ? name(GameInfo.Leaders.lookup(player.leaderType)?.Name ?? player.leaderName) : null;
     players.push({
       id: playerId,
       isLocal,
-      team: player.team,
-      civilization: name(player.civilizationFullName),
-      leader: name(leader?.Name ?? player.leaderName)
+      hasMet,
+      displayName: hasMet ? leader ?? civilization : "Unmet player",
+      team: hasMet ? player.team : null,
+      civilization,
+      leader
     });
   }
 
@@ -274,7 +278,7 @@
       let localScoring = null;
       const progress = players.map(known => {
         const player = Players.get(known.id);
-        const scoring = player.Victories.getScoringForVictoryType(type.$hash);
+        const scoring = known.hasMet ? player.Victories.getScoringForVictoryType(type.$hash) : null;
         if (known.isLocal) localScoring = scoring;
         const status = player.Victories.getVictoryCountdownStatus(type.$hash);
         const turnsProgress = Number.isFinite(status?.turns) ? status.turns : null;
@@ -282,35 +286,36 @@
         return {
           playerId: known.id,
           points: player.Victories.getPointsForVictoryType(type.$hash),
-          won: completedVictories.some(
+          won: known.hasMet ? completedVictories.some(
             victory => victory.victory === type.$hash && victory.team === player.team
-          ),
+          ) : null,
           countdown: status ? {
             isDominant: typeof status.isDominant === "boolean" ? status.isDominant : null,
             turnsProgress,
             turnsRemaining: duration > 0 && turnsProgress != null
               ? Math.max(duration - turnsProgress, 0)
               : null,
-            prerequisites: (status.prereqs ?? []).map(prereq => ({
+            prerequisites: known.hasMet ? (status.prereqs ?? []).map(prereq => ({
               name: name(prereq.description),
               current: prereq.current ?? null,
               total: prereq.total ?? null,
               complete: Number.isFinite(prereq.current) && Number.isFinite(prereq.total) ? prereq.current >= prereq.total : null
-            }))
+            })) : null
           } : null,
-          scoring: (scoring ?? []).map(score => ({
+          scoring: known.hasMet ? (scoring ?? []).map(score => ({
             name: name(score.name),
             points: score.points,
             turn: score.turn,
             age: name(GameInfo.Ages.lookup(score.age)?.Name),
             trackerType: score.trackerType
-          }))
+          })) : null
         };
       });
       return {
         id: type.VictoryType,
         class: definition.VictoryClassType,
         name: name(type.Name),
+        pointsLabel: definition.VictoryClassType === "VICTORY_CLASS_CULTURE" ? "Tourism" : "Victory points",
         description: name(type.Description),
         finalAge: name(GameInfo.Ages.lookup(type.FinalAge)?.Name),
         enabled: Boolean(Game.VictoryManager.isCountdownVictoryEnabled(type.VictoryType)),
@@ -363,7 +368,7 @@
       percent: agePercent,
       extendedGame: Boolean(Game.AgeProgressManager.isExtendedGame)
     },
-    scope: "Local player and met major players only",
+    scope: "Public victory scoreboard for all living major players; unmet rows expose anonymous totals/countdowns, not identities or detailed history",
     players,
     victoryAlerts,
     planningNote: "Inspect victoryAlerts and each dominanceSchedule, not a remembered ratio or description. Public scoring rules are conditional definitions, not a complete dependency evaluator or a promise that every source is active. No thresholds are recomputed from only met rivals",

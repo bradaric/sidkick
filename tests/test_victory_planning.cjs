@@ -6,28 +6,44 @@ const { test } = require('node:test');
 
 function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unknown = false, fixed = false,
   tourism = false, researchDepth = 1, traditionActive = false, nativeArguments = false,
+  unmetPoints = 72, unmetCountdown = {isDominant: true, turns: 1}, missingDiplomacy = false,
+  completedVictories = [], victoryClass = 'VICTORY_CLASS_CULTURE',
   targetPoints = 999, scoringArguments = [{ ScoringId: 'WONDERS', Key: 'REQUIRED_CONSTRUCTIBLE', ValueAsText: 'WONDER', ValueAsInt: null }] } = {}) {
   const type = { $hash: 50, VictoryType: 'CULTURE', Name: 'Culture', CountdownDuration: 5,
     ScoringType: fixed ? 'COUNTDOWN_VICTORY_SCORING_TYPE_FIXED_SCORE' : 'COUNTDOWN_VICTORY_SCORING_TYPE_DOMINATION', FinalAge: 1 };
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/victory.js'), 'utf8'), {
     UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
     Configuration: { getGame: () => ({ campaignStartAgeType: startAge, previousAgeCount: previousAges }) },
-    Players: { getAliveIds: () => [0, 1, 2], get: id => {
-      assert.notEqual(id, 2, 'unmet players are not inspected, even to compute threats');
+    Players: { getAliveIds: () => [0, 1, 2, 3, 4], get: id => {
+      if (id === 4) return null;
+      if (id === 3) return {isMajor: false};
+      if (id === 2) return {
+        isMajor: true,
+        get team() { throw Error('Unmet team identity must not be read'); },
+        get civilizationFullName() { throw Error('Unmet civilization must not be read'); },
+        get leaderType() { throw Error('Unmet leader must not be read'); },
+        get leaderName() { throw Error('Unmet leader name must not be read'); },
+        Victories: {
+          getPointsForVictoryType: () => unmetPoints,
+          getVictoryCountdownStatus: () => unmetCountdown && {...unmetCountdown,
+            get prereqs() { throw Error('Unmet prerequisites must not be read'); }},
+          getScoringForVictoryType: () => { throw Error('Unmet scoring history must not be read'); },
+        },
+      };
       return { isMajor: true, team: id, civilizationFullName: id === 0 ? 'Local' : 'Rival',
-        Diplomacy: { hasMet: other => other === 1 },
+        Diplomacy: missingDiplomacy ? null : { hasMet: other => other === 1 },
         Culture: { isTraditionActive: type => { assert.equal(id, 0); assert.equal(type, 88); return traditionActive; } },
         Victories: {
           getPointsForVictoryType: () => id === 0 ? 100 : 250,
           getVictoryCountdownStatus: () => unknown ? { prereqs: [{ description: 'Requirement' }] }
             : { isDominant: id === 1, turns: id === 1 ? 3 : 0, prereqs: [{description: 'Requirement', current: 1, total: 1}] },
-          getScoringForVictoryType: () => [],
+          getScoringForVictoryType: () => id === 0 ? [] : [{name: 'Known scoring', points: 250, turn: 88, age: 1, trackerType: 7}],
         },
       };
     } },
     GameInfo: {
       Ages: { lookup: value => ({ AgeType: typeof value === 'string' ? value : 'AGE_EXPLORATION', Name: 'Age' }) },
-      Leaders: { lookup: () => null }, VictoryTypes: [type], Victories: [{ VictoryType: 'CULTURE', VictoryClassType: 'VICTORY_CLASS_CULTURE' }],
+      Leaders: { lookup: () => null }, VictoryTypes: [type], Victories: [{ VictoryType: 'CULTURE', VictoryClassType: victoryClass }],
       VictoryDominationPercents: [
         ...[[0, 300], [20, 200], [40, 100], [60, 50]].map(([MinAgeProgressPercent, DominationPercent]) => ({
           VictoryType: 'CULTURE', StartingAge: 'AGE_ANTIQUITY', PreviousAgeCount: 2, MinAgeProgressPercent, DominationPercent, Name: `Tier ${MinAgeProgressPercent}`,
@@ -60,7 +76,7 @@ function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unkno
       TraditionModifiers: [{ TraditionType: 'POLICY', ModifierId: 'ATTACH' }],
       Traditions: { lookup: () => ({ $hash: 88, Name: 'Policy' }) },
     },
-    Game: { turn: 90, age: 1, VictoryManager: { getVictories: () => [], isCountdownVictoryEnabled: () => true, getCountdownVictoryDominanceScore: () => targetPoints },
+    Game: { turn: 90, age: 1, VictoryManager: { getVictories: () => completedVictories, isCountdownVictoryEnabled: () => true, getCountdownVictoryDominanceScore: () => targetPoints },
       ProgressionTrees: {getNode: (id, type) => {assert.equal(id, 0); assert.equal(type, 77); return researchDepth == null ? null : {depthUnlocked: researchDepth};}},
       AgeProgressManager: { getCurrentAgeProgressionPoints: () => percent, getMaxAgeProgressionPoints: () => 100 },
     },
@@ -86,7 +102,7 @@ test('dominance planning follows matching live rule rows and exposes the 4x to 3
   assert.equal(run({ startAge: null }).victoryConditions[0].dominanceSchedule.nextTier, null);
 });
 
-test('victory alerts surface met-rival countdowns and scheduled rule easing, not an exact future win', () => {
+test('victory alerts surface rival countdowns and scheduled rule easing, not an exact future win', () => {
   const data = run();
   assert.ok(data.victoryAlerts, 'time-sensitive victory evidence is prominent');
   const rival = data.victoryAlerts.find(alert => alert.kind === 'dominance-countdown');
@@ -94,7 +110,58 @@ test('victory alerts surface met-rival countdowns and scheduled rule easing, not
   assert.equal(rival.isLocal, false);
   assert.equal(rival.turnsRemaining, 2);
   assert.equal(data.victoryAlerts.find(alert => alert.kind === 'dominance-threshold-change').nextMultiplier, 3);
-  assert.equal(data.players.length, 2);
+  assert.equal(data.players.length, 3, 'public scoreboard includes unmet majors, not minor or missing players');
+});
+
+test('unmet scoreboard totals and countdowns are anonymous without identity or history reads', () => {
+  const data = run({completedVictories: [{victory: 50, team: 2}]});
+  assert.deepEqual(data.players.find(player => player.id === 2), {
+    id: 2, isLocal: false, hasMet: false, displayName: 'Unmet player',
+    team: null, civilization: null, leader: null,
+  });
+  const progress = data.victoryConditions[0].progress.find(player => player.playerId === 2);
+  assert.ok(progress, 'unmet scoreboard row is retained');
+  assert.equal(progress.points, 72);
+  assert.equal(progress.won, null, 'no hidden team lookup to infer a completed victory');
+  assert.equal(progress.scoring, null, 'withheld history is not an empty ledger');
+  assert.deepEqual(progress.countdown, {
+    isDominant: true, turnsProgress: 1, turnsRemaining: 4, prerequisites: null,
+  });
+  const alert = data.victoryAlerts.find(value => value.playerId === 2);
+  assert.equal(alert.kind, 'dominance-countdown');
+  assert.equal(alert.turnsRemaining, 4);
+});
+
+test('unmet zero points and unavailable countdown values are not invented', () => {
+  const progress = run({unmetPoints: 0, unmetCountdown: {}}).victoryConditions[0].progress[2];
+  assert.equal(progress.points, 0);
+  assert.deepEqual(progress.countdown, {
+    isDominant: null, turnsProgress: null, turnsRemaining: null, prerequisites: null,
+  });
+  assert.equal(run({unmetCountdown: null}).victoryConditions[0].progress[2].countdown, null);
+});
+
+test('met-player identity and detailed scoring stay available, but missing diplomacy redacts rivals', () => {
+  const data = run();
+  assert.equal(data.players[0].hasMet, true);
+  assert.equal(data.players[1].hasMet, true);
+  assert.equal(data.players[1].civilization, 'Rival');
+  assert.equal(data.victoryConditions[0].progress[1].scoring[0].name, 'Known scoring');
+  assert.equal(data.victoryConditions[0].progress[1].countdown.prerequisites[0].complete, true);
+  const unknown = run({missingDiplomacy: true});
+  for (const player of unknown.players.filter(value => !value.isLocal)) {
+    assert.equal(player.hasMet, false);
+    assert.equal(player.displayName, 'Unmet player');
+    assert.equal(player.civilization, null);
+    assert.equal(unknown.victoryConditions[0].progress.find(value => value.playerId === player.id).scoring, null);
+  }
+});
+
+test('Culture victory points are labelled Tourism, not Culture yield or a per-turn rate', () => {
+  const victory = run().victoryConditions[0];
+  assert.equal(victory.pointsLabel, 'Tourism');
+  assert.equal(victory.progress[0].points, 100);
+  assert.equal(run({victoryClass: 'VICTORY_CLASS_SCIENCE'}).victoryConditions[0].pointsLabel, 'Victory points');
 });
 
 test('unknown countdown/prerequisite values remain null rather than invented zeroes or false completion', () => {
