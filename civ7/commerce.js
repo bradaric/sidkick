@@ -107,9 +107,13 @@
   }
 
   const capacityByPlayer = new Map();
-  const routes = (player.Trade.projectPossibleTradeRoutes() ?? []).map(route => {
-    const targetCity = knownCity(route.targetCityId);
-    if (!targetCity) return null;
+  const routeOptions = TradeRouteSearchOptions.INCLUDE_FAILED + TradeRouteSearchOptions.EXTENDED_STATUS;
+  const routes = (player.Trade.projectPossibleTradeRoutes(routeOptions) ?? []).map(route => {
+    const target = route.targetCityId;
+    if (!target || ![target.owner, target.id, target.type].every(value => Number.isInteger(value) && value >= 0)) return null;
+    const targetCity = knownCity(target);
+    if (!targetCity || targetCity.owner !== target.owner || targetCity.id?.owner !== target.owner ||
+        targetCity.id.id !== target.id || targetCity.id.type !== target.type) return null;
     const targetPlayer = Players.get(targetCity.owner);
     const statuses = route.status ?? [];
     const active = statuses.includes(TradeRouteStatus.ALREADY_EXISTS);
@@ -129,6 +133,8 @@
       netYieldChange: null,
       domain: route.domain === DomainType.DOMAIN_LAND ? "land" : route.domain === DomainType.DOMAIN_SEA ? "sea" : null,
       targetCity: name(targetCity.name),
+      targetPlayerId: target.owner,
+      targetCityId: target.id,
       targetCivilization: name(targetPlayer?.civilizationFullName),
       targetLocation: {x: targetCity.location.x, y: targetCity.location.y},
       imports: (route.importPayloads ?? []).map(resource),

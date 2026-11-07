@@ -4,7 +4,9 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run({ modern = false, count = 2, factoryResource = 'TEA', prereq = true, rail = true, station = false } = {}) {
+function run({ modern = false, count = 2, factoryResource = 'TEA', prereq = true, rail = true, station = false,
+  routeStatus = 3, malformedTarget = false, mismatchedCity = false, changedOwner = false, targetId = 20,
+  revealSecond = false } = {}) {
   const records = [false, true].map(isOffMap => ({ value: 5, isOffMap, uniqueResource: { resource: 'TEA' } }));
   const city = { id: { owner: 0, id: 10 }, owner: 0, name: 'Home', location: { x: 0, y: 0 },
     Resources: { getAssignedResources: () => [records[0]], getAssignedResourcesCap: () => 2,
@@ -13,24 +15,26 @@ function run({ modern = false, count = 2, factoryResource = 'TEA', prereq = true
       assert.equal(type, 'BUILDING_RAIL_STATION'); assert.equal(includeIncomplete, false); return station;
     } },
     Trade: { isInTradeNetwork: () => true, numRoutes: 1, isInRailNetwork: () => rail, isConnectedToOwnersCapitalByLand: () => true } };
-  const foreign = owner => ({ id: { owner, id: 20 }, owner, name: owner === 1 ? 'Known' : 'Hidden', location: { x: owner, y: 0 } });
+  const foreign = owner => ({ id: { owner, id: mismatchedCity ? 99 : targetId, type: 1 },
+    owner: changedOwner ? 3 : owner, name: owner === 1 ? 'Known' : revealSecond ? 'OtherKnown' : 'Hidden', location: { x: owner, y: 0 } });
   const calls = [];
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/commerce.js'), 'utf8'), {
     UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
     RevealedStates: { HIDDEN: 0 }, DomainType: { DOMAIN_LAND: 1 }, TradeRouteStatus: { SUCCESS: 1, ALREADY_EXISTS: 2, DISTANCE: 3 },
+    TradeRouteSearchOptions: {INCLUDE_FAILED: 1, EXTENDED_STATUS: 2},
     PlayerOperationTypes: { ASSIGN_RESOURCE: 'ASSIGN' },
     CityOperationTypes: { BUILD: 'BUILD' }, CityCommandTypes: { PURCHASE: 'BUY' }, CityQueryType: { Constructible: 'BUILDING' },
-    GameplayMap: { getLocationFromIndex: value => ({ x: value, y: 0 }), getRevealedState: (id, x) => x === 2 ? 0 : 1 },
+    GameplayMap: { getLocationFromIndex: value => ({ x: value, y: 0 }), getRevealedState: (id, x) => x === 2 && !revealSecond ? 0 : 1 },
     Players: { get: id => { if (id === 0) return {
       Resources: { getResources: () => records }, Cities: { getCities: () => [city] },
       Diplomacy: { hasMet: other => [1, 2].includes(other) },
       Trade: { countPlayerTradeRoutes: () => 4, countPlayerTradeRoutesTo: () => 1, getTradeCapacityFromPlayer: () => 2,
-        projectPossibleTradeRoutes: () => [
-          { targetCityId: { owner: 1 }, status: [3], domain: 1 },
-          { targetCityId: { owner: 2 }, status: [1], pathPlots: [999] },
-          { targetCityId: { owner: 3 }, status: [1] },
-        ] },
-    }; assert.equal(id, 1, 'unmet owners and hidden-city leaders are not inspected'); return { civilizationFullName: 'Known empire' }; } },
+        projectPossibleTradeRoutes: options => { assert.equal(options, 3, 'read inventory must match the writer extended-status flags'); return [
+          { targetCityId: { owner: 1, id: malformedTarget ? undefined : targetId, type: 1 }, status: [routeStatus], domain: 1 },
+          { targetCityId: { owner: 2, id: 20, type: 1 }, status: [1], pathPlots: [999] },
+          { targetCityId: { owner: 3, id: 20, type: 1 }, status: [1] },
+        ]; } },
+    }; assert.ok(id === 1 || revealSecond && id === 2, 'unmet owners and hidden-city leaders are not inspected'); return { civilizationFullName: 'Known empire' }; } },
     Cities: { get: id => { assert.notEqual(id.owner, 3); return id.owner === 0 ? city : foreign(id.owner); } },
     GameInfo: { Resources: { lookup: type => type === 'TEA' ? { ResourceType: 'TEA', Name: 'Tea', ResourceClassType: modern ? 'RESOURCECLASS_FACTORY' : 'RESOURCECLASS_CITY' } : null },
       Ages: { lookup: () => ({ AgeType: modern ? 'AGE_MODERN' : 'AGE_EXPLORATION' }) },
@@ -75,6 +79,28 @@ test('trade comparisons retain blocked known routes, exclude hidden/unmet cities
   assert.equal(route.netYieldChange, null);
   assert.ok(!JSON.stringify(data).includes('Hidden'));
   assert.ok(!JSON.stringify(data).includes('999'));
+});
+
+test('available, blocked and active trade rows expose the exact native target IDs required by the trade action', () => {
+  for (const routeStatus of [1, 2, 3]) {
+    const route = run({routeStatus}).data.trade.routes[0];
+    assert.equal(route.targetPlayerId, 1);
+    assert.equal(route.targetCityId, 20, 'native city component ID, never a name/location/list index');
+    assert.equal(route.targetCity, 'Known');
+    assert.deepEqual(route.targetLocation, {x: 1, y: 0});
+  }
+  assert.equal(run({targetId: 0}).data.trade.routes[0].targetCityId, 0, 'zero is a valid native ID');
+});
+
+test('missing, mismatched and changed-owner destination identities are omitted rather than guessed', () => {
+  for (const options of [{malformedTarget: true}, {mismatchedCity: true}, {changedOwner: true}]) {
+    assert.deepEqual(run(options).data.trade.routes, [], JSON.stringify(options));
+  }
+});
+
+test('the same city component number under different players retains distinct owner-qualified identities', () => {
+  const routes = run({revealSecond: true}).data.trade.routes;
+  assert.deepEqual(routes.map(route => [route.targetPlayerId, route.targetCityId]), [[1, 20], [2, 20]]);
 });
 
 test('Modern factory evidence retains native counts and assignment checks without inventing GDP', () => {

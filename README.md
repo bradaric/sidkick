@@ -1918,6 +1918,21 @@ The T58 interface inspection confirmed `getDeal`/`getDealItem` exist, but neithe
 
 Trade comparisons retain blocked candidates with native status reasons and the current total route count. Only owned or revealed settlements belonging to met players are returned; origin names follow the same restriction. `status: "available"` is a route-level quote, not permission for a particular Merchant to establish it. `merchantOperationAllowed` and marginal `netYieldChange` remain `null`. Engine import/export payloads are not treated as marginal empire-wide gains, and raw paths are omitted.
 
+Route rows include exact native `targetPlayerId` and `targetCityId`; pass them as
+`target_player_id` and `target_city_id` to `establish_civ7_trade_route`. The reader
+uses the same `INCLUDE_FAILED + EXTENDED_STATUS` inventory as the writer, including
+active routes. Returned IDs must match the offered component's owner/ID/type and
+the resolved city; malformed or stale bindings are omitted rather than inferred
+from a name, location or list position. City numbers can repeat under different
+players, so always use the owner-qualified pair. Submission still rechecks the
+exact Merchant, revealed city, native availability and current turn.
+
+Identity follow-up verification: **266 Python /484 Node tests pass**, and all
+**25 default tools** passed fresh real stdio calls. Live Exploration T1 readback
+returned Washington, D.C. as player 4/city 65536 with an already active route;
+another player's city independently used 65536. No trade route or game action
+was submitted to obtain this evidence.
+
 ### Movement and founding-site evidence
 
 `get_civ7_units` includes a stable numeric `instanceId`, distinct from the existing unit-type `id`. Pass it to `get_civ7_movement_and_founding`, optionally with **both** `x` and `y`. Without coordinates, it inspects the unit's current location. Only owned units and revealed destinations are accepted. The tool returns revealed movement-range candidates, per-tile operation eligibility, and the engine's path turn labels without converting them to an inferred number of turns remaining. Attack targets are excluded from movement candidates; packed units and units stopped by a zone of control do not receive an unrestricted range. A path containing any hidden tile is withheld in full, and raw path obstacles are never returned.
