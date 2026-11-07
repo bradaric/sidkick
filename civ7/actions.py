@@ -18,6 +18,23 @@ _TURN_VERIFICATION_TIMEOUT = 60.0
 _COMBAT_VERIFICATION_TIMEOUT = 15.0
 
 
+async def edit_dedication(
+    card_id: StrictStr, operation: Literal["add", "remove"], deck_token: StrictStr,
+    max_legacy_point_cost: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Edit one card in an open current deck; never apply effects or finalize it."""
+    if (not isinstance(card_id, str) or not card_id.strip() or len(card_id) > 512
+            or operation not in ("add", "remove") or not isinstance(deck_token, str)
+            or not deck_token or len(deck_token) > 250000
+            or any(type(value) is not int or value < 0 or value > 2**53 - 1
+                   for value in (max_legacy_point_cost, expected_turn))):
+        raise ValueError("Exact card ID, add/remove, fresh deck token, legacy-point cap and turn required")
+    return await _execute_and_verify("edit_dedication.js", {
+        "card_id": card_id, "operation": operation, "deck_token": deck_token,
+        "max_legacy_point_cost": max_legacy_point_cost, "expected_turn": expected_turn,
+    }, "dedication_state.js")
+
+
 async def select_technology(technology: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Select one technology and verify active research without resubmission."""
     return await _select_research(technology, expected_turn, "technology")

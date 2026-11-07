@@ -132,6 +132,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
         normal = {tool.name: tool for tool in create_server()._tool_manager.list_tools()}
         enabled = {tool.name: tool for tool in create_server(enable_writes=True)._tool_manager.list_tools()}
         self.assertEqual(set(enabled) - set(normal), {
+            "edit_civ7_dedication",
             "select_civ7_technology", "select_civ7_civic", "set_civ7_policy_active",
             "assign_civ7_resource",
             "buy_civ7_attribute_node",

@@ -8,6 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import Icon, ToolAnnotations
 
 from civ7.actions import (
+    edit_dedication,
     attack_unit,
     army_ranged_attack,
     army_melee_attack,
@@ -302,6 +303,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="edit_civ7_dedication", title="Edit one Civ VII Dedication selection",
+            description=(
+                "Add or remove one exact native card in an open current Dedication deck. Read "
+                "get_civ7_age_transition.dedications first for selectionOpen, openSlotCount, "
+                "phase, exact card ID, current costs and deckToken. Requires that fresh token, "
+                "an explicit maximum total legacy-point cost and expected turn. Honors native "
+                "eligibility and limits; rejects completed/unknown decks. Verifies selected-card "
+                "multiset and total point debit/refund, not category allocation or applied effects. "
+                "Does not replace another card, open a screen, apply effects, choose a capital, "
+                "confirm/finalize the deck or advance the Age/turn. Unknown outcomes are never retried."
+            ),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True,
+                                        idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(edit_dedication)
         server.tool(
             name="respond_civ7_first_meet",title="Respond to an exact pending Civ VII first-meet greeting",
             description=("CHANGE GAME STATE: exact met-major target_player_id, friendly/neutral/unfriendly "
@@ -2043,7 +2060,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         description=(
             "Read next-Age civilization candidates from the transition-specific selector, "
             "native local unlock requirements/progress and current/transition Memento setup "
-            "candidates. Includes current engine Dedication deck costs, limits and eligibility; "
+            "candidates. Dedications include native deckSize/openSlotCount, selectionOpen, "
+            "selecting/full_unconfirmed/completed/unknown phase, current costs/limits, add/remove "
+            "eligibility and a fresh deckToken for edit_civ7_dedication. This is deck capacity, "
+            "not a focused/numbered UI slot. Closed decks are not pending choices; "
             "current cards are not presented as next-Age choices. Profile Memento unlock/equip "
             "permission and unavailable future cards remain unknown. Carry-over caps are labelled "
             "source-inspected estimates, not a verified final-state simulation. Never selects "

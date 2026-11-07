@@ -8,7 +8,6 @@
   const reasons = result => (result?.FailureReasons ?? []).map(name).filter(Boolean);
   const reasonNames = Object.fromEntries(Object.entries(GameSetupDomainValueInvalidReason).map(([key, value]) => [value, key]));
   const requirementNames = Object.fromEntries(Object.entries(RequirementState).map(([key, value]) => [value, key]));
-  const categoryNames = Object.fromEntries(Object.entries(CardCategories).map(([key, value]) => [value, key]));
   const currentAge = GameInfo.Ages.lookup(Game.age);
   const ageDomain = resolve(GameSetup.findGameParameter("Age")?.value?.originDomain);
   const ages = (Database.query("config", "SELECT * FROM Ages") ?? [])
@@ -55,45 +54,7 @@
       };
     }) : [];
 
-  // Match the UI's card-text injections without importing its stateful model.
-  function cardText(text) {
-    if (!text) return null;
-    const [base, ...args] = text.split("\\");
-    const values = args.map((arg, index) => {
-      if (index === 0) return arg;
-      const [nested, ...nestedArgs] = arg.split("//");
-      return nestedArgs.length ? Locale.compose(nested, ...nestedArgs.map(value => value.includes("LOC_") ? Locale.compose(value) : value))
-        : arg.includes("LOC_") ? Locale.compose(arg) : arg;
-    });
-    return Locale.compose(base, ...values);
-  }
-  const costs = entries => entries == null ? null : entries.map(entry => ({category: categoryNames[entry.category] ?? entry.category, amount: entry.value}));
-  const advanced = player.AdvancedStart;
-  let dedications = null;
-  if (advanced) {
-    const selected = advanced.getCards() ?? [];
-    const deckSize = advanced.getDeckSize();
-    const closed = advanced.getPlacementComplete();
-    const slotAvailable = Number.isInteger(deckSize) ? selected.length < deckSize : null;
-    const describe = info => ({id: info.id, name: cardText(info.name), description: cardText(info.description),
-      costs: costs(info.cost), individualLimit: info.individualLimit ?? null, groupLimit: info.groupLimit ?? null,
-      limitGroup: info.limitID || null,
-      effects: (info.effects ?? []).map(effect => ({id: effect.id, name: cardText(effect.name), description: cardText(effect.description),
-        placementRequired: Boolean(effect.isPlacementEffect), reportedAmount: effect.amount ?? null}))});
-    dedications = {
-      deckAge: currentAge?.AgeType ?? null, deckSize, selectionComplete: closed,
-      legacyPoints: costs(advanced.getLegacyPoints()),
-      selected: selected.map(card => describe(card.info)),
-      choices: (advanced.getAvailableCards() ?? []).map(info => {
-        const result = Game.PlayerOperations.canStart(id, PlayerOperationTypes.ADVANCED_START_MODIFY_DECK, {Type: "ADD", ID: info.id}, false);
-        return {...describe(info), selectedCount: selected.filter(card => card.info.id === info.id).length,
-          slotAvailable, operationAllowed: Boolean(result?.Success),
-          availableNow: closed === false && slotAvailable === true && Boolean(result?.Success), failureReasons: reasons(result)};
-      }),
-      nextAgeChoices: null,
-      note: "These are the current engine deck's cards, not a projected next-Age deck. Future cards and final carry-over effects are unknown until the engine supplies them"
-    };
-  }
+  const dedications = dedicationDeck.snapshot(id);
 
   const mementoDefinitions = Database.query("config", "SELECT * FROM Mementos") ?? [];
   const currentSlots = [], transitionSlots = [], seenSlots = new Set();

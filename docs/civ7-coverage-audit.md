@@ -51,7 +51,9 @@ These boundaries are also described in the [README](../README.md). With the post
 
 **Covered:** [player.js](../civ7/player.js) returns valid Triumph definitions, progress, completion and reward descriptions, plus selected/available Dedication card summaries and placement-complete status. [victory.js](../civ7/victory.js) returns Test of Time scores and countdown prerequisites for the local player and met major players, plus public scoreboard totals/countdowns for anonymous unmet majors. Unmet identities and detailed history/prerequisites stay withheld; Culture points are explicitly labelled Tourism, not Culture yield. Age progress/countdown fields appear in turn context.
 
-**Not covered:** a complete next-civilization eligibility/ownership view, unmet unlock conditions, Memento selection, Dedication costs/group limits, placement-effect eligibility, or a carry-over/reset consequence simulator. Dedication `slotCount` is currently fixed at 3 in `player.js`, not certified across alternate rulesets. Age progression points should not be interpreted as a precise time-to-transition forecast unless the countdown semantics are established.
+**Dedication selection update:** native deck capacity, open/full-unconfirmed/completed/unknown phase, current costs/limits, add/remove eligibility and a fresh deck token are exposed. The opt-in `edit_civ7_dedication` writer adds/removes one exact card with a legacy-point cap and unchanged-token recheck; it verifies deck membership and total point debit/refund. `player.js` now uses native slot counts instead of a fixed three. Completed decks are never reopened. Card effects, capital choice and final confirmation are separate, unimplemented write operations; selection success is not an applied-benefit claim. Age progression points should not be interpreted as a precise time-to-transition forecast unless the countdown semantics are established.
+
+**Still not covered:** a complete next-civilization eligibility/ownership view, unmet unlock conditions, Memento writes, placement-effect execution/full deck confirmation, a carry-over/reset simulator and unavailable future decks.
 
 **Observed UI evidence:**
 

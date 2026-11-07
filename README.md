@@ -1972,6 +1972,35 @@ Crisis stages are enumerated using the engine's stage count for crisis index `0`
 
 `carryOverRules` provides **source-inspected estimates**, not a final-state simulation. For the installed post-load script's ORIGINAL and KEEP_MORE settings, the next Exploration/Modern gold and Influence cap estimates use the native game-speed adjustment. `currentGoldAboveCap` and `currentInfluenceAboveCap` compare today's balances with those estimates, not predicted losses. The script's non-capital-city regression precedes retention cards; final city/town status, retained units, dynamic card effects and other transition outcomes are not predicted. Unknown modes/next Ages return unknown caps. No transition is performed to verify these estimates. Transition planning data is also included as `ageTransition` in snapshots/exports.
 
+### Dedication card selection
+
+`get_civ7_age_transition.dedications` reports native `deckSize`, `openSlotCount`,
+`selectionOpen`, `phase` (`selecting`, `full_unconfirmed`, `completed`, or `unknown`),
+legacy-point balances, add/remove eligibility and a fresh `deckToken`. A completed
+deck reports zero open slots even if some capacity was unused. Counts describe
+native deck capacity, not a focused or numbered UI slot. The core snapshot also
+uses native slot counts instead of assuming three.
+
+Opt-in `edit_civ7_dedication` accepts one exact `card_id`, `operation: "add"` or
+`"remove"`, the current `deck_token`, `max_legacy_point_cost`, and `expected_turn`.
+It requires a fully started active single-player turn and an open deck, checks
+native eligibility, current costs and the final token before submitting once,
+then verifies the selected-card multiset and total legacy-point debit/refund.
+Individual categories may use native wildcard substitution; category allocation
+is not predicted. Negative/unknown costs and ambiguous repeated selected IDs are
+unsupported. Unknown/cancelled outcomes are never automatically retried.
+
+**This edits card selection only.** It does not open a screen, apply card effects,
+change the capital, replace another card automatically or confirm/finalize the
+deck. Those are separate native operations, not a side effect promised by a
+successful selection. It does not unlock a completed deck or advance turns/Ages.
+
+Verification: **264 Python /474 Node tests pass**; all **24 default tools** passed
+fresh real stdio calls, and opt-in stdio advertises **129 tools /105 actions**.
+Live Exploration T1 reads confirmed the existing completed 3/3 deck has zero open
+slots. Positive add/remove execution remains fixture-tested: the live deck was
+not reopened, edited or finalized, and no game actions or turns were issued.
+
 ### Modern factories and rail evidence
 
 `get_civ7_resources_and_trade` adds per-settlement `infrastructure`: native rail-network membership, rail-station presence and land connectivity to the capital. These are distinct signals; a station alone does not prove a rail connection. In Modern, `construction` retains native factory/station build and purchase checks, including blocked reasons and quoted costs when present; missing entries remain `null`. No placement preview or construction request is sent.
