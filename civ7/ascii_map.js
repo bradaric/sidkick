@@ -21,7 +21,7 @@
   const settlements = [], units = [], seenUnits = new Set();
   const known = id => id && Number.isInteger(id.owner) && id.owner >= 0 && Number.isInteger(id.id) && id.id >= 0 &&
     (id.owner === playerId || player.Diplomacy.hasMet(id.owner) === true);
-  const terrainGlyphs = {TERRAIN_FLAT: ".", TERRAIN_HILL: "^", TERRAIN_MOUNTAIN: "M", TERRAIN_COAST: "~",
+  const terrainGlyphs = {TERRAIN_FLAT: " ", TERRAIN_HILL: "^", TERRAIN_MOUNTAIN: "M", TERRAIN_COAST: "~",
     TERRAIN_OCEAN: "O", TERRAIN_NAVIGABLE_RIVER: "="};
   const cells = [];
   for (let ty = bounds.maxY; ty >= bounds.minY; ty--) {
@@ -29,11 +29,12 @@
       const state = GameplayMap.getRevealedState(playerId, tx, ty);
       const visible = Number.isInteger(state) && state === RevealedStates.VISIBLE;
       const explored = visible || Number.isInteger(state) && state === RevealedStates.REVEALED;
-      let cell = "???";
+      let fill = "?????", marker = "???";
       if (explored) {
         const terrain = GameInfo.Terrains.lookup(GameplayMap.getTerrainType(tx, ty))?.TerrainType;
         const glyph = Object.hasOwn(terrainGlyphs, terrain) ? terrainGlyphs[terrain] : "?";
-        let overlay = " ";
+        fill = glyph.repeat(5);
+        marker = " ";
         if (visible) {
           let cityMarker = null, unitMarker = null, citiesKnown = canCities, unitsKnown = canUnits;
           if (canCities) {
@@ -67,14 +68,13 @@
                 name: Locale.compose(unit.name ?? def?.Name ?? ""), marker});
             }
           }
-          overlay = cityMarker ?? unitMarker ?? (citiesKnown && unitsKnown ? "." : "?");
+          marker = cityMarker ?? unitMarker ?? (citiesKnown && unitsKnown ? " " : "?");
         }
-        cell = glyph + overlay + (visible ? "." : ":");
       }
       // Native odd-row offset -> axial coordinates -> flat-top projection.
       // This preserves all six native neighbors; geographic north projects upper-left.
       const q = tx - Math.floor(ty / 2);
-      cells.push({x: tx, y: ty, text: cell, left: 6 * q, top: -4 * ty - 2 * q});
+      cells.push({x: tx, y: ty, fill, marker, fogged: explored && !visible, left: 6 * q, top: -4 * ty - 2 * q});
     }
   }
   const minLeft = Math.min(...cells.map(cell => cell.left)), minTop = Math.min(...cells.map(cell => cell.top));
@@ -95,7 +95,12 @@
     }
     for (const [cx, cy, character] of [[1, 1, "/"], [7, 1, "\\"], [0, 2, "+"],
       [8, 2, "+"], [1, 3, "\\"], [7, 3, "/"]]) put(left + cx, top + cy, character);
-    for (let i = 0; i < cell.text.length; i++) put(left + 3 + i, top + 2, cell.text[i]);
+    const bottom = cell.fogged ? " FOG " : cell.fill;
+    for (let i = 0; i < 5; i++) {
+      put(left + 2 + i, top + 1, cell.fill[i]);
+      put(left + 2 + i, top + 3, bottom[i]);
+    }
+    for (let i = 0; i < cell.marker.length; i++) put(left + 4 - Math.floor(cell.marker.length / 2) + i, top + 2, cell.marker[i]);
     if (!coordinateRows.has(top + 2)) coordinateRows.set(top + 2, []);
     coordinateRows.get(top + 2).push(cell);
   }
@@ -113,10 +118,10 @@
     ascii: rows.join("\n"), settlements, units, coverage,
     projection: {style: "flat-top", north: "upper-left", east: "upper-right",
       coordinates: "Native (x,y) labels at the right of each tile-content line, ordered left-to-right"},
-    legend: {cell: "terrain + overlay + visibility; city markers take precedence, but all observed units remain listed",
-      terrain: {".": "flat land", "^": "hill", M: "mountain", "~": "coast", O: "ocean", "=": "navigable river", "?": "unknown terrain"},
+    legend: {cell: "Terrain fills the upper/lower interiors; an occupant is centered, with FOG in the lower interior for explored fog. City markers take precedence, but all observed units remain listed",
+      terrain: {blank: "flat land", "^^^^^": "hill", MMMMM: "mountain", "~~~~~": "coast", OOOOO: "ocean", "=====": "navigable river", "?????": "unknown terrain"},
       overlay: {C: "own city centre", c: "met foreign city centre", U: "own unit", u: "met foreign nonwar unit", "!": "met enemy unit",
-        ".": "no displayed entity", " ": "entities withheld in fog", "?": "entity APIs/data unavailable"},
-      visibility: {".": "currently visible", ":": "explored but currently fogged", "???": "unrevealed or unknown visibility"}},
+        blank: "no displayed entity, or entities withheld in fog", "?": "entity APIs/data unavailable"},
+      visibility: {FOG: "explored but currently fogged", "center ???": "unrevealed or unknown visibility", "no FOG or center ???": "currently visible"}},
     scope: "Connected flat-top hex projection with +---+ outer caps and shared edges. Native odd-row coordinates and six-neighbor topology are preserved; north is upper-left, east upper-right. Requested native-coordinate bounds are clipped without wrapping; the projected outline is oblique, not rectangular. Base terrain only; no features, biomes, resources, yields or route/safety predictions. Fog contains no current city/unit details; invisible/unmet entities are omitted. An absent entity marker is not proof a tile is empty or safe. Coverage describes visible entity lookup availability within this viewport only"};
 })()

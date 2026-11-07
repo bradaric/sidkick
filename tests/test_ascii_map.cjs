@@ -20,7 +20,7 @@ function run(o = {}) {
     GameplayMap: {
       getGridWidth: () => o.mapWidth ?? 6, getGridHeight: () => o.mapHeight ?? 5,
       getRevealedState: (player, x, y) => {reads.push({kind: 'visibility', x, y}); return state(x, y);},
-      getTerrainType: (x, y) => {record('terrain', x, y); if (o.changedTurn) ctx.Game.turn++; return o.terrain ?? 'TERRAIN_FLAT';},
+      getTerrainType: (x, y) => {record('terrain', x, y); if (o.changedTurn) ctx.Game.turn++; return o.terrains?.[`${x},${y}`] ?? o.terrain ?? 'TERRAIN_FLAT';},
     },
     Players: {get: () => ({Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => Boolean(o.atWar)}})},
     GameInfo: {Terrains: {lookup: type => ({TerrainType: type})}, Units: {lookup: () => ({UnitType: 'UNIT_SCOUT', Name: 'Scout'})}},
@@ -50,7 +50,7 @@ test('renders wider flat-topped hexes with shared edges and explicit native coor
   const lines = data.ascii.split('\n');
   assert.equal(lines[0], 'center (2,2); N=upper-left E=upper-right');
   assert.equal(lines.length, 16);
-  assert.ok(lines[7].startsWith('+  ...  +---+  ...  +'), 'adjacent content rows interlock with a shared cap');
+  assert.ok(lines[7].startsWith('+       +---+       +'), 'adjacent content rows interlock with a shared cap');
   assert.ok(lines[7].endsWith('(1,3) (3,2)'), 'native odd-row coordinates survive the oblique projection');
   assert.ok(!data.ascii.includes('|'), 'no vertical dividers or internal bars');
   assert.equal(data.projection.style, 'flat-top');
@@ -62,13 +62,13 @@ test('renders wider flat-topped hexes with shared edges and explicit native coor
   assert.match(data.ascii, /^[\x20-\x7e\n]+$/);
 });
 
-test('a single hex has +---+ outer caps, sloping sides and a centered unchanged token', () => {
+test('a visible flat-land hex has blank interiors instead of punctuation triplets', () => {
   const data = run({args: {width: 1, height: 1}}).data;
   assert.equal(data.ascii, [
     'center (2,2); N=upper-left E=upper-right',
     '  +---+',
     ' /     \\',
-    '+  ...  +  (2,2)',
+    '+       +  (2,2)',
     ' \\     /',
     '  +---+',
   ].join('\n'));
@@ -78,7 +78,7 @@ test('all six native neighbors share drawn edges, with each native coordinate la
   const lines = run().data.ascii.split('\n'), positions = new Map();
   for (let row = 1; row < lines.length; row++) {
     const labels = lines[row].match(/\(\d+,\d+\)/g) ?? [];
-    const contents = [...lines[row].matchAll(/\+  \.\.\.  \+/g)];
+    const contents = [...lines[row].matchAll(/\+ {7}\+/g)];
     assert.equal(contents.length, labels.length);
     for (let i = 0; i < labels.length; i++) {
       assert.equal(positions.has(labels[i]), false);
@@ -111,7 +111,7 @@ test('explored fog retains terrain but never queries entities; hidden/unknown ti
     assert.equal(data.settlements.length, 0);
     assert.equal(data.units.length, 0);
     assert.equal(reads.some(read => ['city', 'units'].includes(read.kind)), false);
-    if (state === 1) assert.ok(data.ascii.includes('. :'));
+    if (state === 1) assert.ok(data.ascii.includes('FOG'));
     else {
       assert.ok(data.ascii.includes('???'));
       assert.equal(reads.some(read => read.kind === 'terrain'), false);
@@ -127,11 +127,42 @@ test('clips at map edges without shifting the requested center or wrapping acros
   assert.ok(reads.every(read => read.x >= 0 && read.x <= 2 && read.y >= 0 && read.y <= 1));
 });
 
-test('terrain symbols are stable and unknown definitions are not guessed', () => {
-  for (const [terrain, glyph] of [['TERRAIN_FLAT', '.'], ['TERRAIN_HILL', '^'], ['TERRAIN_MOUNTAIN', 'M'],
-    ['TERRAIN_COAST', '~'], ['TERRAIN_OCEAN', 'O'], ['TERRAIN_NAVIGABLE_RIVER', '='], ['MOD_TERRAIN', '?'], ['toString', '?']]) {
-    assert.ok(run({terrain}).data.ascii.includes(`${glyph}..`), terrain);
+test('distinct terrain textures fill the upper and lower interiors without changing the hex outline', () => {
+  for (const [terrain, texture] of [['TERRAIN_FLAT', '     '], ['TERRAIN_HILL', '^^^^^'], ['TERRAIN_MOUNTAIN', 'MMMMM'],
+    ['TERRAIN_COAST', '~~~~~'], ['TERRAIN_OCEAN', 'OOOOO'], ['TERRAIN_NAVIGABLE_RIVER', '====='], ['MOD_TERRAIN', '?????'], ['toString', '?????']]) {
+    const data = run({terrain, args: {width:1,height:1}}).data;
+    assert.equal(data.ascii.split('\n')[2], ` /${texture}\\`, terrain);
+    assert.equal(data.ascii.split('\n')[4], ` \\${texture}/`, terrain);
   }
+});
+
+test('the occupant is prominent at the center and fog is labelled explicitly, not as trailing punctuation', () => {
+  const visible = run({terrain:'TERRAIN_HILL',unit:true,args:{width:1,height:1}}).data;
+  assert.equal(visible.ascii, [
+    'center (2,2); N=upper-left E=upper-right',
+    '  +---+',
+    ' /^^^^^\\',
+    '+   U   +  (2,2)',
+    ' \\^^^^^/',
+    '  +---+',
+  ].join('\n'));
+  const fogged = run({terrain:'TERRAIN_MOUNTAIN',state:1,unit:true,args:{width:1,height:1}}).data;
+  assert.ok(fogged.ascii.includes('/MMMMM\\'));
+  assert.ok(fogged.ascii.includes('+       +'));
+  assert.ok(fogged.ascii.includes('\\ FOG /'));
+  assert.equal(fogged.units.length,0);
+  assert.equal(visible.ascii.includes('FOG'),false);
+});
+
+test('mixed visible and fogged terrain textures preserve shared edges and do not inspect hidden tiles', () => {
+  const {data,reads} = run({unit:true,states:{'1,3':0,'2,3':1},terrains:{
+    '2,2':'TERRAIN_HILL','2,3':'TERRAIN_MOUNTAIN','1,2':'TERRAIN_COAST','3,2':'TERRAIN_NAVIGABLE_RIVER',
+  }});
+  for (const texture of ['^^^^^','MMMMM','~~~~~','=====','FOG','???']) assert.ok(data.ascii.includes(texture));
+  assert.ok(data.ascii.includes('+   U   +'));
+  assert.equal(data.units.length,1);
+  assert.equal(reads.filter(read=>read.kind==='terrain').length,8);
+  assert.equal(reads.filter(read=>read.kind==='units').length,7);
 });
 
 test('even the largest viewport scans only its bounded area, not the world', () => {
@@ -143,14 +174,14 @@ test('even the largest viewport scans only its bounded area, not the world', () 
 
 test('visible own/met cities and units have coordinates and markers; city overlay wins without losing unit evidence', () => {
   const own = run({city: true, unit: true}).data;
-  assert.ok(own.ascii.includes('.C.'));
+  assert.ok(own.ascii.includes('+   C   +'));
   assert.deepEqual(own.settlements[0], {x: 2, y: 2, ownerId: 0, cityId: 10, name: 'Test City', marker: 'C'});
   assert.equal(own.units[0].instanceId, 20);
   assert.equal(own.units[0].marker, 'U');
   const foreign = run({city: true, unit: true, foreignCity: true, foreignUnit: true}).data;
   assert.equal(foreign.settlements[0].marker, 'c');
   assert.equal(foreign.units[0].marker, 'u');
-  assert.ok(run({unit: true, foreignUnit: true, atWar: true}).data.ascii.includes('.!.'));
+  assert.ok(run({unit: true, foreignUnit: true, atWar: true}).data.ascii.includes('+   !   +'));
 });
 
 test('fogged, invisible, packed, mismatched and unmet entities never appear; districts are not city centres', () => {
@@ -169,7 +200,7 @@ test('unavailable entity APIs are reported as incomplete coverage, not an empty 
   const data = run({noOverlayApis: true}).data;
   assert.equal(data.coverage.settlements, false);
   assert.equal(data.coverage.units, false);
-  assert.ok(data.ascii.includes('.?.'));
+  assert.ok(data.ascii.includes('+   ?   +'));
 });
 
 test('invalid, unbounded and stale-context requests fail without revealing a map', () => {

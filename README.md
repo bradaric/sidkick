@@ -2101,20 +2101,21 @@ left-to-right, rather than misleading rectangular row/column axes. The requested
 native-coordinate rectangle therefore has an oblique projected outline.
 
 Hexes share horizontal caps and sloping edges, with no decorative gaps or bars
-through their interiors. Terrain/entity/visibility triplets remain centered inside
-the wider tiles. Width/height still refer to map tiles, not text characters/lines;
-small viewports are best for chat readability.
+through their interiors. Width/height still refer to map tiles, not text
+characters/lines; small viewports are best for chat readability.
 
-Each cell contains **terrain / entity / visibility**, for example `^U.` is a
-currently visible hill with an owned unit, and `M :` is an explored, fogged
-mountain with current entities withheld. `???` means unrevealed/unknown visibility.
-Terrain: `.` flat land, `^` hills, `M` mountains, `~` coast, `O` ocean and `=`
-navigable river. Overlays: `C/c` own/met foreign city centre, `U/u` own/met foreign
-nonwar unit, `!` met enemy unit, `.` no displayed entity, `?` unavailable entity
-lookup. City markers take precedence; units on those tiles remain in the unit list.
+**Terrain texture replaces punctuation triplets:** flat land has blank interiors,
+hills use `^^^^^`, mountains `MMMMM`, coast `~~~~~`, ocean `OOOOO`, and navigable
+rivers `=====`. These textures fill the upper/lower interiors of visible tiles.
+An entity stands alone at the center: `C/c` own/met foreign city centre, `U/u`
+own/met foreign nonwar unit, `!` met enemy unit, or `?` unavailable entity lookup.
+City markers take precedence; units on those tiles remain in the unit list.
 
-Explored base terrain is included under fog, marked `:` rather than the visible
-`.`. No terrain getters run for hidden/unknown tiles; no city/unit lookups run in
+Explored fog retains its upper terrain texture, with an explicit **`FOG`** label
+in the lower interior and no entity marker. Unknown visibility uses question-mark
+fill and **`???` at the center**. Visible tiles have no FOG label. Unknown terrain
+definitions also use question-mark texture, without inventing a terrain type.
+No terrain getters run for hidden/unknown tiles; no city/unit lookups run in
 fog. Foreign entities require a met owner, and units also require individual
 visibility and matching on-map coordinates. Districts are not labelled as city
 centres. Missing markers never prove a tile is empty or safe. This view omits
@@ -2124,7 +2125,7 @@ reading current hidden details or inferring remembered changes.
 This is a separate read-only tool, not an addition to snapshots/exports or a
 full-world scan. Reconnect Sidkick when idle to load its registration. Verification
 is local source/fixture testing only; no live map probes or game actions were used.
-**280 Python /513 Node tests pass**. Tool counts are
+**281 Python /520 Node tests pass**. Tool counts are
 **26 default /132 opt-in (106 actions)**.
 
 ### Movement and founding-site evidence
