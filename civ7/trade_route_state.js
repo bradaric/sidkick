@@ -23,8 +23,27 @@
   const routeCount = player.Trade.countPlayerTradeRoutes();
   const playerRouteCount = player.Trade.countPlayerTradeRoutesTo(targetPlayerId);
   const targetActive = targetLocation !== null && matching.length === 1 && matching[0].status?.includes(TradeRouteStatus.ALREADY_EXISTS) === true;
-  const merchantPresent = player.Units.getUnits().some(unit => unit.id.owner === playerId && unit.id.id === unitId);
+  const merchants = player.Units.getUnits().filter(unit => unit.id.owner === playerId && unit.id.id === unitId);
+  const merchantPresent = merchants.length > 0;
+  const newRouteObserved = targetActive && routeCount === baselineCount + 1 && playerRouteCount === baselinePlayerCount + 1;
+  let dispatch = {};
+  if (queryArguments.dispatch_target) {
+    const merchant = merchants.length === 1 ? merchants[0] : null;
+    const validMerchant = merchant && merchant.isOnMap === true && merchant.isDead !== true &&
+      merchant.type === queryArguments.dispatch_unit_type && merchant.id.type === queryArguments.dispatch_component_type;
+    const location = validMerchant ? merchant.location : null;
+    const merchantLocation = location && Number.isInteger(location.x) && Number.isInteger(location.y) &&
+      location.x >= 0 && location.y >= 0 && location.x < GameplayMap.getGridWidth() && location.y < GameplayMap.getGridHeight()
+      ? {x: location.x, y: location.y} : null;
+    const merchantMoveOrderObserved = Boolean(validMerchant && Number.isInteger(UnitOperationTypes.MOVE_TO) &&
+      merchant.operationQueueSize > 0 && merchant.getOperationType(0) === UnitOperationTypes.MOVE_TO);
+    const from = queryArguments.dispatch_from;
+    const merchantMovementObserved = Boolean(merchantLocation && from &&
+      (merchantLocation.x !== from.x || merchantLocation.y !== from.y));
+    dispatch = {merchantLocation, merchantMoveOrderObserved, merchantMovementObserved,
+      queuedTargetVerified: false, tradeActionObserved: newRouteObserved || merchantMoveOrderObserved || merchantMovementObserved};
+  }
   return {turn: Game.turn, age: Game.age, playerId, targetPlayerId, targetCityId, targetLocation,
     routeCount, playerRouteCount, targetActive, merchantPresent,
-    newRouteObserved: targetActive && routeCount === baselineCount + 1 && playerRouteCount === baselinePlayerCount + 1};
+    newRouteObserved, ...dispatch};
 })()

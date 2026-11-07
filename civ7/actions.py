@@ -523,12 +523,27 @@ async def edit_production_queue(settlement: StrictStr, queue_token: StrictStr, a
 async def establish_trade_route(
     unit_id: StrictInt, target_player_id: StrictInt, target_city_id: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:
-    """Establish one direct Merchant route, never silently falling back to movement."""
+    """Use the native route chooser's direct establishment or Send Merchant branch once."""
     if any(type(value) is not int or value < 0 for value in (unit_id, target_player_id, target_city_id, expected_turn)):
         raise ValueError("Nonnegative owned Merchant, target player/city IDs and expected turn are required")
     arguments = {"unit_id": unit_id, "target_player_id": target_player_id,
                  "target_city_id": target_city_id, "expected_turn": expected_turn}
-    return await _execute_and_verify("establish_trade_route.js", arguments, "trade_route_state.js")
+    result = await _execute_and_verify("establish_trade_route.js", arguments, "trade_route_state.js",
+                                       verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+    if result.get("status") != "verified_applied":
+        return result
+    after = result["after"]
+    if after.get("newRouteObserved") is True:
+        return {**result, "outcome": "route_established"}
+    if result.get("submissionKind") == "send_merchant":
+        if after.get("merchantMoveOrderObserved") is True:
+            return {**result, "status": "submitted", "outcome": "merchant_move_order_observed", "queuedTargetVerified": False,
+                    "reason": "MOVE_TO observed, but exact queued destination and future arrival are unverified. Route not established; do not resubmit automatically"}
+        if after.get("merchantMovementObserved") is True:
+            return {**result, "status": "verified_partial", "outcome": "merchant_moved_route_not_active",
+                    "reason": "Merchant movement observed, not route establishment; inspect fresh state before further orders"}
+        return {**result, "status": "unknown", "reason": "Dispatch evidence is unverified; never retry automatically"}
+    return result
 
 
 async def place_population(

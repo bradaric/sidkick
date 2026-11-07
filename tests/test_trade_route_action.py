@@ -13,9 +13,39 @@ BEFORE = {"turn": 58, "age": 42, "playerId": 0, "routeCount": 2, "playerRouteCou
 EXPECTED = {"targetPlayerId": 5, "targetCityId": 10, "newRouteObserved": True}
 READ_ARGS = {**ARGS, "baseline_route_count": 2, "baseline_player_route_count": 0}
 SUBMITTED = {"status": "submitted", "before": BEFORE, "expected": EXPECTED, "verificationArguments": READ_ARGS}
+DISPATCH = {**SUBMITTED, "submissionKind": "send_merchant", "expected": {"tradeActionObserved": True},
+            "verificationArguments": {**READ_ARGS, "dispatch_target": {"x": 18, "y": 39}}}
 
 
 class TradeRouteTests(unittest.IsolatedAsyncioTestCase):
+    async def test_send_merchant_reports_dispatch_not_route_establishment(self):
+        for observations, status, outcome in [
+            ({"newRouteObserved": False, "merchantMoveOrderObserved": True}, "submitted", "merchant_move_order_observed"),
+            ({"newRouteObserved": False, "merchantMovementObserved": True}, "verified_partial", "merchant_moved_route_not_active"),
+            ({"newRouteObserved": True, "merchantMoveOrderObserved": True}, "verified_applied", "route_established"),
+        ]:
+            with patch("civ7.actions.run_script", new_callable=AsyncMock,
+                       side_effect=[DISPATCH, {**BEFORE, "tradeActionObserved": True, **observations}]) as run:
+                result = await actions.establish_trade_route(20, 5, 10, 58)
+            self.assertEqual(result["status"], status)
+            self.assertEqual(result["outcome"], outcome)
+            self.assertEqual([call.args[0] for call in run.await_args_list],
+                             ["establish_trade_route.js", "trade_route_state.js"])
+            if status == "submitted":
+                self.assertFalse(result["queuedTargetVerified"])
+
+    async def test_dispatch_changed_context_or_readback_timeout_is_unknown_without_retry(self):
+        for readback in [{**BEFORE, "turn": 59, "tradeActionObserved": True}, TimeoutError()]:
+            with patch("civ7.actions.run_script", new_callable=AsyncMock, side_effect=[DISPATCH, readback]) as run:
+                result = await actions.establish_trade_route(20, 5, 10, 58)
+            self.assertEqual(result["status"], "unknown")
+            self.assertEqual(run.await_count, 2)
+        with patch("civ7.actions.run_script", new_callable=AsyncMock,
+                   side_effect=[DISPATCH, asyncio.CancelledError()]) as run:
+            with self.assertRaises(asyncio.CancelledError):
+                await actions.establish_trade_route(20, 5, 10, 58)
+            self.assertEqual(run.await_count, 2)
+
     async def test_wrapper_uses_targeted_baseline_polling_and_never_resubmits(self):
         self.assertTrue(callable(getattr(actions, "establish_trade_route", None)))
         with patch("civ7.actions.run_script", new_callable=AsyncMock,
@@ -61,6 +91,12 @@ class TradeRouteTests(unittest.IsolatedAsyncioTestCase):
             result = await create_server(enable_writes=True).call_tool(name, ARGS)
         self.assertFalse(result.is_error)
         self.assertEqual(result.structured_content["status"], "verified_applied")
+        with patch("civ7.actions.run_script", new_callable=AsyncMock,
+                   side_effect=[DISPATCH, {**BEFORE, "tradeActionObserved": True, "merchantMoveOrderObserved": True}]):
+            result = await create_server(enable_writes=True).call_tool(name, ARGS)
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content["status"], "submitted")
+        self.assertEqual(result.structured_content["outcome"], "merchant_move_order_observed")
         with patch("civ7.actions.run_script", new_callable=AsyncMock) as run:
             with self.assertRaises(ToolError):
                 await create_server(enable_writes=True).call_tool(name, {**ARGS, "unit_id": True})

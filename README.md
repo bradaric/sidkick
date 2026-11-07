@@ -314,26 +314,46 @@ or turn/Age/player change. No native submission was retried. All approved live
 production/purchase/trade tests have now succeeded and been manually confirmed by
 the user, including the final Quay inspection.
 
-#### Direct Merchant trade-route establishment
+#### Merchant trade-route establishment and dispatch
 
 `establish_civ7_trade_route(unit_id, target_player_id, target_city_id, expected_turn)`
 uses an exact owned Merchant instance and owner-qualified foreign city identity.
 Target IDs can come from `get_civ7_known_world.visibleForeignSettlements`
 (`ownerId`, `cityId`). It requires an active local turn, met peaceful counterpart,
 revealed target city, unique available projected route, known unpacked on-map
-Merchant and successful native `MAKE_TRADE_ROUTE` check. The command may use the
-Merchant's action/charges and change trade/resource access. Existing routes are
-no-ops. There is no movement fallback, automatic travel, war or turn advancement.
+Merchant. Like the native chooser, it checks `MAKE_TRADE_ROUTE` first; if that
+command is unavailable, it supports **Send Merchant** in single-player: one native
+nonattack `MOVE_TO` toward the nearest reachable revealed plot belonging to that
+city. Native movement permission, war/combat and confirmation checks still apply.
+There is no independent movement-points gate: zero movement alone does not prove
+either branch is unavailable. The command may use the Merchant's action/charges
+and change trade/resource access. Existing routes are no-ops.
 
-The native UI falls back to `MOVE_TO` if immediate establishment fails; this
-handler explicitly does not. It submits once and uses the same bounded read-only
-verifier as other actions. Readback requests `INCLUDE_FAILED + EXTENDED_STATUS`,
+Exactly one command **or** move is submitted, never both. Dispatch may replace a
+previous order and queue travel across later user-advanced turns. This is not a
+guarantee of safe travel, arrival or automatic route establishment; the tool never
+advances turns or submits a follow-up command. Unknown/cancelled outcomes must
+never be retried automatically.
+
+The bounded read-only verifier polls for up to 15 seconds. Readback requests
+`INCLUDE_FAILED + EXTENDED_STATUS`,
 as the native commerce screen does, and requires the exact target to become
 `ALREADY_EXISTS`, with total routes and routes to that counterpart each rising by
 exactly one from captured counts. Merchant disappearance, movement consumption,
-or a counter increase alone is not success. Another writer can confound these
-observations; there is no atomic submission or cross-process deduplication.
-Unknown/cancelled outcomes must never be retried automatically.
+or a counter increase alone cannot establish a route. `outcome: route_established`
+is the only active-route success. Dispatch instead reports
+`merchant_move_order_observed` (`status: submitted`, `queuedTargetVerified: false`)
+or `merchant_moved_route_not_active` (`status: verified_partial`). The queue API
+cannot verify its exact destination. No observed change before timeout is
+`unknown`, not permission to retry. Another writer can confound these observations;
+there is no atomic submission or cross-process deduplication.
+
+Send Merchant is source/fixture-tested, including purchase-turn zero-movement
+dispatch; it has not been live-verified. No live probes or game actions were
+issued for this change while the user played in another session. The direct-only
+native evidence below is historical, not a current eligibility rule.
+
+Dispatch regression verification: **273 Python /495 Node tests pass**.
 
 Production/purchase/trade regression verification: **114 Python and 242 Node tests pass**. The
 separately approved live test buys a second Merchant in Kyiv for at most 400 Gold

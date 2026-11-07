@@ -1620,15 +1620,22 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             title="Establish Civ VII Merchant trade route",
             description=(
                 "CHANGE GAME STATE: use one owned UNIT_MERCHANT unit_id (instanceId from get_civ7_units) "
-                "to establish a direct route to an exact target_player_id and target_city_id, using a "
+                "to establish a route or Send Merchant toward an exact target_player_id and target_city_id, using a "
                 "fresh expected_turn. Use get_civ7_resources_and_trade.trade.routes targetPlayerId/targetCityId "
                 "as target_player_id/target_city_id, or get_civ7_known_world.visibleForeignSettlements "
                 "ownerId/cityId. Never infer IDs from names, coordinates or list order. "
                 "Requires a unique engine-offered route, met peaceful counterpart, "
-                "revealed target city, unpacked on-map Merchant and exact MAKE_TRADE_ROUTE permission. "
-                "Can use the Merchant's action/charges and alter trade/resources. Sends once; verifies "
-                "target-specific newly active status and total/counterpart route counts rising by one. "
-                "No movement fallback, war, turn advancement or automatic retry after unknown/cancellation. "
+                "revealed target city and live unpacked on-map Merchant. First checks MAKE_TRADE_ROUTE; "
+                "if unavailable, uses the native chooser's single-player Send Merchant branch: one "
+                "permitted nonattack MOVE_TO toward the nearest reachable revealed target-city plot. "
+                "Zero movement alone is not a blocker. Dispatch may replace/queue travel for later "
+                "user-advanced turns and encounter danger; no safe path or eventual arrival is promised. "
+                "Can use the Merchant's action/charges and alter trade/resources. Sends exactly one "
+                "command or move, never both. outcome route_established requires target-specific newly "
+                "active status and total/counterpart route counts rising by one. Dispatch readback "
+                "reports merchant_move_order_observed (submitted, queuedTargetVerified false) or "
+                "merchant_moved_route_not_active (verified_partial), never falsely an active route. "
+                "No attack, war, turn advancement, automatic follow-up establishment or retry after unknown/cancellation. "
                 "Requires the user's explicit instruction for this exact Merchant and destination."
             ),
             annotations=ToolAnnotations(
