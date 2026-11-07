@@ -1,7 +1,8 @@
 (() => {
   const {unit_id: unitId, x, y, expected_turn: expectedTurn, mode = "step", target_player: targetPlayer} = queryArguments;
-  const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
-  if (!["step", "rail", "advance", "travel"].includes(mode) || [unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0) ||
+  const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons,
+    ...(mode === "normal" ? {rejectionSource: "sidkick"} : {})});
+  if (!["normal", "step", "rail", "advance", "travel"].includes(mode) || [unitId, x, y, expectedTurn].some(value => !Number.isInteger(value) || value < 0) ||
       (mode === "advance" && (!Number.isInteger(targetPlayer) || targetPlayer < 0))) return reject("Exact owned unit, supported move/tile/enemy and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID;
@@ -16,6 +17,40 @@
   const valid = location => location && Number.isInteger(location.x) && Number.isInteger(location.y) &&
     location.x >= 0 && location.y >= 0 && location.x < GameplayMap.getGridWidth() && location.y < GameplayMap.getGridHeight();
   const destination = {x, y};
+  if (mode === "normal") {
+    const refuse = (reason, rejectionSource = "sidkick", failureReasons = []) => ({status: "rejected", reason, rejectionSource, failureReasons});
+    if (Configuration.getGame().isAnyMultiplayer !== false || !valid(unit.location) || !valid(destination) ||
+        unit.isOnMap !== true || unit.isDead === true || unit.isCommanderUnit ||
+        !["DOMAIN_LAND", "DOMAIN_SEA"].includes(GameInfo.Units.lookup(unit.type)?.Domain))
+      return refuse("A live owned on-map land/sea noncommander and a valid single-player destination are required");
+    const modifier = UnitOperationMoveModifiers.MOVE_IGNORE_UNEXPLORED_DESTINATION;
+    if (!Number.isInteger(modifier) || !Number.isInteger(UnitOperationMoveModifiers.ATTACK) ||
+        (modifier & UnitOperationMoveModifiers.ATTACK) !== 0 || !Number.isInteger(UnitOperationTypes.MOVE_TO))
+      return refuse("Native fog-capable nonattack movement modifier/operation is unavailable");
+    const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
+      location: {x: unit.location.x, y: unit.location.y}, movesRemaining: unit.Movement?.movementMovesRemaining ?? null,
+      queueSize: unit.operationQueueSize ?? null, moveOperation: UnitOperationTypes.MOVE_TO};
+    if (before.location.x === x && before.location.y === y) return {status: "already_active", before};
+    const args = {X: x, Y: y, Modifiers: modifier};
+    if (typeof player.Diplomacy?.willMoveStartWar !== "function") return refuse("Native war-check API is unavailable");
+    const war = player.Diplomacy.willMoveStartWar(unit.id, destination);
+    if (war?.Success === true) return refuse("Native movement requires war confirmation", "native");
+    if (GameplayMap.getRevealedState(playerId, x, y) === RevealedStates.VISIBLE &&
+        Game.Combat.testAttackInto(unit.id, args) !== CombatTypes.NO_COMBAT)
+      return refuse("Native preview identifies combat; an explicit attack order is required", "native");
+    const check = Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO, args, false);
+    if (check?.Success !== true || check.RequiresConfirmation === true)
+      return refuse("Native movement check rejected or requires confirmation", "native", check?.FailureReasons ?? []);
+    if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
+        player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || unit.id.owner !== playerId ||
+        unit.id.id !== unitId || unit.id.type !== before.componentType || unit.type !== before.unitType || unit.isOnMap !== true || unit.isDead === true)
+      return refuse("Turn or owned-unit identity changed during submission checks");
+    // Native Move-To explicitly supports fog. Do not use WorldInput, add ATTACK,
+    // inspect hidden occupants/terrain, or insist on a fully visible empty path.
+    Game.UnitOperations.sendRequest(unit.id, UnitOperationTypes.MOVE_TO, args);
+    return {status: "submitted", before, destination, verificationArguments: {unit_id: unitId},
+      verificationScope: "One normal nonattack MOVE_TO, including fog and native queued continuation/replacement. Readback reports actual coordinates/queue, not hidden-path safety, future arrival or an unavailable exact queued-target binding. No war declaration, attack/swap helper or turn advancement"};
+  }
   if (!valid(unit.location) || !valid(destination) || unit.isOnMap === false || unit.isCommanderUnit ||
       !Number.isFinite(unit.Movement?.movementMovesRemaining) || unit.Movement.movementMovesRemaining <= 0) return reject("A mobile on-map noncommander unit is required");
   const domain = GameInfo.Units.lookup(unit.type)?.Domain;

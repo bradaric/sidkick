@@ -13,10 +13,6 @@ CASES = [
      {"settlement": "Hanseong", "x": 12, "y": 37, "improvement": "IMPROVEMENT_FISHING_BOAT", "expected_turn": 59},
      "place_population.js", "population_state.js", {"city_id": 10, "baseline_component_ids": []},
      {"cityId": 10, "pendingPopulation": 0, "newImprovementObserved": True}),
-    ("move_civ7_unit", "move_unit", (20, 10, 15, 59),
-     {"unit_id": 20, "x": 10, "y": 15, "expected_turn": 59},
-     "move_unit.js", "unit_position_state.js", {},
-     {"unitId": 20, "unitType": 201, "componentType": 26, "location": {"x": 10, "y": 15}}),
     ("rail_civ7_unit", "rail_unit", (20, 10, 15, 59),
      {"unit_id": 20, "x": 10, "y": 15, "expected_turn": 59, "mode": "rail"},
      "move_unit.js", "unit_position_state.js", {},
@@ -30,17 +26,20 @@ BEFORE = {"turn": 59, "age": 42, "playerId": 0}
 
 
 class GrowthAndMovementTests(unittest.IsolatedAsyncioTestCase):
-    async def test_shore_readback_waits_for_actual_embarkation_not_just_destination(self):
-        expected = {"unitId": 20, "location": {"x": 10, "y": 15}, "embarked": True}
-        submitted = {"status": "submitted", "before": BEFORE, "expected": expected}
+    async def test_normal_move_reports_observed_embarkation_without_predicting_hidden_terrain(self):
+        before = {**BEFORE, "unitId": 20, "unitType": 201, "componentType": 26,
+                  "moveOperation": 900, "location": {"x": 9, "y": 15}}
+        after = {**before, "present": True, "location": {"x": 10, "y": 15}, "embarked": True, "queueSize": 0}
+        submitted = {"status": "submitted", "before": before}
         with patch("civ7.actions.run_script", new_callable=AsyncMock, side_effect=[
-            submitted, {**BEFORE, **expected, "embarked": False}, {**BEFORE, **expected},
+            submitted, after,
         ]) as run, patch("civ7.actions.asyncio.sleep", new_callable=AsyncMock):
             result = await actions.move_unit(20, 10, 15, 59)
         self.assertEqual(result["status"], "verified_applied")
-        self.assertEqual(run.await_count, 3)
+        self.assertTrue(result["after"]["embarked"])
+        self.assertEqual(run.await_count, 2)
         self.assertEqual([call.args[0] for call in run.await_args_list],
-                         ["move_unit.js", "unit_position_state.js", "unit_position_state.js"])
+                         ["move_unit.js", "normal_move_state.js"])
 
     async def test_wrappers_pass_json_arguments_and_poll_without_resubmission(self):
         for _, fn, positional, args, script, state, captured, expected in CASES:

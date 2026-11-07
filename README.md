@@ -380,17 +380,14 @@ confirmed the Samapa route in-game.
   Readback requires one fewer pending population and a genuinely new owned,
   undamaged improvement at the exact tile. Existing tile ownership is not proof:
   the approved Hanseong tile was already within its purchased territory.
-- `move_civ7_unit(unit_id, x, y, expected_turn)` moves one owned land/sea unit to
-  an adjacent empty, currently visible own/unowned tile. The unit must have
-  positive movement and known unpacked/nonreinforcing on-map state; commanders
-  and air units are excluded. The tile must be native-reachable, not an attack
-  target, with a direct two-plot path and native `NO_COMBAT` result. It uses only
-  `MOVE_TO` with explicit `NONE` modifiers, never the UI helper that can attack,
-  swap or declare war. No foreign territory, fogged travel, embarking/disembarking,
-  transport, multistep orders or turn advancement. Already-embarked land units
-  may travel water-to-water; shore transitions remain blocked. Readback verifies the exact
-  owned instance, component/type and location; packed/reinforcing/unknown packing
-  state withholds otherwise plausible coordinates. Movement is spent, not restored.
+- `move_civ7_unit(unit_id, x, y, expected_turn)` now uses normal native land/sea
+  movement, including fog/unexplored targets, native shore/access rules and queued
+  continuation. It no longer requires adjacent, visible, empty path tiles or
+  positive movement just to queue a destination. Uses the native fog modifier
+  without `ATTACK`, never the attack/swap/war UI helper. Native permission,
+  confirmation/war, ownership/context and visible-combat checks remain. Arrival,
+  observed partial movement and queued intent are reported separately; see
+  **Normal movement and exploration** below. No turn is advanced automatically.
 
 Both tools remain stdio-write-opt-in only and submit once using the existing
 bounded verifier. Unknown/cancelled outcomes must not be automatically retried;
@@ -1622,7 +1619,9 @@ mixed payloads still reject. Separate FleetAirlift T62 save confirmed RESULT_OK;
 original Merchant intact, no turns advanced.
 **242 Python / 437 Node pass; tools24/121 (97 actions).**
 
-`travel_civ7_unit` executes one1–8-edge current-turn native path with all edges
+`travel_civ7_unit` remains an optional strict mode, not the normal exploration
+tool; use `move_civ7_unit` for ordinary fog-capable movement and queued travel.
+It executes one1–8-edge current-turn native path with all edges
 visible, empty, same-surface, reachable and noncombat. Explicit peaceful counterpart
 intent additionally requires native no-war checks per edge, never inferred access.
 Native Scout move and two-edge Frigate out/return into player1 verified with health,
@@ -1933,9 +1932,46 @@ returned Washington, D.C. as player 4/city 65536 with an already active route;
 another player's city independently used 65536. No trade route or game action
 was submitted to obtain this evidence.
 
+### Normal movement and exploration
+
+`move_civ7_unit` submits one ordinary native `MOVE_TO` to the user's exact x/y.
+It uses `MOVE_IGNORE_UNEXPLORED_DESTINATION`, which the installed native Move-To
+picker uses so humans can click into fog. Sidkick submits that flag **without**
+adding `ATTACK` or calling the UI's broader attack/war helper.
+Fogged/unexplored destinations, multistep/queued continuation, native shore
+crossings and native-permitted peaceful access are allowed. An explicit new
+destination may replace an existing movement order; zero remaining movement
+does not by itself block queuing. No full-path visibility, empty-tile, terrain,
+packing-army scan or predicted danger-free-route proof is required.
+
+The default still checks native permission, confirmation/war requirements,
+visible combat targets, unit ownership/type, valid map coordinates and current
+turn/Age context. It does not call the UI helper that can attack, swap or declare
+war, inspect hidden occupants/terrain, or advance turns. Civ7 may stop short,
+reveal danger, apply attrition or continue its queued order when the user advances
+later turns. Unknown territory is **not** promised safe for a Settler.
+
+Readback distinguishes `verified_applied`/`outcome: "arrived"` (actual coordinates),
+`verified_partial`/`"moved_partway"` (movement observed without arrival), and
+`submitted`/`"move_order_observed"` (a native MOVE_TO is active/queued). The last
+is not a rejection and must not be resubmitted: `queuedTargetVerified: false`
+explicitly records that the known queue API does not bind its exact destination.
+Future arrival is not verified. Missing units, changed context, timeout or lost
+acknowledgements remain unknown and are never automatically retried. Native
+rejections are distinguished from Sidkick guards by `rejectionSource`.
+
+The stricter `travel_civ7_unit` remains available only when its visible/empty,
+bounded current-turn guarantees are explicitly wanted. Air, rail and commander
+movement retain their separate tools.
+
+Verification: **270 Python /488 Node tests pass**. This change is source/fixture
+verified, not positively live-movement-tested. No live probes, game actions,
+turns or save/load operations were issued while the user played in another
+session. Tool counts remain **25 default /130 opt-in (105 actions)**.
+
 ### Movement and founding-site evidence
 
-`get_civ7_units` includes a stable numeric `instanceId`, distinct from the existing unit-type `id`. Pass it to `get_civ7_movement_and_founding`, optionally with **both** `x` and `y`. Without coordinates, it inspects the unit's current location. Only owned units and revealed destinations are accepted. The tool returns revealed movement-range candidates, per-tile operation eligibility, and the engine's path turn labels without converting them to an inferred number of turns remaining. Attack targets are excluded from movement candidates; packed units and units stopped by a zone of control do not receive an unrestricted range. A path containing any hidden tile is withheld in full, and raw path obstacles are never returned.
+`get_civ7_units` includes a stable numeric `instanceId`, distinct from the existing unit-type `id`. Pass it to `get_civ7_movement_and_founding`, optionally with **both** `x` and `y`. Without coordinates, it inspects the unit's current location. Only owned units and valid map destinations are accepted. Explicit fog/unexplored destinations may receive native fog-capable move-permission checks; hidden site/terrain/resource data remain withheld, and absence of a visible path does not establish illegal movement. The tool returns revealed movement-range candidates, per-tile operation eligibility, and the engine's path turn labels without converting them to an inferred number of turns remaining. Attack targets are excluded from movement candidates; packed units and units stopped by a zone of control do not receive an unrestricted range. A path containing any hidden tile is withheld in full, and raw path obstacles are never returned.
 
 Settlers include the engine's current-location and adjacent-plot founding checks. A destination also includes fresh water, terrain/features, current tile yields, resources already revealed within three hexes, and distances to owned settlements. These are **site-comparison evidence**, not a founding-site simulator: arbitrary `legalToFoundAfterMoving` and `newSettlementYields` remain `null`. Current/adjacent founding eligibility is not extended to distant tiles. The tool does not use AI settlement recommendations that could incorporate hidden-world information, and never selects, moves or founds anything. This targeted query is excluded from snapshots/exports.
 

@@ -426,8 +426,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(airdrop_infantry_group)
         server.tool(
-            name="travel_civ7_unit",title="Travel a bounded Civ VII ordinary-unit current-turn path",
-            description=("CHANGE GAME STATE: exact noncommander unit_id, destination x/y, expected_turn "
+            name="travel_civ7_unit",title="Strict bounded current-turn Civ VII travel (optional)",
+            description=("Optional strict travel mode; use move_civ7_unit for normal movement, fog "
+                         "exploration and native queued continuation. CHANGE GAME STATE: exact noncommander unit_id, destination x/y, expected_turn "
                          "and max_steps1–8. Optional peaceful_player_id explicitly permits only that met "
                          "nonwartime owner's empty non-district territory in addition to own/unowned. "
                          "Every native current-turn path edge must be visible, empty, same water/land "
@@ -1585,19 +1586,23 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         )(place_population)
         server.tool(
             name="move_civ7_unit",
-            title="Move Civ VII unit one adjacent tile",
+            title="Move Civ VII unit normally, including fog and queued travel",
             description=(
                 "CHANGE GAME STATE: move one owned noncommander unit_id (instanceId from get_civ7_units) "
-                "to adjacent x/y using fresh expected_turn. Land/sea only; requires positive movement, "
-                "known unpacked/nonreinforcing on-map state, an empty currently visible own/unowned "
-                "destination, native reachability and a direct one-edge noncombat path. Adjacent land-unit "
-                "embarking/disembarking requires consistent native source state and verifies actual "
-                "destination embarkation as well as position. No air, foreign territory, fogged travel, "
-                "captures, attacks, swaps, "
-                "rail/transport, multistep orders or turn advancement. Uses MOVE_TO with NONE modifiers, "
-                "not the UI helper that can attack or declare war. Verifies exact owned component/type "
-                "and final location. Requires exact-action user approval; submits once and never "
-                "automatically retries unknown/cancelled outcomes. Movement is spent, not restored."
+                "to requested x/y using fresh expected_turn and normal native MOVE_TO legality. "
+                "Allows fogged/unexplored and distant destinations, native shore crossings/peaceful "
+                "access and queued continuation over future turns. A new destination may replace the "
+                "unit's existing move order; zero movement does not itself forbid queuing. Does not "
+                "require a visible empty path, inspect hidden occupants/terrain or predict safety. "
+                "Uses MOVE_IGNORE_UNEXPLORED_DESTINATION without ATTACK, not the attack/swap/war UI helper. "
+                "Honors native permission and rejects confirmation-required/war moves and visible combat targets; no war "
+                "declaration, separate attack or turn advancement is issued. Fog may reveal danger or "
+                "stop movement. Returns outcome arrived (verified coordinates), moved_partway (partial), "
+                "or move_order_observed (submitted, MOVE_TO active/queued, exact queued target/future "
+                "arrival unverified). A submitted queued move is not a rejection: do not resubmit it. "
+                "Preserves ownership/context checks and never automatically retries unknown/cancelled "
+                "outcomes. Use travel_civ7_unit only when its optional strict current-turn guarantees "
+                "are explicitly wanted. Rail, air and commanders retain their separate tools."
             ),
             annotations=ToolAnnotations(
                 readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False,
@@ -1924,7 +1929,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII unit movement and founding evidence",
         description=(
             "Read one owned unit by its integer instanceId from get_civ7_units. Returns "
-            "revealed movement options and optional destination path/site evidence. Supply "
+            "revealed movement options and optional destination path/site evidence. Fog/unexplored "
+            "targets may receive native nonattack MOVE_TO permission checks without hidden terrain, "
+            "resources or site data; absence of a visible path is not proof movement is illegal. Supply "
             "both x and y, or omit both to inspect the unit's location. Native path turn "
             "labels are retained; paths through hidden tiles are withheld. Settlers include "
             "current/adjacent founding checks; arbitrary future-site legality and new "

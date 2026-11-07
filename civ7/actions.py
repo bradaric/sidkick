@@ -552,11 +552,44 @@ async def travel_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_t
 
 
 async def move_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
-    """Move one owned unit a single visible, empty, noncombat land/sea step."""
+    """Issue one native fog-capable move; distinguish observed arrival from queued intent."""
     if any(type(value) is not int or value < 0 for value in (unit_id, x, y, expected_turn)):
         raise ValueError("Nonnegative owned unit ID, tile coordinates and expected turn are required")
-    arguments = {"unit_id": unit_id, "x": x, "y": y, "expected_turn": expected_turn}
-    return await _execute_and_verify("move_unit.js", arguments, "unit_position_state.js")
+    arguments = {"unit_id": unit_id, "x": x, "y": y, "expected_turn": expected_turn, "mode": "normal"}
+    async with _action_lock:
+        result = {"status": "unknown", **arguments}
+        after = None
+        try:
+            result = await run_script("move_unit.js", arguments)
+            if result.get("status") in {"rejected", "already_active"}:
+                return result
+            if result.get("status") != "submitted":
+                raise ValueError("Unexpected movement submission response")
+            before = result["before"]
+            if type(before.get("moveOperation")) is not int:
+                raise ValueError("Unverified native move operation")
+            async with asyncio.timeout(_COMBAT_VERIFICATION_TIMEOUT):
+                while True:
+                    after = await run_script("normal_move_state.js", {"unit_id": unit_id})
+                    if any(type(before.get(key)) is not int or type(after.get(key)) is not int or before[key] != after[key]
+                           for key in ("turn", "age", "playerId")) or after.get("present") is not True or after.get("isDead") is True or any(
+                            before.get(key) != after.get(key) for key in ("unitId", "unitType", "componentType")):
+                        return {**result, "status": "unknown", "after": after,
+                                "reason": "Context or owned unit changed/unavailable; inspect state, never retry automatically"}
+                    if after.get("location") == {"x": x, "y": y}:
+                        return {**result, "status": "verified_applied", "outcome": "arrived", "after": after}
+                    if after.get("queueSize", 0) and after.get("operation") == before.get("moveOperation"):
+                        return {**result, "status": "submitted", "outcome": "move_order_observed", "after": after,
+                                "queuedTargetVerified": False,
+                                "reason": "A MOVE_TO is in progress/queued; exact queued destination and future arrival are not verified. Do not resubmit"}
+                    if after.get("location") is not None and after["location"] != before.get("location"):
+                        return {**result, "status": "verified_partial", "outcome": "moved_partway", "after": after,
+                                "reason": "Movement observed, but destination not reached; inspect current state rather than retry automatically"}
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", **({"after": after} if after is not None else {}),
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Movement outcome is unknown; inspect current state and never retry automatically"}
 
 
 async def rail_unit(unit_id: StrictInt, x: StrictInt, y: StrictInt, expected_turn: StrictInt) -> dict[str, Any]:
