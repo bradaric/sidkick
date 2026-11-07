@@ -2156,7 +2156,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
     server.tool(
         name="get_civ7_ascii_map", title="Get a centered Civ VII ASCII map",
         description=(
-            "Render a read-only north-up staggered hex-coordinate ASCII map centered on exact x,y. "
+            "Render a read-only north-up connected ASCII honeycomb with shared hex edges, centered on exact x,y. "
             "Optional odd width 1-31 and height 1-21 default to 15x9; edges clip without wrapping. "
             "Explored base terrain remains visible under fog (marked :); hidden/unknown tiles are ???. "
             "City centres and individually visible on-map units are overlaid/listed only on currently "

@@ -2063,12 +2063,16 @@ session. Tool counts remain **25 default /130 opt-in (105 actions)**.
 
 ### Centered ASCII map
 
-`get_civ7_ascii_map(x, y, width=15, height=9)` returns a north-up, staggered hex
-coordinate grid in `ascii`, plus its legend, bounds, settlement/unit lists and
+`get_civ7_ascii_map(x, y, width=15, height=9)` returns a north-up, connected hex
+honeycomb in `ascii`, plus its legend, bounds, settlement/unit lists and
 entity-lookup coverage. Choose the center tile of the area you want to inspect.
 Width and height must be odd, at most 31 and 21 respectively (651 tiles maximum).
 Edges are clipped, not wrapped or shifted to fill the requested size. Absolute
 odd-numbered rows shift right, matching the native map debug renderer.
+Hex outlines share edges: there are no decorative gaps between neighboring tiles.
+The outlined view is taller than the original compact triplets; width/height still
+refer to map tiles, not text characters/lines. Coordinates label each tile-content
+row, and the terrain/entity/visibility triplets remain unchanged inside the hexes.
 
 Each cell contains **terrain / entity / visibility**, for example `^U.` is a
 currently visible hill with an owned unit, and `M :` is an explored, fogged
@@ -2089,7 +2093,7 @@ reading current hidden details or inferring remembered changes.
 This is a separate read-only tool, not an addition to snapshots/exports or a
 full-world scan. Reconnect Sidkick when idle to load its registration. Verification
 is local source/fixture testing only; no live map probes or game actions were used.
-**280 Python /511 Node tests pass**. Tool counts are
+**280 Python /512 Node tests pass**. Tool counts are
 **26 default /132 opt-in (106 actions)**.
 
 ### Movement and founding-site evidence

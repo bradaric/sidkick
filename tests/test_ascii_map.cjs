@@ -42,16 +42,38 @@ function run(o = {}) {
   return JSON.parse(JSON.stringify({data, reads}));
 }
 
-test('renders a bounded north-up odd-row-offset ASCII grid with coordinate labels', () => {
+test('renders connected north-up hexes with shared edges and absolute odd-row offsets', () => {
   const {data, reads} = run();
   assert.deepEqual(data.center, {x: 2, y: 2});
   assert.deepEqual(data.bounds, {minX: 1, maxX: 3, minY: 1, maxY: 3});
   assert.equal(data.turn, 7);
-  assert.equal(data.ascii, 'x |   1   2   3\n3 |   ... ... ...\n2 | ... ... ...\n1 |   ... ... ...');
+  const lines = data.ascii.split('\n');
+  assert.equal(lines[0], 'x |   1   2   3');
+  assert.equal(lines.length, 16);
+  assert.equal(lines[4], '3 |   |...|...|...|');
+  assert.equal(lines[8], '2 | |...|...|...|');
+  assert.equal(lines[12], '1 |   |...|...|...|');
+  for (const index of [4, 8, 12]) {
+    assert.equal((lines[index].slice(4).match(/\|/g) ?? []).length, 4, 'three adjacent tiles share four sides, not six');
+  }
   assert.equal(reads.filter(read => read.kind === 'terrain').length, 9);
   assert.equal(data.settlements.length, 0);
   assert.equal(data.units.length, 0);
   assert.match(data.ascii, /^[\x20-\x7e\n]+$/);
+});
+
+test('a single hex has six outlined sides around the unchanged terrain/entity/visibility token', () => {
+  const data = run({args: {width: 1, height: 1}}).data;
+  assert.equal(data.ascii, [
+    'x |   2',
+    '      +',
+    '     / \\',
+    '    +   +',
+    '2 | |...|',
+    '    +   +',
+    '     \\ /',
+    '      +',
+  ].join('\n'));
 });
 
 test('explored fog retains terrain but never queries entities; hidden/unknown tiles are opaque', () => {
@@ -87,7 +109,7 @@ test('even the largest viewport scans only its bounded area, not the world', () 
   const {data, reads} = run({mapWidth: 200, mapHeight: 200, args: {x: 100, y: 100, width: 31, height: 21}});
   assert.equal(reads.filter(read => read.kind === 'terrain').length, 31 * 21);
   assert.deepEqual(data.bounds, {minX: 85, maxX: 115, minY: 90, maxY: 110});
-  assert.equal(data.ascii.split('\n').length, 22);
+  assert.equal(data.ascii.split('\n').length, 88);
 });
 
 test('visible own/met cities and units have coordinates and markers; city overlay wins without losing unit evidence', () => {

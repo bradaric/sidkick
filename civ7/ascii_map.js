@@ -23,13 +23,20 @@
     (id.owner === playerId || player.Diplomacy.hasMet(id.owner) === true);
   const terrainGlyphs = {TERRAIN_FLAT: ".", TERRAIN_HILL: "^", TERRAIN_MOUNTAIN: "M", TERRAIN_COAST: "~",
     TERRAIN_OCEAN: "O", TERRAIN_NAVIGABLE_RIVER: "="};
-  const yDigits = String(bounds.maxY).length, cellWidth = Math.max(4, String(bounds.maxX).length + 1);
+  const yDigits = String(bounds.maxY).length;
+  const cellWidth = Math.max(4, 2 * Math.ceil((String(bounds.maxX).length + 1) / 2));
+  const half = cellWidth / 2, rowStep = half + 2;
+  const canvas = Array.from({length: (bounds.maxY - bounds.minY) * rowStep + 2 * half + 3},
+    () => Array((bounds.maxX - bounds.minX + 1) * cellWidth + half + 1).fill(" "));
+  const put = (cx, cy, character) => {canvas[cy][cx] = character;};
   let header = "x".padStart(yDigits) + " | ";
-  for (let tx = bounds.minX; tx <= bounds.maxX; tx++) header += String(tx).padStart(cellWidth - 1) + " ";
+  for (let tx = bounds.minX; tx <= bounds.maxX; tx++) {
+    const label = String(tx);
+    header += label.padStart(half + Math.ceil(label.length / 2)).padEnd(cellWidth);
+  }
   const rows = [header.trimEnd()];
-  // Match native map-debug-helpers.js: north-up, absolute odd rows offset right.
+  // North-up, absolute odd rows offset right; neighboring hexes share their edges.
   for (let ty = bounds.maxY; ty >= bounds.minY; ty--) {
-    let row = String(ty).padStart(yDigits) + " | " + (ty % 2 ? " ".repeat(Math.floor(cellWidth / 2)) : "");
     for (let tx = bounds.minX; tx <= bounds.maxX; tx++) {
       const state = GameplayMap.getRevealedState(playerId, tx, ty);
       const visible = Number.isInteger(state) && state === RevealedStates.VISIBLE;
@@ -76,9 +83,26 @@
         }
         cell = glyph + overlay + (visible ? "." : ":");
       }
-      row += cell.padEnd(cellWidth);
+      const left = (tx - bounds.minX) * cellWidth + (ty % 2 ? half : 0);
+      const top = (bounds.maxY - ty) * rowStep;
+      for (const [cx, cy] of [[half, 0], [0, half], [cellWidth, half], [0, half + 2],
+        [cellWidth, half + 2], [half, 2 * half + 2]]) put(left + cx, top + cy, "+");
+      for (let i = 1; i < half; i++) {
+        put(left + half - i, top + i, "/");
+        put(left + half + i, top + i, "\\");
+        put(left + i, top + half + 2 + i, "\\");
+        put(left + cellWidth - i, top + half + 2 + i, "/");
+      }
+      put(left, top + half + 1, "|");
+      put(left + cellWidth, top + half + 1, "|");
+      for (let i = 0; i < cell.length; i++) put(left + half - 1 + i, top + half + 1, cell[i]);
     }
-    rows.push(row.trimEnd());
+  }
+  for (let cy = 0; cy < canvas.length; cy++) {
+    const tileRow = (cy - half - 1) / rowStep;
+    const prefix = Number.isInteger(tileRow) && tileRow >= 0 && tileRow <= bounds.maxY - bounds.minY
+      ? String(bounds.maxY - tileRow).padStart(yDigits) + " | " : " ".repeat(yDigits + 3);
+    rows.push((prefix + canvas[cy].join("")).trimEnd());
   }
   if (Game.turn !== turn || Game.age !== age || GameContext.localPlayerID !== playerId || !UI.isInGame())
     throw Error("Game context changed while reading the ASCII map; request fresh state");
@@ -89,5 +113,5 @@
       overlay: {C: "own city centre", c: "met foreign city centre", U: "own unit", u: "met foreign nonwar unit", "!": "met enemy unit",
         ".": "no displayed entity", " ": "entities withheld in fog", "?": "entity APIs/data unavailable"},
       visibility: {".": "currently visible", ":": "explored but currently fogged", "???": "unrevealed or unknown visibility"}},
-    scope: "North-up odd-row-offset coordinate grid, clipped without wrapping. Base terrain only; no features, biomes, resources, yields or route/safety predictions. Fog contains no current city/unit details; invisible/unmet entities are omitted. An absent entity marker is not proof a tile is empty or safe. Coverage describes visible entity lookup availability within this viewport only"};
+    scope: "Connected north-up odd-row-offset hex grid with shared edges, clipped without wrapping. Base terrain only; no features, biomes, resources, yields or route/safety predictions. Fog contains no current city/unit details; invisible/unmet entities are omitted. An absent entity marker is not proof a tile is empty or safe. Coverage describes visible entity lookup availability within this viewport only"};
 })()
