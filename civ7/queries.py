@@ -1,10 +1,15 @@
 """Focused read-only Civ VII strategy queries."""
 
+import asyncio
 from typing import Any
 
 from pydantic import StrictInt, StrictStr
 
 from civ7.connection import run_script
+from civ7.svg_preview import publish_preview
+
+
+_preview_lock = asyncio.Lock()
 
 
 async def empire() -> dict[str, Any]:
@@ -149,9 +154,20 @@ async def explored_map() -> dict[str, Any]:
     return await run_script("map.js")
 
 
-async def ascii_map(x: StrictInt, y: StrictInt, width: StrictInt = 15, height: StrictInt = 9) -> dict[str, Any]:
-    """Render a bounded view of explored terrain with currently visible entity overlays."""
+def _map_arguments(x: int, y: int, width: int, height: int) -> dict[str, int]:
     if (any(type(value) is not int for value in (x, y, width, height)) or x < 0 or y < 0
             or not 1 <= width <= 31 or width % 2 != 1 or not 1 <= height <= 21 or height % 2 != 1):
         raise ValueError("Nonnegative center coordinates and odd width 1-31 / height 1-21 are required")
-    return await run_script("ascii_map.js", {"x": x, "y": y, "width": width, "height": height})
+    return {"x": x, "y": y, "width": width, "height": height}
+
+
+async def ascii_map(x: StrictInt, y: StrictInt, width: StrictInt = 15, height: StrictInt = 9) -> dict[str, Any]:
+    """Render a bounded view of explored terrain with currently visible entity overlays."""
+    return await run_script("ascii_map.js", _map_arguments(x, y, width, height))
+
+
+async def svg_map(x: StrictInt, y: StrictInt, width: StrictInt = 15, height: StrictInt = 9) -> dict[str, Any]:
+    """Read one bounded viewport and atomically update the tool-owned local SVG cache."""
+    arguments = {**_map_arguments(x, y, width, height), "render": "svg"}
+    async with _preview_lock:
+        return publish_preview(await run_script("ascii_map.js", arguments))

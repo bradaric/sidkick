@@ -165,6 +165,20 @@ test('mixed visible and fogged terrain textures preserve shared edges and do not
   assert.equal(reads.filter(read=>read.kind==='units').length,7);
 });
 
+test('SVG data mode reuses the same bounded visibility filters and withholds unknown terrain/entities', () => {
+  const {data,reads} = run({unit:true,states:{'1,3':0,'2,3':1},args:{render:'svg'}});
+  assert.equal(data.tiles.length,9);
+  assert.equal(Object.hasOwn(data,'ascii'),false);
+  assert.deepEqual(data.tiles.find(tile=>tile.x===1&&tile.y===3),
+    {x:1,y:3,terrain:null,visibility:'unknown',marker:'???'});
+  assert.equal(data.tiles.find(tile=>tile.x===2&&tile.y===3).marker,' ');
+  assert.equal(data.tiles.find(tile=>tile.x===2&&tile.y===2).marker,'U');
+  assert.equal(data.units.length,1);
+  assert.equal(reads.filter(read=>read.kind==='terrain').length,8);
+  assert.equal(reads.filter(read=>read.kind==='units').length,7);
+  assert.throws(()=>run({changedTurn:true,args:{render:'svg'}}),/context changed/i);
+});
+
 test('even the largest viewport scans only its bounded area, not the world', () => {
   const {data, reads} = run({mapWidth: 200, mapHeight: 200, args: {x: 100, y: 100, width: 31, height: 21}});
   assert.equal(reads.filter(read => read.kind === 'terrain').length, 31 * 21);

@@ -29,9 +29,9 @@
       const state = GameplayMap.getRevealedState(playerId, tx, ty);
       const visible = Number.isInteger(state) && state === RevealedStates.VISIBLE;
       const explored = visible || Number.isInteger(state) && state === RevealedStates.REVEALED;
-      let fill = "?????", marker = "???";
+      let terrain = null, fill = "?????", marker = "???";
       if (explored) {
-        const terrain = GameInfo.Terrains.lookup(GameplayMap.getTerrainType(tx, ty))?.TerrainType;
+        terrain = GameInfo.Terrains.lookup(GameplayMap.getTerrainType(tx, ty))?.TerrainType ?? null;
         const glyph = Object.hasOwn(terrainGlyphs, terrain) ? terrainGlyphs[terrain] : "?";
         fill = glyph.repeat(5);
         marker = " ";
@@ -74,8 +74,16 @@
       // Native odd-row offset -> axial coordinates -> flat-top projection.
       // This preserves all six native neighbors; geographic north projects upper-left.
       const q = tx - Math.floor(ty / 2);
-      cells.push({x: tx, y: ty, fill, marker, fogged: explored && !visible, left: 6 * q, top: -4 * ty - 2 * q});
+      cells.push({x: tx, y: ty, terrain, visibility: visible ? "visible" : explored ? "fogged" : "unknown",
+        fill, marker, fogged: explored && !visible, left: 6 * q, top: -4 * ty - 2 * q});
     }
+  }
+  if (queryArguments.render === "svg") {
+    if (Game.turn !== turn || Game.age !== age || GameContext.localPlayerID !== playerId || !UI.isInGame())
+      throw Error("Game context changed while reading the map; request fresh state");
+    return {turn, age, playerId, mapWidth, mapHeight, center: {x, y}, requestedSize: {width, height}, bounds,
+      tiles: cells.map(({x, y, terrain, visibility, marker}) => ({x, y, terrain, visibility, marker})),
+      settlements, units, coverage};
   }
   const minLeft = Math.min(...cells.map(cell => cell.left)), minTop = Math.min(...cells.map(cell => cell.top));
   const canvasWidth = Math.max(...cells.map(cell => cell.left)) - minLeft + 9;

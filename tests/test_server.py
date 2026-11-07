@@ -61,6 +61,7 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_age_transition",
                 "get_civ7_explored_map",
                 "get_civ7_ascii_map",
+                "get_civ7_svg_map",
             },
         )
         for tool in tools.values():

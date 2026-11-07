@@ -22,7 +22,7 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 
 ### Opt-in gameplay actions (OpenCode first)
 
-The normal server exposes **26 read-only tools**. Starting it with both
+The normal server exposes **27 game-read-only tools**. Starting it with both
 `--transport stdio --enable-writes` additionally registers
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
@@ -2127,6 +2127,61 @@ full-world scan. Reconnect Sidkick when idle to load its registration. Verificat
 is local source/fixture testing only; no live map probes or game actions were used.
 **281 Python /520 Node tests pass**. Tool counts are
 **26 default /132 opt-in (106 actions)**.
+
+### Colored SVG map at a fixed browser URL
+
+`get_civ7_svg_map(x, y, width=15, height=9)` uses the ASCII map's same bounded
+visibility-filtered viewport, but draws a colored **north-up** SVG with native
+coordinates, terrain symbols, visible unit/city markers and hover labels. Unlike
+the ASCII projection, north is straight up and east straight right. Unknown tiles
+expose no terrain/entity data; explored fog is dimmed and hatched, without current
+city/unit details. This does not read biomes/features/resources or infer river
+courses, future movement or hidden units.
+
+The tool is read-only with respect to the game. It writes only its own temporary
+preview cache, atomically replacing the SVG after successful collection/rendering.
+Invalid views, failed reads/renders or publication errors retain the previous
+image. Labels are XML-escaped; SVGs contain no scripts, external assets or network
+requests. The cache is not a save/checkpoint: latest successful call wins, including
+calls from other MCP sessions. The image's turn and center are explicit.
+
+On the game host, the separate viewer can be started explicitly from this repo:
+
+```sh
+civ7/.venv/bin/python -m sidkick.map_preview
+```
+
+It binds only `127.0.0.1:8765` and serves only the fixed SVG path, not directory
+listings or other files. Do not start it over an existing service on that port;
+stop only your own earlier preview first. There is no game-control endpoint, no
+automatic polling and no automatic server/browser launch from the map tool.
+Missing preview files return 404 until an image is published. Cache prevention
+ensures a normal browser refresh returns current bytes, even with old conditional
+cache headers.
+
+Keep the SSH tunnel from your browser machine to the game host:
+
+```sh
+ssh -N -L 127.0.0.1:8765:127.0.0.1:8765 user@game-host
+```
+
+Open **http://127.0.0.1:8765/sidkick-svg-demo.svg**. The name preserves the original
+demo URL; future map-tool calls update its contents. Ask the play agent for a new
+SVG viewport, then refresh that same browser URL. Refreshing alone never queries
+the game. No host configuration, credentials, public/LAN listener or OpenCode
+configuration is created or modified. On Linux the tool-owned cache is
+`/tmp/opencode/sidkick-svg-preview/`; it may disappear on reboot.
+
+Development verification uses synthetic fixtures only. HTTP-handler tests use
+in-memory streams, not new listeners; no live Civ7 reads/actions or server restarts
+are part of the test suite. Activating/replacing a running viewer remains a
+separately approved operational action. Reconnect the MCP server when idle to load
+the new tool registration.
+
+Verification: **293 Python /521 Node tests pass**, including pure SVG rendering,
+label escaping, visibility filtering, atomic replacement/last-good preservation,
+and in-memory HTTP cache/path restrictions. The generated SVG was also rasterized
+locally from a synthetic fixture. Tool counts: **27 default /133 opt-in (106 actions)**.
 
 ### Movement and founding-site evidence
 

@@ -129,6 +129,7 @@ from civ7.queries import (
     empire,
     explored_map,
     ascii_map,
+    svg_map,
     growth,
     great_works,
     known_world,
@@ -2182,6 +2183,23 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(ascii_map)
+    server.tool(
+        name="get_civ7_svg_map", title="Update the colored Civ VII SVG map preview",
+        description=(
+            "Read game data only: exact native x,y and optional odd width 1-31 / height 1-21 (default 15x9). "
+            "Uses the ASCII map's bounded visibility filters, but renders a colored north-up SVG. Explored "
+            "terrain is dimmed/hatched under fog; unknown tiles have no terrain or entity data. Only currently "
+            "visible own/met city centres and individually visible on-map units appear. Escapes all labels; "
+            "no scripts or external assets. Atomically replaces only Sidkick's owned temporary preview file "
+            "and returns the fixed previewUrl http://127.0.0.1:8765/sidkick-svg-demo.svg plus turn/bounds/coverage. "
+            "This cache write is not a game action. Latest successful call wins; a failed read/render leaves "
+            "the previous image intact. The separate static loopback viewer and SSH tunnel must already be "
+            "running; this tool never starts servers, opens browsers, polls the game, exposes control endpoints, "
+            "moves units or advances turns. Browser refresh only fetches the last generated SVG. Not in snapshots."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(svg_map)
     return server
 
 
