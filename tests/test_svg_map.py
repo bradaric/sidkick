@@ -67,6 +67,18 @@ class SvgRenderingTests(unittest.TestCase):
         self.assertEqual(centers[2,2][1],centers[3,2][1])
         self.assertGreater(centers[3,2][0],centers[2,2][0])
 
+    def test_native_signed_age_hash_is_valid_for_the_reported_viewport(self):
+        data = view()
+        # Historical native Exploration age hash; coordinates from the reported failure.
+        data.update(age=-610349106,mapWidth=100,mapHeight=50,center={'x':71,'y':7},
+                    requestedSize={'width':11,'height':9},bounds={'minX':66,'maxX':76,'minY':3,'maxY':11})
+        data['tiles'] = [{'x':x,'y':y,'terrain':'TERRAIN_FLAT','visibility':'visible','marker':' '}
+                         for y in range(3,12) for x in range(66,77)]
+        root = ET.fromstring(render_svg(data))
+        self.assertEqual(len(root.findall('.//{http://www.w3.org/2000/svg}g')),99)
+        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:
+            self.assertEqual(publish_preview(data,Path(directory))['age'],-610349106)
+
     def test_malformed_or_inconsistent_views_reject_instead_of_publishing(self):
         valid = view()
         valid['tiles'][0]['terrain'] = None
@@ -75,7 +87,9 @@ class SvgRenderingTests(unittest.TestCase):
                        lambda v: v['tiles'][2].update(marker='U'),
                        lambda v: v['tiles'][1].update(x=19), lambda v: v.update(turn=True),
                        lambda v: v['bounds'].update(maxX=99), lambda v: v.pop('requestedSize'),
-                       lambda v: v.pop('coverage'), lambda v: v['units'][0].update(name='invalid\x00name')]:
+                       lambda v: v.pop('coverage'), lambda v: v['units'][0].update(name='invalid\x00name'),
+                       lambda v: v.update(age=True), lambda v: v.update(age='AGE_EXPLORATION'),
+                       lambda v: v.update(turn=-1), lambda v: v.update(playerId=-1)]:
             data = copy.deepcopy(valid)
             change(data)
             with self.assertRaises(ValueError):
@@ -114,12 +128,26 @@ class SvgRenderingTests(unittest.TestCase):
 
 
 class SvgMapToolTests(unittest.IsolatedAsyncioTestCase):
+    async def test_mcp_preserves_expected_svg_diagnostics_instead_of_a_generic_crash(self):
+        for failure, detail in [(ValueError('Unverified map context'),'Unverified map context'),
+                                (PermissionError(13,'Permission denied'),'PermissionError')]:
+            with patch('civ7.queries.run_script',new_callable=AsyncMock,return_value=view()), \
+                    patch('civ7.queries.publish_preview',side_effect=failure):
+                with self.assertRaises(ToolError)as error:
+                    await create_server().call_tool('get_civ7_svg_map',{'x':71,'y':7,'width':11,'height':9})
+            self.assertIn(detail,str(error.exception))
+            self.assertIn('previous preview',str(error.exception).lower())
+
     async def test_tool_pipeline_updates_fixed_cache_from_one_mocked_game_read(self):
+        data = view()
+        data['age'] = -610349106
         with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory, \
                 patch('civ7.svg_preview.PREVIEW_DIR', Path(directory)), \
-                patch('civ7.queries.run_script', new_callable=AsyncMock, return_value=view()) as run:
-            result = await queries.svg_map(2,2,3,1)
-            self.assertEqual(result['previewUrl'],PREVIEW_URL)
+                patch('civ7.queries.run_script', new_callable=AsyncMock, return_value=data) as run:
+            result = await create_server().call_tool('get_civ7_svg_map',{'x':2,'y':2,'width':3,'height':1})
+            self.assertFalse(result.is_error)
+            self.assertEqual(result.structured_content['age'],-610349106)
+            self.assertEqual(result.structured_content['previewUrl'],PREVIEW_URL)
             self.assertIn('Turn 11',(Path(directory)/PREVIEW_NAME).read_text())
             run.assert_awaited_once_with('ascii_map.js',{'x':2,'y':2,'width':3,'height':1,'render':'svg'})
 

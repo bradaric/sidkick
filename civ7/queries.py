@@ -3,6 +3,7 @@
 import asyncio
 from typing import Any
 
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import StrictInt, StrictStr
 
 from civ7.connection import run_script
@@ -170,4 +171,10 @@ async def svg_map(x: StrictInt, y: StrictInt, width: StrictInt = 15, height: Str
     """Read one bounded viewport and atomically update the tool-owned local SVG cache."""
     arguments = {**_map_arguments(x, y, width, height), "render": "svg"}
     async with _preview_lock:
-        return publish_preview(await run_script("ascii_map.js", arguments))
+        view = await run_script("ascii_map.js", arguments)
+        try:
+            return publish_preview(view)
+        except ValueError as exc:
+            raise ToolError(f"SVG map validation/rendering failed: {exc}; previous preview unchanged") from exc
+        except OSError as exc:
+            raise ToolError(f"SVG preview publication failed ({type(exc).__name__}, errno={exc.errno}); previous preview unchanged") from exc

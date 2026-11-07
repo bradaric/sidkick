@@ -2144,6 +2144,10 @@ Invalid views, failed reads/renders or publication errors retain the previous
 image. Labels are XML-escaped; SVGs contain no scripts, external assets or network
 requests. The cache is not a save/checkpoint: latest successful call wins, including
 calls from other MCP sessions. The image's turn and center are explicit.
+Native Age values are integer hashes and may be negative; these are accepted,
+not mistaken for invalid Age indices. Expected SVG validation/rendering and file
+publication failures include a diagnostic in the MCP error instead of a generic
+tool-crash message. Raw game payloads are not included in those diagnostics.
 
 On the game host, the separate viewer can be started explicitly from this repo:
 
@@ -2178,7 +2182,7 @@ are part of the test suite. Activating/replacing a running viewer remains a
 separately approved operational action. Reconnect the MCP server when idle to load
 the new tool registration.
 
-Verification: **293 Python /521 Node tests pass**, including pure SVG rendering,
+Verification: **295 Python /521 Node tests pass**, including pure SVG rendering,
 label escaping, visibility filtering, atomic replacement/last-good preservation,
 and in-memory HTTP cache/path restrictions. The generated SVG was also rasterized
 locally from a synthetic fixture. Tool counts: **27 default /133 opt-in (106 actions)**.
