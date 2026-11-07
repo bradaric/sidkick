@@ -25,6 +25,7 @@ from civ7.actions import (
     rail_unit,
     upgrade_army,
     acknowledge_agenda,
+    acknowledge_advisor_warning,
     append_city_production,
     assign_resource,
     unassign_resource,
@@ -1480,6 +1481,23 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(acknowledge_agenda)
+        server.tool(
+            name="acknowledge_civ7_advisor_warning", title="Acknowledge one Civ VII advisor warning",
+            description=(
+                "CHANGE GAME STATE: acknowledge one exact owned advisor warning using notification_id and "
+                "component_type from get_civ7_turn_context.notifications[].id.id and id.type, plus fresh expected_turn. "
+                "Supports only native NOTIFICATION_ADVISOR_WARNING_MILITARY/CULTURE/ECONOMIC/SCIENCE; "
+                "Tourism advice uses the native culture category when identified as such, never a guessed label. "
+                "Requires single-player active local turn, GameStarted readiness, exact pending identity and "
+                "native VIEWED_ADVISOR_WARNING permission. Sends that operation once with Target, not a generic "
+                "notification dismissal. May clear this reminder; does not resolve its underlying condition, "
+                "change advisor settings, choose a reward, spend resources or advance turns. Verifies exact "
+                "notification dismissal/expiry/removal, not popup UI closure. No bulk dismissal or automatic retry "
+                "after unknown/cancellation. Requires the user's instruction to acknowledge this warning."
+            ),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(acknowledge_advisor_warning)
         server.tool(
             name="choose_civ7_government", title="Choose Civ VII government",
             description=("CHANGE GAME STATE: resolve a pending government choice using an exact current-Age "

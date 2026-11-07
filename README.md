@@ -22,7 +22,7 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 
 ### Opt-in gameplay actions (OpenCode first)
 
-The normal server still exposes **23 read-only tools**. Starting it with both
+The normal server exposes **25 read-only tools**. Starting it with both
 `--transport stdio --enable-writes` additionally registers
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
@@ -32,6 +32,7 @@ The normal server still exposes **23 read-only tools**. Starting it with both
 `set_civ7_town_focus`, `upgrade_civ7_town`, `assign_civ7_specialist`,
 `set_civ7_unit_order`, `end_civ7_turn`, `choose_civ7_government`,
 `choose_civ7_celebration`, `review_civ7_resources`, `acknowledge_civ7_agenda`,
+`acknowledge_civ7_advisor_warning`,
 `set_civ7_culture_card`, `review_civ7_policies`, `choose_civ7_narrative` and
 `respond_civ7_diplomatic_project`, which
 **change the loaded game**. The CLI refuses write mode over HTTP. No existing OpenCode configuration or ChatGPT bridge command is
@@ -503,6 +504,35 @@ debug-created prerequisites, not naturally earned eligibility. No turn advanced.
 
 The agreed backlog and ongoing results are in
 [`docs/civ7-action-backlog.md`](docs/civ7-action-backlog.md).
+
+#### Advisor-warning acknowledgement
+
+`acknowledge_civ7_advisor_warning(notification_id, component_type, expected_turn)`
+acknowledges one owned military, culture, economic or science advisor warning.
+Use the exact `id.id` and `id.type` from
+`get_civ7_turn_context.notifications[]`, not a label or list index. A Tourism
+warning is supported when its native type is `NOTIFICATION_ADVISOR_WARNING_CULTURE`;
+the tool does not infer notification types from their displayed text.
+
+This follows the native advisor handler's `VIEWED_ADVISOR_WARNING` operation with
+`{Target: notificationComponent}` after the native permission check. It never
+uses generic `Game.Notifications.dismiss`, which is not a substitute for advisor
+acknowledgement. It requires a started single-player active turn and rechecks the
+exact notification identity, warning contents and turn/Age/player before sending
+once. Other notification types, ambiguous/unknown records, stale identities and
+confirmation requirements reject. Already dismissed/expired warnings are no-ops.
+
+Readback polls for up to 15 seconds for that notification to be dismissed, expired
+or removed. This verifies notification clearance, not popup UI closure or resolution
+of the underlying military/Tourism problem. No advisor settings, resources, rewards,
+other choices or turns are changed. Unknown/cancelled outcomes are never automatically
+retried. Reconnect the MCP server when idle to load the new tool registration.
+
+Verification is source/fixture-only: no live probes, warnings acknowledged or turns
+advanced. **278 Python /502 Node tests pass**. Tool counts are
+**25 default /131 opt-in (106 actions)**. Native reference:
+`base-standard/ui/notification-train/notification-handlers.js`,
+`AdvisorWarning.dismiss`; the Watch Out popup uses that handler for its Dismiss button.
 
 #### Everyday unit orders and guarded turn completion
 

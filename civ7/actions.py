@@ -742,6 +742,17 @@ async def acknowledge_agenda(notification_id: StrictInt, expected_turn: StrictIn
                                      "agenda_state.js")
 
 
+async def acknowledge_advisor_warning(
+    notification_id: StrictInt, component_type: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Acknowledge one exact local advisor warning using the native viewed operation."""
+    if any(type(value) is not int or value < 0 for value in (notification_id, component_type, expected_turn)):
+        raise ValueError("Exact local advisor notification ID, component type and expected turn are required")
+    return await _execute_and_verify("acknowledge_advisor_warning.js", {
+        "notification_id": notification_id, "component_type": component_type, "expected_turn": expected_turn,
+    }, "advisor_warning_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def set_culture_card(
     card: StrictStr, active: StrictBool, slot: Literal["policy", "tradition", "crisis"], expected_turn: StrictInt,
 ) -> dict[str, Any]:

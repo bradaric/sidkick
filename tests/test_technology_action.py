@@ -145,6 +145,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "set_civ7_unit_order", "end_civ7_turn",
             "choose_civ7_government", "choose_civ7_celebration", "review_civ7_resources",
             "acknowledge_civ7_agenda",
+            "acknowledge_civ7_advisor_warning",
             "set_civ7_culture_card",
             "review_civ7_policies",
             "choose_civ7_narrative",
