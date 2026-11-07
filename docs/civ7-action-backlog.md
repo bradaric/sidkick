@@ -962,8 +962,8 @@ specific unavailable positive/native or turn-dependent checks belong in Group 2.
   rejects missing/ambiguous/unknown notice records and permissive permission alone.
   Requires actual GameStarted readiness, with final native quote/delta, notice and
   raw balance/relationship checks after rebuilding the token; no queued Begin-gate reply.
-  Currently supports peaceful/nonallied zero-relationship/empty-history profiles;
-  inherited modifiers reject. Verifies notice clearance, exact own Influence debit/
+  At this stage supported peaceful/nonallied zero-relationship/empty-history profiles;
+  inherited modifiers rejected (restriction removed by the fix noted below). Verifies notice clearance, exact own Influence debit/
   relationship delta and stable Gold/peace/alliance. Friendly capital reveals and
   broader/global effects or UI-session closure are not fully accounted for.
 - Contact setup used only new test Scouts1114128/1179665/1245202 and labelled
@@ -1041,12 +1041,19 @@ the entries here; the no-turn instruction remains active.
 | Deferred work | Actual status / prerequisite |
 |---|---|
 | Unit/captive/technology deal variants | Not implemented; current native offer lists are empty. Requires an eligible offer with safe exact identity before implementing/testing its writer. |
-| Additional effect-specific Great People, inherited-modifier/session-only first-meet and remaining mandatory-choice variants | Not implemented where no handler exists. Requires the corresponding source/pending choice; scope must be recorded as exact variants rather than an open-ended "other variants" completion gate. Santa Anna/Morelos/Villa and initial-notice first-meet coverage already implemented. |
+| Additional effect-specific Great People, session-only first-meet and remaining mandatory-choice variants | Not implemented where no handler exists. Requires the corresponding source/pending choice; scope must be recorded as exact variants rather than an open-ended "other variants" completion gate. Santa Anna/Morelos/Villa and notification-bound first-meet coverage already implemented, including pre-existing relationship/history (fixture-tested). |
 | Peace/alliance/hostile diplomacy and first-meet positive checks | Handlers/fixtures exist. Requires expired peace cooldown, eligible alliance counterpart, unlocked Modern action or an actual revealed incoming sanction. Unfriendly greeting effects were late observed after Begin; fresh GameStarted bounded execution needs a new pending choice or separate test branch. No cooldown/unlock/response bypass counted as native eligibility. |
 | Combat/transport positive checks | Existing guarded handlers need an eligible fortified naval target/source, plunder source, empty centre for optional observed capture, or positive native Overrun eligibility. |
 | Construction/resource positive checks | Existing handlers; requires a damaged repair target, eligible atomic resource pair, or normal factory/production completion. Synthetic factory structure prerequisite already verified separately. |
 | Civilian/religious/story/independent positive checks | Existing handlers where recorded; requires eligible adjacent founding, archaeology, spread-capable source/current-Age definition, pantheon/belief/bonus picker, independent target or actual paid/trial story. Missing eligible cases are verification gaps, not newly implemented functionality. |
 | Villa payouts, natural-use evidence and turn/state-dependent work | Villa ability grant verified, future combat payouts not. Normal readiness/healing, reinforcement arrival, recharge, completion/razing, unattended turns and Age boundaries remain deferred, including investigation of the historical60→62 turn anomaly. Synthetic air/combat setups are not natural-use proof. |
+
+First-meet update: pre-existing relationship/history no longer excludes a genuine
+pending peaceful/nonallied `PLAYER_MET` greeting. Native permission/quote/cap and
+loading/notification guards remain; exact history is bound into the fresh token
+and rechecked, with readback using the actual relationship baseline. This change
+is source/fixture-tested only, without live probes, greetings or turn advancement.
+Session-only encounters without the required notification remain unsupported.
 
 ### Unsupported with the installed build/API
 

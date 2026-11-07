@@ -1750,8 +1750,9 @@ setup; future combat Gold payouts remain unverified, not implied by the grant.
 
 `respond_civ7_first_meet` now binds an actual blocking `NOTIFICATION_PLAYER_MET`
 notice, fresh diplomacy token, fixed greeting and native cost/delta/cap—not merely
-permissive native permission. Initial peaceful/nonallied zero-relationship/empty-
-history profiles only; GameStarted required, unknown/ambiguous/stale notices reject.
+permissive native permission. Initially restricted to peaceful/nonallied zero-
+relationship/empty-history profiles (restriction removed below); GameStarted
+required, unknown/ambiguous/stale notices reject.
 Native friendly
 reply to Hatshepsut verified20 Influence spent, relationship0→20, notice cleared and
 Gold/peace/alliance stable; neutral verified zero-cost/zero-delta notice clearance.
@@ -1766,6 +1767,18 @@ unchanged. Pending/friendly/unfriendly/final guarded branches saved separately w
 RESULT_OK; friendly+20 state restored, still T1. Other write families' loading gates
 were not audited here.
 **255 Python / 462 Node pass; tools24/128 (104 actions); all24 default tools pass real stdio.**
+
+**First-meet modifier fix:** a genuine pending peaceful/nonallied greeting is no
+longer marked unsupported just because relationship is nonzero or its history is
+nonempty. Native permission, quotes, affordability/cap, GameStarted readiness and
+exact notification binding still apply. The fresh token now binds the actual
+history as well as relationship; both are rechecked before the single submission.
+Readback still requires notification clearance, the quoted change from the
+captured relationship baseline, exact Influence debit and stable Gold/peace/alliance.
+Unexpected additional effects remain unknown, never an automatic retry. Existing
+modifiers are fixture-tested only; no live probes, greetings or turns were issued
+for this fix. Refresh diplomacy for a new token after loading the updated server.
+Regression verification: **274 Python /497 Node tests pass**.
 
 Scope update and closeout, 2026-11-07: **Group 1 is closed under the user's revised
 no-additional-setup boundary.** All104 MCP writers now share a GameStarted gate

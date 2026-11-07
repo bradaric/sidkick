@@ -24,7 +24,8 @@
     if(!notices||notices.length!==1)return null;
     const history=player.Diplomacy.getPlayerRelationshipHistory(targetId),gold=player.Treasury?.goldBalance,influence=player.DiplomacyTreasury?.diplomacyBalance,
       relationship=player.Diplomacy.getRelationshipLevel(targetId),atWar=player.Diplomacy.isAtWarWith(targetId),allied=player.Diplomacy.hasAllied(targetId);
-    const gameStarted=ready(),supportedProfile=gameStarted&&[gold,influence,relationship].every(Number.isFinite)&&atWar===false&&allied===false&&relationship===0&&Array.isArray(history)&&history.length===0;
+    const historyToken=Array.isArray(history)?JSON.stringify(history):null;
+    const gameStarted=ready(),supportedProfile=gameStarted&&[gold,influence,relationship].every(Number.isFinite)&&atWar===false&&allied===false&&historyToken!==null;
     const mapping={friendly:DiplomacyPlayerFirstMeets.PLAYER_REALATIONSHIP_FIRSTMEET_FRIENDLY,neutral:DiplomacyPlayerFirstMeets.PLAYER_REALATIONSHIP_FIRSTMEET_NEUTRAL,unfriendly:DiplomacyPlayerFirstMeets.PLAYER_REALATIONSHIP_FIRSTMEET_UNFRIENDLY};
     const options=Object.entries(mapping).map(([greeting,type])=>{
       if(!Number.isInteger(type))return{greeting,quotedInfluenceCost:null,quotedRelationshipDelta:null,operationAllowed:false,availableNow:false,failureReasons:[]};
@@ -34,7 +35,7 @@
         availableNow:supportedProfile&&cost!==null&&delta!==null&&cost<=influence&&check?.Success===true&&check.RequiresConfirmation!==true&&check.InsufficientFunds!==true,
         failureReasons:check?.FailureReasons??[]};
     });
-    const state={turn:Game.turn,age:Game.age,playerId,targetPlayerId:targetId,...notices[0],gold,influence,relationship,atWar,allied,historyEmpty:Array.isArray(history)&&history.length===0,gameStarted,supportedProfile,options};
+    const state={turn:Game.turn,age:Game.age,playerId,targetPlayerId:targetId,...notices[0],gold,influence,relationship,atWar,allied,historyEmpty:Array.isArray(history)&&history.length===0,historyToken,gameStarted,supportedProfile,options};
     return{...state,notificationToken:JSON.stringify(state)};
   }
   return{pending,snapshot,ready};
