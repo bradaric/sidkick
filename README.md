@@ -2275,6 +2275,31 @@ The existing units tool now includes unowned `experience.promotionChoices`, incl
 
 See [the coverage audit](docs/civ7-coverage-audit.md) for delivered boundaries, event/crisis/transition/later-Age gaps, source evidence and verification limits. All six agreed increments are accounted for there; this is not a claim that every Civilization VII mechanic is implemented or live-tested.
 
+### Unit-orders blockers
+
+`get_civ7_turn_context.unitOrders` exposes the native end-turn `blocker` code and
+`blockerName`, the read-only `canStartAny` result, and `firstReadyUnit` from
+`UI.Player.getFirstReadyUnit()`. The installed action panel uses that getter for
+unit blockers and its remaining-moves prompt; the query does not select a unit,
+cycle the UI, move the camera, issue orders or advance a turn.
+
+`firstReadyUnit` includes exact owner-qualified `componentId`, actionable
+`instanceId`, definition `id`, name, location, `movesRemaining`, `activityType` and
+`queueSize`. It is resolved only against one exact owned unit; foreign, stale or
+ambiguous IDs are withheld. Hidden/off-map/invalid locations are withheld. Queue
+size does not reveal an exact queued destination and does not authorize cancelling
+standing orders.
+
+`firstReadyUnitStatus` is `identified`, `none` (the getter returned no unit),
+`unavailable` (missing/failed evidence), or `unverified` (an invalid/unresolved ID).
+Unavailable evidence is not an empty checklist. This identifies the **next native
+cycle target**, not a complete list of blockers: a ready unit or remaining movement
+alone is not proof of the current blocker, and a different native blocker remains
+distinct. For a native `UNITS` blocker, report the identified unit rather than only
+the generic notification. After an authorized order batch, a fresh read can report
+the next target; do not change selection or issue orders merely to enumerate units.
+Source/fixture verification only; no live probes or actions were used for this addition.
+
 ### Crisis and pending narrative responses
 
 `get_civ7_turn_context` now includes `pendingEvents`: deduplicated local pending stories and the UI queue heads, with injected option/action/reward text. Static and variable links follow the picker's requisite checks. `availableNow` requires both the native direction-choice check and affordability. `baseCost` is a definition amount/yield, not a final game-speed-adjusted quote; `quotedCost` remains `null`. An event with no eligible links returns the picker's acknowledgement choice (`CLOSE`). Trial-specific choices remain `null`, with an explicit unsupported reason. Empty pending data does not mean that no future crisis response will appear.

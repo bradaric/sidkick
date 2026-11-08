@@ -131,6 +131,20 @@ class GrowthTests(unittest.IsolatedAsyncioTestCase):
             transition.assert_awaited_once_with()
 
 
+class TurnContextTests(unittest.IsolatedAsyncioTestCase):
+    async def test_native_ready_unit_evidence_passes_through_the_default_read_only_tool(self):
+        server = create_server()
+        self.assertTrue(server._tool_manager.get_tool('get_civ7_turn_context').annotations.read_only_hint)
+        data = {'turn': 17, 'unitOrders': {'blocker': 1, 'blockerName': 'UNITS', 'canStartAny': True,
+                'firstReadyUnitStatus': 'identified', 'firstReadyUnit': {
+                    'instanceId': 42, 'componentId': {'owner': 0, 'id': 42, 'type': 26}, 'name': 'Scout'}}}
+        with patch('civ7.queries.run_script', new_callable=AsyncMock, return_value=data) as run:
+            result = await server.call_tool('get_civ7_turn_context', {})
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content, data)
+        run.assert_awaited_once_with('turn_context.js')
+
+
 class ReligionTests(unittest.IsolatedAsyncioTestCase):
     async def test_runs_bundled_religion_query(self) -> None:
         self.assertTrue(callable(getattr(queries, "religion", None)))

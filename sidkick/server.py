@@ -2136,7 +2136,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII turn context",
         description=(
             "Get active quests, crisis timing, notifications, deadlines, and Age progress "
-            "for the local player. Includes pending local narrative/crisis response choices, "
+            "for the local player. unitOrders includes the native blocker code/name, "
+            "canStartAny and the exact first-ready owned unit's instanceId/componentId, name, "
+            "location, remaining movement, activity and queue size from the action panel's "
+            "read-only getFirstReadyUnit getter. firstReadyUnitStatus distinguishes identified, "
+            "none, unavailable and unverified. This is one native cycle target, not all blocking "
+            "units; other blockers and unspent movement are distinct. Never selects/cycles units "
+            "or infers an exact queued destination. Includes pending local narrative/crisis response choices, "
             "injected rewards/actions, base costs, affordability and read-only eligibility. "
             "Trial-specific choices and runtime cost quotes are unknown. Owned crisis settlement "
             "evidence includes infection, revealed plague durations, damage and happiness/unrest; "

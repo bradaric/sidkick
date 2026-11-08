@@ -15,6 +15,48 @@
     return {x, y};
   }
 
+  function unitOrderEvidence() {
+    const result = {blocker: null, blockerName: null, canStartAny: null,
+      firstReadyUnitStatus: "unavailable", firstReadyUnit: null,
+      scope: "Native first-ready cycle target only, not a full list of blocking units. The native blocker remains separate; a ready unit or unspent movement alone does not prove it is the current blocker. Queue size is not an exact queued destination. No unit selection, cycling, orders or turn advancement"};
+    try {
+      const blocker = Game.Notifications.getEndTurnBlockingType?.(playerId);
+      if (Number.isInteger(blocker)) {
+        result.blocker = blocker;
+        result.blockerName = typeof EndTurnBlockingTypes === "undefined" ? null
+          : Object.keys(EndTurnBlockingTypes).find(key => EndTurnBlockingTypes[key] === blocker) ?? null;
+      }
+    } catch { /* Missing native blocker evidence remains unknown. */ }
+    try {
+      const allowed = Game.UnitOperations?.canStartAny?.(playerId);
+      if (typeof allowed === "boolean") result.canStartAny = allowed;
+    } catch { /* Do not turn an unavailable permission check into false. */ }
+    try {
+      if (typeof UI.Player?.getFirstReadyUnit !== "function") return result;
+      const ready = UI.Player.getFirstReadyUnit();
+      if (ready == null) { result.firstReadyUnitStatus = "none"; return result; }
+      result.firstReadyUnitStatus = "unverified";
+      if (ready.owner !== playerId || ![ready.id, ready.type].every(value => Number.isInteger(value) && value >= 0)) return result;
+      if (typeof player.Units?.getUnits !== "function") { result.firstReadyUnitStatus = "unavailable"; return result; }
+      const owned = player.Units.getUnits();
+      if (!Array.isArray(owned)) { result.firstReadyUnitStatus = "unavailable"; return result; }
+      const matches = owned.filter(unit => unit?.id?.owner === playerId && unit.id.id === ready.id && unit.id.type === ready.type);
+      if (matches.length !== 1) return result;
+      const unit = matches[0], def = GameInfo.Units?.lookup(unit.type);
+      result.firstReadyUnit = {componentId: {owner: ready.owner, id: ready.id, type: ready.type},
+        instanceId: ready.id, id: def?.UnitType ?? unit.type, name: name(unit.name ?? def?.Name),
+        location: unit.isOnMap === true ? safeLocation(unit.location) : null,
+        movesRemaining: Number.isFinite(unit.Movement?.movementMovesRemaining) ? unit.Movement.movementMovesRemaining : null,
+        activityType: Number.isInteger(unit.activityType) ? unit.activityType : null,
+        queueSize: Number.isInteger(unit.operationQueueSize) && unit.operationQueueSize >= 0 ? unit.operationQueueSize : null};
+      result.firstReadyUnitStatus = "identified";
+    } catch {
+      result.firstReadyUnitStatus = "unavailable";
+      result.firstReadyUnit = null;
+    }
+    return result;
+  }
+
   const notifications = (Game.Notifications.getIdsForPlayer(playerId) ?? []).map(id => {
     const notification = Game.Notifications.find(id);
     if (!notification) return null;
@@ -175,6 +217,7 @@
         : null
     },
     crisis,
+    unitOrders: unitOrderEvidence(),
     pendingEvents,
     pendingEventsCoverage: {reportedPendingCount: stories.getNumPendingMet(),
       scope: "Native local pending IDs plus the two UI queue heads; trial choices are not modeled. Base costs are definition values, not runtime quotes"},
