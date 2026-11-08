@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 from mcp.server.mcpserver.exceptions import ToolError
 from civ7 import queries
-from civ7.svg_preview import PREVIEW_NAME, PREVIEW_URL, publish_preview, render_svg
+from civ7.svg_preview import PREVIEW_NAME, PREVIEW_URL, TERRAINS, publish_preview, render_svg
 from sidkick.server import create_server
 
 
@@ -25,6 +25,27 @@ def view():
 
 
 class SvgRenderingTests(unittest.TestCase):
+    def test_fog_preserves_terrain_colors_with_only_light_dimming_and_hatching(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for terrain, (color, _, _) in TERRAINS.items():
+            with self.subTest(terrain=terrain):
+                data = view()
+                data['tiles'][1]['terrain'] = terrain
+                data['tiles'][2]['terrain'] = terrain
+                root = ET.fromstring(render_svg(data))
+                visible = root.find('.//s:g[@data-x="2"]', ns)
+                fogged = root.find('.//s:g[@data-x="3"]', ns)
+                for tile in (visible, fogged):
+                    self.assertEqual(tile.find('s:polygon', ns).attrib['fill'], color)
+                self.assertEqual(visible.find('s:polygon', ns).attrib['opacity'], '1')
+                self.assertEqual(fogged.find('s:polygon', ns).attrib['opacity'], '.85')
+                self.assertIsNotNone(fogged.find('s:polygon[@fill="url(#fog)"]', ns))
+                self.assertIsNone(visible.find('s:polygon[@fill="url(#fog)"]', ns))
+                self.assertIn('FOG', [node.text for node in fogged.findall('s:text', ns)])
+                unknown = root.find('.//s:g[@data-x="1"]/s:polygon', ns)
+                self.assertEqual(unknown.attrib['fill'], '#293548')
+                self.assertEqual(unknown.attrib['opacity'], '1')
+
     def test_visible_unit_health_bar_percentage_and_exact_hp_tooltip(self):
         ns = {'s': 'http://www.w3.org/2000/svg'}
         for current, maximum, percent, color in [

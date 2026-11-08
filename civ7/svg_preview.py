@@ -122,7 +122,7 @@ def render_svg(view: dict) -> str:
             names.append(f"{unit.get('name', '')} — HP {hp}")
         ET.SubElement(group, "title").text = f"({tile['x']},{tile['y']}) | {label} | {state}" + (" | " + "; ".join(names) if names else "")
         ET.SubElement(group, "polygon", {"points": points, "fill": color, "stroke": "#172333", "stroke-width": "2",
-                                         "opacity": ".5" if state == "fogged" else "1"})
+                                         "opacity": ".85" if state == "fogged" else "1"})
         if state == "fogged":
             ET.SubElement(group, "polygon", {"points": points, "fill": "url(#fog)"})
         text(group, 0, -25, f"{tile['x']},{tile['y']}", **{"class": "coord"})
