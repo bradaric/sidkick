@@ -103,6 +103,50 @@ test('diplomacy readout exposes pending native response options and does not fab
   assert.equal(run({missingCost: true}, 'diplomacy.js').data.majorPlayers[0].ongoingActions[0].responseOptions[0].quotedInfluenceCost, null);
   assert.equal(run({hidden: true}, 'diplomacy.js').data.majorPlayers[0].ongoingActions.length, 0);
 });
+
+for (const action of ['DIPLOMACY_ACTION_GINSING_AGREEMENT', 'DIPLOMACY_ACTION_FARMERS_MARKET']) {
+  test(`${action} readout advertises native offered responses as supported`, () => {
+    for (const [response, type, cost] of [['accept', 11, 0], ['support', 12, 120], ['reject', 13, 40]]) {
+      const {data, calls} = run({action, offeredType: type, cost}, 'diplomacy.js');
+      const option = data.majorPlayers[0].ongoingActions[0].responseOptions[0];
+      assert.equal(option.response, response);
+      assert.equal(option.quotedInfluenceCost, cost);
+      assert.equal(option.availableNow, true);
+      assert.equal(option.supportedByWriteTool, true);
+      assert.equal(calls.filter(c => c.kind === 'send').length, 0);
+    }
+    const missingQuote = run({action, missingCost: true}, 'diplomacy.js').data.majorPlayers[0].ongoingActions[0].responseOptions[0];
+    assert.equal(missingQuote.quotedInfluenceCost, null);
+    assert.equal(missingQuote.supportedByWriteTool, false);
+  });
+
+  test(`${action} submits each exact response once and preserves event identity for readback`, () => {
+    for (const [response, type, cost] of [['accept', 11, 0], ['support', 12, 120], ['reject', 13, 40]]) {
+      const {data, calls} = run({action, offeredType: type, cost, balance: cost,
+        args: {response, max_influence_cost: cost}});
+      assert.equal(data.status, 'submitted');
+      assert.equal(data.quotedInfluenceCost, cost);
+      assert.deepEqual(calls.filter(c => c.kind === 'send'), [{kind: 'send', id: 0, type: 900, args: {ID: 76, Type: type}}]);
+      assert.deepEqual(data.verificationArguments, {action_id: 76, initial_player: 1, action});
+      const state = run({action, response: type, ended: response === 'reject'}, 'diplomatic_response_state.js').data;
+      assert.equal(state.action, action);
+      assert.equal(state.response, response);
+    }
+  });
+
+  test(`${action} retains provenance, native eligibility, quote and freshness guards`, () => {
+    for (const extra of [{self: true}, {foreign: true}, {hidden: true}, {unrevealed: true}, {unmet: true},
+      {minor: true}, {atWar: true}, {failed: true}, {ended: true}, {missing: true}, {inactive: true},
+      {sent: true}, {response: 12}, {missingCost: true}, {cost: 1}, {unselectable: true},
+      {notOffered: true}, {wrongPicker: true}, {duplicate: true}, {blocked: true}, {changed: true}, {changedCost: true}]) {
+      const {data, calls} = run({action, offeredType: 11, cost: 0, balance: 0,
+        args: {response: 'accept', max_influence_cost: 0}, ...extra});
+      assert.equal(data.status, 'rejected', JSON.stringify(extra));
+      assert.equal(calls.filter(c => c.kind === 'send').length, 0);
+    }
+  });
+}
+
 test('explicit hostile response binds revealed incoming sanction, native offer/cap and exact balances without relaxing cooperative default',()=>{
  for(const suffix of ['DENOUNCE','DENOUNCE_MILITARY_PRESENCE','SABOTAGE_TREASURY','SABOTAGE_MORALE','SABOTAGE_RESEARCH','SABOTAGE_CIVIC_STUDY','SABOTAGE_MILITARY_PRODUCTION','SABOTAGE_FOOD_PRODUCTION']){
   const base={hostileIntent:true,action:`DIPLOMACY_ACTION_${suffix}`},r=run(base);assert.equal(r.data.status,'submitted');assert.equal(r.data.expected.hostileResponseApplied,true);assert.equal(r.data.verificationArguments.hostile_baseline.influence,320);assert.equal(r.calls.filter(c=>c.kind==='send').length,1);

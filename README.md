@@ -695,14 +695,20 @@ incoming events are still excluded before detailed reads.
 
 `respond_civ7_diplomatic_project(action_id, response, max_influence_cost,
 expected_turn)` supports `accept`, `support` or `reject` only for incoming Open
-Borders, Research Collaboration, Cultural Exchange and Local Festival from met
-peaceful major leaders. It proves local-target event provenance before querying
-the native response picker, checks the selected quote/cap/balance and exact
-`RESPOND_DIPLOMATIC_ACTION` permission, then rechecks identity and quote. No wars,
+Borders, Research Collaboration, Cultural Exchange, Local Festival, Ginseng
+Agreement and Farmers Market from met peaceful major leaders. It proves
+local-target event provenance before querying the native response picker, checks
+the selected quote/cap/balance and exact `RESPOND_DIPLOMATIC_ACTION` permission,
+then rechecks identity and quote. No wars,
 military demands, espionage, deals, outgoing-event support increments or changing
 an existing different response. Rejection can worsen relations/impose cooldowns;
 support spends Influence. Readback verifies the same event's recorded response,
 not promised yields or eventual completion.
+
+Ginseng Agreement (`DIPLOMACY_ACTION_GINSING_AGREEMENT`, matching the game's
+internal spelling) and Farmers Market responses have synthetic regression coverage
+for native quotes, all three response choices and safety checks; no live execution
+of these two projects was performed for this fix.
 
 Default remains 23 read-only tools; write mode has 49 tools (26 actions).
 **141 Python and 287 Node tests pass.**

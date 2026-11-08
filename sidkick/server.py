@@ -1448,7 +1448,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="respond_civ7_diplomatic_project", title="Respond to Civ VII cooperative project",
             description=("CHANGE GAME STATE: accept, support or reject one exact incoming action_id from "
                          "get_civ7_diplomacy responseOptions with explicit max_influence_cost and fresh expected_turn. "
-                         "Only Open Borders, Research Collaboration, Cultural Exchange and Local Festival from "
+                         "Only Open Borders, Research Collaboration, Cultural Exchange, Local Festival, "
+                         "Ginseng Agreement and Farmers Market from "
                          "met peaceful major leaders; no wars/demands, espionage or deals. Requires native "
                          "offered response/quote/permission and sufficient Influence; rejects missing costs and "
                          "replacement of an existing different response. Support spends Influence; rejection "

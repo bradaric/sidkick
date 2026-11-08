@@ -132,7 +132,8 @@
     const ui = Game.Diplomacy.getResponseDataForUI(event.uniqueID);
     if (ui?.actionID !== event.uniqueID || ui.initialPlayer !== event.initialPlayer || ui.targetPlayer !== localId || !Array.isArray(ui.responseList)) return null;
     const supportedAction = ["DIPLOMACY_ACTION_OPEN_BORDERS", "DIPLOMACY_ACTION_RESEARCH_COLLABORATION",
-      "DIPLOMACY_ACTION_CULTURAL_EXCHANGE", "DIPLOMACY_ACTION_LOCAL_FESTIVALS"].includes(event.actionTypeName);
+      "DIPLOMACY_ACTION_CULTURAL_EXCHANGE", "DIPLOMACY_ACTION_LOCAL_FESTIVALS",
+      "DIPLOMACY_ACTION_GINSING_AGREEMENT", "DIPLOMACY_ACTION_FARMERS_MARKET"].includes(event.actionTypeName);
     const hostileAction=["DIPLOMACY_ACTION_DENOUNCE","DIPLOMACY_ACTION_DENOUNCE_MILITARY_PRESENCE","DIPLOMACY_ACTION_SABOTAGE_TREASURY","DIPLOMACY_ACTION_SABOTAGE_MORALE",
       "DIPLOMACY_ACTION_SABOTAGE_RESEARCH","DIPLOMACY_ACTION_SABOTAGE_CIVIC_STUDY","DIPLOMACY_ACTION_SABOTAGE_MILITARY_PRODUCTION","DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION"].includes(event.actionTypeName);
     const responseKeys = new Map([[responseTypes.DIPLOMACY_RESPONSE_ACCEPT, "accept"],
