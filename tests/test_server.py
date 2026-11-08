@@ -142,7 +142,15 @@ class ReligionTests(unittest.IsolatedAsyncioTestCase):
     async def test_religion_tool_returns_structured_data(self) -> None:
         server = create_server()
         self.assertIn("get_civ7_religion", {tool.name for tool in server._tool_manager.list_tools()})
-        data = {"turn": 96, "beliefs": []}
+        tool = server._tool_manager.get_tool("get_civ7_religion")
+        self.assertTrue(tool.annotations.read_only_hint)
+        data = {"turn": 96, "beliefs": [], "choices": {"religions": [{
+            "id": "RELIGION_TEST", "name": "Test religion",
+            "icon": {"id": "RELIGION_TEST", "context": "RELIGION_DECO"},
+            "iconString": "Te", "requiresCustomName": False,
+            "hasBeenFounded": False, "operationAllowed": True,
+            "requiresConfirmation": False, "availableNow": True,
+        }]}}
         with patch("civ7.queries.run_script", new_callable=AsyncMock, return_value=data) as run:
             result = await server.call_tool("get_civ7_religion", {})
         self.assertFalse(result.is_error)

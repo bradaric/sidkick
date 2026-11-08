@@ -488,11 +488,23 @@ async def local_civilian_action(unit_id: StrictInt, kind: Literal["found", "exca
         "local_civilian_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def choose_religious_action(kind: Literal["pantheon", "belief", "found"], choice: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
-    """Select one exact available pantheon/belief, or found one unclaimed named religion."""
+async def choose_religious_action(
+    kind: Literal["pantheon", "belief", "found"], choice: StrictStr, expected_turn: StrictInt,
+    custom_name: StrictStr | None = None,
+) -> dict[str, Any]:
+    """Select an exact pantheon/belief or found an unclaimed religion, optionally with a custom name."""
     if kind not in ("pantheon", "belief", "found") or not isinstance(choice, str) or not choice or type(expected_turn) is not int or expected_turn < 0:
         raise ValueError("Supported religious action, exact definition ID and expected turn are required")
-    return await _execute_and_verify("religious_choice.js", {"kind": kind, "choice": choice, "expected_turn": expected_turn}, "religious_choice_state.js")
+    arguments = {"kind": kind, "choice": choice, "expected_turn": expected_turn}
+    if custom_name is not None:
+        # Native picker: max-length=16 (UTF-16 units), no |<>[] markup. Also reject control/invalid text.
+        if (kind != "found" or not isinstance(custom_name, str) or not custom_name.strip()
+                or sum(2 if ord(c) > 0xffff else 1 for c in custom_name) > 16
+                or any(c in "|<>[]\u2028\u2029" or ord(c) < 32 or 0x7f <= ord(c) <= 0x9f
+                       or 0xd800 <= ord(c) <= 0xdfff for c in custom_name)):
+            raise ValueError("Custom names are founding-only, nonblank, at most 16 UTF-16 units and cannot contain markup or control characters")
+        arguments["custom_name"] = custom_name
+    return await _execute_and_verify("religious_choice.js", arguments, "religious_choice_state.js")
 
 
 async def append_advanced_construction(settlement: StrictStr, item: StrictStr, construction_intent: Literal["wonder", "repair", "overbuild", "improvement"], x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt, replace_improvement: StrictBool = False) -> dict[str, Any]:

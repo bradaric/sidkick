@@ -921,9 +921,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "known current selections and native exact permission without confirmation. "
                          "Pantheon requires unlocked choice; beliefs require founded religion, claimability "
                          "and a genuinely free UI belief-class slot, not ADD_BELIEF permission alone. Found "
-                         "requires native canCreateReligion and unclaimed exact religion. Verifies exact "
-                         "selection collections/religion with prior choices preserved. Found does not pick "
-                         "beliefs automatically; subsequent mandatory choices remain. No rename, spread, "
+                         "requires native canCreateReligion and unclaimed exact religion. For custom-name "
+                         "icons supply custom_name: nonblank, maximum16 UTF-16 units, no |<>[] markup or "
+                         "control characters. Stock RELIGION_CUSTOM_5 is the butterfly icon. custom_name "
+                         "is founding-only and rejected for standard named religions. Verifies exact "
+                         "selection collections, religion/icon ID and supplied resolved name with prior "
+                         "choices preserved. Found does not pick beliefs automatically; subsequent "
+                         "mandatory choices remain. No rename, spread, "
                          "foreign religion mutation or turn advance. One submission, never retry unknown."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -1331,8 +1335,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         )(army_ranged_attack)
         server.tool(
             name="move_civ7_commander", title="Move Civ VII commander and packed army",
-            description=("CHANGE GAME STATE: move an owned deployed unqueued commander_id and all its packed "
+            description=("CHANGE GAME STATE: move an owned deployed commander_id and all its packed "
                          "members to x/y with fresh expected_turn and explicit max_steps (default1, maximum8). "
+                         "May replace an existing queued order when native MOVE_TO permits; no wake/cancel "
+                         "prerequisite or automatic fallback. Queue size must remain unchanged during validation. "
                          "Requires known owner-qualified army membership, positive movement, a native "
                          "current-turn path with every edge reachable, visible, empty, owned/unowned, "
                          "same land/water classification and noncombat. A land commander on a navigable "
@@ -1860,6 +1866,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "holy city, belief-class slots, and owned settlements' majority, urban and "
             "rural religions. Distinguishes global belief claimability, picker slot "
             "availability, choices available now, and choices selectable during founding. "
+            "choices.religions lists exact ReligionType IDs, localized definition names, native icon "
+            "ID/context references and IconString labels, custom-name requirement flags, public "
+            "taken status and exact read-only founding permission/confirmation checks. Missing checks "
+            "stay unknown, not available. Icons are game references, not browser image URLs; the "
+            "founding action accepts custom_name for custom icons (stock RELIGION_CUSTOM_5 is butterfly). "
+            "Founding previews here omit custom names; exact named permission is checked by the action. "
+            "Founding and belief selection are separate. "
             "Foreign founders are identified only when met; no hidden world totals. "
             "Owned units with positive base SpreadCharges include current non-target spread "
             "operation readiness, native charges remaining and action-panel additionalDescriptions; "

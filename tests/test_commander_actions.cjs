@@ -6,7 +6,7 @@ const {test} = require('node:test');
 
 function run(o = {}, script = 'commander_action.js') {
   const calls = [], commander = {id: {owner: o.foreign ? 1 : 0, id: 10, type: 26}, type: 100,
-    isCommanderUnit: !o.notCommander, isOnMap: !o.offMap, isEmbarked: Boolean(o.embarked), operationQueueSize: o.queued ? 1 : 0,
+    isCommanderUnit: !o.notCommander, isOnMap: !o.offMap, isEmbarked: Boolean(o.embarked), operationQueueSize: Object.hasOwn(o, 'queueSize') ? o.queueSize : o.queued ? 1 : 0,
     armyId: {owner: 0, id: 10, type: 29}, location: o.baseArrived||o.arrived?{x:3,y:3}:{x: 2, y: 3}, Health:{damage:0,maxDamage:100},Movement: {movementMovesRemaining: o.immobile || o.baseArrived ? 0 : 3}};
   if (o.unknownEmbarkation) commander.isEmbarked = undefined;
   const member = {id: {owner: 0, id: 20, type: 26}, type: 200, isOnMap: !o.packed, location: {x: 2, y: 3}};
@@ -34,7 +34,9 @@ function run(o = {}, script = 'commander_action.js') {
       calls.push({kind: 'moveCheck', id, type, args, exclusion});
       if (o.changed) context.Game.turn++;
       if (o.changedRiver) o.riverAt = undefined;
-      return {Success: !o.blocked,RequiresConfirmation:Boolean(o.confirm),Plots:o.notOffered?[]:[33]};
+      if (o.changedQueue) commander.operationQueueSize++;
+      if (o.changedMembers) o.packed = !o.packed;
+      return {Success: !o.blocked,RequiresConfirmation:Boolean(o.confirm),Plots:o.notOffered?[]:[33],FailureReasons:o.failureReasons??[]};
     }, sendRequest: (id, type, args) => {calls.push({kind: 'moveSend', id, type, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}},
     UnitCommands: {canStart: (id, type, args, exclusion) => {
       calls.push({kind: 'check', id, type, args, exclusion});
@@ -80,6 +82,47 @@ test('commander movement preserves captured packed membership and uses one bound
   }
   assert.equal(run({mode: 'move', longPath: true, args: {x: 4, y: 3, max_steps: 2}}).data.status, 'submitted');
   assert.equal(run({mode:'move',embarked:true,river:true,args:{x:3,y:3}}).data.status,'submitted','existing same-water river travel cannot assume isWater equals embarkation');
+});
+
+test('commander move replaces an existing queue with one native-approved request and no wake or cancel', () => {
+  for (const packed of [false, true]) for (const queueSize of [1, 2]) {
+    const {data, calls} = run({mode: 'move', packed, queueSize, args: {x: 3, y: 3}});
+    assert.equal(data.status, 'submitted');
+    assert.equal(data.before.queueSize, queueSize);
+    assert.deepEqual(data.expected.packedUnitIds, packed ? [20] : []);
+    assert.deepEqual(calls.map(c => c.kind), ['moveCheck', 'moveSend']);
+    assert.deepEqual(calls.at(-1).args, {X: 3, Y: 3, Modifiers: 0});
+  }
+  const uncertain = run({mode: 'move', queued: true, packed: true, args: {x: 3, y: 3}, sendThrows: true});
+  assert.equal(uncertain.data.error, 'Lost acknowledgement');
+  assert.equal(uncertain.calls.filter(c => c.kind === 'moveSend').length, 1);
+});
+
+test('queued commander movement still respects native refusal and confirmation without changing the queue', () => {
+  for (const extra of [{blocked: true, failureReasons: ['NATIVE_BLOCKER']}, {confirm: true}]) {
+    const {data, calls} = run({mode: 'move', queued: true, packed: true, args: {x: 3, y: 3}, ...extra});
+    assert.equal(data.status, 'rejected');
+    assert.match(data.reason, /Native commander movement/);
+    assert.deepEqual(data.failureReasons, extra.failureReasons ?? []);
+    assert.deepEqual(calls.map(c => c.kind), ['moveCheck']);
+  }
+});
+
+test('commander queue replacement refuses changed queue, membership or turn before submission', () => {
+  for (const queued of [false, true]) for (const extra of [{changedQueue: true}, {changedMembers: true}, {changed: true}]) {
+    const {data, calls} = run({mode: 'move', queued, packed: true, args: {x: 3, y: 3}, ...extra});
+    assert.equal(data.status, 'rejected');
+    assert.match(data.reason, /changed during validation/);
+    assert.deepEqual(calls.map(c => c.kind), ['moveCheck']);
+  }
+});
+
+test('commander move rejects unknown or invalid queue sizes without native submission', () => {
+  for (const queueSize of [null, -1, 1.5, true, '1']) {
+    const {data, calls} = run({mode: 'move', queueSize, args: {x: 3, y: 3}});
+    assert.equal(data.status, 'rejected');
+    assert.deepEqual(calls, []);
+  }
 });
 
 test('explicit packed shore crossing uses one direct noncombat path and proves embarkation with unchanged army',()=>{
@@ -132,13 +175,30 @@ test('river transition readback reports actual native embarkation and withholds 
 
 test('commander movement rejects future-turn, long, hostile, occupied, shore and stale paths without queueing', () => {
   for (const o of [{immobile: true}, {futureTurn: true}, {longPath: true}, {hidden: true}, {foreignTile: true},
-    {attack: true}, {combat: true}, {occupied: true}, {shore: true}, {unknownMembers: true}, {queued: true}, {changed: true},
+    {attack: true}, {combat: true}, {occupied: true}, {shore: true}, {unknownMembers: true}, {changed: true},
     {blocked: true}, {notOffered: true}, {args: {max_steps: true}}, {args: {max_steps: 9}}, {args: {x: -1}}]) {
     const {data, calls} = run({mode: 'move', args: {x: 3, y: 3, max_steps: 1}, ...o});
     assert.equal(data.status, 'rejected', JSON.stringify(o));
     assert.equal(calls.filter(c => c.kind.endsWith('Send')).length, 0);
   }
   assert.equal(run({mode: 'move', args: {x: 3, y: 3, max_steps: 1}, sendThrows: true}).calls.filter(c => c.kind === 'moveSend').length, 1);
+});
+
+test('queued commander move retains bounded path and noncombat restrictions', () => {
+  for (const extra of [{futureTurn: true}, {longPath: true}, {hiddenTarget: true}, {foreignTile: true},
+    {attack: true}, {combat: true}, {occupied: true}, {shore: true}, {unknownMembers: true}]) {
+    const {data, calls} = run({mode: 'move', queued: true, packed: true, args: {x: 3, y: 3}, ...extra});
+    assert.equal(data.status, 'rejected', JSON.stringify(extra));
+    assert.equal(calls.some(c => c.kind === 'moveSend' || c.kind === 'send'), false);
+  }
+});
+
+test('queue replacement is limited to ordinary commander movement', () => {
+  for (const mode of ['pack', 'unpack', 'rail', 'shore', 'air_base']) {
+    const {data, calls} = run({mode, queued: true, packed: true, air: mode === 'air_base', args: {x: 3, y: 3}});
+    assert.equal(data.status, 'rejected', mode);
+    assert.deepEqual(calls, []);
+  }
 });
 
 test('commander move state reports actual commander location and native packed membership', () => {

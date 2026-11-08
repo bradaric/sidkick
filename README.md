@@ -901,9 +901,13 @@ native current-turn path of at most the explicitly capped number of edges (1–8
 Every edge must be reachable, visible, empty, own/unowned, on unchanged land/water
 classification and explicitly noncombat. A navigable-river land commander may
 be embarked while `isWater` is false; this alone does not block ordinary bounded
-Commander movement. It rejects queued/off-map commanders, unknown
-or foreign army membership, shore crossings, foreign territory and future-turn
-orders. One fixed MOVE_TO/NONE request is followed by up to 15 seconds of read-only
+Commander movement. An explicit move may replace an existing queued order when
+the exact native MOVE_TO check permits it; no wake/cancel prerequisite or fallback
+is issued. The queue size must be known and unchanged during validation. Pack,
+unpack, rail, shore and air-base tools retain their unqueued-source requirement.
+It rejects off-map commanders, unknown or foreign army membership, shore
+crossings, foreign territory and future-turn orders. One fixed MOVE_TO/NONE
+request is followed by up to 15 seconds of read-only
 verification of commander identity, destination and exact preserved packed IDs.
 Authorization covers the commander and **all** packed members, not a selected subset.
 
@@ -1910,6 +1914,52 @@ The existing decisions tool remains a compact construction/purchase summary, and
 ### Religion and belief choices
 
 `get_civ7_religion` reads the local player's founded religion (including its custom name), selected pantheons and beliefs with effect descriptions, holy city name, belief-class slot counts, and each owned settlement's majority, urban, and rural religions. If the player has not founded a religion, `religion` is `null`; a split or unconverted settlement can have no majority while still having urban/rural religions. For foreign religions, founder identities and custom names are resolved only when the founder has been met. The response does not scan foreign settlements or include hidden world totals.
+
+`choices.religions` also lists the loaded religion picker's exact `id` (`ReligionType`),
+localized definition `name`, native `icon: {id, context: "RELIGION_DECO"}` reference,
+definition `iconString` label and `requiresCustomName` flag. Icon references are not
+browser image URLs; no UI picker is opened or asset exported. Each option includes
+the picker's public `hasBeenFounded` status, exact read-only `FOUND_RELIGION`
+`operationAllowed`/`requiresConfirmation` checks, failure reasons and additional
+descriptions. Missing/unverified checks are `null`, never positive availability.
+For these religion options, `availableNow` requires an unfounded local religion,
+`canFoundReligion`, an explicitly unclaimed option and native permission without
+confirmation. Taken options never reveal an unmet founder's identity or custom name.
+`requiresCustomName` is the definition flag, not a supplied name. Founding previews
+here omit custom names; the action rechecks native permission with the exact supplied
+name. `choose_civ7_religious_action` accepts `custom_name` only for `kind="found"`
+with a custom-name religion/icon. Names must be nonblank and at most **16 UTF-16
+units**, matching the native picker limit; `|<>[]`, control characters and invalid
+Unicode are rejected. Values are sent unchanged as native `ReligionCustomName`.
+Standard named religions do not accept a custom name; existing religions are never
+renamed. An already-founded custom religion is a no-op only if both icon ID and
+resolved displayed name match. Readback verifies both, with prior beliefs/pantheons
+preserved; a missing/mismatched name never counts as verified success.
+
+The stock **butterfly icon is `RELIGION_CUSTOM_5`**, confirmed by the installed
+`religion-icons.xml` mappings and visual inspection of both
+`TEXTURE_rel_cust_5_deco` (picker) and `TEXTURE_religion_custom_5` (player) assets.
+For example, the play agent can submit the following
+with a freshly observed turn (this example is not a live action):
+
+```python
+choose_civ7_religious_action(kind="found", choice="RELIGION_CUSTOM_5",
+                           expected_turn=<fresh_turn>, custom_name="Butterfly Effect")
+```
+
+Founding does not automatically select subsequent beliefs. Native permission,
+unclaimed status, active-turn freshness, single submission and no-retry safeguards
+remain. Verification uses local fixtures only, not a live founding attempt.
+
+Religious actions and their readback follow the native picker's lifecycle: they
+do not call `getBeliefs()` until `hasCreatedReligion()` is explicitly true. Before
+founding, there is no religion belief collection to preserve, so that baseline is
+empty; this does not require a manual in-game setup step. Missing/invalid beliefs
+after founding still reject, and a pending founding is never verified as complete.
+Invalid owned identity, collections or slot counters report their exact
+`invalidFields` in both the rejection reason and structured result instead of the
+generic "identity/collections/slots are unknown" message. Native eligibility,
+claimability, freshness, exact name/icon readback and single-submission rules remain.
 
 Choice data distinguishes several checks:
 

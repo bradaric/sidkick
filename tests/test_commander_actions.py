@@ -63,6 +63,28 @@ class CommanderActionTests(unittest.IsolatedAsyncioTestCase):
                     await create_server(enable_writes=True).call_tool(name, {k: True if k == 'expected_turn' else v for k, v in arguments.items() if k != 'mode'})
                 run.assert_not_awaited()
 
+    async def test_queue_replacement_verifies_arrival_and_packed_members_not_submission_alone(self):
+        before = {'turn': 62, 'age': 42, 'playerId': 0, 'queueSize': 1}
+        expected = {'commanderId': 10, 'commanderType': 100, 'componentType': 26,
+                    'location': {'x': 3, 'y': 3}, 'packedUnitIds': [20]}
+        for observed, status in [({**expected, 'queueSize': 0}, 'verified_applied'),
+                                 ({**expected, 'location': {'x': 2, 'y': 3}, 'queueSize': 1}, 'unknown'),
+                                 ({**expected, 'packedUnitIds': []}, 'unknown')]:
+            async def response(script, arguments):
+                if script == 'commander_action.js':
+                    return {'status': 'submitted', 'before': before, 'expected': expected,
+                            'verificationArguments': {'mode': 'move', 'commander_id': 10,
+                                                      'component_type': 26, 'baseline_packed_unit_ids': [20],
+                                                      'baseline_unit_ids': [10, 20]}}
+                return {**before, **observed}
+
+            with patch('civ7.actions._COMBAT_VERIFICATION_TIMEOUT', 0.01), patch(
+                    'civ7.actions.run_script', side_effect=response) as run:
+                result = await actions.move_commander(10, 3, 3, 62)
+            self.assertEqual(result['status'], status)
+            self.assertEqual([call.args[0] for call in run.await_args_list],
+                             ['commander_action.js', 'commander_action_state.js'])
+
     async def test_commander_rejections_and_uncertain_outcomes_never_retry(self):
         for _, fn, positional, *_ in CASES:
             self.assertTrue(callable(getattr(actions, fn, None)))

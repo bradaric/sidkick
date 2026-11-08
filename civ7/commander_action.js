@@ -11,7 +11,10 @@
   if (!player || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false) return reject("Local turn is not active");
   if (Game.turn !== expectedTurn) return reject("The observed turn is stale");
   const owned = player.Units.getUnits().filter(u => u.id.owner === playerId), units = owned.filter(u => u.id.id === commanderId);
-  if (units.length !== 1 || units[0].isCommanderUnit !== true || units[0].isOnMap !== true || units[0].operationQueueSize !== 0) return reject("A unique owned deployed unqueued commander is required");
+  if (units.length !== 1 || units[0].isCommanderUnit !== true || units[0].isOnMap !== true) return reject("A unique owned deployed commander is required");
+  const queueSize = units[0].operationQueueSize;
+  // An explicit ordinary move may replace native queued orders; never wake/cancel first.
+  if (!Number.isInteger(queueSize) || queueSize < 0 || (mode !== "move" && queueSize !== 0)) return reject("A verified commander queue is required; only ordinary movement may replace queued orders");
   const commander = units[0], army = typeof Armies !== "undefined" && typeof Armies.get === "function" ? Armies.get(commander.armyId) : null;
   if (!army || army.owner !== playerId || typeof army.getCommanderId !== "function") return reject("Owned commander army identity is unavailable");
   const armyCommander = army.getCommanderId();
@@ -28,7 +31,7 @@
   const members = membership();
   if (members === null) return reject("Packed membership is unverified");
   const before = {turn: Game.turn, age: Game.age, playerId, commanderId, commanderType: commander.type,
-    componentType: commander.id.type, packedUnitIds: members};
+    componentType: commander.id.type, packedUnitIds: members, queueSize};
   if (mode === "air_base") {
     const operation="UNITOPERATION_ESTABLISH_BASE",destination={x,y},valid=l=>l&&[l.x,l.y].every(v=>Number.isInteger(v)&&v>=0)&&l.x<GameplayMap.getGridWidth()&&l.y<GameplayMap.getGridHeight();
     const visible=l=>valid(l)&&GameplayMap.getRevealedState(playerId,l.x,l.y)===RevealedStates.VISIBLE;
@@ -130,7 +133,7 @@
     if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native commander movement check failed", check?.FailureReasons ?? []);
     if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true ||
         GameContext.hasSentTurnComplete() !== false || commander.id.owner !== playerId || commander.type !== before.commanderType ||
-        commander.isOnMap !== true || commander.operationQueueSize !== 0 || commander.location.x !== before.location.x || commander.location.y !== before.location.y ||
+        commander.isOnMap !== true || commander.operationQueueSize !== before.queueSize || commander.location.x !== before.location.x || commander.location.y !== before.location.y ||
         commander.Movement.movementMovesRemaining !== before.movesRemaining || commander.isEmbarked !== before.embarked || GameplayMap.isWater(before.location.x,before.location.y) !== water || JSON.stringify(membership()) !== JSON.stringify(members) ||
         !locations.slice(1).every(clear) || shore && (
           GameplayMap.getRevealedState(playerId, source.x, source.y) !== RevealedStates.VISIBLE ||

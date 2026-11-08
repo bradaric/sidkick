@@ -13,6 +13,8 @@ const pantheonClass = 'BELIEF_CLASS_PANTHEON';
 function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0,
   claimable = true, operationAllowed = true, inGame = true, playerId = 0,
   missionary = false, packed = false, spreadAllowed = true, charges = 2,
+  foundingStatus = {}, foundingResult = { Success: true }, missingFoundingStatus = false,
+  missingFoundingCheck = false,
   packedValidCoordinates = false, offMap = false, unknownArmy = false, foreignArmy = false, foreignUnit = false,
   spreadDescriptions = ['Native current ability description'] } = {}) {
   assert.ok(fs.existsSync(scriptPath), 'bundled religion query exists');
@@ -28,9 +30,11 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
   ];
   definitions.lookup = key => definitions.find(d => d.$hash === key || d.BeliefType === key);
   const religions = [
-    { $hash: -1010, ReligionType: 'RELIGION_LOCAL', Name: 'Local default' },
-    { $hash: 1020, ReligionType: 'RELIGION_MET', Name: 'Met default' },
-    { $hash: 1030, ReligionType: 'RELIGION_UNMET', Name: 'Unmet default' },
+    { $hash: -1010, ReligionType: 'RELIGION_LOCAL', Name: 'Local default', RequiresCustomName: false, IconString: 'Lo' },
+    { $hash: 1020, ReligionType: 'RELIGION_MET', Name: 'Met default', RequiresCustomName: false, IconString: 'Me' },
+    { $hash: 1030, ReligionType: 'RELIGION_UNMET', Name: 'Unmet default', RequiresCustomName: false, IconString: 'Un' },
+    { $hash: -1040, ReligionType: 'RELIGION_FREE', Name: 'Free religion', RequiresCustomName: false, IconString: 'Fr' },
+    { $hash: 1050, ReligionType: 'RELIGION_CUSTOM', Name: 'Custom religion', RequiresCustomName: true, IconString: '01' },
   ];
   religions.lookup = key => religions.find(d => d.$hash === key || d.ReligionType === key);
   const religion = {
@@ -77,7 +81,8 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
       }};
     }},
     GameplayMap: { getGridWidth: () => 10, getGridHeight: () => 10 },
-    PlayerOperationTypes: { FOUND_PANTHEON: 'FOUND_PANTHEON', ADD_BELIEF: 'ADD_BELIEF' },
+    PlayerOperationTypes: { FOUND_PANTHEON: 'FOUND_PANTHEON', ADD_BELIEF: 'ADD_BELIEF',
+      ...(!missingFoundingCheck ? { FOUND_RELIGION: 'FOUND_RELIGION' } : {}) },
     Game: {
       turn: 96,
       UnitOperations: { canStart: (id, operation, args, visible) => {
@@ -88,12 +93,20 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
           AdditionalDescription: spreadDescriptions, Plots: [999] };
       } },
       Religion: {
+        ...(!missingFoundingStatus ? { hasBeenFounded: type => Object.hasOwn(foundingStatus, type)
+          ? foundingStatus[type] : !['RELIGION_FREE', 'RELIGION_CUSTOM'].includes(type) } : {}),
         getPlayerFromReligion: type => ({ RELIGION_LOCAL: 0, RELIGION_MET: 1, RELIGION_UNMET: 3 })[type],
         isBeliefClaimable: index => { claimChecks.push(index); return claimable; },
       },
       PlayerOperations: { canStart: (id, operation, args, visible) => {
         assert.equal(id, 0);
         assert.equal(visible, false);
+        if (operation === 'FOUND_RELIGION') {
+          assert.equal(typeof args.ReligionType, 'number');
+          assert.deepEqual(Object.keys(args), ['ReligionType']);
+          operations.push({ operation, hash: args.ReligionType });
+          return foundingResult;
+        }
         assert.equal(typeof args.BeliefType, 'number');
         operations.push({ operation, hash: args.BeliefType });
         if (!claimable) return { Success: false, FailureReasons: ['Already claimed'], AdditionalDescription: ['Choose another belief'] };
@@ -201,6 +214,68 @@ test('before founding, identity is null and founding choices are distinct from a
   assert.equal(data.choices.beliefs.find(b => b.id === 'FREE_ENHANCER').availableForFounding, false);
   const locked = run({ created: false, canFound: false, earned: 0 }).data;
   assert.ok(locked.choices.beliefs.every(b => !b.availableNow && !b.availableForFounding));
+});
+
+test('religion choices expose native names, distinct icon references and exact signed-hash founding checks', () => {
+  const { data, operations } = run({ created: false, canFound: true, earned: 0 });
+  assert.ok(Array.isArray(data.choices.religions), 'religion founding choices are exported');
+  const option = data.choices.religions.find(r => r.id === 'RELIGION_FREE');
+  assert.equal(option.name, 'Free religion');
+  assert.deepEqual(option.icon, { id: 'RELIGION_FREE', context: 'RELIGION_DECO' });
+  assert.equal(option.iconString, 'Fr');
+  assert.equal(option.requiresCustomName, false);
+  assert.equal(option.hasBeenFounded, false);
+  assert.equal(option.operationAllowed, true);
+  assert.equal(option.requiresConfirmation, false);
+  assert.equal(option.availableNow, true);
+  assert.ok(operations.some(op => op.operation === 'FOUND_RELIGION' && op.hash === -1040));
+  const custom = data.choices.religions.find(r => r.id === 'RELIGION_CUSTOM');
+  assert.equal(custom.requiresCustomName, true);
+  assert.equal(custom.iconString, '01');
+  assert.notDeepEqual(custom.icon, option.icon);
+  assert.match(data.religionChoiceNote, /custom name/i);
+});
+
+test('religion picker taken status never exposes an unmet founder or foreign custom name', () => {
+  const { data, playerReads } = run({ created: false, canFound: true });
+  assert.ok(Array.isArray(data.choices.religions), 'religion founding choices are exported');
+  const taken = data.choices.religions.find(r => r.id === 'RELIGION_UNMET');
+  assert.equal(taken.name, 'Unmet default');
+  assert.equal(taken.hasBeenFounded, true);
+  assert.equal(taken.availableNow, false);
+  assert.equal(Object.hasOwn(taken, 'founder'), false);
+  assert.ok(!playerReads.includes(3));
+  assert.ok(!JSON.stringify(data.choices.religions).includes('Known custom religion'));
+  assert.ok(!JSON.stringify(data.choices.religions).includes('My custom religion'));
+});
+
+test('founding choices require local eligibility, unclaimed status and native permission without confirmation', () => {
+  for (const extra of [{ canFound: false }, { created: true },
+    { foundingStatus: { RELIGION_FREE: true } }, { foundingResult: { Success: false } },
+    { foundingResult: { Success: true, RequiresConfirmation: true } }]) {
+    const { data } = run({ created: false, canFound: true, ...extra });
+    assert.ok(Array.isArray(data.choices.religions), 'religion founding choices are exported');
+    const option = data.choices.religions.find(r => r.id === 'RELIGION_FREE');
+    assert.equal(option.availableNow, false, JSON.stringify(extra));
+  }
+  const blocked = run({ created: false, canFound: true, foundingResult: {
+    Success: false, FailureReasons: ['Founding blocked'], AdditionalDescription: ['Native explanation']
+  } }).data.choices.religions.find(r => r.id === 'RELIGION_FREE');
+  assert.deepEqual(blocked.failureReasons, ['Founding blocked']);
+  assert.deepEqual(blocked.additionalDescriptions, ['Native explanation']);
+});
+
+test('missing or unverified founding evidence stays unknown, never available', () => {
+  for (const extra of [{ missingFoundingStatus: true }, { missingFoundingCheck: true },
+    { foundingStatus: { RELIGION_FREE: null } }, { foundingStatus: { RELIGION_FREE: 0 } },
+    { foundingResult: null }, { foundingResult: {} }, { foundingResult: { Success: 1 } }]) {
+    const { data } = run({ created: false, canFound: true, ...extra });
+    assert.ok(Array.isArray(data.choices.religions), 'religion founding choices are exported');
+    const option = data.choices.religions.find(r => r.id === 'RELIGION_FREE');
+    assert.equal(option.availableNow, false, JSON.stringify(extra));
+    assert.ok(option.hasBeenFounded === null || option.operationAllowed === null);
+    assert.ok(data.choices.beliefs.length > 0, 'missing founding data does not discard belief choices');
+  }
 });
 
 test('requires an in-game local player', () => {
