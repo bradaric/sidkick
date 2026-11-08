@@ -1903,7 +1903,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         description=(
             "Get the local player's religion, selected pantheons and beliefs with effects, "
             "holy city, belief-class slots, and owned settlements' majority, urban and "
-            "rural religions. Distinguishes global belief claimability, picker slot "
+            "rural religions. religiousUnits[].currentSettlement also reports the name, owner-qualified ID "
+            "and majority/urban/rural religions of the city the unit is in, including met foreign cities "
+            "with a currently visible centre. currentSettlementStatus distinguishes identified, none, "
+            "withheld, unverified and unavailable; null city data does not imply no religion. No foreign "
+            "city inventory, population, yields or queues are inspected. Distinguishes global belief claimability, picker slot "
             "availability, choices available now, and choices selectable during founding. "
             "choices.religions lists exact ReligionType IDs, localized definition names, native icon "
             "ID/context references and IconString labels, custom-name requirement flags, public "
