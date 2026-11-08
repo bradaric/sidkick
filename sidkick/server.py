@@ -2120,7 +2120,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         name="get_civ7_city_states",
         title="Get Civ VII city-state and independent diplomacy",
         description=(
-            "Get met city-states and met/discovered independent powers, suzerains, current "
+            "Get met city-states and met/discovered independent powers, their native "
+            "specializations (type.id/name, never inferred from names), suzerains, current "
             "bonus effects and eligible bonus choices, local influence, diplomatic action "
             "eligibility and selected-target costs including incorporation, plus your "
             "ongoing befriending progress and support costs. Bonus eligibility is not a "
