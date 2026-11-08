@@ -33,6 +33,7 @@ function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0 } = {
   ] : [
     { actionTypeName: 'DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN', actionDisplayName: 'Befriend', projectDescription: 'Improve relations', projectStatus: -3,
       targetList1: [{ targetID: 4, costYieldD: 680, resultData: { FailureReasons: ['Already running'] } }], targetList2: [], resultData: { FailureReasons: ['Already running'] } },
+    {actionTypeName:'DIPLOMACY_ACTION_INCITE_RAID',actionType:100,operationType:'RAID',projectStatus:0,targetList1:[{targetID:4,costYieldD:0}],targetList2:[{parameterName:'Player3',targetID:1,costYieldD:40},{parameterName:'Player3',targetID:3,costYieldD:1}],resultData:{}},
   ];
   const ownEvent = { uniqueID: 9, initialPlayer: 0, targetPlayer: 4, actionTypeName: 'DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN', actionType: 99, name: 'Befriending', progressScore: 20, completionScore: 60, support: 2, gameTurnStart: 89 };
   const result = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
@@ -81,6 +82,8 @@ test('only met or discovered powers are inspected, never hidden players or targe
   assert.equal(data.powers[1].villageDiscovered, true);
   assert.ok(!JSON.stringify(data).includes('999'));
   assert.ok(!JSON.stringify(data).includes('UNRELATED_ACTIVE_PROJECT'));
+  const raid=data.powers[1].actions.find(a=>a.id==='DIPLOMACY_ACTION_INCITE_RAID');
+  assert.deepEqual(raid.secondaryPlayers.map(p=>p.playerId),[1]);assert.equal(raid.secondaryPlayers[0].quotedInfluenceCost,40);
 });
 
 test('reports suzerainty, selected bonus effects, and selected-target incorporation costs', () => {

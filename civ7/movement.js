@@ -19,10 +19,13 @@
   const reasons = result => (result?.FailureReasons ?? []).map(name).filter(Boolean);
   const deployed = valid(unit.location);
   const destination = x == null ? deployed ? unit.location : null : {x, y};
-  if (destination && !revealed(destination)) throw Error("Destination must be a valid revealed tile");
+  if (destination && !valid(destination)) throw Error("Destination must be a valid map tile");
   const def = GameInfo.Units.lookup(unit.type);
-  const checkMove = location => Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO,
-    {X: location.x, Y: location.y}, false);
+  const modifier = UnitOperationMoveModifiers.MOVE_IGNORE_UNEXPLORED_DESTINATION;
+  const nonattack = Number.isInteger(modifier) && Number.isInteger(UnitOperationMoveModifiers.ATTACK) &&
+    (modifier & UnitOperationMoveModifiers.ATTACK) === 0;
+  const checkMove = location => nonattack ? Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO,
+    {X: location.x, Y: location.y, Modifiers: modifier}, false) : null;
   const options = [];
   if (deployed && unit.Movement?.movementMovesRemaining > 0) {
     const attackPlots = new Set(Units.getReachableTargets(unit.id) ?? []);
@@ -32,7 +35,7 @@
       const location = locationForPlot(plot);
       if (!revealed(location) || attackPlots.has(plot)) continue;
       const result = checkMove(location);
-      options.push({location: {x: location.x, y: location.y}, availableNow: Boolean(result?.Success), failureReasons: reasons(result)});
+      options.push({location: {x: location.x, y: location.y}, availableNow: result ? Boolean(result.Success) : null, failureReasons: reasons(result)});
     }
   }
   let target = null;
@@ -43,7 +46,9 @@
     const safePath = path?.plots && path.plots.every(plot => revealed(locationForPlot(plot)));
     target = {
       location: {x: destination.x, y: destination.y},
+      visibility: !revealed(destination) ? "unexplored" : GameplayMap.getRevealedState(id, destination.x, destination.y) === RevealedStates.VISIBLE ? "visible" : "fogged",
       moveAllowed: result ? Boolean(result.Success) : null,
+      requiresConfirmation: result ? result.RequiresConfirmation === true : null,
       failureReasons: reasons(result),
       path: safePath ? path.plots.map((plot, index) => ({location: locationForPlot(plot), turnLabel: path.turns?.[index] ?? null})) : null,
       pathNote: "Native turn labels, not inferred turns remaining; unavailable/unrevealed paths and raw obstacles are withheld"
@@ -72,7 +77,7 @@
     };
   }
   let site = null;
-  if (destination) {
+  if (destination && revealed(destination)) {
     const resource = type => {
       const record = GameInfo.Resources.lookup(type);
       return record ? {id: record.ResourceType, name: name(record.Name)} : null;

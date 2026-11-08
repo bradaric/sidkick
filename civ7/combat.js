@@ -14,6 +14,21 @@
   const deployed = Number.isInteger(attacker.location?.x) && Number.isInteger(attacker.location?.y) &&
     attacker.location.x >= 0 && attacker.location.y >= 0 &&
     attacker.location.x < GameplayMap.getGridWidth() && attacker.location.y < GameplayMap.getGridHeight();
+  let stationedAirBase = null;
+  if (!deployed && attacker.isOnMap === false && GameInfo.Units.lookup(attacker.type)?.Domain === "DOMAIN_AIR" && typeof Armies !== "undefined") {
+    const bases = player.Units.getUnits().filter(u => u.id.owner === id && u.isAerodromeCommander === true && u.isOnMap === true &&
+      u.armyId?.owner === id && u.armyId.id === attacker.armyId?.id && u.armyId.type === attacker.armyId?.type);
+    if (bases.length === 1) {
+      const base = bases[0], l = base.location, army = Armies.get(base.armyId), commander = army?.getCommanderId?.(), members = army?.getUnitIds?.();
+      if (Number.isInteger(l?.x) && Number.isInteger(l?.y) && l.x >= 0 && l.y >= 0 && l.x < GameplayMap.getGridWidth() && l.y < GameplayMap.getGridHeight() &&
+          GameplayMap.getRevealedState(id, l.x, l.y) === RevealedStates.VISIBLE && GameplayMap.getOwner(l.x, l.y) === id &&
+          army?.owner === id && army.localId === base.armyId.id && commander?.owner === id && commander.id === base.id.id && commander.type === base.id.type &&
+          Array.isArray(members) && members.filter(m => m.owner === id && m.id === attacker.id.id && m.type === attacker.id.type).length === 1) {
+        const cities = player.Cities.getCities().filter(c => c.id.owner === id && c.location?.x === l.x && c.location?.y === l.y);
+        if (cities.length === 1) stationedAirBase = {commanderId: base.id.id, cityId: cities[0].id.id, location: {x: l.x, y: l.y}};
+      }
+    }
+  }
   const name = key => key ? Locale.compose(key) : null;
   const location = {x, y};
   const hostile = componentId => Number.isInteger(componentId?.owner) && componentId.owner >= 0 &&
@@ -22,23 +37,25 @@
     ranged: unit.Combat.rangedStrength, bombard: unit.Combat.bombardStrength} : null;
   const health = unit => unit.Health ? {current: unit.Health.maxDamage - unit.Health.damage, maximum: unit.Health.maxDamage} : null;
   let defender = null;
-  const districtId = deployed ? Game.Combat.getDefensibleDistrict(location) : null;
+  const districtId = deployed || stationedAirBase ? Game.Combat.getDefensibleDistrict(location) : null;
   if (hostile(districtId)) {
     const district = Districts.get(districtId);
     if (district) defender = {
-      kind: "district", name: name(GameInfo.Districts.lookup(district.type)?.Name),
+      kind: "district", ownerId: districtId.owner, instanceId: districtId.id, componentType: districtId.type,
+      name: name(GameInfo.Districts.lookup(district.type)?.Name),
       civilization: name(Players.get(district.owner)?.civilizationFullName),
       health: Number.isFinite(district.getMaxDamage) && Number.isFinite(district.getDamage)
         ? {current: district.getMaxDamage - district.getDamage, maximum: district.getMaxDamage} : null,
       strength: null
     };
-  } else if (deployed) {
+  } else if (deployed || stationedAirBase) {
     const defenderId = Game.Combat.getBestDefender(location, attacker.id);
     if (hostile(defenderId) && Visibility.isVisible(id, defenderId)) {
       const unit = Units.get(defenderId);
       if (unit) {
         const def = GameInfo.Units.lookup(unit.type);
-        defender = {kind: "unit", name: name(unit.name ?? def?.Name), type: def?.UnitType ?? unit.type,
+        defender = {kind: "unit", ownerId: defenderId.owner, instanceId: defenderId.id, componentType: defenderId.type,
+          name: name(unit.name ?? def?.Name), type: def?.UnitType ?? unit.type,
           civilization: name(Players.get(unit.owner)?.civilizationFullName), health: health(unit), strength: strength(unit)};
       }
     }
@@ -52,6 +69,7 @@
       {kind: "air", operation: "UNITOPERATION_AIR_ATTACK"}
     ];
     for (const attack of attacks) {
+      if (!deployed && stationedAirBase && attack.kind !== "air") continue;
       const args = {X: x, Y: y};
       if (attack.modifiers != null) args.Modifiers = attack.modifiers;
       const result = Game.UnitOperations.canStart(attacker.id, attack.operation, args, false);
@@ -59,15 +77,22 @@
         failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)});
     }
   }
-  let commanderAttack = null;
+  let commanderAttack = null, focusedLandRangedAttack = null, focusedLandMeleeAttack = null, overrun = null;
   if (defender && deployed && attacker.isCommanderUnit) {
-    const result = Game.UnitCommands.canStart(attacker.id, "UNITCOMMAND_COMMANDER_ATTACK", {}, false);
-    const targetInNativePlots = (result?.Plots ?? []).includes(GameplayMap.getIndexFromLocation(location));
-    commanderAttack = {
-      operationAllowed: result ? Boolean(result.Success) : null, targetInNativePlots,
-      availableNow: Boolean(result?.Success) && targetInNativePlots,
-      failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)
-    };
+    function focusedCommand(command) {
+      const focused = Game.UnitCommands.canStart(attacker.id, command, {}, false);
+      const offered = Array.isArray(focused?.Plots) && focused.Plots.includes(GameplayMap.getIndexFromLocation(location));
+      const selected = focused?.Success === true && offered ? Game.UnitCommands.canStart(attacker.id, command, {X: x, Y: y}, false) : null;
+      return {operationAllowed: focused?.Success === true, targetInNativePlots: offered,
+        selectedTargetAllowed: selected?.Success === true, availableNow: focused?.Success === true && offered && selected?.Success === true,
+        failureReasons: [...(focused?.FailureReasons ?? []), ...(selected?.FailureReasons ?? [])].map(name).filter(Boolean),
+        scope: "Engine-selected nearby role-eligible units; primary target only, native splash may affect adjacent enemies"};
+    }
+    commanderAttack = {...focusedCommand("UNITCOMMAND_COMMANDER_ATTACK"), scope: "Exact direct commander ability permission; source/target field restrictions remain action-specific"};
+    focusedLandRangedAttack = focusedCommand("UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED");
+    focusedLandMeleeAttack = focusedCommand("UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE");
+    overrun = {...focusedCommand("UNITCOMMAND_ARMY_OVERRUN"),
+      scope: "Packed army; native weaker-target eligibility only, no inferred strength threshold or kill forecast"};
   }
   const terrain = GameInfo.Terrains.lookup(GameplayMap.getTerrainType(x, y));
   const feature = GameInfo.Features.lookup(GameplayMap.getFeatureType(x, y));
@@ -82,9 +107,25 @@
     "friendlyTerritoryCombatMod", "flankingAttackPercentageModifier", "flankingAttackStrengthModifier", "canMoveAfterAttacking"];
   const reportedModifiers = attacker.Combat?.combatModifiers;
   const attackerDef = GameInfo.Units.lookup(attacker.type);
+  let pillage = null;
+  const routeType = typeof GameplayMap.getRouteType === "function" ? GameplayMap.getRouteType(x,y) : null;
+  const routePillage = Number.isInteger(routeType) && GameInfo.Routes?.lookup(routeType) ? {routeType,targetToken:JSON.stringify({routeType}),
+    scope:"Visible route only; native route-pillage eligibility separately action-checked"} : null;
+  if (typeof MapConstructibles !== "undefined" && typeof Constructibles !== "undefined") {
+    const ids = MapConstructibles.getConstructibles(x, y);
+    const constructibles = Array.isArray(ids) ? ids.map(id => {
+      const c = Constructibles.getByComponentID(id);
+      return c ? {owner: id.owner, instanceId: id.id, componentType: id.type, type: c.type, complete: c.complete, damaged: c.damaged} : null;
+    }) : null;
+    if (constructibles && constructibles.every(c => c && Number.isInteger(c.type) && typeof c.complete === "boolean" && typeof c.damaged === "boolean")) {
+      constructibles.sort((a, b) => a.instanceId - b.instanceId || a.componentType - b.componentType);
+      pillage = {constructibles, targetToken: JSON.stringify(constructibles),
+        scope: "Visible tile constructibles only; native pillage eligibility is action-checked, not inferred from intact buildings"};
+    }
+  }
   return {
     turn: Game.turn,
-    attacker: {instanceId: attacker.id.id, name: name(attacker.name ?? attackerDef?.Name),
+    attacker: {instanceId: attacker.id.id, name: name(attacker.name ?? attackerDef?.Name), stationedAirBase,
       health: health(attacker), strength: strength(attacker), canAttack: Boolean(attacker.Combat?.canAttack),
       readiness: {
         deployed, attacksRemaining: attacker.Combat?.attacksRemaining ?? null,
@@ -98,7 +139,7 @@
       },
       reportedModifiers: reportedModifiers ? Object.fromEntries(modifierKeys.map(key => [key, reportedModifiers[key] ?? null])) : null
     },
-    location, targetTerrain, defender, options, commanderAttack,
+    location, targetTerrain, defender, options, commanderAttack, focusedLandRangedAttack, focusedLandMeleeAttack, overrun, pillage, routePillage,
     contextualStrength: null,
     expectedDamageToAttacker: null, expectedDamageToDefender: null, outcome: null,
     note: "Visible hostile target and read-only operation/commander-command checks only. Strengths, local reported modifiers and terrain definition values are separate evidence, not contextual totals or a damage simulation. Commander availability requires this target in the native plot list; no other plots are returned. No asynchronous simulation or attack request is issued"

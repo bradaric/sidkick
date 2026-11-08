@@ -32,7 +32,7 @@
   function addChoices(entries, method) {
     for (const entry of entries ?? []) {
       const def = GameInfo.Constructibles.lookup(entry.index);
-      if (!def || !["BUILDING", "WONDER"].includes(def.ConstructibleClass) || !entry.result) continue;
+      if (!def || !["BUILDING", "WONDER", "IMPROVEMENT"].includes(def.ConstructibleClass) || !entry.result) continue;
       if (filter !== null && normalized(def.ConstructibleType) !== filter && normalized(name(def.Name)) !== filter) continue;
       if (!choices.has(def.ConstructibleType)) choices.set(def.ConstructibleType, {def});
       choices.get(def.ConstructibleType)[method] = entry.result;
@@ -75,6 +75,18 @@
       const location = revealedLocation(plot);
       if (!location) return null;
       const preview = previews.find(value => value.plotID === plot);
+      let targetToken = null;
+      if (typeof MapConstructibles !== "undefined" && typeof Constructibles !== "undefined" && GameplayMap.getRevealedState(id, location.x, location.y) === RevealedStates.VISIBLE) {
+        const ids = MapConstructibles.getConstructibles(location.x, location.y);
+        const records = Array.isArray(ids) ? ids.map(component => {
+          const c = Constructibles.getByComponentID(component);
+          return c ? {owner: component.owner, instanceId: component.id, componentType: component.type, type: c.type, complete: c.complete, damaged: c.damaged} : null;
+        }) : null;
+        if (records && records.every(c => c && Number.isInteger(c.type) && typeof c.complete === "boolean" && typeof c.damaged === "boolean")) {
+          records.sort((a, b) => a.instanceId - b.instanceId || a.componentType - b.componentType);
+          targetToken = JSON.stringify(records);
+        }
+      }
       const previous = preview ? [...GameInfo.Constructibles]
         .find(value => value.$index === preview.overbuiltConstructibleID) : null;
       const maintenance = preview ? city.Constructibles.getMaintenance(def.ConstructibleType) : null;
@@ -83,6 +95,7 @@
         : maintenance;
       return {
         plotIndex: plot,
+        targetToken,
         location,
         validForProduction: buildPlots.has(plot),
         validForPurchase: buyPlots.has(plot),

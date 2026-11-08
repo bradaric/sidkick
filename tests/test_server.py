@@ -9,6 +9,20 @@ from sidkick.server import create_server, server_icon
 
 
 class ServerTests(unittest.TestCase):
+    def test_victory_metadata_describes_anonymous_scoreboard_and_tourism(self) -> None:
+        for enable_writes in (False, True):
+            with self.subTest(enable_writes=enable_writes):
+                server = create_server(enable_writes=enable_writes)
+                tool = next(tool for tool in server._tool_manager.list_tools()
+                            if tool.name == "get_civ7_victory_progress")
+                self.assertIn("anonymous unmet majors", server.instructions)
+                self.assertIn("Tourism, not Culture yield", server.instructions)
+                self.assertIn("anonymous unmet major players", tool.description)
+                self.assertIn("scoring history", tool.description)
+                self.assertIn("Culture pointsLabel is Tourism", tool.description)
+                self.assertNotIn("met major players only", tool.description)
+                self.assertTrue(tool.annotations.read_only_hint)
+
     def test_advertises_embedded_png_icon(self) -> None:
         icon = server_icon()
         self.assertEqual(icon.mime_type, "image/png")
@@ -22,6 +36,7 @@ class ServerTests(unittest.TestCase):
             set(tools),
             {
                 "get_civ7_player_snapshot",
+                "get_civ7_civilopedia",
                 "get_civ7_empire",
                 "get_civ7_available_decisions",
                 "get_civ7_settlements",
@@ -39,11 +54,14 @@ class ServerTests(unittest.TestCase):
                 "get_civ7_known_world",
                 "get_civ7_victory_progress",
                 "get_civ7_diplomacy",
+                "get_civ7_peace_city_offer",
                 "get_civ7_city_states",
                 "get_civ7_visible_threats",
                 "get_civ7_turn_context",
                 "get_civ7_age_transition",
                 "get_civ7_explored_map",
+                "get_civ7_ascii_map",
+                "get_civ7_svg_map",
             },
         )
         for tool in tools.values():
@@ -124,7 +142,15 @@ class ReligionTests(unittest.IsolatedAsyncioTestCase):
     async def test_religion_tool_returns_structured_data(self) -> None:
         server = create_server()
         self.assertIn("get_civ7_religion", {tool.name for tool in server._tool_manager.list_tools()})
-        data = {"turn": 96, "beliefs": []}
+        tool = server._tool_manager.get_tool("get_civ7_religion")
+        self.assertTrue(tool.annotations.read_only_hint)
+        data = {"turn": 96, "beliefs": [], "choices": {"religions": [{
+            "id": "RELIGION_TEST", "name": "Test religion",
+            "icon": {"id": "RELIGION_TEST", "context": "RELIGION_DECO"},
+            "iconString": "Te", "requiresCustomName": False,
+            "hasBeenFounded": False, "operationAllowed": True,
+            "requiresConfirmation": False, "availableNow": True,
+        }]}}
         with patch("civ7.queries.run_script", new_callable=AsyncMock, return_value=data) as run:
             result = await server.call_tool("get_civ7_religion", {})
         self.assertFalse(result.is_error)

@@ -57,7 +57,15 @@ function run({airfieldComplete = false, missingInventory = false, missingTraits 
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/victory.js'), 'utf8'), {
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0}, Locale: {compose: s => s},
     Players: {getAliveIds: () => [0, 1, 2], get: id => {
-      assert.notEqual(id, 2, 'unmet players are never inspected');
+      if (id === 2) return {isMajor: true,
+        Victories: {getPointsForVictoryType: () => 72, getVictoryCountdownStatus: () => null,
+          getScoringForVictoryType: () => {throw Error('Unmet scoring history must not be inspected');}},
+        get Cities() {throw Error('Unmet assets must not be inspected');},
+        get Constructibles() {throw Error('Unmet constructibles must not be inspected');},
+        get civilizationFullName() {throw Error('Unmet civilization must not be inspected');},
+        get leaderType() {throw Error('Unmet leader must not be inspected');},
+        get leaderName() {throw Error('Unmet leader name must not be inspected');},
+        get team() {throw Error('Unmet team must not be inspected');}};
       return id === 0 ? local : {isMajor: true, team: 1, Victories: {getVictoryCountdownStatus: () => null,
         getPointsForVictoryType: () => 200, getScoringForVictoryType: () => []},
         get Cities() {throw Error('Foreign assets must not be inspected');}};

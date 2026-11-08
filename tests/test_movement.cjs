@@ -31,7 +31,8 @@ function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = f
       getResourceType: x => { assert.notEqual(x, 3, 'hidden resources are not inspected'); return x === 2 ? 'TEA' : null; },
       getYields: () => [[0, 2]],
     },
-    RevealedStates: { HIDDEN: 0 }, UnitOperationTypes: { MOVE_TO: 'MOVE' },
+    RevealedStates: { HIDDEN: 0, VISIBLE: 1 }, UnitOperationTypes: { MOVE_TO: 'MOVE' },
+    UnitOperationMoveModifiers: {ATTACK: 1, MOVE_IGNORE_UNEXPLORED_DESTINATION: 2},
     GameInfo: { Units: { lookup: () => ({ Name: 'Settler', FoundCity: true }) },
       Terrains: { lookup: () => ({ TerrainType: 'GRASS' }) }, Features: { lookup: () => ({ FeatureType: 'FOREST' }) },
       Biomes: { lookup: () => ({ BiomeType: 'TEMPERATE' }) }, Resources: { lookup: type => type ? { ResourceType: type, Name: type } : null },
@@ -48,7 +49,7 @@ function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = f
       assert.equal(id.owner, 0); assert.equal(visible, false);
       if (op === 'UNITOPERATION_FOUND_CITY') return { Success: false, FailureReasons: ['Too close'] };
       if (op === 'UNITOPERATION_FOUND_CITY_ADJACENT_PLOT') return { Success: false, Plots: [3] };
-      assert.equal(op, 'MOVE'); assert.notEqual(options.X, 3); nativeCalls.push(options.X); return { Success: true };
+      assert.equal(op, 'MOVE'); assert.equal(options.Modifiers, 2); nativeCalls.push(options.X); return { Success: true };
     } } },
   });
   return { data: JSON.parse(JSON.stringify(result)), nativeCalls };
@@ -64,8 +65,12 @@ test('movement options omit attack targets and hidden tiles, while paths retain 
   assert.ok(!JSON.stringify(data).includes('999'));
 });
 
-test('rejects hidden destinations and non-owned IDs before target-specific native queries', () => {
-  assert.throws(() => run({ args: { unit_id: 7, x: 3, y: 0 } }), /revealed/i);
+test('fog destinations get native move permission without hidden site inspection; invalid selectors still reject', () => {
+  const {data} = run({args: {unit_id: 7, x: 3, y: 0}, hiddenPath: true});
+  assert.equal(data.destination.moveAllowed, true);
+  assert.equal(data.destination.path, null);
+  assert.equal(data.site, null);
+  assert.equal(data.destination.visibility, 'unexplored');
   assert.throws(() => run({ args: { unit_id: 99 } }), /owned unit/i);
   assert.throws(() => run({ args: { unit_id: 7, x: 1 } }), /together/i);
 });

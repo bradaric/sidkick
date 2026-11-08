@@ -49,10 +49,16 @@
       name: name(info.name),
       description: name(info.description)
     });
+    const selected = advancedStart.getCards().map(value => card(value.info));
+    const size = advancedStart.getDeckSize?.();
+    const slotCount = Number.isSafeInteger(size) && size >= selected.length ? size : null;
+    const closed = advancedStart.getPlacementComplete();
     return {
-      selectionComplete: Boolean(advancedStart.getPlacementComplete()),
-      slotCount: 3,
-      selected: advancedStart.getCards().map(value => card(value.info)),
+      selectionComplete: typeof closed === "boolean" ? closed : null,
+      selectionPending: closed === false,
+      slotCount,
+      openSlotCount: closed === true ? 0 : closed === false && slotCount !== null ? slotCount - selected.length : null,
+      selected,
       choices: advancedStart.getAvailableCards().map(card)
     };
   }
@@ -70,5 +76,4 @@
     }))
   };
 })()
-
 

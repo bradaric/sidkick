@@ -52,6 +52,21 @@ class PlacementToolTests(unittest.IsolatedAsyncioTestCase):
 
 
 class QueryArgumentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_combat_helper_is_fixed_bundle_not_user_javascript(self) -> None:
+        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as temp:
+            root=Path(temp)
+            (root/'attack_unit.js').write_text('(() => ({helper: typeof combatObserver.capture === "function", received: queryArguments}))()')
+            (root/'combat_observation.js').write_text('(() => ({capture: () => true}))()')
+            reader=asyncio.StreamReader();payload=b'SIDKICK_RESULT:{"ok":true}\0'
+            reader.feed_data(struct.pack('<II',len(payload),3)+payload)
+            writer=Mock(drain=AsyncMock(),wait_closed=AsyncMock())
+            with patch('civ7.connection.ROOT',root),patch('civ7.connection.asyncio.open_connection',new_callable=AsyncMock,return_value=(reader,writer)):
+                await run_script('attack_unit.js',{'observe_effects':True})
+            javascript=writer.write.call_args.args[0][8:].decode().removeprefix('CMD:65535:').removesuffix('\0')
+            result=subprocess.run(['node','-e',"const vm=require('node:vm');let s='';process.stdin.on('data',c=>s+=c);process.stdin.on('end',()=>console.log(vm.runInNewContext(s)));"],input=javascript,text=True,capture_output=True,check=True,timeout=10)
+            decoded=json.loads(result.stdout.removeprefix('SIDKICK_RESULT:'))
+            self.assertTrue(decoded['helper']);self.assertEqual(decoded['received'],{'observe_effects':True})
+
     async def test_json_arguments_cannot_execute_javascript(self) -> None:
         if not shutil.which("node"):
             self.skipTest("Node.js is required for JavaScript encoding verification")
@@ -124,6 +139,7 @@ class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
             SimpleNamespace(name="get_civ7_movement_and_founding"),
             SimpleNamespace(name="get_civ7_combat_options"),
             SimpleNamespace(name="get_civ7_empire"),
+            SimpleNamespace(name="get_civ7_peace_city_offer"),
         ])
 
         async def call_tool(name, arguments):
@@ -133,8 +149,10 @@ class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(arguments, {"unit_id": 7})
             if name == "get_civ7_combat_options":
                 self.assertEqual(arguments, {"unit_id": 7, "x": 1, "y": 2})
+            if name == "get_civ7_peace_city_offer":
+                self.assertEqual(arguments, {"target_player_id":3,"city_owner":0,"city_id":10,"x":1,"y":2})
             return SimpleNamespace(is_error=False, structured_content={
-                "settlements": [{"name": "City"}], "units": [{"instanceId": 7, "location": {"x": 1, "y": 2}}],
+                "settlements": [{"name": "City","cityOwner":0,"cityId":10,"location":{"x":1,"y":2}}], "units": [{"instanceId": 7, "location": {"x": 1, "y": 2}}],"majorPlayers":[{"playerId":3}],
             })
 
         session.call_tool.side_effect = call_tool

@@ -124,6 +124,8 @@
   }
 
   function settlement(city) {
+    const rawQueue = typeof city.BuildQueue?.getQueue === "function" ? city.BuildQueue.getQueue() : null;
+    const queue = Array.isArray(rawQueue) ? JSON.parse(JSON.stringify(rawQueue)) : null;
     const buildConstructibles = Game.CityOperations.canStartQuery(
       city.id, CityOperationTypes.BUILD, CityQueryType.Constructible
     ) ?? [];
@@ -137,8 +139,15 @@
       city.id, CityCommandTypes.PURCHASE, CityQueryType.Unit
     ) ?? [];
     const townUpgradeCost = city.isTown ? city.Gold?.getTownUpgradeCost() ?? null : null;
+    const captureOptions=city.isJustConqueredFrom===true&&city.isBeingRazed===false?[['keep',2],['raze',3]].map(([choice,directive])=>{
+      const result=Game.CityCommands.canStart(city.id,CityCommandTypes.DESTROY,{Directive:directive},false);
+      return{choice,availableNow:result?.Success===true&&result.RequiresConfirmation!==true,failureReasons:reasons(result)};
+    }):[];
     return {
+      cityId:city.id.id,
+      cityOwner:city.id.owner,
       name: name(city.name),
+      captureDisposition:{pending:typeof city.isJustConqueredFrom==='boolean'?city.isJustConqueredFrom:null,beingRazed:typeof city.isBeingRazed==='boolean'?city.isBeingRazed:null,options:captureOptions},
       status: city.isCapital ? "capital" : city.isTown ? "town" : "city",
       location: {x: city.location.x, y: city.location.y},
       townFocus: townFocus(city),
@@ -147,6 +156,7 @@
         affordable: townUpgradeCost == null ? null : player.Treasury.goldBalance >= townUpgradeCost
       } : null,
       production: {
+        queue, queueToken: queue ? JSON.stringify(queue) : null,
         constructibles: buildConstructibles.map(entry => constructibleChoice(city, entry, false)).filter(Boolean),
         units: buildUnits.map(entry => unitChoice(city, entry, false)).filter(Boolean),
         projects: [...GameInfo.Projects].map(def => projectChoice(city, def)).filter(Boolean)

@@ -5,7 +5,8 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 const table = (rows, key) => Object.assign(rows, { lookup: value => rows.find(row => row[key] === value || row.$hash === value || row.$index === value) });
 
-function run({ chosen = true, notification = false, pendingCelebration = false, active = false,
+function run({ chosen = true, notification = false, pendingCelebration = false, celebrationNotification = false,
+  dismissed = false, expired = false, foreign = false, active = false,
   allowed = true, happiness = true, researchAllowed = true, branchLocked = false } = {}) {
   const governments = table([
     { $index: 0, $hash: 100, GovernmentType: 'GOV_A', Name: 'Government A', Description: 'A description' },
@@ -63,7 +64,9 @@ function run({ chosen = true, notification = false, pendingCelebration = false, 
     PlayerOperationTypes: { CHANGE_GOVERNMENT: 'GOV', CHOOSE_GOLDEN_AGE: 'CELEBRATE', SET_CULTURE_TREE_NODE: 'RESEARCH' },
     PlayerOperationParameters: { Activate: 'ACTIVATE' },
     Game: { turn: 2, age: 1,
-      Notifications: { getIdsForPlayer: () => notification ? [1] : [], getType: () => 1, getTypeName: () => 'NOTIFICATION_CHOOSE_GOVERNMENT' },
+      Notifications: { getIdsForPlayer: () => notification || celebrationNotification ? [{owner: foreign ? 1 : 0, id: 1}] : [],
+        find: () => ({Dismissed: dismissed, Expired: expired}), getType: () => 1,
+        getTypeName: () => celebrationNotification ? 'NOTIFICATION_CHOOSE_GOLDEN_AGE' : 'NOTIFICATION_CHOOSE_GOVERNMENT' },
       Culture: { GetCelebrationTypesForGovernment: type => type === 'GOV_A' ? ['GA_A'] : ['GA_B'] },
       ProgressionTrees: { getTreeStructure: () => [{ nodeType: 20, connectedNodeTypes: [21] }, { nodeType: 21, connectedNodeTypes: [] }, { nodeType: 22 }],
         canEverUnlock: (id, type) => ({ isLocked: branchLocked || type === 22 }),
@@ -136,6 +139,17 @@ test('ideology branch choices expose later benefits and prerequisite mode withou
   assert.equal(choice.branch.definitionNodes[0].unlocks.find(unlock => unlock.id === 'GOV_TRADITION').requiredGovernment, 'GOV_A');
   assert.equal(choice.adoptionPermission, null);
   assert.equal(choice.diplomaticImpact, null);
+});
+
+test('celebration readout respects the native pending notification when canChoose is false', () => {
+  const state = run({active: true, celebrationNotification: true}).data.celebration;
+  assert.equal(state.choicePending, true);
+  assert.equal(state.choices[0].availableNow, true);
+  for (const invalid of [{dismissed: true}, {expired: true}, {foreign: true}]) {
+    const state = run({active: true, celebrationNotification: true, ...invalid}).data.celebration;
+    assert.equal(state.choicePending, false);
+    assert.equal(state.choices[0].availableNow, false);
+  }
 });
 
 test('ideology adoption bonuses are conditional public definitions, not inferred first-adopter rank', () => {

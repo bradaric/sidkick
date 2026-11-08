@@ -65,8 +65,10 @@ function run({ settlement = 'City', constructible = null, duplicateCity = false,
     Game: { turn: 96, CityOperations: { canStartQuery: query('build') }, CityCommands: { canStartQuery: query('buy') } },
     CityOperationTypes: { BUILD: 'BUILD' }, CityCommandTypes: { PURCHASE: 'PURCHASE' }, CityQueryType: { Constructible: 'constructible' },
     YieldTypes: { YIELD_GOLD: 102 }, YieldSourceTypes: { BASE: 0, ADJACENCY: 1, WAREHOUSE: 2 },
-    RevealedStates: { HIDDEN: 0 },
-    GameplayMap: { getLocationFromIndex: x => ({ x, y: 0 }), getRevealedState: (id, x) => x === 99 ? 0 : 1 },
+    RevealedStates: { HIDDEN: 0, VISIBLE: 2 },
+    MapConstructibles: {getConstructibles: x => {assert.notEqual(x, 99); return x === 10 ? [{owner: 0, id: 20, type: 2}] : [];}},
+    Constructibles: {getByComponentID: () => ({type: 204, complete: true, damaged: false})},
+    GameplayMap: { getLocationFromIndex: x => ({ x, y: 0 }), getRevealedState: (id, x) => x === 99 ? 0 : x === 11 ? 1 : 2 },
   });
   return { data: JSON.parse(JSON.stringify(result)), calls, previewCalls };
 }
@@ -81,9 +83,9 @@ test('requires exactly one owned settlement before querying placements', () => {
   assert.deepEqual(calls, [{ type: 'build', operation: 'BUILD' }, { type: 'buy', operation: 'PURCHASE' }]);
 });
 
-test('returns buildings and wonders with deduplicated legal production/purchase tiles', () => {
+test('returns buildings, wonders and improvements with deduplicated legal production/purchase tiles', () => {
   const { data } = run();
-  assert.deepEqual(data.constructibles.map(c => c.id), ['BUILDING_BANK', 'WONDER_TEST']);
+  assert.deepEqual(data.constructibles.map(c => c.id), ['BUILDING_BANK', 'WONDER_TEST', 'IMPROVEMENT_FARM']);
   const bank = data.constructibles[0];
   assert.equal(bank.production.availableNow, true);
   assert.equal(bank.production.cost, 100);
@@ -99,6 +101,8 @@ test('returns buildings and wonders with deduplicated legal production/purchase 
   assert.equal(bank.placements[1].expandsUrban, true);
   assert.equal(bank.placements[2].validForProduction, false);
   assert.equal(bank.placements[2].validForPurchase, true);
+  assert.equal(bank.placements[0].targetToken, JSON.stringify([{owner: 0, instanceId: 20, componentType: 2, type: 204, complete: true, damaged: false}]));
+  assert.equal(bank.placements[1].targetToken, null, 'revealed but fogged tiles cannot supply a current mutation token');
 });
 
 test('reports actual placement gains, losses, and net upkeep after overbuilding', () => {

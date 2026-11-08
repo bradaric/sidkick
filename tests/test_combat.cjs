@@ -4,12 +4,25 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
+test('combat readout exposes visible constructible pillage token without requiring a defender', () => {
+  const {data} = run({pillageEvidence: true, unitVisible: false});
+  assert.equal(data.pillage.targetToken, JSON.stringify([{owner: 1, instanceId: 20, componentType: 2, type: 200, complete: true, damaged: false}]));
+});
+
+test('stationed city-Aerodrome aircraft can inspect an exact visible target without pretending to be deployed', () => {
+  const {data, queries} = run({packed: true, cityAirSource: true});
+  assert.equal(data.attacker.readiness.deployed, false); assert.equal(data.attacker.stationedAirBase.commanderId, 30);
+  assert.equal(data.defender.instanceId, 8); assert.equal(queries, 1); assert.equal(data.options[0].kind, 'air');
+  const unknown = run({packed: true, cityAirSource: true, unknownAirMembership: true});
+  assert.equal(unknown.data.attacker.stationedAirBase, null); assert.equal(unknown.data.defender, null); assert.equal(unknown.queries, 0);
+});
+
 function run({ visible = true, unitVisible = true, met = true, atWar = true, district = false, packed = false,
-  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false } = {}) {
+  commander = false, canAttack = true, commandAllowed = true, commanderTarget = true, missingState = false, selectedCommanderBlocked = false, pillageEvidence = false, cityAirSource = false, unknownAirMembership = false } = {}) {
   const script = path.join(__dirname, '../civ7/combat.js');
   assert.ok(fs.existsSync(script), 'bundled combat evidence query exists');
   const attacker = { id: { owner: 0, id: 7, type: 26 }, type: 'ARCHER', owner: 0, location: packed ? { x: -1, y: -1 } : { x: 0, y: 0 },
-    isCommanderUnit: commander, isFortified: missingState ? undefined : true, isEmbarked: false,
+    isCommanderUnit: commander, isOnMap: !packed, isFortified: missingState ? undefined : true, isEmbarked: false, armyId: {owner: 0, id: 40, type: 29},
     Movement: { movementMovesRemaining: 1, hasMoved: true },
     Combat: { isCombat: true, canAttack, rangedStrength: 30, bombardStrength: 0, getMeleeStrength: () => 20,
       attacksRemaining: missingState ? undefined : 1, maxNumAttacks: 2, attackRange: 3, antiAirStrength: 4,
@@ -20,43 +33,58 @@ function run({ visible = true, unitVisible = true, met = true, atWar = true, dis
   const defenderId = { owner: 1, id: 8, type: district ? 4 : 26 };
   const defender = { id: defenderId, owner: 1, type: 'DEFENDER', location: { x: 1, y: 0 }, getMaxDamage: 100, getDamage: 10,
     Health: { maxDamage: 100, damage: 10 }, Combat: { getMeleeStrength: () => 25, rangedStrength: 0, bombardStrength: 0 } };
-  let queries = 0, commandQueries = 0;
+  let queries = 0, commandQueries = 0, focusedQueries = 0, meleeQueries = 0, overrunQueries = 0;
   const data = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
     queryArguments: { unit_id: 7, x: 1, y: 0 }, UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
-    Players: { get: id => id === 0 ? { Units: { getUnits: () => [attacker] }, Diplomacy: { hasMet: () => met, isAtWarWith: () => atWar } }
+    Players: { get: id => id === 0 ? { Units: { getUnits: () => [attacker, ...(cityAirSource ? [{id: {owner: 0, id: 30, type: 26}, type: 'AERODROME',
+        isCommanderUnit: true, isAerodromeCommander: true, isOnMap: true, armyId: {owner: 0, id: 40, type: 29}, location: {x: 0, y: 0}}] : [])] },
+      Cities: {getCities: () => [{id: {owner: 0, id: 7, type: 1}, location: {x: 0, y: 0}}]}, Diplomacy: { hasMet: () => met, isAtWarWith: () => atWar } }
       : { civilizationFullName: 'Known enemy' } },
+    Armies: {get: () => ({owner: 0, localId: 40, getCommanderId: () => ({owner: 0, id: 30, type: 26}), getUnitIds: () => unknownAirMembership ? null : [attacker.id]})},
     GameplayMap: { getGridWidth: () => 2, getGridHeight: () => 1, getRevealedState: () => visible ? 2 : 1,
-      getIndexFromLocation: location => location.x,
+      getIndexFromLocation: location => location.x, getOwner: () => 0,
       getTerrainType: (x, y) => { assert.ok(visible); assert.equal(x, 1); return 'HILLS'; },
       getFeatureType: () => 'FOREST', getBiomeType: () => 'TEMPERATE' },
     RevealedStates: { VISIBLE: 2 }, Visibility: { isVisible: () => unitVisible },
+    ...(pillageEvidence ? {MapConstructibles: {getConstructibles: () => [{owner: 1, id: 20, type: 2}]},
+      Constructibles: {getByComponentID: () => ({type: 200, complete: true, damaged: false})}} : {}),
     Units: { get: () => { assert.ok(unitVisible, 'invisible defenders are never inspected'); return defender; } },
     Districts: { get: () => defender },
-    GameInfo: { Units: { lookup: type => ({ UnitType: type, Name: type }) }, Districts: { lookup: () => ({ Name: 'Fortified district' }) },
+    GameInfo: { Units: { lookup: type => ({ UnitType: type, Name: type, Domain: cityAirSource ? 'DOMAIN_AIR' : 'DOMAIN_LAND' }) }, Districts: { lookup: () => ({ Name: 'Fortified district' }) },
       Terrains: { lookup: () => ({ TerrainType: 'HILLS', Name: 'Hills', DefenseModifier: 3 }) },
       Features: { lookup: () => ({ FeatureType: 'FOREST', Name: 'Forest', DefenseModifier: 2 }) },
       Biomes: { lookup: () => ({ BiomeType: 'TEMPERATE', Name: 'Temperate' }) } },
     UnitOperationTypes: { MOVE_TO: 'MOVE', RANGE_ATTACK: 'RANGED' }, UnitOperationMoveModifiers: { ATTACK: 1 },
     Game: { turn: 109, Combat: {
-      getDefensibleDistrict: () => { assert.ok(visible); assert.equal(packed, false); return district ? defenderId : { owner: -1, id: -1 }; },
-      getBestDefender: () => { assert.ok(visible); assert.equal(packed, false); return defenderId; },
+      getDefensibleDistrict: () => { assert.ok(visible); assert.ok(!packed || cityAirSource); return district ? defenderId : { owner: -1, id: -1 }; },
+      getBestDefender: () => { assert.ok(visible); assert.ok(!packed || cityAirSource); return defenderId; },
       simulateAttackAsync: () => { throw Error('Stateful preview requests are forbidden'); },
     }, UnitOperations: { canStart: (id, op, args, shown) => {
       queries++; assert.equal(id.owner, 0); assert.equal(args.X, 1); assert.equal(args.Y, 0); assert.equal(shown, false);
       return { Success: op === 'RANGED', FailureReasons: op === 'RANGED' ? [] : ['Out of range'] };
     } }, UnitCommands: { canStart: (id, command, args, shown) => {
-      commandQueries++; assert.equal(packed, false); assert.equal(id.owner, 0); assert.equal(id.id, 7);
-      assert.equal(command, 'UNITCOMMAND_COMMANDER_ATTACK'); assert.equal(Object.keys(args).length, 0); assert.equal(shown, false);
-      return { Success: commandAllowed, FailureReasons: commandAllowed ? [] : ['No eligible army units'],
+      assert.equal(packed, false); assert.equal(id.owner, 0); assert.equal(id.id, 7); assert.equal(shown, false);
+      if (command === 'UNITCOMMAND_COMMANDER_ATTACK') {
+        commandQueries++;
+      } else {
+        assert.ok(['UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED', 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE', 'UNITCOMMAND_ARMY_OVERRUN'].includes(command));
+        if (command === 'UNITCOMMAND_FOCUSED_ATTACK_LAND_RANGED') focusedQueries++;
+        else if (command === 'UNITCOMMAND_FOCUSED_ATTACK_LAND_MELEE') meleeQueries++; else overrunQueries++;
+        if (Object.keys(args).length) assert.deepEqual(JSON.parse(JSON.stringify(args)), {X: 1, Y: 0});
+      }
+      return { Success: commandAllowed && !(selectedCommanderBlocked && command === 'UNITCOMMAND_COMMANDER_ATTACK' && Object.keys(args).length), FailureReasons: commandAllowed ? [] : ['No eligible army units'],
         Plots: commanderTarget ? [1, 999] : [999], Modifiers: [{ secret: 999 }] };
     } } },
   });
-  return { data: JSON.parse(JSON.stringify(data)), queries, commandQueries };
+  return { data: JSON.parse(JSON.stringify(data)), queries, commandQueries, focusedQueries, meleeQueries, overrunQueries };
 }
 
 test('combat evidence exposes observable strength and native attack eligibility but never invents damage', () => {
   const { data } = run();
   assert.equal(data.defender.kind, 'unit');
+  assert.equal(data.defender.ownerId, 1);
+  assert.equal(data.defender.instanceId, 8);
+  assert.equal(data.defender.componentType, 26);
   assert.equal(data.attacker.health.current, 95);
   assert.equal(data.defender.strength.melee, 25);
   assert.equal(data.options.find(o => o.kind === 'ranged').availableNow, true);
@@ -82,6 +110,7 @@ test('invisible units, unmet owners and non-hostile targets are not exposed or o
 test('visible enemy districts use observable health without fabricating a district strength', () => {
   const { data } = run({ district: true });
   assert.equal(data.defender.kind, 'district');
+  assert.equal(data.defender.ownerId, 1); assert.equal(data.defender.instanceId, 8); assert.equal(data.defender.componentType, 4);
   assert.equal(data.defender.health.current, 90);
   assert.equal(data.defender.strength, null);
 });
@@ -127,11 +156,13 @@ test('visible target terrain reports definition modifiers without adding them in
 test('commander attack has its own permission and requires the visible target in native plots', () => {
   const { data, queries, commandQueries } = run({ commander: true, canAttack: false });
   assert.equal(queries, 0, 'a commander command must not require a regular attack check');
-  assert.equal(commandQueries, 1);
+  assert.equal(commandQueries, 2);
   assert.ok(data.commanderAttack, 'distinct commander attack evidence is exported');
   assert.equal(data.commanderAttack.operationAllowed, true);
   assert.equal(data.commanderAttack.targetInNativePlots, true);
   assert.equal(data.commanderAttack.availableNow, true);
+  assert.equal(data.commanderAttack.selectedTargetAllowed, true);
+  assert.equal(run({commander: true, selectedCommanderBlocked: true}).data.commanderAttack.availableNow, false);
   assert.equal(run({ commander: true, district: true, canAttack: false }).data.commanderAttack?.availableNow, true);
   assert.equal(run({ commander: true, commanderTarget: false }).data.commanderAttack?.availableNow, false);
   const blocked = run({ commander: true, commandAllowed: false }).data.commanderAttack;
@@ -147,6 +178,31 @@ test('commander target checks require a deployed owned commander and observable 
     assert.equal(commandQueries, 0);
     assert.equal(data.commanderAttack, null);
   }
+});
+
+test('focused land-ranged command readout checks the offered target and exact selected-plot permission', () => {
+  const {data, focusedQueries} = run({commander: true});
+  assert.ok(data.focusedLandRangedAttack);
+  assert.equal(data.focusedLandRangedAttack.availableNow, true);
+  assert.equal(focusedQueries, 2);
+  assert.equal(run({commander: true, commanderTarget: false}).data.focusedLandRangedAttack.availableNow, false);
+  assert.equal(run({commander: true, commandAllowed: false}).data.focusedLandRangedAttack.availableNow, false);
+  assert.equal(run({commander: true, unitVisible: false}).focusedQueries, 0);
+});
+
+test('coordinated melee readout checks the separate offered and selected command without firing', () => {
+  const {data, meleeQueries} = run({commander: true});
+  assert.equal(data.focusedLandMeleeAttack.availableNow, true); assert.equal(meleeQueries, 2);
+  assert.equal(run({commander: true, commanderTarget: false}).data.focusedLandMeleeAttack.availableNow, false);
+  assert.equal(run({commander: true, unitVisible: false}).meleeQueries, 0);
+});
+
+test('Overrun readout uses native offered/selected permission without guessing a strength threshold', () => {
+  const {data, overrunQueries} = run({commander: true});
+  assert.equal(data.overrun.availableNow, true); assert.equal(overrunQueries, 2);
+  assert.equal(run({commander: true, commandAllowed: false}).data.overrun.availableNow, false);
+  assert.equal(run({commander: true, commanderTarget: false}).data.overrun.availableNow, false);
+  assert.equal(run({commander: true, unitVisible: false}).overrunQueries, 0);
 });
 
 function promotions({ canPromote = true, canEarn = true, allowed = true } = {}) {

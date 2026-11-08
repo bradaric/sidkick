@@ -36,7 +36,7 @@
     return [type, {capacity, used, free: Math.max(capacity - used, 0)}];
   }));
 
-  const choices = {pantheons: [], beliefs: []};
+  const choices = {pantheons: [], beliefs: [], religions: []};
   for (const def of GameInfo.Beliefs) {
     if (selected.has(def.BeliefType)) continue;
     const pantheon = def.BeliefClassType === "BELIEF_CLASS_PANTHEON";
@@ -66,6 +66,30 @@
         availableForFounding: !hasCreatedReligion && canFoundReligion && claimable && slotAvailable
       });
     }
+  }
+
+  // Match panel-religion-picker's definitions, icon context and public taken status.
+  // Do not resolve founders or foreign custom names for this catalogue.
+  for (const def of GameInfo.Religions) {
+    const founded = typeof Game.Religion.hasBeenFounded === "function"
+      ? Game.Religion.hasBeenFounded(def.ReligionType) : null;
+    const hasBeenFounded = typeof founded === "boolean" ? founded : null;
+    const result = Number.isInteger(def.$hash) && PlayerOperationTypes.FOUND_RELIGION != null &&
+      typeof Game.PlayerOperations.canStart === "function"
+      ? Game.PlayerOperations.canStart(id, PlayerOperationTypes.FOUND_RELIGION, {ReligionType: def.$hash}, false) : null;
+    const operationAllowed = typeof result?.Success === "boolean" ? result.Success : null;
+    const requiresConfirmation = result ? result.RequiresConfirmation === true : null;
+    choices.religions.push({
+      id: def.ReligionType, name: name(def.Name),
+      icon: {id: def.ReligionType, context: "RELIGION_DECO"},
+      iconString: typeof def.IconString === "string" ? def.IconString : null,
+      requiresCustomName: typeof def.RequiresCustomName === "boolean" ? def.RequiresCustomName : null,
+      hasBeenFounded, operationAllowed, requiresConfirmation,
+      failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
+      additionalDescriptions: (result?.AdditionalDescription ?? []).map(name).filter(Boolean),
+      availableNow: !hasCreatedReligion && canFoundReligion && hasBeenFounded === false &&
+        operationAllowed === true && requiresConfirmation === false
+    });
   }
 
   function religionInfo(type) {
@@ -116,7 +140,7 @@
 
   return {
     turn: Game.turn,
-    scope: "Local player and owned settlements; foreign founders identified only when met",
+    scope: "Local player, owned settlements and public religion-picker choices; foreign founders identified only when met",
     hasCreatedReligion,
     canFoundReligion,
     religion: hasCreatedReligion ? religionInfo(religion.getReligionType()) : null,
@@ -128,6 +152,7 @@
     beliefsEarned,
     slots,
     choices,
+    religionChoiceNote: "Religion choices use definition names, native icon ID/context references (not browser image URLs), and the picker's public taken status without identifying founders. Stock RELIGION_CUSTOM_5 is the butterfly icon. Founding checks here omit a custom name; custom-name eligibility must be rechecked by choose_civ7_religious_action with the exact custom_name. requiresCustomName is the definition flag. Custom names must be nonblank, at most 16 UTF-16 units, without markup/control characters; standard named religions cannot be renamed. Founding and subsequent belief choices are separate actions",
     religiousUnits,
     spreadNote: "Proven owned units with positive definition SpreadCharges; current non-target operation permission/charge quotes and native action-panel additionalDescriptions only, not arbitrary destination eligibility, converted-population counts or a conversion forecast. Text is not parsed into an outcome. Owned commander membership and on-map state gate deployment, not coordinates alone. Packed/off-map units and units with unknown packing evidence are not queried as deployed missionaries; a withheld location does not prove the unit is packed",
     settlements: player.Cities.getCities().map(city => ({

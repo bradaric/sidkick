@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run({ variable = false, trial = false, conditional = true, pending = true, affordable = true, allowed = true } = {}) {
+function run({ variable = false, trial = false, conditional = true, pending = true, affordable = true, allowed = true,quote } = {}) {
   const rootId = { owner: 0, id: 7, type: 20 };
   const foreignId = { owner: 1, id: 9, type: 20 };
   const root = { $hash: 100, NarrativeStoryType: 'CRISIS_EVENT', UIActivation: trial ? 'TRIAL' : 'CRISIS', VariableLinks: variable };
@@ -48,7 +48,7 @@ function run({ variable = false, trial = false, conditional = true, pending = tr
       AgeProgressManager: { getCurrentAgeProgressionPoints: () => 80, getMaxAgeProgressionPoints: () => 100 },
       PlayerOperations: { canStart: (id, op, args, visible) => { assert.equal(id, 0); assert.equal(op, 'CHOOSE'); sameRoot(args.Target);
         assert.equal(args.Action, 'ACTIVATE'); assert.equal(visible, false); calls.push(args.TargetType);
-        return { Success: allowed, FailureReasons: allowed ? [] : ['Blocked'] };
+        return { Success: allowed, ...(quote!==undefined?{Cost:quote}:{}),FailureReasons: allowed ? [] : ['Blocked'] };
       } },
     },
   });
@@ -77,8 +77,10 @@ test('variable links, affordability and native permission jointly gate narrative
   assert.equal(run({ conditional: false }).data.pendingEvents?.[0]?.choices[0].id, 'CLOSE', 'no eligible links becomes acknowledgement, not a guessed response');
 });
 
-test('trial layouts remain unsupported and an empty native pending queue stays empty', () => {
-  assert.equal(run({ trial: true }).data.pendingEvents?.[0]?.choices, null);
+test('trial links use the same native choice model with explicit acknowledgement, and runtime quotes are not definition costs', () => {
+  assert.equal(run({ trial: true }).data.pendingEvents?.[0]?.choices[0].id, 'RESPONSE');
+  assert.equal(run({ trial: true }).data.pendingEvents?.[0]?.trialRequiresAcknowledgement, true);
+  assert.deepEqual(run({quote:60}).data.pendingEvents[0].choices[0].quotedCost,{yield:'YIELD_GOLD',amount:60});
   assert.deepEqual(run({ pending: false }).data.pendingEvents, []);
 });
 

@@ -1,4 +1,4 @@
-"""Local, read-only FireTuner connection helpers for Civ VII."""
+"""Local FireTuner transport for fixed bundled Civ VII scripts."""
 
 import asyncio
 from contextlib import suppress
@@ -18,16 +18,54 @@ from civ7_terminal.protocol import decode_header, encode_command
 async def run_script(
     script_name: str, arguments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Execute a bundled read-only query, optionally binding JSON queryArguments."""
+    """Execute a bundled script once, optionally binding JSON queryArguments."""
+    return await _run_script(script_name, arguments, require_started=False)
+
+
+async def run_started_script(
+    script_name: str, arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Action transport: reject transitional loading before evaluating any bundled code."""
+    return await _run_script(script_name, arguments, require_started=True)
+
+
+async def _run_script(
+    script_name: str, arguments: dict[str, Any] | None, *, require_started: bool,
+) -> dict[str, Any]:
     script_path = (ROOT / script_name).resolve()
     if script_path.parent != ROOT or script_path.suffix != ".js":
         raise ValueError("Civ VII queries must be bundled JavaScript files")
 
     script = script_path.read_text(encoding="utf-8")
+    if script_name in {"attack_unit.js", "unit_attack_state.js", "army_attack.js", "air_attack_unit.js", "air_attack_state.js", "group_air_attack.js", "group_air_attack_state.js", "ranged_district_attack.js", "district_attack_state.js", "commander_attack.js", "assault_city.js", "city_assault_state.js"}:
+        # Fixed internal prelude, never caller-selected or arbitrary JavaScript.
+        helper = (ROOT / "combat_observation.js").read_text(encoding="utf-8")
+        script = f"((combatObserver) => {{ return {script}\n}})({helper})"
+    if script_name in {"peace_city_offer.js", "peace_city_action.js", "peace_city_state.js"}:
+        helper = (ROOT / "peace_city_terms.js").read_text(encoding="utf-8")
+        script = f"((peaceCityTerms) => {{ return {script}\n}})({helper})"
+    if script_name in {"diplomacy.js", "respond_first_meet.js", "first_meet_state.js"}:
+        helper = (ROOT / "first_meet.js").read_text(encoding="utf-8")
+        script = f"((firstMeet) => {{ return {script}\n}})({helper})"
+    if script_name in {"age_transition.js", "edit_dedication.js", "dedication_state.js"}:
+        helper = (ROOT / "dedication_deck.js").read_text(encoding="utf-8")
+        script = f"((dedicationDeck) => {{ return {script}\n}})({helper})"
     if arguments is not None:
         # Parse data rather than interpolating selectors as executable JavaScript.
         encoded = json.dumps(json.dumps(arguments, allow_nan=False))
         script = f"((queryArguments) => {{ return {script}\n}})(JSON.parse({encoded}))"
+    if require_started:
+        # Outermost guard: helpers and action/readback bodies must not run behind Begin.
+        script = (
+            "(() => { if (typeof UI === 'undefined' || typeof UI.isInGame !== 'function' || "
+            "UI.isInGame() !== true || typeof UI.getGameLoadingState !== 'function' || "
+            "typeof UIGameLoadingState === 'undefined' || UIGameLoadingState === null || "
+            "!Number.isInteger(UIGameLoadingState.GameStarted) || "
+            "UI.getGameLoadingState() !== UIGameLoadingState.GameStarted) "
+            "return {status:'rejected',reason:'Finish loading and click Begin first; "
+            "native GameStarted readiness is required'}; return "
+            f"{script}\n}})()"
+        )
 
     marker = "SIDKICK_RESULT:"
     async with asyncio.timeout(12):

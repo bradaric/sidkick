@@ -1,12 +1,43 @@
 """Focused read-only Civ VII strategy queries."""
 
+import asyncio
 from typing import Any
 
+from mcp.server.mcpserver.exceptions import ToolError
+from pydantic import StrictInt, StrictStr
+
 from civ7.connection import run_script
+from civ7.svg_preview import publish_preview
+
+
+_preview_lock = asyncio.Lock()
 
 
 async def empire() -> dict[str, Any]:
     return await run_script("empire.js")
+
+
+async def civilopedia(
+    query: StrictStr | None = None, section_id: StrictStr | None = None,
+    page_id: StrictStr | None = None, limit: StrictInt = 10, offset: StrictInt = 0,
+) -> dict[str, Any]:
+    """Search/browse loaded public Civilopedia pages, or read one exact article."""
+    if (any(value is not None and (not isinstance(value, str) or not value.strip() or len(value) > 200)
+            for value in (query, section_id, page_id))
+            or page_id is not None and (section_id is None or query is not None)
+            or type(limit) is not int or not 1 <= limit <= 20
+            or type(offset) is not int or not 0 <= offset <= 10000):
+        raise ValueError("Bounded search text, a section, or exact section/page IDs required")
+    return await run_script("civilopedia.js", {
+        "query": query, "section_id": section_id, "page_id": page_id, "limit": limit, "offset": offset,
+    })
+
+
+async def peace_city_offer(target_player_id: int, city_owner: int, city_id: int, x: int, y: int) -> dict[str, Any]:
+    """Read native peace offers only for one exact currently visible owner-qualified centre."""
+    if any(type(v) is not int or v<0 for v in (target_player_id,city_owner,city_id,x,y)):
+        raise ValueError("Exact known counterpart and visible city owner/ID/coordinates required")
+    return await run_script("peace_city_offer.js",{"target_player_id":target_player_id,"city_owner":city_owner,"city_id":city_id,"x":x,"y":y})
 
 
 async def available_decisions() -> dict[str, Any]:
@@ -122,3 +153,28 @@ async def age_transition() -> dict[str, Any]:
 
 async def explored_map() -> dict[str, Any]:
     return await run_script("map.js")
+
+
+def _map_arguments(x: int, y: int, width: int, height: int) -> dict[str, int]:
+    if (any(type(value) is not int for value in (x, y, width, height)) or x < 0 or y < 0
+            or not 1 <= width <= 31 or width % 2 != 1 or not 1 <= height <= 21 or height % 2 != 1):
+        raise ValueError("Nonnegative center coordinates and odd width 1-31 / height 1-21 are required")
+    return {"x": x, "y": y, "width": width, "height": height}
+
+
+async def ascii_map(x: StrictInt, y: StrictInt, width: StrictInt = 15, height: StrictInt = 9) -> dict[str, Any]:
+    """Render a bounded view of explored terrain with currently visible entity overlays."""
+    return await run_script("ascii_map.js", _map_arguments(x, y, width, height))
+
+
+async def svg_map(x: StrictInt, y: StrictInt, width: StrictInt = 15, height: StrictInt = 9) -> dict[str, Any]:
+    """Read one bounded viewport and atomically update the tool-owned local SVG cache."""
+    arguments = {**_map_arguments(x, y, width, height), "render": "svg"}
+    async with _preview_lock:
+        view = await run_script("ascii_map.js", arguments)
+        try:
+            return publish_preview(view)
+        except ValueError as exc:
+            raise ToolError(f"SVG map validation/rendering failed: {exc}; previous preview unchanged") from exc
+        except OSError as exc:
+            raise ToolError(f"SVG preview publication failed ({type(exc).__name__}, errno={exc.errno}); previous preview unchanged") from exc

@@ -13,16 +13,18 @@ function run({ bypass = false, closed = true, full = false, missingProgress = fa
   const currentSlot = { ID: 'PlayerMementoMajorSlot', invalidReason: 0, value: { value: 'M', name: 'Memento' },
     domain: { possibleValues: [{ value: 'M', name: 'Memento', invalidReason: 0 }] } };
   const futureSlot = { ...currentSlot, ID: 'AgeTransitionPlayerMementoMajorSlot', value: { value: 'NONE', name: 'None' } };
-  const data = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
-    UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: (text, ...args) => [text, ...args].join('|') },
+  const helper = fs.readFileSync(path.join(__dirname, '../civ7/dedication_deck.js'), 'utf8');
+  const data = vm.runInNewContext(`((dedicationDeck) => { return ${fs.readFileSync(script, 'utf8')}\n})(${helper})`, {
+    UI: { isInGame: () => true, getGameLoadingState: () => 8 }, UIGameLoadingState: {GameStarted: 8},
+    GameContext: { localPlayerID: 0, hasSentTurnComplete: () => false }, Locale: { compose: (text, ...args) => [text, ...args].join('|') },
     Players: { get: id => { assert.equal(id, 0); return {
-      Treasury: { goldBalance: 12000 }, DiplomacyTreasury: { diplomacyBalance: 1500 },
+      Treasury: { goldBalance: 12000 }, DiplomacyTreasury: { diplomacyBalance: 1500 }, isTurnActive: true,
       Cities: { getCities: () => [{ name: 'Capital', isCapital: true }, { name: 'City', isTown: false }] },
       AdvancedStart: { getPlacementComplete: () => closed, getDeckSize: () => 3,
-        getCards: () => Array.from({ length: full ? 3 : 1 }, () => ({ info: card })), getAvailableCards: () => [card],
+        getCards: () => Array.from({ length: full ? 3 : 1 }, () => ({ info: {...card, id: 'CARD_ALREADY_SELECTED'} })), getAvailableCards: () => [card],
         getLegacyPoints: () => [{ category: 1, value: 2 }] },
     }; } },
-    Configuration: { getGame: () => ({ getValue: key => key === 'NoCivilizationUnlocks' ? bypass : mode }) },
+    Configuration: { getGame: () => ({ isAnyMultiplayer: false, getValue: key => key === 'NoCivilizationUnlocks' ? bypass : mode }) },
     Database: { query: (database, sql) => {
       assert.equal(database, 'config'); assert.match(sql, /^SELECT /i, 'queries must be read-only');
       if (/FROM Ages/i.test(sql)) return [
@@ -61,7 +63,8 @@ function run({ bypass = false, closed = true, full = false, missingProgress = fa
       EconomicRules: { adjustForGameSpeed: amount => amount * speedFactor },
       PlayerOperations: { canStart: (id, op, args, visible) => { assert.equal(id, 0); assert.equal(visible, false);
         if (op === 'FINISH') { assert.equal(args.Finished, true); return { Success: false }; }
-        assert.equal(op, 'DECK'); assert.equal(args.Type, 'ADD'); assert.equal(args.ID, card.id);
+        assert.equal(op, 'DECK'); assert.ok(['ADD', 'REMOVE'].includes(args.Type));
+        assert.equal(args.ID, args.Type === 'ADD' ? card.id : 'CARD_ALREADY_SELECTED');
         return { Success: true };
       } },
     },
