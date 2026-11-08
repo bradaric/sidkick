@@ -957,7 +957,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "visible owning centre elsewhere and native offered/selected permission required. "
                          "Non-defensible district unit targets allowed; no landing, district/city entry, "
                          "capture, civilian/stack target or new war. Verifies "
-                         "attack consumption/loss plus primary-target damage/departure, not kill/full splash. "
+                         "attack consumption/loss plus primary-target damage/departure. Bounded radius-1 "
+                         "observation waits for 500ms captured-event quiet; after.killConfirmed is true only "
+                         "for an exact native kill event, otherwise null (unknown). Not full splash accounting. "
                          "One submission,15-second readback, no unknown retry or turn advancement."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -971,7 +973,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "selected permission required. Positively excludes districts and visible owning "
                          "city centre; no capture, civilian/stack target or new war. Attacker may enter "
                          "the field, take damage or die. Verifies attack consumption/loss and primary-target "
-                         "damage/departure, not a kill/full splash. One submission,15-second readback, no "
+                         "damage/departure. Bounded radius-1 observation waits for 500ms captured-event quiet; "
+                         "after.killConfirmed is true only for an exact native kill event, otherwise null "
+                         "(unknown). Not full splash accounting. One submission,15-second readback, no "
                          "unknown/cancelled retry or turn advancement."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -1179,7 +1183,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "not generic RANGE_ATTACK or guessed range. No civilians, stacks, shore bombardment, "
                          "city/district attacks, enemy territory, war declaration or turn advancement. "
                          "Verifies captured attack consumption/loss plus primary-target damage/departure; "
-                         "not kill statistics or complete secondary effects. Submits once, polls read-only "
+                         "bounded radius-1 observation waits for 500ms captured-event quiet. after.killConfirmed "
+                         "is true only for an exact native kill event, otherwise null (unknown). Not complete "
+                         "secondary effects. Submits once, polls read-only "
                          "for 15 seconds and never retries unknown/cancelled calls."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -1235,9 +1241,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "identified non-centre field whose owning city centre is also visible, no defensible "
                          "district, and exact native ranged-picker/selected-target permission. No third-party "
                          "territory, stacks, civilians, city/district attacks, melee entry/capture, war or turn "
-                         "advancement. Native splash may affect additional enemies; only captured attack "
-                         "consumption/loss and primary-target damage/departure are verified, not kills or "
-                         "complete secondary effects. Submits once; polls read-only for 15 seconds and never "
+                         "advancement. Native splash may affect additional enemies. Verifies captured attack "
+                         "consumption/loss and primary-target damage/departure. Bounded radius-1 observation "
+                         "waits for 500ms captured-event quiet; after.killConfirmed is true only for an exact "
+                         "native kill event, otherwise null (unknown). Not complete secondary effects. "
+                         "Submits once; polls read-only for 15 seconds and never "
                          "retries unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -1362,9 +1370,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "known unpacked/nonreinforcing attacker and native attack permission. Melee is adjacent; "
                          "ranged requires a native attackable picker plot. No war declaration, city capture, "
                          "embarked/air/group attacks or confirmation bypass. Native splash may also damage "
-                         "adjacent enemies; readback verifies only the primary-target effect. May damage or destroy either unit "
+                         "adjacent enemies; readback does not prove complete secondary effects. May damage or destroy either unit "
                          "and consume movement. Verifies consumed attack/attacker loss plus visible target damage "
-                         "or departure, not a kill, predicted damage or safe outcome. Requires user authorization; "
+                         "or departure. Bounded radius-1 observation waits for 500ms captured-event quiet; "
+                         "after.killConfirmed is true only for an exact native kill event, otherwise null "
+                         "(unknown). No predicted damage or safe outcome claim. Requires user authorization; "
                          "submits once, then polls read-only combat evidence for up to 15 seconds; "
                          "never automatically retries unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
@@ -2208,7 +2218,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Read game data only: exact native x,y and optional odd width 1-31 / height 1-21 (default 15x9). "
             "Uses the ASCII map's bounded visibility filters, but renders a colored north-up SVG. Explored "
             "terrain is dimmed/hatched under fog; unknown tiles have no terrain or entity data. Only currently "
-            "visible own/met city centres and individually visible on-map units appear. Escapes all labels; "
+            "visible own/met city centres and individually visible on-map units appear. Single-unit markers "
+            "show health bars/percentages with exact HP on hover; unavailable or stacked health shows ?. "
+            "City markers retain priority; their visible units' HP is hover-only. Escapes all labels; "
             "no scripts or external assets. Atomically replaces only Sidkick's owned temporary preview file "
             "and returns the fixed previewUrl http://127.0.0.1:8765/sidkick-map.svg plus turn/bounds/coverage. "
             "This cache write is not a game action. Latest successful call wins; a failed read/render leaves "

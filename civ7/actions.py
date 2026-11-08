@@ -894,6 +894,7 @@ async def attack_unit(
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id,
         "x": x, "y": y, "kind": kind, "expected_turn": expected_turn,
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -904,6 +905,7 @@ async def naval_attack_land_unit(unit_id: StrictInt, target_player: StrictInt, t
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
         "expected_turn": expected_turn, "kind": "shore", "target_territory": "enemy_field",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -914,6 +916,7 @@ async def melee_attack_enemy_field(unit_id: StrictInt, target_player: StrictInt,
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
         "expected_turn": expected_turn, "kind": "melee", "target_territory": "enemy_field",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -989,6 +992,7 @@ async def naval_attack_unit(
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id,
         "x": x, "y": y, "expected_turn": expected_turn, "kind": "naval",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -1001,6 +1005,7 @@ async def ranged_attack_enemy_field(
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
         "expected_turn": expected_turn, "kind": "ranged", "target_territory": "enemy_field",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 

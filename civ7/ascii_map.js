@@ -64,8 +64,12 @@
               const marker = id.owner === playerId ? "U" : player.Diplomacy.isAtWarWith(id.owner) === true ? "!" : "u";
               if (!unitMarker || marker === "!" || marker === "U" && unitMarker !== "!") unitMarker = marker;
               const def = GameInfo.Units.lookup(unit.type);
+              const nativeHealth = unit.Health;
+              const health = nativeHealth && Number.isFinite(nativeHealth.damage) && Number.isFinite(nativeHealth.maxDamage) &&
+                nativeHealth.maxDamage > 0 && nativeHealth.damage >= 0 && nativeHealth.damage <= nativeHealth.maxDamage ?
+                {current: nativeHealth.maxDamage - nativeHealth.damage, maximum: nativeHealth.maxDamage} : null;
               units.push({x: tx, y: ty, ownerId: id.owner, instanceId: id.id, unitType: def?.UnitType ?? null,
-                name: Locale.compose(unit.name ?? def?.Name ?? ""), marker});
+                name: Locale.compose(unit.name ?? def?.Name ?? ""), marker, health});
             }
           }
           marker = cityMarker ?? unitMarker ?? (citiesKnown && unitsKnown ? " " : "?");

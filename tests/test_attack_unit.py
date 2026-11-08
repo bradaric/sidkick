@@ -25,7 +25,8 @@ class AttackUnitTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_attack_submits_once_and_verifies_captured_combat_evidence(self):
         self.assertTrue(callable(getattr(actions, 'attack_unit', None)))
-        args = {'unit_id': 10, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3, 'kind': 'melee', 'expected_turn': 62}
+        args = {'unit_id': 10, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3, 'kind': 'melee', 'expected_turn': 62,
+                'observe_effects': True, 'observation_radius': 1}
         before = {'turn': 62, 'age': 42, 'playerId': 0}
         expected = {'unitId': 10, 'targetPlayer': 1, 'targetUnitId': 20, 'attackObserved': True}
         read_args = {**args, 'before_attacks': 1, 'before_target_damage': 0}

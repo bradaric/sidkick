@@ -840,8 +840,16 @@ Enemy territory, defensible districts, stacks, civilians (including native comba
 components on civilian formations), commanders, air/embarked attacks, declarations
 of war, captures and confirmation bypasses are excluded. Readback requires attack
 consumption/attacker disappearance **and** observed target damage or departure
-from the still-visible tile. A departure is not a kill claim; hidden state is
-never queried. Unknown/cancelled attacks are never repeated automatically.
+from the still-visible tile. Ordinary single-unit melee/ranged attacks, enemy-field
+variants, naval attacks and ship-to-shore unit attacks now enable the existing
+radius-1 combat observer by default. Readback waits for 500ms of captured-event
+quiet within the existing 15-second deadline. `after.killConfirmed` is `true` only
+when a captured native `UnitKilledInCombat` event matches the exact target identity
+and submitted attacker; otherwise it is `null` (unknown), not a claim of survival.
+A departure alone is never a kill claim, and hidden state is never queried.
+An unavailable observer rejects the attack before submission. Bounded observation
+does not prove complete splash/global effects. Air, commander and group attack
+defaults are unchanged. Unknown/cancelled attacks are never repeated automatically.
 
 Default remains 23 read-only tools; write mode has 55 tools (32 actions).
 **156 Python and 311 Node tests pass.** T62 native ranged attack by Field Cannon
@@ -1178,7 +1186,8 @@ non-district water tile, in an existing met war. Native naval offered plots do n
 need the generic ranged picker's Modifiers. Existing land attack behavior is unchanged.
 No shore bombardment, civilian/stack/district/city targets, enemy territory, new war
 or turn advancement. Verification retains primary-target attack consumption/loss
-plus visible damage/departure, not kills or complete splash effects.
+plus visible damage/departure, with exact native-event kill confirmation through
+the default radius-1 observer described above; not complete splash effects.
 
 **Positive naval fire is fixture-only.** Restoring Dreadnought3407900's movement
 did not produce native targets; actual MCP type rejection was tested on a land
@@ -2187,6 +2196,16 @@ the ASCII projection, north is straight up and east straight right. Unknown tile
 expose no terrain/entity data; explored fog is dimmed and hatched, without current
 city/unit details. This does not read biomes/features/resources or infer river
 courses, future movement or hidden units.
+
+Visible single-unit markers include a health bar and rounded whole-number remaining
+HP percentage; hover shows exact `HP current/maximum`. Bars are green above 50%,
+amber above 25%, and red at 25% or below. Coordinates sit above the marker to leave
+room for health below it. Missing/invalid health shows a dashed bar and `?`, never
+assumed full health. Stacked units also show `?` instead of misleading combined HP;
+hover lists each unit's HP. City markers keep priority, with any visible unit HP
+available on hover rather than presented as city health. Fogged/unknown tiles
+never expose unit health. Health is a snapshot from the latest map-tool call,
+not a live browser update.
 
 The tool is read-only with respect to the game. It writes only its own temporary
 preview cache, atomically replacing the SVG after successful collection/rendering.

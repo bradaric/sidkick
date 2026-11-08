@@ -25,6 +25,68 @@ def view():
 
 
 class SvgRenderingTests(unittest.TestCase):
+    def test_visible_unit_health_bar_percentage_and_exact_hp_tooltip(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for current, maximum, percent, color in [
+            (100, 100, '100%', '#4ade80'), (72, 100, '72%', '#4ade80'),
+            (40, 100, '40%', '#fbbf24'), (18, 100, '18%', '#f87171'),
+            (0, 100, '0%', '#f87171'), (72, 200, '36%', '#fbbf24'),
+            (50, 100, '50%', '#fbbf24'), (25, 100, '25%', '#f87171'),
+            (1, 3, '33%', '#fbbf24'),
+        ]:
+            with self.subTest(current=current, maximum=maximum):
+                data = view()
+                data['units'][0]['health'] = {'current': current, 'maximum': maximum}
+                root = ET.fromstring(render_svg(data))
+                tile = root.find('.//s:g[@data-x="2"]', ns)
+                fill = tile.find('s:rect[@class="health-fill"]', ns)
+                self.assertIsNotNone(fill)
+                self.assertAlmostEqual(float(fill.attrib['width']), 40 * current / maximum, places=2)
+                self.assertEqual(fill.attrib['fill'], color)
+                self.assertEqual(tile.find('s:text[@class="unit-health"]', ns).text, percent)
+                self.assertIn(f'HP {current}/{maximum}', tile.find('s:title', ns).text)
+                self.assertEqual(tile.find('s:text[@class="coord"]', ns).attrib['y'], '-25')
+
+    def test_missing_or_invalid_health_renders_unknown_without_a_filled_bar(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for health in [None, {}, [], {'current': True, 'maximum': 100},
+                       {'current': -1, 'maximum': 100}, {'current': 101, 'maximum': 100},
+                       {'current': 1, 'maximum': 0}, {'current': float('nan'), 'maximum': 100},
+                       {'current': 1, 'maximum': float('inf')}, {'current': '72', 'maximum': 100}]:
+            with self.subTest(health=health):
+                data = view()
+                data['units'][0]['health'] = health
+                root = ET.fromstring(render_svg(data))
+                self.assertFalse(root.findall('.//s:rect[@class="health-fill"]', ns))
+                label = root.find('.//s:text[@class="unit-health"]', ns)
+                self.assertIsNotNone(label)
+                self.assertEqual(label.text, '?')
+                self.assertIn('HP ?', root.find('.//s:g[@data-x="2"]/s:title', ns).text)
+
+    def test_stacked_units_list_individual_hp_without_inventing_combined_health(self):
+        data = view()
+        data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+        data['units'].append({'x': 2, 'y': 2, 'name': 'Infantry',
+                              'health': {'current': 18, 'maximum': 100}})
+        root = ET.fromstring(render_svg(data))
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        self.assertFalse(root.findall('.//s:rect[@class="health-fill"]', ns))
+        label = root.find('.//s:text[@class="unit-health"]', ns)
+        self.assertIsNotNone(label)
+        self.assertEqual(label.text, '?')
+        tooltip = root.find('.//s:g[@data-x="2"]/s:title', ns).text
+        self.assertIn('HP 72/100', tooltip)
+        self.assertIn('Infantry — HP 18/100', tooltip)
+
+    def test_city_markers_do_not_show_unit_health_as_city_health(self):
+        data = view()
+        data['tiles'][1]['marker'] = 'C'
+        data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+        root = ET.fromstring(render_svg(data))
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        self.assertFalse(root.findall('.//s:text[@class="unit-health"]', ns))
+        self.assertIn('HP 72/100', root.find('.//s:g[@data-x="2"]/s:title', ns).text)
+
     def test_svg_is_north_up_colored_and_escapes_labels_without_active_content(self):
         data = view()
         data['tiles'][0]['terrain'] = None
@@ -46,11 +108,15 @@ class SvgRenderingTests(unittest.TestCase):
     def test_hidden_or_fogged_entities_never_enter_svg_tooltips(self):
         data = view()
         data['tiles'][0]['terrain'] = None
-        data['units'].append({'x': 1, 'y': 2, 'name': 'HIDDEN UNIT'})
+        data['units'].append({'x': 1, 'y': 2, 'name': 'HIDDEN UNIT', 'health': {'current': 37, 'maximum': 41}})
+        data['units'].append({'x': 3, 'y': 2, 'name': 'FOGGED UNIT', 'health': {'current': 29, 'maximum': 31}})
         data['settlements'].append({'x': 3, 'y': 2, 'name': 'FOGGED CITY'})
         svg = render_svg(data)
         self.assertNotIn('HIDDEN UNIT', svg)
         self.assertNotIn('FOGGED CITY', svg)
+        self.assertNotIn('FOGGED UNIT', svg)
+        self.assertNotIn('HP 37/41', svg)
+        self.assertNotIn('HP 29/31', svg)
 
     def test_svg_native_north_is_up_and_east_is_right_not_the_ascii_oblique_projection(self):
         data = view()
@@ -141,6 +207,7 @@ class SvgMapToolTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_pipeline_updates_fixed_cache_from_one_mocked_game_read(self):
         data = view()
         data['age'] = -610349106
+        data['units'][0]['health'] = {'current': 72, 'maximum': 100}
         with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory, \
                 patch('civ7.svg_preview.PREVIEW_DIR', Path(directory)), \
                 patch('civ7.queries.run_script', new_callable=AsyncMock, return_value=data) as run:
@@ -149,6 +216,7 @@ class SvgMapToolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result.structured_content['age'],-610349106)
             self.assertEqual(result.structured_content['previewUrl'],PREVIEW_URL)
             self.assertIn('Turn 11',(Path(directory)/PREVIEW_NAME).read_text())
+            self.assertIn('72%', (Path(directory)/PREVIEW_NAME).read_text())
             run.assert_awaited_once_with('ascii_map.js',{'x':2,'y':2,'width':3,'height':1,'render':'svg'})
 
     async def test_tool_is_default_game_read_only_and_publishes_one_bounded_snapshot(self):

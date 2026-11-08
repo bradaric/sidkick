@@ -72,6 +72,7 @@ function run(o = {}, script = 'attack_unit.js') {
       calls.push({kind:'send',id,operation,args});attacker.Combat.attacksRemaining=0;target.Health.damage=30;district.getDamage=30;
       for(const cb of listeners.Combat??[])cb({attacker:attacker.id,defender:target.id});
       if(o.nativeKill){for(const cb of listeners.UnitKilledInCombat??[])cb({unitKiller:attacker.id,unitKilled:target.id});gone=true;}
+      if(o.departed)gone=true;
     };
     if(o.group)context.Game.UnitCommands.sendRequest=(id,command,args)=>{
       calls.push({kind:'commandSend',id,command,args});target.Health.damage=30;
@@ -91,6 +92,32 @@ test('observed field strikes keep native single submission and attribute primary
  const damaged=run({observe:true});assert.equal(damaged.data.status,'submitted');assert.ok(damaged.data.verificationArguments.observation_token);assert.equal(damaged.after.killConfirmed,null);assert.equal(damaged.after.combatObservation.units.find(u=>u.instanceId===20).damageDelta,30);
  const killed=run({observe:true,nativeKill:true});assert.equal(killed.after.killConfirmed,true);assert.equal(killed.after.combatObservation.closed,true);assert.equal(killed.calls.filter(c=>c.kind==='send').length,1);
  const inFlight=run({observe:true,deferQuiet:true});assert.equal(inFlight.after.attackObserved,true);assert.equal(inFlight.after.observationQuiescent,false);assert.equal(inFlight.after.combatObservation.closed,false,'first primary damage must not close event capture while native group effects may still resolve');
+});
+test('all ordinary single-unit attack modes confirm native kills but not unexplained departures',()=>{
+ const modes=[
+  {args:{kind:'melee'}}, {args:{kind:'ranged'}},
+  {enemyTile:true,args:{kind:'melee',target_territory:'enemy_field'}},
+  {enemyTile:true,args:{kind:'ranged',target_territory:'enemy_field'}},
+  {sea:true,args:{kind:'naval'}},
+  {sea:true,shoreSource:true,shoreLandTarget:true,enemyTile:true,args:{kind:'shore',target_territory:'enemy_field'}},
+ ];
+ for(const mode of modes)for(const nativeKill of [true,false]){
+  const r=run({...mode,observe:true,nativeKill,departed:true});
+  assert.equal(r.data.status,'submitted');
+  assert.equal(r.data.expected.observationQuiescent,true);
+  assert.equal(r.after.attackObserved,true);
+  assert.equal(r.after.observationQuiescent,true);
+  assert.equal(r.after.targetLeftTile,true);
+  assert.equal(r.after.killConfirmed,nativeKill?true:null);
+  assert.equal(r.after.combatObservation.closed,true);
+  assert.equal(r.calls.filter(c=>c.kind==='send').length,1);
+ }
+});
+test('required observation rejects before attack submission when the observer is unavailable',()=>{
+ const r=run({args:{observe_effects:true,observation_radius:1}});
+ assert.equal(r.data.status,'rejected');
+ assert.match(r.data.reason,/observer is unavailable/);
+ assert.equal(r.calls.filter(c=>c.kind==='send').length,0);
 });
 test('observed district bombardment keeps primary district accounting separate from captured visible garrison deltas',()=>{
  const base={observe:true,district:true,enemyTile:true,args:{district_id:99}};

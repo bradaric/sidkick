@@ -34,7 +34,8 @@ function run(o = {}) {
     Visibility: {isVisible: () => !o.invisibleUnit},
     Units: {get: id => {
       assert.ok(!o.invisibleUnit && (id.owner === 0 || !o.unmet), 'never resolve hidden/unmet unit details');
-      return {id, owner: id.owner, isOnMap: !o.offMap, location: {x: o.wrongUnitLocation ? 3 : 2, y: 2}, type: 100, name: 'Scout'};
+      return {id, owner: id.owner, isOnMap: !o.offMap, location: {x: o.wrongUnitLocation ? 3 : 2, y: 2}, type: 100, name: 'Scout',
+        get Health() {record('health', 2, 2, true); return o.health;}};
     }},
   };
   if (o.noOverlayApis) {delete ctx.MapCities; delete ctx.MapUnits;}
@@ -177,6 +178,35 @@ test('SVG data mode reuses the same bounded visibility filters and withholds unk
   assert.equal(reads.filter(read=>read.kind==='terrain').length,8);
   assert.equal(reads.filter(read=>read.kind==='units').length,7);
   assert.throws(()=>run({changedTurn:true,args:{render:'svg'}}),/context changed/i);
+});
+
+test('map unit health uses remaining native HP only for already-visible owned or met units', () => {
+  for (const extra of [{}, {foreignUnit:true}, {foreignUnit:true,atWar:true}]) {
+    const {data,reads}=run({unit:true,health:{damage:28,maxDamage:100},args:{render:'svg'},...extra});
+    assert.deepEqual(data.units[0].health,{current:72,maximum:100});
+    assert.equal(reads.filter(read=>read.kind==='health').length,1);
+  }
+  assert.deepEqual(run({unit:true,health:{damage:60,maxDamage:200},args:{render:'svg'}}).data.units[0].health,
+    {current:140,maximum:200});
+});
+
+test('missing or invalid unit health stays unknown rather than looking fully healed', () => {
+  for (const health of [undefined,null,{}, {damage:0,maxDamage:0}, {damage:-1,maxDamage:100},
+    {damage:101,maxDamage:100}, {damage:NaN,maxDamage:100}, {damage:0,maxDamage:Infinity},
+    {damage:'28',maxDamage:100}, {damage:false,maxDamage:100}]) {
+    assert.equal(run({unit:true,health,args:{render:'svg'}}).data.units[0].health,null);
+  }
+  assert.deepEqual(run({unit:true,health:{damage:100,maxDamage:100},args:{render:'svg'}}).data.units[0].health,
+    {current:0,maximum:100});
+});
+
+test('health is never queried for fogged, unknown, invisible, unmet or off-map units', () => {
+  for (const extra of [{state:0}, {state:1}, {invisibleUnit:true}, {foreignUnit:true,unmet:true},
+    {offMap:true}, {wrongUnitLocation:true}]) {
+    const {data,reads}=run({unit:true,health:{damage:28,maxDamage:100},args:{render:'svg'},...extra});
+    assert.equal(data.units.length,0);
+    assert.equal(reads.some(read=>read.kind==='health'),false);
+  }
 });
 
 test('even the largest viewport scans only its bounded area, not the world', () => {

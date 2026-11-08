@@ -13,14 +13,14 @@ class EnemyFieldTests(unittest.IsolatedAsyncioTestCase):
         with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value={'status': 'rejected'}) as run:
             await actions.melee_attack_enemy_field(10, 1, 20, 3, 3, 62)
         self.assertEqual(run.await_args.args, ('attack_unit.js', {'unit_id': 10, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3,
-            'expected_turn': 62, 'kind': 'melee', 'target_territory': 'enemy_field'}))
+            'expected_turn': 62, 'kind': 'melee', 'target_territory': 'enemy_field', 'observe_effects': True, 'observation_radius': 1}))
         self.assertNotIn('melee_attack_civ7_enemy_field', {t.name for t in create_server()._tool_manager.list_tools()})
         self.assertIn('melee_attack_civ7_enemy_field', {t.name for t in create_server(enable_writes=True)._tool_manager.list_tools()})
 
     async def test_enemy_field_wrapper_is_ranged_only_and_verifies_exact_primary_target(self):
         self.assertTrue(callable(getattr(actions, 'ranged_attack_enemy_field', None)))
         args = {'unit_id': 10, 'target_player': 1, 'target_unit_id': 20, 'x': 3, 'y': 3, 'expected_turn': 62,
-                'kind': 'ranged', 'target_territory': 'enemy_field'}
+                'kind': 'ranged', 'target_territory': 'enemy_field', 'observe_effects': True, 'observation_radius': 1}
         before = {'turn': 62, 'age': 42, 'playerId': 0}
         captured = {'unit_id': 10, 'before_attacks': 1, 'target_unit_id': 20}
         with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=[
