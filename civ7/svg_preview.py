@@ -66,6 +66,21 @@ def _validate(view):
             raise ValueError("Inconsistent map visibility or entity evidence")
 
 
+def _tile_ownership(tile, player_id):
+    unknown = {"status": "unknown", "playerId": None, "civilization": None}
+    ownership = tile.get("ownership")
+    if tile.get("visibility") != "visible" or not isinstance(ownership, dict):
+        return unknown
+    status, owner_id, civilization = (ownership.get(key) for key in ("status", "playerId", "civilization"))
+    if status == "unowned" and owner_id is None and civilization is None:
+        return {"status": "unowned", "playerId": None, "civilization": None}
+    if (status not in ("ours", "foreign") or type(owner_id) is not int or owner_id < 0
+            or status == "ours" and owner_id != player_id or status == "foreign" and owner_id == player_id
+            or civilization is not None and not isinstance(civilization, str)):
+        return unknown
+    return {"status": status, "playerId": owner_id, "civilization": civilization}
+
+
 def _unit_health(unit):
     health = unit.get("health")
     if not isinstance(health, dict):
@@ -120,7 +135,14 @@ def render_svg(view: dict) -> str:
             health = _unit_health(unit)
             hp = f"{health[0]:g}/{health[1]:g}" if health else "?"
             names.append(f"{unit.get('name', '')} — HP {hp}")
-        ET.SubElement(group, "title").text = f"({tile['x']},{tile['y']}) | {label} | {state}" + (" | " + "; ".join(names) if names else "")
+        ownership = _tile_ownership(tile, view["playerId"])
+        owner_label = ownership["status"]
+        if owner_label == "ours" and ownership["civilization"]:
+            owner_label += f" ({ownership['civilization']})"
+        elif owner_label == "foreign":
+            owner_label = ownership["civilization"] or f"player #{ownership['playerId']}"
+        ET.SubElement(group, "title").text = (f"({tile['x']},{tile['y']}) | {label} | {state} | Owner: {owner_label}"
+                                             + (" | " + "; ".join(names) if names else ""))
         ET.SubElement(group, "polygon", {"points": points, "fill": color, "stroke": "#172333", "stroke-width": "2",
                                          "opacity": ".85" if state == "fogged" else "1"})
         if state == "fogged":
@@ -176,5 +198,6 @@ def publish_preview(view: dict, directory: Path | None = None) -> dict:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
     return {key: view[key] for key in ("turn", "age", "playerId", "center", "bounds", "requestedSize", "coverage")} | {
+        "tiles": [{"x": tile["x"], "y": tile["y"], "ownership": _tile_ownership(tile, view["playerId"])} for tile in view["tiles"]],
         "previewUrl": PREVIEW_URL, "previewPath": str(directory / PREVIEW_NAME), "previewUpdated": True,
         "projection": "north-up pointy-top SVG", "scope": "Static local preview cache; latest successful tool call wins. No game actions, HTTP game control or automatic refresh. A loopback viewer and SSH tunnel are required."}

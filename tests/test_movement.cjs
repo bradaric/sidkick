@@ -4,15 +4,21 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = false, zoc = false, railAllowed = true, moves = 2 } = {}) {
+function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = false, zoc = false, railAllowed = true, moves = 2,
+  fogged = false, owner = 1, met = true, missingOwner = false, throwOwner = false, adjacentPlots = [3] } = {}) {
   const script = path.join(__dirname, '../civ7/movement.js');
   assert.ok(fs.existsSync(script), 'bundled movement query exists');
   const nativeCalls = [];
+  const ownerReads = [];
+  const playerReads = [];
   const unit = { id: { owner: 0, id: 7, type: 26 }, type: 'SETTLER', location: packed ? { x: -1, y: -1 } : { x: 0, y: 0 },
     Movement: { movementMovesRemaining: moves }, Combat: { hasMovedIntoZOC: zoc } };
   const result = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
     queryArguments: args, UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
-    Players: { get: id => { assert.equal(id, 0); return {
+    Players: { get: id => {
+      playerReads.push(id);
+      if (id !== 0) {assert.equal(id, 1); assert.equal(met, true); return {civilizationFullName: 'Egypt'};}
+      return {civilizationFullName: 'Rome', Diplomacy: {hasMet: other => met && other === 1},
       Units: { getUnits: () => [unit] }, Cities: { getCities: () => [{ name: 'Home', location: { x: 0, y: 0 } }] },
       Stats: { numSettlements: 1, settlementCap: 3 },
     }; } },
@@ -24,14 +30,21 @@ function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = f
     GameplayMap: {
       getGridWidth: () => 4, getGridHeight: () => 1,
       getLocationFromIndex: i => ({ x: i, y: 0 }), getIndexFromLocation: p => p.x,
-      getRevealedState: (id, x) => x === 3 ? 0 : 1,
+      getRevealedState: (id, x) => x === 3 ? 0 : fogged && x === 1 ? 2 : 1,
+      ...(!missingOwner ? {getOwner: x => {
+        ownerReads.push(x);
+        assert.notEqual(x, 3, 'hidden ownership must not be read');
+        assert.ok(!fogged || x !== 1, 'fogged current ownership must not be read');
+        if (throwOwner) throw Error('unavailable');
+        return x === 0 ? 0 : x === 2 ? -1 : owner;
+      }} : {}),
       getPlotDistance: (x, y, xx) => Math.abs(x - xx),
       getTerrainType: x => { assert.notEqual(x, 3, 'hidden terrain is not inspected'); return 'GRASS'; },
       getFeatureType: () => 'FOREST', getBiomeType: () => 'TEMPERATE', isFreshWater: () => true,
       getResourceType: x => { assert.notEqual(x, 3, 'hidden resources are not inspected'); return x === 2 ? 'TEA' : null; },
       getYields: () => [[0, 2]],
     },
-    RevealedStates: { HIDDEN: 0, VISIBLE: 1 }, UnitOperationTypes: { MOVE_TO: 'MOVE' },
+    RevealedStates: { HIDDEN: 0, VISIBLE: 1, REVEALED: 2 }, UnitOperationTypes: { MOVE_TO: 'MOVE' },
     UnitOperationMoveModifiers: {ATTACK: 1, MOVE_IGNORE_UNEXPLORED_DESTINATION: 2},
     GameInfo: { Units: { lookup: () => ({ Name: 'Settler', FoundCity: true }) },
       Terrains: { lookup: () => ({ TerrainType: 'GRASS' }) }, Features: { lookup: () => ({ FeatureType: 'FOREST' }) },
@@ -48,11 +61,11 @@ function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = f
       UnitOperations: { canStart: (id, op, options, visible) => {
       assert.equal(id.owner, 0); assert.equal(visible, false);
       if (op === 'UNITOPERATION_FOUND_CITY') return { Success: false, FailureReasons: ['Too close'] };
-      if (op === 'UNITOPERATION_FOUND_CITY_ADJACENT_PLOT') return { Success: false, Plots: [3] };
+      if (op === 'UNITOPERATION_FOUND_CITY_ADJACENT_PLOT') return { Success: false, Plots: adjacentPlots };
       assert.equal(op, 'MOVE'); assert.equal(options.Modifiers, 2); nativeCalls.push(options.X); return { Success: true };
     } } },
   });
-  return { data: JSON.parse(JSON.stringify(result)), nativeCalls };
+  return { data: JSON.parse(JSON.stringify(result)), nativeCalls, ownerReads, playerReads };
 }
 
 test('movement options omit attack targets and hidden tiles, while paths retain native turn labels', () => {
@@ -89,7 +102,8 @@ test('rail options use the distinct command check and exclude hidden, duplicate 
   const { data } = run();
   assert.ok(data.rail, 'rail evidence is exported separately from ordinary movement');
   assert.equal(data.rail.operationAllowed, true);
-  assert.deepEqual(data.rail.options, [{ location: { x: 1, y: 0 }, availableNow: true }]);
+  assert.deepEqual(data.rail.options, [{ location: { x: 1, y: 0 }, availableNow: true,
+    ownership: {status: 'foreign', playerId: 1, civilization: 'Egypt'} }]);
   assert.equal(data.rail.destinationAvailableNow, true);
   assert.equal(data.rail.travelCost, null);
   assert.ok(!JSON.stringify(data.rail).includes('999'));
@@ -115,4 +129,35 @@ test('unit inventory exposes stable local instance IDs without replacing existin
   });
   assert.equal(data.units[0].id, 'SCOUT');
   assert.equal(data.units[0].instanceId, 7);
+});
+
+test('movement destinations, paths, reachable tiles, rail and site resources carry ownership', () => {
+  const {data} = run({adjacentPlots: [1, 3]});
+  const ours = {status: 'ours', playerId: 0, civilization: 'Rome'};
+  const egypt = {status: 'foreign', playerId: 1, civilization: 'Egypt'};
+  assert.deepEqual(data.movement.options[0].ownership, ours);
+  assert.deepEqual(data.movement.options[1].ownership, egypt);
+  assert.deepEqual(data.destination.ownership, egypt);
+  assert.deepEqual(data.destination.path.map(p => p.ownership), [ours, egypt]);
+  assert.deepEqual(data.site.ownership, egypt);
+  assert.deepEqual(data.founding.currentOwnership, ours);
+  assert.equal(data.founding.adjacentOptions.length, 1);
+  assert.deepEqual(data.founding.adjacentOptions[0].ownership, egypt);
+  assert.deepEqual(data.site.nearbyRevealedResources[0].ownership,
+    {status: 'unowned', playerId: null, civilization: null});
+});
+
+test('movement ownership withholds unmet identities and current fog/hidden ownership', () => {
+  const unknown = {status: 'unknown', playerId: null, civilization: null};
+  for (const settings of [{owner: 2, met: false}, {owner: null}, {fogged: true}, {missingOwner: true}, {throwOwner: true}]) {
+    const {data, ownerReads, playerReads} = run(settings);
+    assert.deepEqual(data.destination.ownership, unknown);
+    assert.deepEqual(data.site.ownership, unknown);
+    assert.equal(data.destination.moveAllowed, true, 'ownership is evidence, not a replacement movement check');
+    assert.ok(!playerReads.includes(2));
+    if (settings.fogged) assert.ok(!ownerReads.includes(1));
+  }
+  const {data, ownerReads} = run({args: {unit_id: 7, x: 3, y: 0}, hiddenPath: true});
+  assert.deepEqual(data.destination.ownership, unknown);
+  assert.ok(!ownerReads.includes(3));
 });

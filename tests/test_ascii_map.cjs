@@ -5,6 +5,7 @@ const {test} = require('node:test');
 
 function run(o = {}) {
   const reads = [];
+  const playerReads = [];
   const state = (x, y) => o.states?.[`${x},${y}`] ?? (Object.hasOwn(o, 'state') ? o.state : 2);
   const record = (kind, x, y, visibleOnly = false) => {
     reads.push({kind, x, y});
@@ -21,8 +22,17 @@ function run(o = {}) {
       getGridWidth: () => o.mapWidth ?? 6, getGridHeight: () => o.mapHeight ?? 5,
       getRevealedState: (player, x, y) => {reads.push({kind: 'visibility', x, y}); return state(x, y);},
       getTerrainType: (x, y) => {record('terrain', x, y); if (o.changedTurn) ctx.Game.turn++; return o.terrains?.[`${x},${y}`] ?? o.terrain ?? 'TERRAIN_FLAT';},
+      ...(!o.noOwnerApi ? {getOwner: (x, y) => {
+        record('owner', x, y, true);
+        if (o.throwOwner) throw Error('ownership unavailable');
+        return o.owners?.[`${x},${y}`] ?? (Object.hasOwn(o, 'owner') ? o.owner : -1);
+      }} : {}),
     },
-    Players: {get: () => ({Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => Boolean(o.atWar)}})},
+    Players: {get: id => {
+      playerReads.push(id);
+      return {civilizationFullName: id === 0 ? 'Rome' : 'Egypt',
+        Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => Boolean(o.atWar)}};
+    }},
     GameInfo: {Terrains: {lookup: type => ({TerrainType: type})}, Units: {lookup: () => ({UnitType: 'UNIT_SCOUT', Name: 'Scout'})}},
     Locale: {compose: value => value},
     MapCities: {getCity: (x, y) => {record('city', x, y, true); return o.city && x === 2 && y === 2 ? cityId : null;}},
@@ -40,7 +50,7 @@ function run(o = {}) {
   };
   if (o.noOverlayApis) {delete ctx.MapCities; delete ctx.MapUnits;}
   const data = vm.runInNewContext(fs.readFileSync('civ7/ascii_map.js', 'utf8'), ctx);
-  return JSON.parse(JSON.stringify({data, reads}));
+  return JSON.parse(JSON.stringify({data, reads, playerReads}));
 }
 
 test('renders wider flat-topped hexes with shared edges and explicit native coordinate labels', () => {
@@ -171,7 +181,8 @@ test('SVG data mode reuses the same bounded visibility filters and withholds unk
   assert.equal(data.tiles.length,9);
   assert.equal(Object.hasOwn(data,'ascii'),false);
   assert.deepEqual(data.tiles.find(tile=>tile.x===1&&tile.y===3),
-    {x:1,y:3,terrain:null,visibility:'unknown',marker:'???'});
+    {x:1,y:3,terrain:null,visibility:'unknown',marker:'???',
+      ownership:{status:'unknown',playerId:null,civilization:null}});
   assert.equal(data.tiles.find(tile=>tile.x===2&&tile.y===3).marker,' ');
   assert.equal(data.tiles.find(tile=>tile.x===2&&tile.y===2).marker,'U');
   assert.equal(data.units.length,1);
@@ -252,4 +263,36 @@ test('invalid, unbounded and stale-context requests fail without revealing a map
     {height: 22}, {height: 2}, {height: true}]) assert.throws(() => run({args}), /coordinate|dimension|width|height|viewport/i);
   assert.throws(() => run({changedTurn: true}), /context changed/i);
   assert.throws(() => run({notInGame: true}), /Load a save/);
+});
+
+test('ASCII and SVG map tiles carry ownership without changing the ASCII drawing or entity ownership', () => {
+  for (const render of [undefined, 'svg']) {
+    const args = {width: 3, height: 1, render};
+    const {data} = run({args, owners: {'1,2': 0, '2,2': 1, '3,2': -1}});
+    assert.deepEqual(data.tiles.map(tile => tile.ownership), [
+      {status: 'ours', playerId: 0, civilization: 'Rome'},
+      {status: 'foreign', playerId: 1, civilization: 'Egypt'},
+      {status: 'unowned', playerId: null, civilization: null},
+    ]);
+    if (!render) assert.equal(data.ascii, run({args}).data.ascii);
+    const occupied = run({args, owner: 0, unit: true, foreignUnit: true}).data;
+    assert.equal(occupied.tiles.find(tile => tile.x === 2).ownership.status, 'ours');
+    assert.equal(occupied.units[0].ownerId, 1, 'tile owner is not inferred from the occupying unit');
+  }
+});
+
+test('both map modes withhold current ownership in fog/unknown tiles and never resolve unmet owners', () => {
+  for (const render of [undefined, 'svg']) {
+    for (const state of [0, 1, 99, null]) {
+      const {data, reads} = run({state, owner: 1, args: {render}});
+      assert.ok(data.tiles.every(tile => tile.ownership.status === 'unknown'));
+      assert.equal(reads.some(read => read.kind === 'owner'), false);
+    }
+    const {data, playerReads} = run({owner: 1, unmet: true, args: {render}});
+    assert.ok(data.tiles.every(tile => tile.ownership.status === 'unknown' && tile.ownership.playerId === null && tile.ownership.civilization === null));
+    assert.ok(!playerReads.includes(1));
+    for (const extra of [{noOwnerApi: true}, {throwOwner: true}, {owner: -2}, {owner: null}, {owner: '1'}]) {
+      assert.ok(run({...extra, args: {render}}).data.tiles.every(tile => tile.ownership.status === 'unknown'));
+    }
+  }
 });

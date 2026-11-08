@@ -1583,7 +1583,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             description=("CHANGE GAME STATE: submit exactly one active single-player turn using fresh expected_turn. "
                          "Requires no native turn blockers or ready unit needing an order; never skips blockers, "
                          "forces turn completion or selects pending choices. Waits up to 60 seconds for exactly "
-                         "the next active local turn in the same Age/player context. Age transitions/endgame "
+                         "the next active local turn in the same Age/player context. Returns blocked with native "
+                         "blocker/first-ready-unit details if the same turn remains active and needs attention. "
+                         "Age transitions/endgame "
                          "continuation need separate handling. Requires explicit action or bounded sandbox "
                          "authorization. Never automatically retry unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
@@ -2010,6 +2012,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "yields, nearby revealed resources and owned settlement distances. Separate rail command "
             "eligibility and revealed native rail destination plots are included; rail travel cost "
             "and paths are unknown. Never moves, transports by rail or founds."
+            " Tile ownership is reported as ours/foreign/unowned/unknown with player ID and "
+            "civilization for local/met owners on currently visible tiles only; fogged, hidden, "
+            "unmet or unavailable ownership remains unknown. Ownership does not imply movement permission."
         ),
         annotations=read_only,
         structured_output=True,
@@ -2190,7 +2195,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII explored map",
         description=(
             "Get detailed terrain, features, resources, water, rivers, and yields for "
-            "tiles already revealed to the local player. This response can be large."
+            "tiles already revealed to the local player. Includes ownership as ours/foreign/unowned/unknown, "
+            "with player ID and civilization for local/met owners on currently visible tiles only. "
+            "Fogged, unmet or unavailable ownership remains unknown, not unowned. This response can be large."
         ),
         annotations=read_only,
         structured_output=True,
@@ -2209,6 +2216,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "hidden/unknown visibility has ??? at the center and no terrain/entity inspection. "
             "City centres and individually visible on-map units are overlaid/listed only on currently "
             "visible tiles and only for the local player or met owners. No hidden/unmet entity details. "
+            "tiles[].ownership reports ours/foreign/unowned/unknown with local/met owner player ID and "
+            "civilization on visible tiles only; fogged, hidden, unmet or unavailable ownership is unknown. "
+            "Tile ownership is separate from occupants and does not alter the ASCII drawing. "
             "Returns ascii, projection, legend, native bounds, center, coordinates/identities of observed settlements/units, "
             "and entity-lookup coverage. City markers take precedence over unit markers. Missing markers "
             "never prove an empty/safe tile; no movement checks, resources, yields or route predictions. "
@@ -2225,8 +2235,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "terrain is dimmed/hatched under fog; unknown tiles have no terrain or entity data. Only currently "
             "visible own/met city centres and individually visible on-map units appear. Single-unit markers "
             "show health bars/percentages with exact HP on hover; unavailable or stacked health shows ?. "
-            "City markers retain priority; their visible units' HP is hover-only. Escapes all labels; "
-            "no scripts or external assets. Atomically replaces only Sidkick's owned temporary preview file "
+            "City markers retain priority; their visible units' HP is hover-only. "
+            "Tile ownership appears on hover and in returned tiles[].ownership as ours/foreign/unowned/unknown, "
+            "with local/met owner player ID and civilization on visible tiles only. Fogged, hidden, unmet "
+            "or unavailable ownership is unknown; terrain colors and entity markers are unchanged. "
+            "Escapes all labels; no scripts or external assets. Atomically replaces only Sidkick's owned temporary preview file "
             "and returns the fixed previewUrl http://127.0.0.1:8765/sidkick-map.svg plus turn/bounds/coverage. "
             "This cache write is not a game action. Latest successful call wins; a failed read/render leaves "
             "the previous image intact. The separate static loopback viewer and SSH tunnel must already be "

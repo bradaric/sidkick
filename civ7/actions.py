@@ -708,6 +708,24 @@ async def end_turn(expected_turn: StrictInt) -> dict[str, Any]:
                                 "reason": "Unexpected player/Age/turn boundary; never retry automatically"}
                     if after["turn"] == expected_turn + 1 and after.get("active") is True and after.get("sent") is False:
                         return {**result, "status": "verified_applied", "after": after}
+                    if after["turn"] == expected_turn and after.get("active") is True and after.get("sent") is False:
+                        unit = after.get("firstReadyUnit") if after.get("firstReadyUnitStatus") == "identified" else None
+                        needs_order = after.get("canStartAny") is True and unit is not None
+                        if after.get("hasBlocker") is True or needs_order:
+                            if after.get("hasBlocker") is True:
+                                reason = f"Turn did not advance: native end-turn blocker {after.get('blockerName') or after.get('blocker')} remains."
+                            else:
+                                reason = "Turn did not advance: a unit needs an explicit order."
+                            if unit is not None:
+                                reason += f" First ready unit: {unit.get('name') or unit.get('id') or 'Unit'} #{unit['instanceId']}"
+                                location = unit.get("location")
+                                if location is not None:
+                                    reason += f" at ({location['x']}, {location['y']})"
+                                if unit.get("movesRemaining") is not None:
+                                    reason += f", {unit['movesRemaining']} movement remaining"
+                                reason += "."
+                            return {**result, "status": "blocked", "after": after,
+                                    "reason": reason + " Inspect current state and resolve pending tasks before requesting end-turn again."}
                     await asyncio.sleep(_VERIFICATION_INTERVAL)
         except Exception as exc:
             return {**result, "status": "unknown", **({"after": after} if after is not None else {}),

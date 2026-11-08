@@ -25,6 +25,64 @@ def view():
 
 
 class SvgRenderingTests(unittest.TestCase):
+    def test_tile_ownership_tooltips_do_not_change_map_geometry_colors_markers_or_health(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for ownership, label in [
+            ({'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}, 'ours (Rome)'),
+            ({'status': 'foreign', 'playerId': 1, 'civilization': 'Egypt'}, 'Egypt'),
+            ({'status': 'foreign', 'playerId': 1, 'civilization': None}, 'player #1'),
+            ({'status': 'unowned', 'playerId': None, 'civilization': None}, 'unowned'),
+        ]:
+            with self.subTest(ownership=ownership):
+                data = view()
+                data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+                baseline = ET.fromstring(render_svg(data))
+                data['tiles'][1]['ownership'] = ownership
+                root = ET.fromstring(render_svg(data))
+                self.assertIn(f'Owner: {label}', root.find('.//s:g[@data-x="2"]/s:title', ns).text)
+                for image in (baseline, root):
+                    for tile in image.findall('.//s:g[@class="tile"]', ns):
+                        tile.remove(tile.find('s:title', ns))
+                self.assertEqual(ET.tostring(root), ET.tostring(baseline))
+
+    def test_missing_invalid_or_nonvisible_ownership_is_unknown_without_leaking_labels(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        invalid = [None, [], {}, {'status': 'unknown', 'playerId': 1, 'civilization': 'SECRET'},
+                   {'status': 'ours', 'playerId': 1, 'civilization': 'SECRET'},
+                   {'status': 'foreign', 'playerId': 0, 'civilization': 'SECRET'},
+                   {'status': 'foreign', 'playerId': True, 'civilization': 'SECRET'},
+                   {'status': 'unowned', 'playerId': 1, 'civilization': 'SECRET'}]
+        for ownership in invalid:
+            data = view()
+            data['tiles'][1]['ownership'] = ownership
+            svg = render_svg(data)
+            self.assertIn('Owner: unknown', ET.fromstring(svg).find('.//s:g[@data-x="2"]/s:title', ns).text)
+            self.assertNotIn('SECRET', svg)
+        data = view()
+        for tile in (data['tiles'][0], data['tiles'][2]):
+            tile['ownership'] = {'status': 'foreign', 'playerId': 1, 'civilization': 'SECRET'}
+        self.assertNotIn('SECRET', render_svg(data))
+
+    def test_ownership_labels_are_escaped_as_plain_text(self):
+        data = view()
+        data['tiles'][1]['ownership'] = {'status': 'foreign', 'playerId': 1,
+                                        'civilization': 'Egypt <script>bad()</script> & friends'}
+        svg = render_svg(data)
+        self.assertIn('Egypt &lt;script&gt;bad()&lt;/script&gt; &amp; friends', svg)
+        self.assertFalse(ET.fromstring(svg).findall('.//{http://www.w3.org/2000/svg}script'))
+
+    def test_preview_response_includes_only_visibility_safe_tile_ownership(self):
+        data = view()
+        data['tiles'][1]['ownership'] = {'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}
+        data['tiles'][2]['ownership'] = {'status': 'foreign', 'playerId': 1, 'civilization': 'SECRET'}
+        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:
+            result = publish_preview(data, Path(directory))
+        self.assertEqual(result['tiles'], [
+            {'x': 1, 'y': 2, 'ownership': {'status': 'unknown', 'playerId': None, 'civilization': None}},
+            {'x': 2, 'y': 2, 'ownership': {'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}},
+            {'x': 3, 'y': 2, 'ownership': {'status': 'unknown', 'playerId': None, 'civilization': None}},
+        ])
+
     def test_fog_preserves_terrain_colors_with_only_light_dimming_and_hatching(self):
         ns = {'s': 'http://www.w3.org/2000/svg'}
         for terrain, (color, _, _) in TERRAINS.items():
@@ -231,6 +289,7 @@ class SvgMapToolTests(unittest.IsolatedAsyncioTestCase):
         data = view()
         data['age'] = -610349106
         data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+        data['tiles'][1]['ownership'] = {'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}
         with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory, \
                 patch('civ7.svg_preview.PREVIEW_DIR', Path(directory)), \
                 patch('civ7.queries.run_script', new_callable=AsyncMock, return_value=data) as run:
@@ -240,6 +299,8 @@ class SvgMapToolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result.structured_content['previewUrl'],PREVIEW_URL)
             self.assertIn('Turn 11',(Path(directory)/PREVIEW_NAME).read_text())
             self.assertIn('72%', (Path(directory)/PREVIEW_NAME).read_text())
+            self.assertIn('Owner: ours (Rome)', (Path(directory)/PREVIEW_NAME).read_text())
+            self.assertEqual(result.structured_content['tiles'][1]['ownership'], data['tiles'][1]['ownership'])
             run.assert_awaited_once_with('ascii_map.js',{'x':2,'y':2,'width':3,'height':1,'render':'svg'})
 
     async def test_tool_is_default_game_read_only_and_publishes_one_bounded_snapshot(self):
