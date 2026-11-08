@@ -85,6 +85,7 @@ from civ7.actions import (
     activate_commander_great_person,
     respond_hostile_diplomatic_project,
     respond_first_meet,
+    pay_call_to_arms,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -548,7 +549,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         )(withdraw_capped_project_support)
         server.tool(
             name="found_civ7_adjacent_settlement",title="Found exact native-offered adjacent Civ VII settlement",
-            description=("CHANGE GAME STATE: fixed FOUND_CITY_ADJACENT_PLOT by exact ready founder unit_id "
+            description=("CHANGE GAME STATE: adjacent-tile founding only. To found under the Settler at its "
+                         "current tile, use perform_civ7_local_civilian_action with kind=found; do not move the "
+                         "Settler solely as a workaround. Fixed FOUND_CITY_ADJACENT_PLOT by exact ready founder unit_id "
                          "at adjacent visible empty unowned land x/y with expected_turn. Source may be "
                          "embarked, but must be visible own/unowned, unqueued/unpacked/nonreinforcing with "
                          "no foreign stack. Native offered/selected permission required. Verifies consumed "
@@ -874,8 +877,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(resettle_migrant)
         server.tool(
-            name="perform_civ7_local_civilian_action", title="Perform current-tile Civ VII civilian activity",
-            description=("CHANGE GAME STATE: fixed kind found/excavate/research/spread/great_person/resettle "
+            name="perform_civ7_local_civilian_action", title="Found a current-tile settlement or perform Civ VII civilian activity",
+            description=("CHANGE GAME STATE: kind=found performs Found Settlement directly under the Settler "
+                         "at its current tile; no x/y or movement is needed. Fixed kinds "
+                         "found/excavate/research/spread/great_person/resettle "
                          "by exact unit_id at its current visible own/unowned tile with fresh expected_turn. "
                          "Optional exact ability must be linked to that fixed native operation/command. "
                          "Requires ready deployed unembarked unqueued role-eligible unpacked/nonreinforcing "
@@ -953,6 +958,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(append_advanced_construction)
+        server.tool(
+            name="pay_civ7_call_to_arms", title="Pay Influence to avoid an allied war",
+            description=("CHANGE GAME STATE: pay one pending Call to Arms to preserve the alliance without joining war. "
+                         "Use fresh war_event_id, ally_player_id, opponent_player_id and payment_token from "
+                         "get_civ7_diplomacy.callToArms[].responseOptions[pay_influence].paymentToken, a required "
+                         "max_influence_cost and expected_turn. Single-player, GameStarted active turn only. "
+                         "Requires exactly one allied side, peace with both participants, an active notification-linked "
+                         "public war, unchanged token/quote, native payment permission and sufficient Influence within cap. "
+                         "Spends Influence. Verifies exact own debit, prompt clearance, unchanged Gold and preserved "
+                         "alliance/peace for up to 15 seconds. Does not join war, cancel alliances, dismiss notifications "
+                         "or advance turns. Requires explicit authorization. Submits once; never retry unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(pay_call_to_arms)
         server.tool(
             name="naval_attack_civ7_land_unit", title="Fire Civ VII ship at coastal land unit",
             description=("CHANGE GAME STATE: fixed native NAVAL_ATTACK from exact ready deployed naval "
@@ -2012,7 +2031,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "both x and y, or omit both to inspect the unit's location. Native path turn "
             "labels are retained; paths through hidden tiles are withheld. Settlers include "
             "current/adjacent founding checks; arbitrary future-site legality and new "
-            "settlement yields are unknown. Site evidence includes fresh water, current tile "
+            "settlement yields are unknown. For founding.availableNow at founding.currentLocation, use "
+            "perform_civ7_local_civilian_action with kind=found. Use found_civ7_adjacent_settlement only "
+            "for an available founding.adjacentOptions tile, not for the tile beneath the Settler. "
+            "Site evidence includes fresh water, current tile "
             "yields, nearby revealed resources and owned settlement distances. Separate rail command "
             "eligibility and revealed native rail destination plots are included; rail travel cost "
             "and paths are unknown. Never moves, transports by rail or founds."
@@ -2100,7 +2122,15 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "definitions, native duration quotes, active stages and native event progress/"
             "completion timing, not guaranteed agreement expiry dates. Pending visible incoming "
             "projects include responseOptions with native descriptions, Influence quotes, selectability "
-            "and exact response-operation eligibility; these are not predicted final outcomes. Pending "
+            "and exact response-operation eligibility; these are not predicted final outcomes. "
+            "callToArms separately lists active ally-war notifications and their native join-war, "
+            "stay-neutral (breaking the alliance) and, when offered, paid-neutrality responseOptions, "
+            "with Influence quotes, exact read-only operation checks and both-allies handling. "
+            "Only notification-linked public wars between met majors are inspected; unrelated third-party "
+            "events remain withheld. null means notification APIs are unavailable; entries with unavailable "
+            "details retain null responseOptions. Paid neutrality can include a fresh paymentToken and "
+            "responseTool=pay_civ7_call_to_arms for explicitly authorized capped payment; joining war and "
+            "breaking alliances remain display-only choices here. Pending "
             "firstMeet entries bind actual blocking PLAYER_MET notifications to native greeting costs/"
             "relationship deltas and a fresh notificationToken; availability also requires GameStarted, "
             "not the Begin loading gate. Native permission alone is not a pending choice. Safe secondaryTargets "

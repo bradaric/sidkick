@@ -1860,6 +1860,21 @@ modifiers are fixture-tested only; no live probes, greetings or turns were issue
 for this fix. Refresh diplomacy for a new token after loading the updated server.
 Regression verification: **274 Python /497 Node tests pass**.
 
+**Call to Arms:** `get_civ7_diplomacy.callToArms` exposes pending ally-war
+notifications separately from ordinary incoming projects. It reports the native
+join-war, alliance-breaking neutrality and (when offered) paid-neutrality choices.
+`pay_civ7_call_to_arms` is an opt-in action for paid neutrality only: supply the
+fresh option's `paymentToken` as `payment_token`, its `allyPlayerId` and
+`opponentPlayerId` as `ally_player_id` and `opponent_player_id`, the prompt's
+`warEventId` as `war_event_id`, a required `max_influence_cost`, and fresh
+`expected_turn`. It binds the active single-player prompt and quote, requires
+exactly one allied side and peace with both, and submits one native payment.
+Readback requires the exact Influence debit, cleared prompt, unchanged Gold and
+preserved alliance/peace. Unknown or cancelled outcomes must never be retried
+automatically. Joining war and breaking alliances remain display-only choices
+in this response list. Reader/quote/token availability has been checked read-only
+in a live game; payment execution/readback is fixture-tested, not live-paid.
+
 Scope update and closeout, 2026-11-07: **Group 1 is closed under the user's revised
 no-additional-setup boundary.** All104 MCP writers now share a GameStarted gate
 before submissions, readbacks and helper initialization; read-only queries remain

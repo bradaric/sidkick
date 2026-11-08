@@ -507,6 +507,21 @@ async def choose_religious_action(
     return await _execute_and_verify("religious_choice.js", arguments, "religious_choice_state.js")
 
 
+async def pay_call_to_arms(
+    war_event_id: StrictInt, ally_player_id: StrictInt, opponent_player_id: StrictInt,
+    payment_token: StrictStr, max_influence_cost: StrictInt | StrictFloat, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Pay only the exact pending call-to-arms quote; never join war or cancel an alliance."""
+    if (any(type(value) is not int or value < 0 for value in (war_event_id, ally_player_id, opponent_player_id, expected_turn))
+            or ally_player_id == opponent_player_id or not isinstance(payment_token, str) or not payment_token or len(payment_token) > 100000
+            or type(max_influence_cost) not in (int, float) or not math.isfinite(max_influence_cost) or max_influence_cost < 0):
+        raise ValueError("Exact pending war, ally/opponent, payment token, finite Influence cap and expected turn required")
+    return await _execute_and_verify("pay_call_to_arms.js", {
+        "war_event_id": war_event_id, "ally_player_id": ally_player_id, "opponent_player_id": opponent_player_id,
+        "payment_token": payment_token, "max_influence_cost": max_influence_cost, "expected_turn": expected_turn,
+    }, "call_to_arms_payment_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def append_advanced_construction(settlement: StrictStr, item: StrictStr, construction_intent: Literal["wonder", "repair", "overbuild", "improvement"], x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt, replace_improvement: StrictBool = False) -> dict[str, Any]:
     """Append one explicitly acknowledged advanced placement/repair, never purchase or complete it."""
     if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item or

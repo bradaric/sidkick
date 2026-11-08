@@ -5,15 +5,16 @@ const {test} = require('node:test');
 const OPS = {found: 'UNITOPERATION_FOUND_CITY',found_adjacent:'UNITOPERATION_FOUND_CITY_ADJACENT_PLOT',foreign_spread:'UNITOPERATION_SPREAD_RELIGION', excavate: 'UNITOPERATION_EXCAVATE', research: 'UNITOPERATION_RESEARCH_ARTIFACTS', spread: 'UNITOPERATION_SPREAD_RELIGION', great_person: 'UNITCOMMAND_ACTIVATE_GREAT_PERSON', resettle: 'UNITCOMMAND_RESETTLE'};
 function run(o = {}, script = 'local_civilian_action.js') {
   const calls = [], kind = o.kind ?? 'found', operation = OPS[kind];
+  const location = o.location ?? {x: 3, y: 3};
   const founding=['found','found_adjacent'].includes(kind),foreignSpread=kind==='foreign_spread';
   const unit = {id: {owner: 0, id: 10, type: 26}, type: 100, isOnMap: true, isEmbarked: Boolean(o.embarked), isCommanderUnit: false,
     operationQueueSize: o.queued ? 1 : o.applied && ['excavate','research'].includes(kind) ? 1 : 0, getOperationType: () => o.applied ? 500 : -1,
-    location: {x: 3, y: 3}, Movement: {movementMovesRemaining: 2}};
-  const city = {id: {owner: foreignSpread?1:0, id: 7, type: 1},owner:foreignSpread?1:0, location: {x: kind==='found_adjacent'?4:3, y: 3}, population: o.applied ? 6 : 5, pendingPopulation: 0};
+    location, Movement: {movementMovesRemaining: 2}};
+  const city = {id: {owner: foreignSpread?1:0, id: 7, type: 1},owner:foreignSpread?1:0, location: kind==='found_adjacent'?{x:4,y:3}:location, population: o.applied ? 6 : 5, pendingPopulation: 0};
   if(foreignSpread)Object.defineProperty(city,'population',{get(){throw Error('Foreign population must not be read');}});
   const def = {UnitType: 'UNIT_TEST', FoundCity: founding, ExtractsArtifacts: ['excavate','research'].includes(kind), SpreadCharges: ['spread','foreign_spread'].includes(kind) ? 3 : 0};
   const ctx = {queryArguments: {kind, unit_id: 10, expected_turn: 62, ability: null, unit_type: 100, component_type: 26,
-      operation, operation_hash: 500, command: ['great_person','resettle'].includes(kind), args: {X: 3, Y: 3, UnitAbilityType: -1}, location: {x: 3, y: 3},
+      operation, operation_hash: 500, command: ['great_person','resettle'].includes(kind), args: {X: location.x, Y: location.y, UnitAbilityType: -1}, location,
        baseline_cities: [], before_charges: 3, before_research: 0, continent: 1, source_city_id: 7, before_population: 5, before_pending_population: 0,
        ...(kind==='found_adjacent'?{x:4,y:3,location:{x:4,y:3}}:{}),...(foreignSpread?{target_player:1,target_city_id:7}:{}),...o.args},
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => Boolean(o.sent)},
@@ -43,6 +44,18 @@ test('fixed local civilian activities use exact owned current tile and one nativ
     const r=run({kind}); assert.equal(r.data.status,'submitted',kind); assert.equal(r.calls.at(-1).op,OPS[kind]);
     assert.equal(run({kind,applied:true},'local_civilian_state.js').data.activityObserved,true,kind);
   }
+});
+test('found at (4,9) uses the tile beneath the Settler, not adjacent founding or a movement workaround', () => {
+  const location = {x: 4, y: 9};
+  const {data, calls} = run({kind: 'found', location});
+  assert.equal(data.status, 'submitted');
+  assert.deepEqual(calls.filter(call => call.kind === 'send'), [{kind: 'send',
+    id: {owner: 0, id: 10, type: 26}, op: 'UNITOPERATION_FOUND_CITY', args: {X: 4, Y: 9, UnitAbilityType: -1}}]);
+  assert.ok(calls.every(call => call.op === 'UNITOPERATION_FOUND_CITY'));
+  const after = run({kind: 'found', location, applied: true}, 'local_civilian_state.js').data;
+  assert.equal(after.activityObserved, true);
+  assert.equal(after.unitConsumed, true);
+  assert.deepEqual(after.newSettlements[0].location, location);
 });
 test('adjacent founding is a fixed native offered adjacent plot, foreign spread binds exact visible city without private reads',()=>{
  const r=run({kind:'found_adjacent',embarked:true});assert.equal(r.data.status,'submitted');assert.deepEqual(r.calls.at(-1).args,{X:4,Y:3});
