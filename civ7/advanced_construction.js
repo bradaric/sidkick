@@ -12,15 +12,24 @@
   const city = matches[0], def = GameInfo.Constructibles.lookup(item), klass = intent === "wonder" ? "WONDER" : intent === "improvement" ? "IMPROVEMENT" : "BUILDING";
   if (def?.ConstructibleType !== item || !Number.isInteger(def.$hash) || (intent === "repair" ? !["BUILDING", "IMPROVEMENT", "WONDER"].includes(def.ConstructibleClass) || def.Repairable !== true : def.ConstructibleClass !== klass)) return reject("Exact constructible class/intent is not supported");
   const plot = GameplayMap.getIndexFromLocation({x, y}), l = Number.isInteger(plot) && plot >= 0 ? GameplayMap.getLocationFromIndex(plot) : null;
-  function ownedTile() {
-    const owner = MapCities.getCity(x, y);
-    return l?.x === x && l?.y === y && GameplayMap.getRevealedState(playerId, x, y) === RevealedStates.VISIBLE && GameplayMap.getOwner(x, y) === playerId &&
-      owner?.owner === playerId && owner.id === city.id.id && owner.type === city.id.type;
+  function tileOwnership() {
+    if (l?.x !== x || l?.y !== y || GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE) return null;
+    const owner = GameplayMap.getOwner(x, y), assigned = MapCities.getCity(x, y);
+    if (owner === playerId && assigned?.owner === playerId && assigned.id === city.id.id && assigned.type === city.id.type) {
+      return {owner, city: {owner: assigned.owner, id: assigned.id, type: assigned.type}, requiresExpansion: false};
+    }
+    const noPlayer = typeof PlayerIds !== "undefined" ? PlayerIds.NO_PLAYER : null;
+    if (!["wonder", "improvement"].includes(intent) || !Number.isInteger(noPlayer) || noPlayer >= 0 ||
+        ![playerId, noPlayer].includes(owner) || !(assigned === null ||
+          assigned?.owner === noPlayer && assigned.id === -1 && assigned.type === 0)) return null;
+    return {owner, city: assigned === null ? null : {owner: assigned.owner, id: assigned.id, type: assigned.type}, requiresExpansion: true};
   }
+  const ownership = tileOwnership();
+  if (!ownership) return reject("Placement tile must be visible and assigned to this city, or an unassigned non-foreign expansion site");
   function tileState() {
-    if (!ownedTile()) return null;
+    if (JSON.stringify(tileOwnership()) !== JSON.stringify(ownership)) return null;
     const ids = MapConstructibles.getConstructibles(x, y);
-    if (!Array.isArray(ids) || ids.length > 16) return null;
+    if (!Array.isArray(ids) || ids.length > 16 || ownership.requiresExpansion && ids.length !== 0) return null;
     const records = [];
     for (const id of ids) {
       const c = id.owner === playerId ? Constructibles.getByComponentID(id) : null;
@@ -31,7 +40,10 @@
     return new Set(records.map(r => `${r.componentType}:${r.instanceId}`)).size === records.length ? records : null;
   }
   const tile = tileState(), queue = city.BuildQueue.getQueue();
-  if (!tile || JSON.stringify(tile) !== token || !Array.isArray(queue) || queue.length >= 64) return reject("Tile token is stale/unknown or production queue is unavailable/full");
+  if (tile === null) return reject("Target tile constructible state is unavailable or invalid");
+  if (JSON.stringify(tile) !== token) return reject("Tile token is stale; refresh building placements");
+  if (!Array.isArray(queue)) return reject("Production queue is unavailable");
+  if (queue.length >= 64) return reject("Production queue is full");
   if (intent === "repair") {
     if (tile.filter(c => c.type === def.$hash && c.complete && c.damaged).length !== 1) return reject("Repair requires one exact completed damaged instance of the selected type on this tile");
   } else {
@@ -48,9 +60,11 @@
   const args = {ConstructibleType: def.$hash, X: x, Y: y, InsertMode: CityOperationsParametersValues.Append};
   const blocked = c => c?.Success !== true || c.RequiresConfirmation === true || c.InQueue || c.InProgress || c.MoveToNewLocation || c.InsufficientFunds ||
     (intent !== "repair" && (c.RepairDamaged || c.AlreadyExists));
-  const before = {turn: Game.turn, age: Game.age, playerId, cityId: city.id.id, componentType: city.id.type, queue: JSON.parse(JSON.stringify(queue)), tile};
+  const before = {turn: Game.turn, age: Game.age, playerId, cityId: city.id.id, componentType: city.id.type, queue: JSON.parse(JSON.stringify(queue)), tile, ownership};
   const general = Game.CityOperations.canStart(city.id, CityOperationTypes.BUILD, {ConstructibleType: def.$hash, InsertMode: args.InsertMode}, false);
-  if (blocked(general) || ![...(general.Plots ?? []), ...(general.ExpandUrbanPlots ?? [])].includes(plot) || (intent === "repair" && general.RepairDamaged !== true)) return reject("Exact native construction/repair plot or intent is not offered", general?.FailureReasons ?? []);
+  if (blocked(general) || ![...(general.Plots ?? []), ...(general.ExpandUrbanPlots ?? [])].includes(plot) ||
+      (ownership.requiresExpansion && !(general.ExpandUrbanPlots ?? []).includes(plot)) ||
+      (intent === "repair" && general.RepairDamaged !== true)) return reject("Exact native construction/repair plot or intent is not offered", general?.FailureReasons ?? []);
   const check = Game.CityOperations.canStart(city.id, CityOperationTypes.BUILD, args, false);
   if (blocked(check)) return reject("Selected native advanced construction failed or requires confirmation", check?.FailureReasons ?? []);
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||

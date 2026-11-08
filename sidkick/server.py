@@ -937,7 +937,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="append_civ7_advanced_construction", title="Queue advanced Civ VII construction",
             description=("CHANGE GAME STATE: append one exact item/settlement/x/y with explicit "
                          "construction_intent wonder/repair/overbuild/improvement, fresh building-placement "
-                         "targetToken as target_token and expected_turn. Owned visible city tile, exact "
+                         "targetToken as target_token and expected_turn. Visible owned city tile, or for "
+                         "wonder/improvement an empty unassigned non-foreign tile explicitly offered in "
+                         "native ExpandUrbanPlots; ownership must stay unchanged. Exact "
                          "constructible class, known tile ledger, native offered/selected BUILD/Append and "
                          "matching intent required. Repair binds one damaged completed instance; overbuild "
                          "binds one intact old building to the native replacement preview. Wonder/improvement "

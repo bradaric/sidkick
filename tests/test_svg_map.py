@@ -118,8 +118,10 @@ class SvgRenderingTests(unittest.TestCase):
         self.assertFalse(root.findall('.//s:script', ns))
         self.assertFalse(root.findall('.//s:image', ns))
         self.assertIn('North', svg)
-        self.assertIn('#b9884f', svg)
-        self.assertIn('#a8aeb8', svg)
+        self.assertEqual(root.find('.//s:g[@data-x="2"]/s:polygon', ns).attrib['fill'], '#3f7d46')
+        self.assertEqual(root.find('.//s:g[@data-x="3"]/s:polygon', ns).attrib['fill'], '#9b7653')
+        legend_colors = {node.attrib['fill'] for node in root.findall('s:rect', ns)}
+        self.assertTrue({'#3f7d46', '#9b7653'} <= legend_colors)
         self.assertIn('FOG', svg)
         self.assertIn('&lt;script&gt;', svg)
         self.assertIn('&amp;', svg)

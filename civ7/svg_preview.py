@@ -12,8 +12,8 @@ PREVIEW_NAME = "sidkick-map.svg"
 PREVIEW_URL = f"http://127.0.0.1:8765/{PREVIEW_NAME}"
 TERRAINS = {
     "TERRAIN_FLAT": ("#6caa70", "LAND", ""),
-    "TERRAIN_HILL": ("#b9884f", "HILLS", "^^"),
-    "TERRAIN_MOUNTAIN": ("#a8aeb8", "MTN", "M"),
+    "TERRAIN_HILL": ("#3f7d46", "HILLS", "^^"),
+    "TERRAIN_MOUNTAIN": ("#9b7653", "MTN", "M"),
     "TERRAIN_COAST": ("#57b9cc", "COAST", "~~"),
     "TERRAIN_OCEAN": ("#24568f", "OCEAN", "~~"),
     "TERRAIN_NAVIGABLE_RIVER": ("#348fbe", "RIVER", "="),

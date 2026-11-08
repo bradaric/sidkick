@@ -1436,7 +1436,13 @@ Live typed synthetic Tank melee dealt48 damage; Frigate shore fire dealt25. No
 attack/damage effect forced. **208 Python / 378 Node pass; tools23/82 (59 actions).**
 
 `append_civ7_advanced_construction` queues an explicit Wonder/repair/overbuild/
-improvement intent on an exact visible owned city tile. Requires fresh placement
+improvement intent on an exact visible owned city tile. Wonder/improvement intents
+also support empty, unassigned non-foreign tiles explicitly offered in native
+`ExpandUrbanPlots`; ownership and city assignment must remain unchanged through
+validation. Such construction may claim a new tile. This exception has synthetic
+regression coverage, not positive live execution; the original T26 Hale o Keawe
+ownership state was not recorded. Rejections distinguish tile ownership/state,
+stale tokens and unavailable/full queues. Requires fresh placement
 targetToken, exact native offered/selected Append permission and matching native
 preview or damaged repair instance. Overbuild acknowledges an exact intact old
 building; Wonder/improvement rural replacement additionally needs explicit
