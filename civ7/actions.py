@@ -511,7 +511,7 @@ async def append_advanced_construction(settlement: StrictStr, item: StrictStr, c
     """Append one explicitly acknowledged advanced placement/repair, never purchase or complete it."""
     if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item or
             construction_intent not in ("wonder", "repair", "overbuild", "improvement") or any(type(v) is not int or v < 0 for v in (x, y, expected_turn)) or
-            type(replace_improvement) is not bool or (replace_improvement and construction_intent not in ("wonder", "improvement")) or
+            type(replace_improvement) is not bool or (replace_improvement and construction_intent not in ("wonder", "overbuild", "improvement")) or
             not isinstance(target_token, str) or not target_token or len(target_token) > 100000):
         raise ValueError("Exact city, constructible/intent, tile token and expected turn are required")
     return await _execute_and_verify("advanced_construction.js", {

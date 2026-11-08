@@ -2,7 +2,7 @@
   const {settlement, item, construction_intent: intent, target_token: token, x, y, expected_turn: expectedTurn, replace_improvement: replaceImprovement = false} = queryArguments;
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
   if (typeof settlement !== "string" || !settlement.trim() || typeof item !== "string" || !item || !["wonder", "repair", "overbuild", "improvement"].includes(intent) ||
-      typeof replaceImprovement !== "boolean" || (replaceImprovement && !["wonder", "improvement"].includes(intent)) ||
+      typeof replaceImprovement !== "boolean" || (replaceImprovement && !["wonder", "overbuild", "improvement"].includes(intent)) ||
       typeof token !== "string" || !token || token.length > 100000 || ![x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact city, constructible/intent, tile token and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
@@ -52,7 +52,8 @@
     if (previews.length !== 1) return reject("One exact native placement preview is required");
     const previous = previews[0].overbuiltConstructibleID;
     if (intent === "overbuild" || replaceImprovement) {
-      const old = Number.isInteger(previous) && previous >= 0 ? GameInfo.Constructibles.lookup(previous) : null;
+      // Placement previews identify the old definition by index, not its construction hash.
+      const old = Number.isInteger(previous) && previous >= 0 ? [...GameInfo.Constructibles].find(value => value.$index === previous) : null;
       if (old?.ConstructibleClass !== (replaceImprovement ? "IMPROVEMENT" : "BUILDING") || tile.filter(c => c.type === old.$hash && c.complete && !c.damaged).length !== 1) return reject("Replacement requires one exact known intact old constructible matching the native preview and acknowledged class");
     } else if (previous !== -1) return reject("This intent must not overbuild another constructible");
   }
