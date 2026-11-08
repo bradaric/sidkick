@@ -1653,9 +1653,10 @@ negotiation remains fixture-only. Asset concessions are not supported here.
 including embarked founders; verifies consumed founder/new exact city and old-city
 preservation. `spread_civ7_foreign_religion` binds an exact visible met foreign
 centre under the Missionary and verifies own charge/unit consumption only, without
-reading foreign private effects. Test7077972's native adjacent picker rejected
-before request; current Modern has no Missionary definition. Positive cases remain
-fixture-only; no founding/spread effects forced.
+reading foreign private effects. Target-owner units may share that centre if native
+spread eligibility allows it; third-party stacks remain blocked. Test7077972's
+native adjacent picker rejected before request; current Modern has no Missionary
+definition. Positive cases remain fixture-only; no founding/spread effects forced.
 **234 Python / 421 Node pass; tools23/112 (89 actions).**
 
 `withdraw_civ7_capped_project_support` acknowledges explicit native definition

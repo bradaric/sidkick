@@ -41,14 +41,14 @@
       });
     if (![-1, playerId].includes(GameplayMap.getOwner(location.x, location.y)) && !neutralRuin && !(foreignSpread&&foreignTarget())) return false;
     const ids = MapUnits.getUnits(location.x, location.y);
-    if (!Array.isArray(ids) || ids.some(id => id.owner !== playerId) || !ids.some(id => same(id, unit.id))) return false;
+    if (!Array.isArray(ids) || ids.some(id => id.owner !== playerId && !(foreignSpread && id.owner === queryArguments.target_player)) || !ids.some(id => same(id, unit.id))) return false;
     for (const c of owned.filter(u => u.isCommanderUnit)) {
       const a = typeof Armies !== "undefined" ? Armies.get(c.armyId) : null, ids = a?.owner === playerId ? a.getUnitIds?.() : null;
       if (!Array.isArray(ids) || ids.some(id => same(id, unit.id))) return false;
     }
     return typeof player.Armies?.getUnitReinforcementCommanderId === "function" && player.Armies.getUnitReinforcementCommanderId(unit.id, playerId) === -1;
   }
-  if (!clear()||!foreignTarget()||!adjacentTarget()) return reject("Exact visible source/destination, qualified foreign centre when requested, no foreign stack and known unpacked/nonreinforcing source required");
+  if (!clear()||!foreignTarget()||!adjacentTarget()) return reject("Exact visible source/destination, qualified foreign centre when requested, no foreign stack except target-owner units for foreign spread and known unpacked/nonreinforcing source required");
   const cities = player.Cities.getCities().filter(c => c.id.owner === playerId), cityAt = MapCities.getCity(location.x, location.y);
   const city = cities.find(c => same(c.id, cityAt));
   if (kind === "found" && (GameplayMap.getOwner(location.x, location.y) !== -1 || cityAt && cityAt.owner >= 0)) return reject("Founding requires an unowned tile outside an existing settlement");

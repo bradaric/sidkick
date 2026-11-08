@@ -561,8 +561,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="spread_civ7_foreign_religion",title="Spread religion at exact visible foreign Civ VII centre",
             description=("CHANGE GAME STATE: fixed SPREAD_RELIGION by exact missionary unit_id already at "
                          "target_player/target_city_id currently visible met foreign centre, expected_turn. "
-                         "Ready unembarked unqueued unpacked/nonreinforcing role unit, no foreign stack, "
-                         "known positive native charges and permission without confirmation required. "
+                         "Ready unembarked unqueued unpacked/nonreinforcing role unit; only target-owner "
+                         "foreign units may share the tile. "
+                         "Known positive native charges and permission without confirmation required. "
                          "Verifies own charge/unit consumption only, not complete foreign religion/"
                          "population/yield effects. No private foreign inventory, automatic movement, new "
                          "war or turn advance. One submission; no unknown retry."),
