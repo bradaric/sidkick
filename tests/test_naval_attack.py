@@ -39,6 +39,10 @@ class NavalAttackTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(enabled['naval_attack_civ7_unit'].annotations.idempotent_hint)
         self.assertIn('met peaceful third-party', enabled['naval_attack_civ7_unit'].description)
         self.assertIn('verifies peace', enabled['naval_attack_civ7_unit'].description)
+        self.assertIn('enemy-owned', enabled['naval_attack_civ7_unit'].description)
+        self.assertIn('city-states and major civilizations', enabled['naval_attack_civ7_unit'].description)
+        self.assertNotIn('No civilians, stacks, shore bombardment, city/district attacks, wartime-owned territory',
+                         enabled['naval_attack_civ7_unit'].description)
         with patch('civ7.actions.run_script', new_callable=AsyncMock) as run:
             with self.assertRaises(ValueError): await actions.naval_attack_unit(True, 1, 20, 3, 3, 62)
             with self.assertRaises(ToolError):

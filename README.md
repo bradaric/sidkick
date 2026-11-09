@@ -1186,11 +1186,15 @@ and HP100. Other land armies retain their members.
 
 `naval_attack_civ7_unit(unit_id, target_player, target_unit_id, x, y, expected_turn)`
 uses the distinct native `UNITOPERATION_NAVAL_ATTACK` picker and selected check.
-Initial scope is a ready deployed unqueued unpacked nonreinforcing naval combat
-ship against one exact visible hostile naval combat ship on an own/unowned
-non-district water tile, in an existing met war. Native naval offered plots do not
+Scope is a ready deployed unqueued unpacked nonreinforcing naval combat
+ship against one exact visible hostile naval combat ship on a non-district water
+tile, in an existing met war. Own/unowned, enemy-owned and known third-party
+waters are supported equally for city-states and major civilizations. Foreign
+owners require met status and known war/peace state; ownership and diplomacy are
+bound and rechecked before submission. For neutral water owners, verified success
+also requires `after.neutralTerritoryPeacePreserved=true`. Native naval offered plots do not
 need the generic ranged picker's Modifiers. Existing land attack behavior is unchanged.
-No shore bombardment, civilian/stack/district/city targets, enemy territory, new war
+No shore bombardment, civilian/stack/district/city targets, new war
 or turn advancement. Verification retains primary-target attack consumption/loss
 plus visible damage/departure, with exact native-event kill confirmation through
 the default radius-1 observer described above; not complete splash effects.
