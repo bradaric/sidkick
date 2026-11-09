@@ -500,6 +500,24 @@ war declaration, native submission retry or turn advancement was issued. All
 three approved actions are now live-verified and manually confirmed, including
 the final Scout inspection.
 
+#### Triumph completion popup closure
+
+`get_civ7_turn_context.triumphPopup` reports the currently visible Triumph
+completion popup, its rendered title/body and a fresh `popupToken` when native
+Close is safely available. It is separate from `NOTIFICATION_LEGACY_COMPLETED`:
+activating those notifications opens the Legacies screen, not this popup.
+
+`close_civ7_triumph_popup(popup_token, expected_turn)` presses only the sole
+native Close control, using its `engine-input` accept/FINISH event. It rejects
+stale, absent, ambiguous, hidden, disabled or covered controls and requires an
+active single-player GameStarted turn with auto-end-turn disabled. Readback
+verifies that the **captured DOM popup detached**, with unchanged Gold/Influence
+and turn/Age/player. Another queued popup may appear, even with identical text;
+the tool never closes that next popup. No notification dismissal, opening UI,
+reward selection, spending, turn advancement or automatic retry after unknown/
+cancelled results. Discovery is live-read-verified; positive closing is
+fixture-tested only. No popup was closed during implementation.
+
 #### Town-focus reminder acknowledgement
 
 `acknowledge_civ7_town_focus_reminder(notification_id, component_type, expected_turn)`

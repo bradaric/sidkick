@@ -135,6 +135,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "save_civ7_game", "load_civ7_game",
             "acknowledge_civ7_espionage_report", "pay_civ7_call_to_arms",
             "acknowledge_civ7_town_focus_reminder",
+            "close_civ7_triumph_popup",
             "edit_civ7_dedication",
             "select_civ7_technology", "select_civ7_civic", "set_civ7_policy_active",
             "assign_civ7_resource",

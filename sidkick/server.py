@@ -29,6 +29,7 @@ from civ7.actions import (
     acknowledge_agenda,
     acknowledge_advisor_warning,
     acknowledge_town_focus,
+    close_triumph_popup,
     acknowledge_espionage_report,
     append_city_production,
     assign_resource,
@@ -1612,6 +1613,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             structured_output=True,
         )(acknowledge_town_focus)
         server.tool(
+            name="close_civ7_triumph_popup", title="Close one exact visible Civ VII Triumph popup",
+            description=("CHANGE UI STATE: press only native Close on the exact currently visible Triumph completion "
+                         "popup. Required popup_token comes from fresh get_civ7_turn_context.triumphPopup.popupToken, "
+                         "plus expected_turn. Binds full rendered popup/card text, sole native Close button and captured "
+                         "DOM identity; rejects absent/ambiguous/hidden/disabled/covered controls, stale tokens, multiplayer, "
+                         "loading and auto-end-turn. Sends one native engine-input accept/FINISH event, not generic click, "
+                         "action-activate, notification dismissal or backend operation. Verifies captured popup detached "
+                         "and own Gold/Influence unchanged in the same turn/Age/player. A next queued popup may appear; "
+                         "it is not closed. No opening popups/Legacies screens, reward selection, spending or turn advance. "
+                         "Submits once, polls read-only up to2s. Requires user authorization to close this popup. "
+                         "Unknown/cancelled outcomes are never automatically retried."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(close_triumph_popup)
+        server.tool(
             name="acknowledge_civ7_espionage_report", title="Continue one Civ VII espionage report",
             description=("CHANGE GAME/UI STATE: activate exactly one owned NOTIFICATION_DIPLOMATIC_ACTION_ESPIONAGE "
                          "report, wait for its matching native popup and press only Continue. Required notification_id, "
@@ -2282,7 +2298,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "injected rewards/actions, base costs, affordability and read-only eligibility. "
             "Trial-specific choices and runtime cost quotes are unknown. Owned crisis settlement "
             "evidence includes infection, revealed plague durations, damage and happiness/unrest; "
-            "damage cause and numerical crisis yield penalties are not inferred. Never triggers "
+            "damage cause and numerical crisis yield penalties are not inferred. triumphPopup reports the "
+            "currently visible Triumph completion popup, exact rendered popupToken and guarded native Close "
+            "availability for close_civ7_triumph_popup, separate from legacy-completed notifications. Never triggers "
             "events, selects responses or changes turn/UI state."
         ),
         annotations=read_only,

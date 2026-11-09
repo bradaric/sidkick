@@ -893,6 +893,15 @@ async def acknowledge_espionage_report(
                     "reason": "Report acknowledgement is unverified; the popup may remain open. Inspect current state; never retry automatically"}
 
 
+async def close_triumph_popup(popup_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Press native Close once on the exact currently visible Triumph completion popup."""
+    if not isinstance(popup_token, str) or not popup_token or len(popup_token) > 100000 or type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("Fresh exact Triumph popup token and expected turn required")
+    return await _execute_and_verify("close_triumph_popup.js", {
+        "popup_token": popup_token, "expected_turn": expected_turn, "request_id": uuid4().hex,
+    }, "triumph_popup_state.js")
+
+
 async def acknowledge_town_focus(
     notification_id: StrictInt, component_type: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:
