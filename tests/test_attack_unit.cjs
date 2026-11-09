@@ -5,13 +5,16 @@ const vm = require('node:vm');
 const {test} = require('node:test');
 
 function run(o = {}, script = 'attack_unit.js') {
+  const defenderOwner = o.defenderOwner ?? 1;
+  let tileOwner = Object.hasOwn(o, 'tileOwner') ? o.tileOwner : o.enemyTile ? defenderOwner : -1;
+  let neutralWar = o.neutralWar ?? false;
   const calls = [], attacker = {id: {owner: o.foreign ? 1 : 0, id: 10, type: 26}, type: 100,
     isOnMap: !o.offMap, isCommanderUnit: o.commander ?? false, isEmbarked: o.embarked ?? false,
     operationQueueSize: o.queued ? 1 : 0, location: {x: 2, y: 3},
     Health: {damage: 0, maxDamage: 100}, Movement: {movementMovesRemaining: 2},
     Combat: {isCombat: true, canAttack: !o.spent, attacksRemaining: o.spent ? 0 : 1, hasAttacked: o.spent ?? false}};
-  const target = {id: {owner: 1, id: 20, type: 26}, type: 200, isOnMap: true, isCommanderUnit: false,
-    location: {x: 3, y: 3}, Health: {damage: o.damaged ? 30 : 0, maxDamage: 100}, Combat: {isCombat: !o.civilian}};
+  const target = {id: {owner: defenderOwner, id: 20, type: 26}, type: 200, isOnMap: true, isCommanderUnit: false,
+    location: {x: 3, y: 3}, Health: {damage: o.initialTargetDamage ?? (o.damaged ? 30 : 0), maxDamage: 100}, Combat: {isCombat: !o.civilian}};
   const district = {id: {owner: 1, id: 99, type: 4}, owner: 1, type: 500, location: {x: 3, y: 3}, getMaxDamage: 100, getDamage: o.damaged ? 30 : 0};
   const commander = {id: {owner: 0, id: 30, type: 26}, type: 300, isOnMap: true, isCommanderUnit: true,
     operationQueueSize: o.queuedCommander ? 1 : 0, location: {x: 2, y: 2}, armyId: {owner: 0, id: 30, type: 29},
@@ -23,8 +26,9 @@ function run(o = {}, script = 'attack_unit.js') {
   if (o.negativeAttacks) attacker.Combat.attacksRemaining = -1;
   const player = {isTurnActive: !o.inactive, Units: {getUnits: () => [...(o.deadAttacker ? [] : [attacker]), ...(o.secondParticipant ? [second] : []), ...(o.group ? [commander] : [])]},
     Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 10 : -1},
-    Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace}};
-  const args = {unit_id: 10, commander_id: 30, target_player: 1, target_unit_id: 20, x: 3, y: 3, kind: 'melee', attack_kind: 'ranged', expected_turn: 62,
+    Diplomacy: {hasMet: owner => owner === 2 ? o.neutralMetUnknown ? null : !o.neutralUnmet : !o.unmet,
+      isAtWarWith: owner => owner === 2 ? o.neutralWarUnknown ? null : neutralWar : !o.peace}};
+  const args = {unit_id: 10, commander_id: 30, target_player: defenderOwner, target_unit_id: 20, x: 3, y: 3, kind: 'melee', attack_kind: 'ranged', expected_turn: 62,
     attacker_component_type: 26, attacker_type: 100, before_attacks: 1, before_has_attacked: false,
     target_component_type: 26, target_type: 200, before_target_damage: 0, ...o.args};
   const context = {queryArguments: args, UI: {isInGame: () => true},
@@ -33,7 +37,7 @@ function run(o = {}, script = 'attack_unit.js') {
        Units: {lookup: type => ({UnitType: type===300&&o.navalGroup?'UNIT_FLEET_COMMANDER':type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: type === 200 && o.shoreLandTarget ? 'DOMAIN_LAND' : o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
        FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : type === 200 && o.shoreLandTarget ? 'FORMATION_CLASS_LAND_COMBAT' : o.sea ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
-      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.tileOwner ?? (o.enemyTile ? 1 : -1),
+      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => tileOwner,
       isWater: x => o.shoreSource ? x === 2 : o.waterTarget ?? o.sea ?? false},
     RevealedStates: {VISIBLE: 2}, Visibility: {isVisible: () => !o.invisible},
     MapCities: {getCity: () => o.noCity ? null : {owner: 1, id: 9, type: 1},
@@ -59,6 +63,8 @@ function run(o = {}, script = 'attack_unit.js') {
         if (o.changed) context.Game.turn++;
         if (o.changedTarget) target.Health.damage++;
         if (o.changedDistrict) district.getDamage++;
+        if (o.changedNeutralWar) neutralWar = !o.neutralWar;
+        if (o.changedTileOwner) tileOwner = o.changedTileOwnerTo ?? 0;
         return {Success: !o.blocked, RequiresConfirmation: o.confirm ?? false,
           Plots: o.unreachable ? [] : [33], ...(o.noModifiers ? {} : {Modifiers: [o.blockedPlot ? 8 : 9]})};
        }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
@@ -68,10 +74,21 @@ function run(o = {}, script = 'attack_unit.js') {
     context.engine={on:(name,cb)=>{(listeners[name]??=[]).push(cb);return{clear:()=>{listeners[name]=listeners[name].filter(c=>c!==cb);}};}};
     context.MapUnits.getUnits=(x,y)=>x===2&&y===3?[attacker.id]:x===3&&y===3&&!gone?[target.id]:[];
     context.combatObserver=vm.runInNewContext(fs.readFileSync('civ7/combat_observation.js','utf8'),context);
+    if (o.warDuringObservation || o.ownerDuringObservation) {
+      const capture = context.combatObserver.capture;
+      context.combatObserver.capture = (...args) => {
+        const result = capture(...args);
+        if (o.warDuringObservation) neutralWar = !o.neutralWar;
+        if (o.ownerDuringObservation) tileOwner = 0;
+        return result;
+      };
+    }
     context.Game.UnitOperations.sendRequest=(id,operation,args)=>{
-      calls.push({kind:'send',id,operation,args});attacker.Combat.attacksRemaining=0;target.Health.damage=30;district.getDamage=30;
+      calls.push({kind:'send',id,operation,args});attacker.Combat.attacksRemaining=0;target.Health.damage+=30;district.getDamage=30;
+      if (o.warAfterSend) neutralWar = true;
       for(const cb of listeners.Combat??[])cb({attacker:attacker.id,defender:target.id});
       if(o.nativeKill){for(const cb of listeners.UnitKilledInCombat??[])cb({unitKiller:attacker.id,unitKilled:target.id});gone=true;}
+      if(o.departed)gone=true;
     };
     if(o.group)context.Game.UnitCommands.sendRequest=(id,command,args)=>{
       calls.push({kind:'commandSend',id,command,args});target.Health.damage=30;
@@ -91,6 +108,32 @@ test('observed field strikes keep native single submission and attribute primary
  const damaged=run({observe:true});assert.equal(damaged.data.status,'submitted');assert.ok(damaged.data.verificationArguments.observation_token);assert.equal(damaged.after.killConfirmed,null);assert.equal(damaged.after.combatObservation.units.find(u=>u.instanceId===20).damageDelta,30);
  const killed=run({observe:true,nativeKill:true});assert.equal(killed.after.killConfirmed,true);assert.equal(killed.after.combatObservation.closed,true);assert.equal(killed.calls.filter(c=>c.kind==='send').length,1);
  const inFlight=run({observe:true,deferQuiet:true});assert.equal(inFlight.after.attackObserved,true);assert.equal(inFlight.after.observationQuiescent,false);assert.equal(inFlight.after.combatObservation.closed,false,'first primary damage must not close event capture while native group effects may still resolve');
+});
+test('all ordinary single-unit attack modes confirm native kills but not unexplained departures',()=>{
+ const modes=[
+  {args:{kind:'melee'}}, {args:{kind:'ranged'}},
+  {enemyTile:true,args:{kind:'melee',target_territory:'enemy_field'}},
+  {enemyTile:true,args:{kind:'ranged',target_territory:'enemy_field'}},
+  {sea:true,args:{kind:'naval'}},
+  {sea:true,shoreSource:true,shoreLandTarget:true,enemyTile:true,args:{kind:'shore',target_territory:'enemy_field'}},
+ ];
+ for(const mode of modes)for(const nativeKill of [true,false]){
+  const r=run({...mode,observe:true,nativeKill,departed:true});
+  assert.equal(r.data.status,'submitted');
+  assert.equal(r.data.expected.observationQuiescent,true);
+  assert.equal(r.after.attackObserved,true);
+  assert.equal(r.after.observationQuiescent,true);
+  assert.equal(r.after.targetLeftTile,true);
+  assert.equal(r.after.killConfirmed,nativeKill?true:null);
+  assert.equal(r.after.combatObservation.closed,true);
+  assert.equal(r.calls.filter(c=>c.kind==='send').length,1);
+ }
+});
+test('required observation rejects before attack submission when the observer is unavailable',()=>{
+ const r=run({args:{observe_effects:true,observation_radius:1}});
+ assert.equal(r.data.status,'rejected');
+ assert.match(r.data.reason,/observer is unavailable/);
+ assert.equal(r.calls.filter(c=>c.kind==='send').length,0);
 });
 test('observed district bombardment keeps primary district accounting separate from captured visible garrison deltas',()=>{
  const base={observe:true,district:true,enemyTile:true,args:{district_id:99}};
@@ -159,10 +202,103 @@ test('naval attack uses the distinct native naval operation and its offered plot
   assert.deepEqual(calls.at(-1), {kind: 'send', id: {owner: 0, id: 10, type: 26}, operation: 'UNITOPERATION_NAVAL_ATTACK', args: {X: 3, Y: 3}});
   assert.equal(data.verificationArguments.before_attacks, 1);
   for (const o of [{sea: false}, {waterTarget: false}, {spent: true}, {blocked: true}, {unreachable: true}, {confirm: true},
-    {stacked: true}, {district: true}, {enemyTile: true}, {civilianDefinition: true}, {group: true, packedGroup: true},
+    {stacked: true}, {district: true}, {civilianDefinition: true}, {group: true, packedGroup: true},
     {group: true, unknownArmy: true}, {hidden: true}, {peace: true}, {reinforcing: true}]) {
     const result = run({sea: true, args: {kind: 'naval'}, ...o});
     assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('native naval fire permits an exact wartime ship in met peaceful third-party water and verifies peace', () => {
+  const r = run({sea: true, tileOwner: 2, observe: true, noModifiers: true, args: {kind: 'naval'}});
+  assert.equal(r.data.status, 'submitted');
+  assert.equal(r.data.before.neutralTerritoryOwner, 2);
+  assert.equal(r.data.before.targetTerritory, 'neutral_water');
+  assert.equal(r.data.verificationArguments.neutral_territory_owner, 2);
+  assert.equal(r.data.expected.neutralTerritoryPeacePreserved, true);
+  assert.equal(r.after.neutralTerritoryPeacePreserved, true);
+  assert.equal(r.after.attackObserved, true);
+  assert.deepEqual(r.calls.filter(c => c.kind === 'send'), [{kind: 'send', id: {owner: 0, id: 10, type: 26},
+    operation: 'UNITOPERATION_NAVAL_ATTACK', args: {X: 3, Y: 3}}]);
+});
+
+test('city-state Cog on its own water is attackable without treating its owner as neutral', () => {
+  const r = run({sea: true, defenderOwner: 9, enemyTile: true, initialTargetDamage: 41, observe: true, args: {kind: 'naval'}});
+  assert.equal(r.data.status, 'submitted');
+  assert.equal(r.data.before.targetTileOwner, 9);
+  assert.equal(r.data.before.targetTerritory, 'enemy_water');
+  assert.equal(r.data.verificationArguments.target_player, 9);
+  assert.equal(r.data.verificationArguments.before_target_damage, 41);
+  assert.equal('neutral_territory_owner' in r.data.verificationArguments, false);
+  assert.equal('neutralTerritoryPeacePreserved' in r.data.expected, false);
+  assert.equal('neutralTerritoryPeacePreserved' in r.after, false);
+  assert.equal(r.after.attackObserved, true);
+  assert.equal(r.calls.filter(c => c.kind === 'send').length, 1);
+});
+
+test('naval ownership matrix supports major and city-state defenders in all known water ownership cases', () => {
+  for (const defenderOwner of [1, 9]) {
+    for (const owner of [{tileOwner: -1}, {tileOwner: 0}, {tileOwner: defenderOwner},
+      {tileOwner: 2}, {tileOwner: 2, neutralWar: true}]) {
+      const r = run({sea: true, defenderOwner, observe: true, args: {kind: 'naval'}, ...owner});
+      assert.equal(r.data.status, 'submitted', JSON.stringify({defenderOwner, ...owner}));
+      assert.equal(r.data.before.targetTileOwner, owner.tileOwner);
+      assert.equal(r.after.attackObserved, true);
+      assert.equal(r.after.observationQuiescent, true);
+      const neutral = owner.tileOwner === 2 && !owner.neutralWar;
+      assert.equal('neutral_territory_owner' in r.data.verificationArguments, neutral);
+      assert.equal('neutralTerritoryPeacePreserved' in r.data.expected, neutral);
+      assert.equal(r.calls.filter(c => c.kind === 'send').length, 1);
+    }
+  }
+});
+
+test('naval ownership checks reject unknown diplomacy, changed context and unsupported attack kinds', () => {
+  for (const extra of [{neutralUnmet: true}, {neutralMetUnknown: true}, {neutralWarUnknown: true},
+    {changedNeutralWar: true}, {changedTileOwner: true}, {observe: true, warDuringObservation: true},
+    {tileOwner: -2}, {tileOwner: 2.5}, {tileOwner: true}, {tileOwner: null}, {tileOwner: undefined},
+    {confirm: true}, {unreachable: true}, {blocked: true}, {peace: true}, {stacked: true}, {wrongDefender: true},
+    {district: true}, {undefendedDistrict: true}, {waterTarget: false}, {shoreLandTarget: true}, {hidden: true},
+    {args: {kind: 'ranged'}}, {args: {kind: 'melee'}}, {args: {kind: 'shore', target_territory: 'enemy_field'}}]) {
+    const r = run({sea: true, tileOwner: 2, args: {kind: 'naval'}, ...extra});
+    assert.equal(r.data.status, 'rejected', JSON.stringify(extra));
+    assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('enemy-owned naval targets retain all combat safeguards and bind ownership and diplomacy through observation', () => {
+  for (const owner of [{tileOwner: 9}, {tileOwner: 2, neutralWar: true}]) {
+    for (const extra of [{peace: true}, {unmet: true}, {hidden: true}, {invisible: true}, {stacked: true},
+      {district: true}, {undefendedDistrict: true}, {waterTarget: false}, {shoreLandTarget: true},
+      {wrongDefender: true}, {civilianDefinition: true}, {confirm: true}, {blocked: true}, {unreachable: true},
+      {changedTileOwner: true}, {observe: true, ownerDuringObservation: true}]) {
+      const r = run({sea: true, defenderOwner: 9, args: {kind: 'naval'}, ...owner, ...extra});
+      assert.equal(r.data.status, 'rejected', JSON.stringify({owner, extra}));
+      assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
+    }
+  }
+  for (const extra of [{changedNeutralWar: true}, {observe: true, warDuringObservation: true}]) {
+    const r = run({sea: true, tileOwner: 2, neutralWar: true, args: {kind: 'naval'}, ...extra});
+    assert.equal(r.data.status, 'rejected');
+    assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
+  }
+  const changedOwnWater = run({sea: true, tileOwner: 0, changedTileOwner: true, changedTileOwnerTo: 1, args: {kind: 'naval'}});
+  assert.equal(changedOwnWater.data.status, 'rejected');
+  assert.equal(changedOwnWater.calls.filter(c => c.kind === 'send').length, 0);
+});
+
+test('neutral-water combat readback reports a new war instead of verifying preserved peace', () => {
+  const r = run({sea: true, tileOwner: 2, observe: true, warAfterSend: true, args: {kind: 'naval'}});
+  assert.equal(r.data.status, 'submitted');
+  assert.equal(r.after.attackObserved, true);
+  assert.equal(r.after.neutralTerritoryPeacePreserved, false);
+  assert.equal(r.calls.filter(c => c.kind === 'send').length, 1);
+  for (const owner of [0, 1, -1, true, null]) {
+    assert.throws(() => run({args: {neutral_territory_owner: owner}}, 'unit_attack_state.js'), /neutral.*owner/i);
+  }
+  for (const extra of [{neutralMetUnknown: true}, {neutralWarUnknown: true}]) {
+    const state = run({...extra, args: {neutral_territory_owner: 2}}, 'unit_attack_state.js');
+    assert.equal(state.data.neutralTerritoryPeacePreserved, false);
   }
 });
 

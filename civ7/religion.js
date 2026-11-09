@@ -110,6 +110,39 @@
     return {id: def.ReligionType, name: displayName, founder};
   }
 
+  function currentSettlement(unit, deployed) {
+    const empty = status => ({status, settlement: null});
+    if (!deployed || unit.isOnMap !== true || unit.isDead === true) return empty("withheld");
+    if (typeof MapCities === "undefined" || typeof MapCities?.getCity !== "function" ||
+        typeof Cities === "undefined" || typeof Cities?.get !== "function" ||
+        typeof RevealedStates === "undefined" || !Number.isInteger(RevealedStates?.VISIBLE) ||
+        typeof GameplayMap.getRevealedState !== "function") return empty("unavailable");
+    const valid = location => location && Number.isInteger(location.x) && Number.isInteger(location.y) &&
+      location.x >= 0 && location.y >= 0 && location.x < GameplayMap.getGridWidth() && location.y < GameplayMap.getGridHeight();
+    const same = (a, b) => a?.owner === b?.owner && a?.id === b?.id && a?.type === b?.type;
+    try {
+      if (GameplayMap.getRevealedState(id, unit.location.x, unit.location.y) !== RevealedStates.VISIBLE) return empty("withheld");
+      const component = MapCities.getCity(unit.location.x, unit.location.y);
+      if (component == null) return empty("none");
+      if (![component.owner, component.id, component.type].every(value => Number.isInteger(value) && value >= 0)) return empty("unverified");
+      if (component.owner !== id && player.Diplomacy.hasMet(component.owner) !== true) return empty("withheld");
+      const city = Cities.get(component), centre = city?.location;
+      if (!city || city.isValid === false || city.owner !== component.owner || !same(city.id, component) || !valid(centre)) return empty("unverified");
+      // A visible district alone does not expose a fogged centre's current religion.
+      if (GameplayMap.getRevealedState(id, centre.x, centre.y) !== RevealedStates.VISIBLE) return empty("withheld");
+      if (!same(MapCities.getCity(centre.x, centre.y), component)) return empty("unverified");
+      const faith = city.Religion;
+      const types = [faith?.majorityReligion, faith?.urbanReligion, faith?.ruralReligion];
+      // -1 is the native no-religion sentinel; missing/unresolved data is not absence.
+      if (types.some(type => !Number.isInteger(type) || type !== -1 && !GameInfo.Religions.lookup(type))) return empty("unavailable");
+      return {status: "identified", settlement: {
+        id: {owner: component.owner, id: component.id, type: component.type}, name: name(city.name),
+        location: {x: centre.x, y: centre.y}, isLocal: component.owner === id,
+        majority: religionInfo(types[0]), urban: religionInfo(types[1]), rural: religionInfo(types[2])
+      }};
+    } catch { return empty("unavailable"); }
+  }
+
   const ownedUnits = player.Units == null ? null : player.Units.getUnits().filter(unit => unit.id.owner === id);
   const packedIds = new Set();
   let packingKnown = true;
@@ -130,8 +163,10 @@
     // Match the action panel's non-target operation check; do not invent arbitrary target previews.
     const result = deployed ? Game.UnitOperations.canStart(unit.id, "UNITOPERATION_SPREAD_RELIGION",
       {X: -9999, Y: -9999, UnitAbilityType: -1}, false) : null;
+    const current = currentSettlement(unit, deployed);
     return {instanceId: unit.id.id, id: def.UnitType, name: name(unit.name ?? def.Name),
       location: deployed ? {x: location.x, y: location.y} : null, baseSpreadCharges: def.SpreadCharges,
+      currentSettlementStatus: current.status, currentSettlement: current.settlement,
       chargesRemaining: result?.ChargesRemaining ?? null, operationAllowed: result ? Boolean(result.Success) : null,
       availableNow: Boolean(result?.Success), failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean),
       additionalDescriptions: (result?.AdditionalDescription ?? []).map(name).filter(Boolean),
@@ -140,7 +175,7 @@
 
   return {
     turn: Game.turn,
-    scope: "Local player, owned settlements and public religion-picker choices; foreign founders identified only when met",
+    scope: "Local player, owned settlements, verified visible current settlements under owned religious units and public religion-picker choices; foreign city owners/founders identified only when met",
     hasCreatedReligion,
     canFoundReligion,
     religion: hasCreatedReligion ? religionInfo(religion.getReligionType()) : null,

@@ -54,6 +54,55 @@ class UnitOrdersAndTurnTests(unittest.IsolatedAsyncioTestCase):
    with self.assertRaises(asyncio.CancelledError):await actions.end_turn(59)
    self.assertEqual(run.await_count,1)
 
+ async def test_end_turn_reports_unit_needing_orders_after_queued_movement_without_resubmission(self):
+  unit={'instanceId':42,'name':'Western Scout','location':{'x':2,'y':3},'movesRemaining':2,'queueSize':0}
+  after={**BEFORE,'active':True,'sent':False,'hasBlocker':False,'blockerName':'NONE',
+         'canStartAny':True,'firstReadyUnitStatus':'identified','firstReadyUnit':unit}
+  with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
+   {'status':'submitted','before':BEFORE}, {**BEFORE,'active':True,'sent':True}, after])as run,patch(
+   'civ7.actions.asyncio.sleep',new_callable=AsyncMock):
+   response=await create_server(enable_writes=True).call_tool('end_civ7_turn',{'expected_turn':59})
+  self.assertFalse(response.is_error)
+  result=response.structured_content
+  self.assertEqual(result['status'],'blocked')
+  self.assertEqual(result['after'],after)
+  for detail in ('did not advance','explicit order','Western Scout','#42','(2, 3)','2 movement'):
+   self.assertIn(detail,result['reason'])
+  self.assertEqual([c.args[0]for c in run.await_args_list],['end_turn.js','turn_state.js','turn_state.js'])
+
+ async def test_end_turn_reports_native_blocker_without_claiming_ready_unit_is_the_cause(self):
+  after={**BEFORE,'active':True,'sent':False,'hasBlocker':True,'blocker':2,'blockerName':'PRODUCTION',
+         'canStartAny':False,'firstReadyUnitStatus':'identified','firstReadyUnit':{'instanceId':42}}
+  with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
+   {'status':'submitted','before':BEFORE},after])as run:
+   result=await actions.end_turn(59)
+  self.assertEqual(result['status'],'blocked')
+  self.assertIn('PRODUCTION',result['reason'])
+  self.assertNotIn('needs an explicit order',result['reason'])
+  self.assertEqual(run.await_count,2)
+
+ async def test_ready_units_do_not_interrupt_submitted_inactive_or_next_turn_readback(self):
+  ready={'hasBlocker':True,'blockerName':'UNITS','canStartAny':True,
+         'firstReadyUnitStatus':'identified','firstReadyUnit':{'instanceId':42}}
+  for transient in ({'active':True,'sent':True},{'active':False,'sent':False}):
+   with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
+    {'status':'submitted','before':BEFORE},{**BEFORE,**ready,**transient},
+    {**BEFORE,**ready,'turn':60,'active':True,'sent':False}])as run,patch(
+    'civ7.actions.asyncio.sleep',new_callable=AsyncMock):
+    result=await actions.end_turn(59)
+   self.assertEqual(result['status'],'verified_applied')
+   self.assertEqual(run.await_count,3)
+
+ async def test_unverified_unit_or_unavailable_permission_does_not_claim_blocked(self):
+  for evidence in ({'canStartAny':True,'firstReadyUnitStatus':'unverified','firstReadyUnit':None},
+                   {'canStartAny':None,'firstReadyUnitStatus':'identified','firstReadyUnit':{'instanceId':42}}):
+   after={**BEFORE,'active':True,'sent':False,'hasBlocker':False,**evidence}
+   with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
+    {'status':'submitted','before':BEFORE},after,TimeoutError])as run:
+    result=await actions.end_turn(59)
+   self.assertEqual(result['status'],'unknown')
+   self.assertEqual(run.await_count,3)
+
  async def test_order_and_turn_tools_are_strict_opt_in_and_mutating(self):
   normal={t.name for t in create_server()._tool_manager.list_tools()}
   tools={t.name:t for t in create_server(enable_writes=True)._tool_manager.list_tools()}

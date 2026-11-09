@@ -8,6 +8,8 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import Icon, ToolAnnotations
 
 from civ7.actions import (
+    save_game,
+    load_game,
     edit_dedication,
     attack_unit,
     army_ranged_attack,
@@ -26,6 +28,7 @@ from civ7.actions import (
     upgrade_army,
     acknowledge_agenda,
     acknowledge_advisor_warning,
+    acknowledge_espionage_report,
     append_city_production,
     assign_resource,
     unassign_resource,
@@ -85,6 +88,7 @@ from civ7.actions import (
     activate_commander_great_person,
     respond_hostile_diplomatic_project,
     respond_first_meet,
+    pay_call_to_arms,
     assign_specialist,
     buy_attribute_node,
     choose_celebration,
@@ -117,6 +121,7 @@ from civ7.actions import (
 )
 from civ7.player import snapshot
 from civ7.queries import (
+    saved_games,
     civilopedia,
     peace_city_offer,
     age_transition,
@@ -185,6 +190,17 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Civilopedia content is unknown, not proof that there is no requirement."
         ),
     )
+    server.tool(
+        name="get_civ7_saved_games", title="List local Civ VII single-player saves",
+        description=("Read local single-player game-state save metadata, including manual, quick and auto saves, "
+                     "from the main menu or a stable loaded single-player game. Bounded limit 1–100 (default50), "
+                     "offset0–10000. Returns exact persistent saveToken/revision, turn, Age, campaign GUID and "
+                     "required-content availability; never reads saved world inventories. Excludes cloud, multiplayer, "
+                     "transition/configuration files, directories and live events. No save/load/delete/sync or UI navigation. "
+                     "Loading requires a fresh token and explicit permission to discard unsaved progress."),
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        structured_output=True,
+    )(saved_games)
     server.tool(
         name="get_civ7_civilopedia", title="Search or read the loaded Civ VII Civilopedia",
         description=(
@@ -328,6 +344,33 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="save_civ7_game", title="Create a new local Civ VII save",
+            description=("WRITE LOCAL SAVE: create one new named single-player game-state save using save_name "
+                         "(1–80 ASCII letters/digits/spaces/_/-, no paths/extensions/reserved names) and fresh expected_turn. "
+                         "Requires active single-player GameStarted turn. Refreshes local inventory and refuses existing names; "
+                         "native Overwrite=false, never quicksave/overwrite/delete/cloud/multiplayer. Submits once, waits up to15s "
+                         "for normal serializer success plus exact new file/turn/Age metadata in unchanged context. "
+                         "Unknown/cancelled outcomes may have saved; inspect get_civ7_saved_games, never retry automatically. "
+                         "Requires explicit user instruction to create this save."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(save_game)
+        server.tool(
+            name="load_civ7_game", title="Load an exact local Civ VII save",
+            description=("DISCARD UNSAVED PROGRESS / CHANGE SESSION: load exactly one listed local single-player save "
+                         "by fresh save_token from get_civ7_saved_games.saves[].saveToken and required "
+                         "confirm_discard_unsaved_progress=true. Requires explicit user approval for this exact load and loss "
+                         "of unsaved progress; the flag alone is not user authorization. Supply current expected_turn in an "
+                         "active single-player GameStarted game; omit only at the main menu. Fresh native local inventory, "
+                         "revision and required-content checks; rejects transitional loading, cloud/multiplayer, ambiguous/stale "
+                         "files, missing/unowned mods and transition/configuration saves. Fixed native loadGame with no server, "
+                         "no sync/deletion/overwrite or auto-Begin. Submits once: status=submitted means native acceptance only, "
+                         "loadCompleted=false, not verified completion. Wait for loading/Begin and refresh gameplay evidence. "
+                         "Timeout/disconnection/cancellation may follow a successful load; never retry automatically."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(load_game)
         server.tool(
             name="edit_civ7_dedication", title="Edit one Civ VII Dedication selection",
             description=(
@@ -548,7 +591,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         )(withdraw_capped_project_support)
         server.tool(
             name="found_civ7_adjacent_settlement",title="Found exact native-offered adjacent Civ VII settlement",
-            description=("CHANGE GAME STATE: fixed FOUND_CITY_ADJACENT_PLOT by exact ready founder unit_id "
+            description=("CHANGE GAME STATE: adjacent-tile founding only. To found under the Settler at its "
+                         "current tile, use perform_civ7_local_civilian_action with kind=found; do not move the "
+                         "Settler solely as a workaround. Fixed FOUND_CITY_ADJACENT_PLOT by exact ready founder unit_id "
                          "at adjacent visible empty unowned land x/y with expected_turn. Source may be "
                          "embarked, but must be visible own/unowned, unqueued/unpacked/nonreinforcing with "
                          "no foreign stack. Native offered/selected permission required. Verifies consumed "
@@ -561,8 +606,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="spread_civ7_foreign_religion",title="Spread religion at exact visible foreign Civ VII centre",
             description=("CHANGE GAME STATE: fixed SPREAD_RELIGION by exact missionary unit_id already at "
                          "target_player/target_city_id currently visible met foreign centre, expected_turn. "
-                         "Ready unembarked unqueued unpacked/nonreinforcing role unit, no foreign stack, "
-                         "known positive native charges and permission without confirmation required. "
+                         "Ready unembarked unqueued unpacked/nonreinforcing role unit; only target-owner "
+                         "foreign units may share the tile. "
+                         "Known positive native charges and permission without confirmation required. "
                          "Verifies own charge/unit consumption only, not complete foreign religion/"
                          "population/yield effects. No private foreign inventory, automatic movement, new "
                          "war or turn advance. One submission; no unknown retry."),
@@ -873,8 +919,10 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(resettle_migrant)
         server.tool(
-            name="perform_civ7_local_civilian_action", title="Perform current-tile Civ VII civilian activity",
-            description=("CHANGE GAME STATE: fixed kind found/excavate/research/spread/great_person/resettle "
+            name="perform_civ7_local_civilian_action", title="Found a current-tile settlement or perform Civ VII civilian activity",
+            description=("CHANGE GAME STATE: kind=found performs Found Settlement directly under the Settler "
+                         "at its current tile; no x/y or movement is needed. Fixed kinds "
+                         "found/excavate/research/spread/great_person/resettle "
                          "by exact unit_id at its current visible own/unowned tile with fresh expected_turn. "
                          "Optional exact ability must be linked to that fixed native operation/command. "
                          "Requires ready deployed unembarked unqueued role-eligible unpacked/nonreinforcing "
@@ -936,11 +984,15 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="append_civ7_advanced_construction", title="Queue advanced Civ VII construction",
             description=("CHANGE GAME STATE: append one exact item/settlement/x/y with explicit "
                          "construction_intent wonder/repair/overbuild/improvement, fresh building-placement "
-                         "targetToken as target_token and expected_turn. Owned visible city tile, exact "
+                         "targetToken as target_token and expected_turn. Visible owned city tile, or for "
+                         "wonder/improvement an empty unassigned non-foreign tile explicitly offered in "
+                         "native ExpandUrbanPlots; ownership must stay unchanged. Exact "
                          "constructible class, known tile ledger, native offered/selected BUILD/Append and "
                          "matching intent required. Repair binds one damaged completed instance; overbuild "
-                         "binds one intact old building to the native replacement preview. Wonder/improvement "
-                         "may replace one exact intact rural improvement only with replace_improvement=true "
+                         "normally binds one intact old building to the native replacement preview. To place "
+                         "an ordinary building over a rural improvement, use construction_intent=overbuild "
+                         "and replace_improvement=true. Wonder/improvement may also replace one exact intact "
+                         "rural improvement only with replace_improvement=true "
                          "and the matching preview/token; otherwise replacement is rejected. This explicitly "
                          "acknowledges eventual replacement. No purchase, bulk repair or instant completion; verifies only exact "
                          "queue append/placement and preserved prefix, not completion/yields/Wonder ownership. "
@@ -948,6 +1000,20 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(append_advanced_construction)
+        server.tool(
+            name="pay_civ7_call_to_arms", title="Pay Influence to avoid an allied war",
+            description=("CHANGE GAME STATE: pay one pending Call to Arms to preserve the alliance without joining war. "
+                         "Use fresh war_event_id, ally_player_id, opponent_player_id and payment_token from "
+                         "get_civ7_diplomacy.callToArms[].responseOptions[pay_influence].paymentToken, a required "
+                         "max_influence_cost and expected_turn. Single-player, GameStarted active turn only. "
+                         "Requires exactly one allied side, peace with both participants, an active notification-linked "
+                         "public war, unchanged token/quote, native payment permission and sufficient Influence within cap. "
+                         "Spends Influence. Verifies exact own debit, prompt clearance, unchanged Gold and preserved "
+                         "alliance/peace for up to 15 seconds. Does not join war, cancel alliances, dismiss notifications "
+                         "or advance turns. Requires explicit authorization. Submits once; never retry unknown/cancelled calls."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(pay_call_to_arms)
         server.tool(
             name="naval_attack_civ7_land_unit", title="Fire Civ VII ship at coastal land unit",
             description=("CHANGE GAME STATE: fixed native NAVAL_ATTACK from exact ready deployed naval "
@@ -957,7 +1023,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "visible owning centre elsewhere and native offered/selected permission required. "
                          "Non-defensible district unit targets allowed; no landing, district/city entry, "
                          "capture, civilian/stack target or new war. Verifies "
-                         "attack consumption/loss plus primary-target damage/departure, not kill/full splash. "
+                         "attack consumption/loss plus primary-target damage/departure. Bounded radius-1 "
+                         "observation waits for 500ms captured-event quiet; after.killConfirmed is true only "
+                         "for an exact native kill event, otherwise null (unknown). Not full splash accounting. "
                          "One submission,15-second readback, no unknown retry or turn advancement."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -971,7 +1039,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "selected permission required. Positively excludes districts and visible owning "
                          "city centre; no capture, civilian/stack target or new war. Attacker may enter "
                          "the field, take damage or die. Verifies attack consumption/loss and primary-target "
-                         "damage/departure, not a kill/full splash. One submission,15-second readback, no "
+                         "damage/departure. Bounded radius-1 observation waits for 500ms captured-event quiet; "
+                         "after.killConfirmed is true only for an exact native kill event, otherwise null "
+                         "(unknown). Not full splash accounting. One submission,15-second readback, no "
                          "unknown/cancelled retry or turn advancement."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -1174,12 +1244,17 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             description=("CHANGE GAME STATE: one exact native NAVAL_ATTACK by owned unit_id against exact "
                          "wartime target_player/target_unit_id at visible x/y with fresh expected_turn. Both "
                          "must be deployed naval combat ships on water; source must be ready, unqueued, "
-                         "unpacked and nonreinforcing. Target must be alone on an own/unowned non-district "
-                         "water tile. Requires exact native naval offered-plot and selected-target permission, "
+                         "unpacked and nonreinforcing. Target must be alone on a non-district water tile; own/unowned, "
+                         "enemy-owned and known third-party waters are supported for city-states and major civilizations. "
+                         "Foreign owners require met status and known war/peace state. Ownership and diplomacy are bound and "
+                         "rechecked before submission; readback verifies peace with any met peaceful third-party owner "
+                         "(neutralTerritoryPeacePreserved). Requires exact native naval offered-plot and selected-target permission, "
                          "not generic RANGE_ATTACK or guessed range. No civilians, stacks, shore bombardment, "
-                         "city/district attacks, enemy territory, war declaration or turn advancement. "
+                         "city/district attacks, war declaration, confirmation or turn advancement. "
                          "Verifies captured attack consumption/loss plus primary-target damage/departure; "
-                         "not kill statistics or complete secondary effects. Submits once, polls read-only "
+                         "bounded radius-1 observation waits for 500ms captured-event quiet. after.killConfirmed "
+                         "is true only for an exact native kill event, otherwise null (unknown). Not complete "
+                         "secondary effects. Submits once, polls read-only "
                          "for 15 seconds and never retries unknown/cancelled calls."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -1235,9 +1310,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "identified non-centre field whose owning city centre is also visible, no defensible "
                          "district, and exact native ranged-picker/selected-target permission. No third-party "
                          "territory, stacks, civilians, city/district attacks, melee entry/capture, war or turn "
-                         "advancement. Native splash may affect additional enemies; only captured attack "
-                         "consumption/loss and primary-target damage/departure are verified, not kills or "
-                         "complete secondary effects. Submits once; polls read-only for 15 seconds and never "
+                         "advancement. Native splash may affect additional enemies. Verifies captured attack "
+                         "consumption/loss and primary-target damage/departure. Bounded radius-1 observation "
+                         "waits for 500ms captured-event quiet; after.killConfirmed is true only for an exact "
+                         "native kill event, otherwise null (unknown). Not complete secondary effects. "
+                         "Submits once; polls read-only for 15 seconds and never "
                          "retries unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
@@ -1362,9 +1439,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "known unpacked/nonreinforcing attacker and native attack permission. Melee is adjacent; "
                          "ranged requires a native attackable picker plot. No war declaration, city capture, "
                          "embarked/air/group attacks or confirmation bypass. Native splash may also damage "
-                         "adjacent enemies; readback verifies only the primary-target effect. May damage or destroy either unit "
+                         "adjacent enemies; readback does not prove complete secondary effects. May damage or destroy either unit "
                          "and consume movement. Verifies consumed attack/attacker loss plus visible target damage "
-                         "or departure, not a kill, predicted damage or safe outcome. Requires user authorization; "
+                         "or departure. Bounded radius-1 observation waits for 500ms captured-event quiet; "
+                         "after.killConfirmed is true only for an exact native kill event, otherwise null "
+                         "(unknown). No predicted damage or safe outcome claim. Requires user authorization; "
                          "submits once, then polls read-only combat evidence for up to 15 seconds; "
                          "never automatically retries unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
@@ -1437,7 +1516,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="respond_civ7_diplomatic_project", title="Respond to Civ VII cooperative project",
             description=("CHANGE GAME STATE: accept, support or reject one exact incoming action_id from "
                          "get_civ7_diplomacy responseOptions with explicit max_influence_cost and fresh expected_turn. "
-                         "Only Open Borders, Research Collaboration, Cultural Exchange and Local Festival from "
+                         "Only Open Borders, Research Collaboration, Cultural Exchange, Local Festival, "
+                         "Ginseng Agreement and Farmers Market from "
                          "met peaceful major leaders; no wars/demands, espionage or deals. Requires native "
                          "offered response/quote/permission and sufficient Influence; rejects missing costs and "
                          "replacement of an existing different response. Support spends Influence; rejection "
@@ -1514,6 +1594,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             structured_output=True,
         )(acknowledge_advisor_warning)
         server.tool(
+            name="acknowledge_civ7_espionage_report", title="Continue one Civ VII espionage report",
+            description=("CHANGE GAME/UI STATE: activate exactly one owned NOTIFICATION_DIPLOMATIC_ACTION_ESPIONAGE "
+                         "report, wait for its matching native popup and press only Continue. Required notification_id, "
+                         "component_type and report_token come from get_civ7_turn_context.notifications[].id and "
+                         "espionageReport.reportToken; expected_turn must be fresh. Single-player active GameStarted "
+                         "turn with auto-end-turn disabled only. Binds report contents/event and unique rendered body; "
+                         "mismatched/ambiguous panels stop without clicking. Native activation can change UI focus/selection. "
+                         "Verifies report acknowledgement, popup closure and unchanged Gold/Influence. No generic dismissal, "
+                         "Go to Diplomacy, retaliation, new diplomatic decision, spending or explicit turn advance. Opens once, "
+                         "Continues once, polls read-only for up to 15 seconds. Unknown/cancelled outcomes can leave the "
+                         "popup open; inspect state and never automatically retry. Requires explicit acknowledgement authorization."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(acknowledge_espionage_report)
+        server.tool(
             name="choose_civ7_government", title="Choose Civ VII government",
             description=("CHANGE GAME STATE: resolve a pending government choice using an exact current-Age "
                          "government ID and fresh expected_turn. Requires native permission and a government "
@@ -1569,7 +1664,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             description=("CHANGE GAME STATE: submit exactly one active single-player turn using fresh expected_turn. "
                          "Requires no native turn blockers or ready unit needing an order; never skips blockers, "
                          "forces turn completion or selects pending choices. Waits up to 60 seconds for exactly "
-                         "the next active local turn in the same Age/player context. Age transitions/endgame "
+                         "the next active local turn in the same Age/player context. Returns blocked with native "
+                         "blocker/first-ready-unit details if the same turn remains active and needs attention. "
+                         "Age transitions/endgame "
                          "continuation need separate handling. Requires explicit action or bounded sandbox "
                          "authorization. Never automatically retry unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
@@ -1686,6 +1783,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                 "owned city's production queue. Required settlement is its exact displayed name "
                 "(case-insensitive); expected_turn must come from fresh available-decisions evidence. "
                 "Buildings require exact x and y from get_civ7_building_placements with no overbuilding. "
+                "To replace a rural improvement with a building, use append_civ7_advanced_construction "
+                "with construction_intent=overbuild, replace_improvement=true and a fresh target_token. "
                 "Omit x/y for units/projects. Uses native Append and verifies the complete old queue "
                 "prefix plus one matching new tail. No town production/focus changes, wonders, repairs, "
                 "queue deletion/reordering/replacement or turn advancement. Requires the user's exact-action "
@@ -1864,7 +1963,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         description=(
             "Get the local player's religion, selected pantheons and beliefs with effects, "
             "holy city, belief-class slots, and owned settlements' majority, urban and "
-            "rural religions. Distinguishes global belief claimability, picker slot "
+            "rural religions. religiousUnits[].currentSettlement also reports the name, owner-qualified ID "
+            "and majority/urban/rural religions of the city the unit is in, including met foreign cities "
+            "with a currently visible centre. currentSettlementStatus distinguishes identified, none, "
+            "withheld, unverified and unavailable; null city data does not imply no religion. No foreign "
+            "city inventory, population, yields or queues are inspected. Distinguishes global belief claimability, picker slot "
             "availability, choices available now, and choices selectable during founding. "
             "choices.religions lists exact ReligionType IDs, localized definition names, native icon "
             "ID/context references and IconString labels, custom-name requirement flags, public "
@@ -1992,10 +2095,16 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "both x and y, or omit both to inspect the unit's location. Native path turn "
             "labels are retained; paths through hidden tiles are withheld. Settlers include "
             "current/adjacent founding checks; arbitrary future-site legality and new "
-            "settlement yields are unknown. Site evidence includes fresh water, current tile "
+            "settlement yields are unknown. For founding.availableNow at founding.currentLocation, use "
+            "perform_civ7_local_civilian_action with kind=found. Use found_civ7_adjacent_settlement only "
+            "for an available founding.adjacentOptions tile, not for the tile beneath the Settler. "
+            "Site evidence includes fresh water, current tile "
             "yields, nearby revealed resources and owned settlement distances. Separate rail command "
             "eligibility and revealed native rail destination plots are included; rail travel cost "
             "and paths are unknown. Never moves, transports by rail or founds."
+            " Tile ownership is reported as ours/foreign/unowned/unknown with player ID and "
+            "civilization for local/met owners on currently visible tiles only; fogged, hidden, "
+            "unmet or unavailable ownership remains unknown. Ownership does not imply movement permission."
         ),
         annotations=read_only,
         structured_output=True,
@@ -2077,7 +2186,15 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "definitions, native duration quotes, active stages and native event progress/"
             "completion timing, not guaranteed agreement expiry dates. Pending visible incoming "
             "projects include responseOptions with native descriptions, Influence quotes, selectability "
-            "and exact response-operation eligibility; these are not predicted final outcomes. Pending "
+            "and exact response-operation eligibility; these are not predicted final outcomes. "
+            "callToArms separately lists active ally-war notifications and their native join-war, "
+            "stay-neutral (breaking the alliance) and, when offered, paid-neutrality responseOptions, "
+            "with Influence quotes, exact read-only operation checks and both-allies handling. "
+            "Only notification-linked public wars between met majors are inspected; unrelated third-party "
+            "events remain withheld. null means notification APIs are unavailable; entries with unavailable "
+            "details retain null responseOptions. Paid neutrality can include a fresh paymentToken and "
+            "responseTool=pay_civ7_call_to_arms for explicitly authorized capped payment; joining war and "
+            "breaking alliances remain display-only choices here. Pending "
             "firstMeet entries bind actual blocking PLAYER_MET notifications to native greeting costs/"
             "relationship deltas and a fresh notificationToken; availability also requires GameStarted, "
             "not the Begin loading gate. Native permission alone is not a pending choice. Safe secondaryTargets "
@@ -2110,7 +2227,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         name="get_civ7_city_states",
         title="Get Civ VII city-state and independent diplomacy",
         description=(
-            "Get met city-states and met/discovered independent powers, suzerains, current "
+            "Get met city-states and met/discovered independent powers, their native "
+            "specializations (type.id/name, never inferred from names), suzerains, current "
             "bonus effects and eligible bonus choices, local influence, diplomatic action "
             "eligibility and selected-target costs including incorporation, plus your "
             "ongoing befriending progress and support costs. Bonus eligibility is not a "
@@ -2136,7 +2254,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII turn context",
         description=(
             "Get active quests, crisis timing, notifications, deadlines, and Age progress "
-            "for the local player. Includes pending local narrative/crisis response choices, "
+            "for the local player. unitOrders includes the native blocker code/name, "
+            "canStartAny and the exact first-ready owned unit's instanceId/componentId, name, "
+            "location, remaining movement, activity and queue size from the action panel's "
+            "read-only getFirstReadyUnit getter. firstReadyUnitStatus distinguishes identified, "
+            "none, unavailable and unverified. This is one native cycle target, not all blocking "
+            "units; other blockers and unspent movement are distinct. Never selects/cycles units "
+            "or infers an exact queued destination. Includes pending local narrative/crisis response choices, "
             "injected rewards/actions, base costs, affordability and read-only eligibility. "
             "Trial-specific choices and runtime cost quotes are unknown. Owned crisis settlement "
             "evidence includes infection, revealed plague durations, damage and happiness/unrest; "
@@ -2169,7 +2293,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII explored map",
         description=(
             "Get detailed terrain, features, resources, water, rivers, and yields for "
-            "tiles already revealed to the local player. This response can be large."
+            "tiles already revealed to the local player. Includes ownership as ours/foreign/unowned/unknown, "
+            "with player ID and civilization for local/met owners on currently visible tiles only. "
+            "Fogged, unmet or unavailable ownership remains unknown, not unowned. This response can be large."
         ),
         annotations=read_only,
         structured_output=True,
@@ -2188,6 +2314,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "hidden/unknown visibility has ??? at the center and no terrain/entity inspection. "
             "City centres and individually visible on-map units are overlaid/listed only on currently "
             "visible tiles and only for the local player or met owners. No hidden/unmet entity details. "
+            "tiles[].ownership reports ours/foreign/unowned/unknown with local/met owner player ID and "
+            "civilization on visible tiles only; fogged, hidden, unmet or unavailable ownership is unknown. "
+            "Tile ownership is separate from occupants and does not alter the ASCII drawing. "
             "Returns ascii, projection, legend, native bounds, center, coordinates/identities of observed settlements/units, "
             "and entity-lookup coverage. City markers take precedence over unit markers. Missing markers "
             "never prove an empty/safe tile; no movement checks, resources, yields or route predictions. "
@@ -2202,8 +2331,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Read game data only: exact native x,y and optional odd width 1-31 / height 1-21 (default 15x9). "
             "Uses the ASCII map's bounded visibility filters, but renders a colored north-up SVG. Explored "
             "terrain is dimmed/hatched under fog; unknown tiles have no terrain or entity data. Only currently "
-            "visible own/met city centres and individually visible on-map units appear. Escapes all labels; "
-            "no scripts or external assets. Atomically replaces only Sidkick's owned temporary preview file "
+            "visible own/met city centres and individually visible on-map units appear. Single-unit markers "
+            "show health bars/percentages with exact HP on hover; unavailable or stacked health shows ?. "
+            "City markers retain priority; their visible units' HP is hover-only. "
+            "Tile ownership appears on hover and in returned tiles[].ownership as ours/foreign/unowned/unknown, "
+            "with local/met owner player ID and civilization on visible tiles only. Fogged, hidden, unmet "
+            "or unavailable ownership is unknown; terrain colors and entity markers are unchanged. "
+            "Escapes all labels; no scripts or external assets. Atomically replaces only Sidkick's owned temporary preview file "
             "and returns the fixed previewUrl http://127.0.0.1:8765/sidkick-map.svg plus turn/bounds/coverage. "
             "This cache write is not a game action. Latest successful call wins; a failed read/render leaves "
             "the previous image intact. The separate static loopback viewer and SSH tunnel must already be "

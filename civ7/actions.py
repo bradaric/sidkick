@@ -2,12 +2,16 @@
 
 import asyncio
 import math
+import re
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import StrictBool, StrictFloat, StrictInt, StrictStr
 
-# Every submission/readback uses the loading gate; ordinary queries keep run_script.
+# Gameplay submissions/readbacks retain the loading gate; the fixed menu loader has its own guard.
 from civ7.connection import run_started_script as run_script
+from civ7.connection import run_load_game_script
+from civ7.save_games import read_save_inventory
 
 
 # Serialize submission and readback within this process, not across MCP servers.
@@ -16,6 +20,64 @@ _VERIFICATION_TIMEOUT = 2.0
 _VERIFICATION_INTERVAL = 0.1
 _TURN_VERIFICATION_TIMEOUT = 60.0
 _COMBAT_VERIFICATION_TIMEOUT = 15.0
+
+
+async def save_game(save_name: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Create one new local single-player save; no overwrite or automatic retry."""
+    if (not isinstance(save_name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _-]{0,79}", save_name)
+            or save_name != save_name.strip() or re.fullmatch(r"CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]", save_name, re.I)
+            or type(expected_turn) is not int or expected_turn < 0):
+        raise ValueError("Safe new save name (1–80 ASCII letters/digits/spaces/_/-) and expected turn required")
+    async with _action_lock:
+        result = {"status": "unknown"}
+        try:
+            inventory = await read_save_inventory()
+            if inventory.get("status") != "ready":
+                return inventory
+            result = await run_script("save_load.js", {"operation": "save", "save_name": save_name,
+                "expected_turn": expected_turn, "inventory_id": inventory["inventoryId"], "request_id": uuid4().hex})
+            if result.get("status") != "submitted":
+                return result
+            before = result["before"]
+            async with asyncio.timeout(15):
+                while True:
+                    state = await run_script("save_load.js", {"operation": "save_state", "request_id": result["requestId"]})
+                    if state.get("context") != before or state.get("status") != "ready":
+                        raise ValueError("Game context or save observation changed")
+                    if state.get("serializerComplete") is True:
+                        if state.get("serializerOk") is not True:
+                            return {**result, "status": "unknown", "after": state,
+                                    "reason": "Native save did not confirm success; inspect saves and never retry automatically"}
+                        after = await read_save_inventory()
+                        matches = [f for f in after.get("saves", []) if f.get("fileName", "").lower() == f"{save_name}.Civ7Save".lower()
+                                   and f.get("currentTurn") == before.get("turn") and f.get("age") == before.get("ageType")]
+                        if after.get("status") == "ready" and after.get("context") == before and len(matches) == 1:
+                            return {**result, "status": "verified_applied", "save": matches[0], "after": state}
+                        raise ValueError("Serializer succeeded but the exact new save metadata is unverified")
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Save outcome is unverified; inspect saves and never retry automatically"}
+
+
+async def load_game(
+    save_token: StrictStr, confirm_discard_unsaved_progress: StrictBool, expected_turn: StrictInt | None = None,
+) -> dict[str, Any]:
+    """Request one exact listed local save from game or menu; acceptance is not completed loading."""
+    if (not isinstance(save_token, str) or not save_token or len(save_token) > 100000
+            or confirm_discard_unsaved_progress is not True
+            or expected_turn is not None and (type(expected_turn) is not int or expected_turn < 0)):
+        raise ValueError("Exact fresh save token, explicit discard confirmation and current turn (omit only in menu) required")
+    async with _action_lock:
+        try:
+            inventory = await read_save_inventory()
+            if inventory.get("status") != "ready":
+                return inventory
+            return await run_load_game_script({"inventory_id": inventory["inventoryId"], "save_token": save_token,
+                "confirm_discard_unsaved_progress": True, "expected_turn": expected_turn})
+        except Exception as exc:
+            return {"status": "unknown", "loadCompleted": False, "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Load may already be underway; inspect loading state and never retry automatically"}
 
 
 async def edit_dedication(
@@ -507,11 +569,26 @@ async def choose_religious_action(
     return await _execute_and_verify("religious_choice.js", arguments, "religious_choice_state.js")
 
 
+async def pay_call_to_arms(
+    war_event_id: StrictInt, ally_player_id: StrictInt, opponent_player_id: StrictInt,
+    payment_token: StrictStr, max_influence_cost: StrictInt | StrictFloat, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Pay only the exact pending call-to-arms quote; never join war or cancel an alliance."""
+    if (any(type(value) is not int or value < 0 for value in (war_event_id, ally_player_id, opponent_player_id, expected_turn))
+            or ally_player_id == opponent_player_id or not isinstance(payment_token, str) or not payment_token or len(payment_token) > 100000
+            or type(max_influence_cost) not in (int, float) or not math.isfinite(max_influence_cost) or max_influence_cost < 0):
+        raise ValueError("Exact pending war, ally/opponent, payment token, finite Influence cap and expected turn required")
+    return await _execute_and_verify("pay_call_to_arms.js", {
+        "war_event_id": war_event_id, "ally_player_id": ally_player_id, "opponent_player_id": opponent_player_id,
+        "payment_token": payment_token, "max_influence_cost": max_influence_cost, "expected_turn": expected_turn,
+    }, "call_to_arms_payment_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def append_advanced_construction(settlement: StrictStr, item: StrictStr, construction_intent: Literal["wonder", "repair", "overbuild", "improvement"], x: StrictInt, y: StrictInt, target_token: StrictStr, expected_turn: StrictInt, replace_improvement: StrictBool = False) -> dict[str, Any]:
     """Append one explicitly acknowledged advanced placement/repair, never purchase or complete it."""
     if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item or
             construction_intent not in ("wonder", "repair", "overbuild", "improvement") or any(type(v) is not int or v < 0 for v in (x, y, expected_turn)) or
-            type(replace_improvement) is not bool or (replace_improvement and construction_intent not in ("wonder", "improvement")) or
+            type(replace_improvement) is not bool or (replace_improvement and construction_intent not in ("wonder", "overbuild", "improvement")) or
             not isinstance(target_token, str) or not target_token or len(target_token) > 100000):
         raise ValueError("Exact city, constructible/intent, tile token and expected turn are required")
     return await _execute_and_verify("advanced_construction.js", {
@@ -708,6 +785,24 @@ async def end_turn(expected_turn: StrictInt) -> dict[str, Any]:
                                 "reason": "Unexpected player/Age/turn boundary; never retry automatically"}
                     if after["turn"] == expected_turn + 1 and after.get("active") is True and after.get("sent") is False:
                         return {**result, "status": "verified_applied", "after": after}
+                    if after["turn"] == expected_turn and after.get("active") is True and after.get("sent") is False:
+                        unit = after.get("firstReadyUnit") if after.get("firstReadyUnitStatus") == "identified" else None
+                        needs_order = after.get("canStartAny") is True and unit is not None
+                        if after.get("hasBlocker") is True or needs_order:
+                            if after.get("hasBlocker") is True:
+                                reason = f"Turn did not advance: native end-turn blocker {after.get('blockerName') or after.get('blocker')} remains."
+                            else:
+                                reason = "Turn did not advance: a unit needs an explicit order."
+                            if unit is not None:
+                                reason += f" First ready unit: {unit.get('name') or unit.get('id') or 'Unit'} #{unit['instanceId']}"
+                                location = unit.get("location")
+                                if location is not None:
+                                    reason += f" at ({location['x']}, {location['y']})"
+                                if unit.get("movesRemaining") is not None:
+                                    reason += f", {unit['movesRemaining']} movement remaining"
+                                reason += "."
+                            return {**result, "status": "blocked", "after": after,
+                                    "reason": reason + " Inspect current state and resolve pending tasks before requesting end-turn again."}
                     await asyncio.sleep(_VERIFICATION_INTERVAL)
         except Exception as exc:
             return {**result, "status": "unknown", **({"after": after} if after is not None else {}),
@@ -752,6 +847,50 @@ async def acknowledge_agenda(notification_id: StrictInt, expected_turn: StrictIn
         raise ValueError("A local agenda notification ID and expected turn are required")
     return await _execute_and_verify("acknowledge_agenda.js", {"notification_id": notification_id, "expected_turn": expected_turn},
                                      "agenda_state.js")
+
+
+async def acknowledge_espionage_report(
+    notification_id: StrictInt, component_type: StrictInt, report_token: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Activate one exact informational report, then its native Continue button; never navigate diplomacy."""
+    if (any(type(value) is not int or value < 0 for value in (notification_id, component_type, expected_turn))
+            or not isinstance(report_token, str) or not report_token or len(report_token) > 100000):
+        raise ValueError("Exact local espionage report component, token and expected turn required")
+    async with _action_lock:
+        result = {"status": "unknown"}
+        after = None
+        continued = False
+        try:
+            result = await run_script("acknowledge_espionage_report.js", {
+                "notification_id": notification_id, "component_type": component_type,
+                "report_token": report_token, "expected_turn": expected_turn, "phase": "open",
+            })
+            if result.get("status") in {"rejected", "already_active"}:
+                return result
+            if result.get("status") != "submitted":
+                raise ValueError("Unexpected report activation response")
+            before = result.get("before", {})
+            if before.get("turn") != expected_turn or any(type(before.get(key)) is not int for key in ("turn", "age", "playerId")):
+                raise ValueError("Unverified report activation context")
+            async with asyncio.timeout(_COMBAT_VERIFICATION_TIMEOUT):
+                while True:
+                    after = await run_script("espionage_report_state.js", {"before": before})
+                    if (any(type(after.get(key)) is not int or after[key] != before[key] for key in ("turn", "age", "playerId"))
+                            or after.get("identityUnchanged") is not True or after.get("balancesUnchanged") is not True
+                            or after.get("uiStatus") not in {"closed", "matching"}):
+                        raise ValueError("Report, UI, currency balances or game context changed")
+                    if not continued and after["uiStatus"] == "matching":
+                        continued = True
+                        continuation = await run_script("acknowledge_espionage_report.js", {"phase": "continue", "before": before})
+                        if continuation.get("status") != "submitted":
+                            raise ValueError("Native report Continue was rejected or unverified")
+                    elif continued and after.get("acknowledged") is True and after.get("popupClosed") is True:
+                        return {**result, "status": "verified_applied", "after": after}
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", **({"after": after} if after is not None else {}),
+                    "phase": "continue" if continued else "open", "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Report acknowledgement is unverified; the popup may remain open. Inspect current state; never retry automatically"}
 
 
 async def acknowledge_advisor_warning(
@@ -894,6 +1033,7 @@ async def attack_unit(
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id,
         "x": x, "y": y, "kind": kind, "expected_turn": expected_turn,
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -904,6 +1044,7 @@ async def naval_attack_land_unit(unit_id: StrictInt, target_player: StrictInt, t
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
         "expected_turn": expected_turn, "kind": "shore", "target_territory": "enemy_field",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -914,6 +1055,7 @@ async def melee_attack_enemy_field(unit_id: StrictInt, target_player: StrictInt,
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
         "expected_turn": expected_turn, "kind": "melee", "target_territory": "enemy_field",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -989,6 +1131,7 @@ async def naval_attack_unit(
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id,
         "x": x, "y": y, "expected_turn": expected_turn, "kind": "naval",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
@@ -1001,6 +1144,7 @@ async def ranged_attack_enemy_field(
     return await _execute_and_verify("attack_unit.js", {
         "unit_id": unit_id, "target_player": target_player, "target_unit_id": target_unit_id, "x": x, "y": y,
         "expected_turn": expected_turn, "kind": "ranged", "target_territory": "enemy_field",
+        "observe_effects": True, "observation_radius": 1,
     }, "unit_attack_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 

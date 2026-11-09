@@ -111,7 +111,8 @@
     if (!other || (!other.isMinor && !other.isIndependent)) continue;
     const suzerainId = other.Influence?.getSuzerain() ?? -1;
     const youAreSuzerain = suzerainId === id;
-    const type = other.isMinor ? GameInfo.CityStateTypes.lookup(other.getCityStateCityStateType()) : null;
+    // Native diplomacy UI uses this specialization for independents as well as city-states.
+    const type = GameInfo.CityStateTypes.lookup(other.getCityStateCityStateType());
     const bonusHash = other.isMinor ? Game.CityStates.getBonusType(otherId) : null;
     const bonus = other.isMinor ? [...GameInfo.CityStateBonuses].find(def => def.$hash === bonusHash) : null;
     const bonusChoices = other.isMinor ? [...GameInfo.CityStateBonuses]

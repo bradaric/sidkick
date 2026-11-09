@@ -7,10 +7,23 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import StrictInt, StrictStr
 
 from civ7.connection import run_script
+from civ7.save_games import read_save_inventory
 from civ7.svg_preview import publish_preview
 
 
 _preview_lock = asyncio.Lock()
+
+
+async def saved_games(limit: StrictInt = 50, offset: StrictInt = 0) -> dict[str, Any]:
+    """List only local single-player game-state saves, including auto/quick saves."""
+    if type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or not 0 <= offset <= 10000:
+        raise ValueError("Save-list limit must be 1–100 and offset 0–10000")
+    result = await read_save_inventory()
+    if result.get("status") != "ready":
+        return {key: value for key, value in result.items() if key != "inventoryId"}
+    saves = result["saves"]
+    return {"status": "ready", "context": result["context"], "scope": "Local single-player game-state saves only",
+            "total": len(saves), "offset": offset, "hasMore": offset + limit < len(saves), "saves": saves[offset:offset + limit]}
 
 
 async def empire() -> dict[str, Any]:

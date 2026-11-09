@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0 } = {}) {
+function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0, independentType = 'MILITARISTIC', independentMet = false } = {}) {
   const script = path.join(__dirname, '../civ7/city_states.js');
   assert.ok(fs.existsSync(script), 'bundled city-state query exists');
   const playerReads = [], projectReads = [], completionReads = [], operations = [];
@@ -15,13 +15,13 @@ function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0 } = {
   ];
   const local = {
     civilizationFullName: 'Us', DiplomacyTreasury: { diplomacyBalance: 1500 }, Stats: { getNetYield: () => 15 },
-    Diplomacy: { hasMet: id => [1, 2].includes(id), isAtWarWith: () => false },
+    Diplomacy: { hasMet: id => [1, 2].includes(id) || (id === 4 && independentMet), isAtWarWith: () => false },
   };
   const actors = {
     0: local,
     1: { id: 1, isMajor: true, civilizationFullName: 'Known leader' },
     2: { id: 2, isMinor: true, isIndependent: false, civilizationFullName: 'Known city-state', Influence: { getSuzerain: () => suzerain }, getCityStateCityStateType: () => 'SCIENTIFIC' },
-    4: { id: 4, isMinor: false, isIndependent: true, civilizationFullName: 'Discovered independent', Influence: { getSuzerain: () => -1 } },
+    4: { id: 4, isMinor: false, isIndependent: true, civilizationFullName: 'Vatican City', Influence: { getSuzerain: () => -1 }, getCityStateCityStateType: () => independentType },
   };
   const projects = target => target === 2 ? [
     { actionTypeName: 'DIPLOMACY_ACTION_CS_INCORPORATE', actionDisplayName: 'Incorporate', projectDescription: 'Become our town', projectStatus: 0,
@@ -42,7 +42,10 @@ function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0 } = {
       getAliveIds: () => [0, 1, 2, 3, 4], getAliveIndependentIds: () => [3, 4],
       get: id => { playerReads.push(id); assert.notEqual(id, 3, 'hidden players must not be inspected'); return actors[id]; },
     },
-    GameInfo: { CityStateTypes: { lookup: () => ({ CityStateType: 'SCIENTIFIC', Name: 'Scientific' }) }, CityStateBonuses: bonuses },
+    GameInfo: { CityStateTypes: { lookup: type => ({
+      SCIENTIFIC: { CityStateType: 'SCIENTIFIC', Name: 'Scientific' },
+      MILITARISTIC: { CityStateType: 'MILITARISTIC', Name: 'Militaristic' },
+    })[type] }, CityStateBonuses: bonuses },
     YieldTypes: { YIELD_DIPLOMACY: 1 },
     DiplomacyActionTargetTypes: { NO_DIPLOMACY_TARGET: -1 }, DiplomacyActionGroups: { NO_DIPLOMACY_ACTION_GROUP: -1 },
     DiplomacyProjectStatus: statuses,
@@ -98,6 +101,22 @@ test('reports suzerainty, selected bonus effects, and selected-target incorporat
   assert.equal(state.actions[0].influenceCost, 480);
   assert.equal(state.actions[0].availableNow, true);
   assert.equal(run({ suzerain: 3 }).data.powers[0].suzerain, null);
+});
+
+test('reports native specialization for city-states and met or discovered independents, not from names', () => {
+  for (const independentMet of [false, true]) {
+    const { data } = run({ independentMet });
+    assert.deepEqual(data.powers[0].type, { id: 'SCIENTIFIC', name: 'Scientific' });
+    const independent = data.powers[1];
+    assert.equal(independent.name, 'Vatican City');
+    assert.deepEqual(independent.type, { id: 'MILITARISTIC', name: 'Militaristic' });
+    assert.equal(independent.bonus, null);
+    assert.deepEqual(independent.bonusChoices, []);
+  }
+});
+
+test('unknown specialization remains null without guessing from the independent name', () => {
+  assert.equal(run({ independentType: 'UNKNOWN' }).data.powers[1].type, null);
 });
 
 test('local ongoing befriending uses direct progress and includes support cost and eligibility', () => {

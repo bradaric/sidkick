@@ -8,6 +8,10 @@
   if (![unitId, componentType, beforeAttacks, targetPlayer, targetUnitId, targetComponentType, x, y].every(v => Number.isInteger(v) && v >= 0) ||
       beforeAttacks <= 0 || !Number.isInteger(unitType) || !Number.isInteger(targetType) || !Number.isFinite(beforeDamage) || beforeDamage < 0 ||
       x >= GameplayMap.getGridWidth() || y >= GameplayMap.getGridHeight() || targetPlayer === playerId) throw Error("Invalid submitted combat identity");
+  const neutralOwner = queryArguments.neutral_territory_owner;
+  if (neutralOwner !== undefined && (!Number.isInteger(neutralOwner) || neutralOwner < 0 || [playerId, targetPlayer].includes(neutralOwner))) throw Error("Invalid captured neutral territory owner");
+  const neutralTerritoryPeacePreserved = neutralOwner !== undefined && player.Diplomacy.hasMet(neutralOwner) === true &&
+    player.Diplomacy.isAtWarWith(neutralOwner) === false;
   const owned = player.Units.getUnits().filter(u => u.id.owner === playerId);
   const own = owned.filter(u => u.id.id === unitId);
   if (own.length > 1 || (own.length && (own[0].id.type !== componentType || own[0].type !== unitType))) throw Error("Attacker identity is ambiguous or changed");
@@ -77,6 +81,7 @@
   if(observationQuiescent)combatObservation=combatObserver.read(queryArguments.observation_token,true);
   const killConfirmed=combatObservation?.available===true&&combatObservation.nativeKills.some(e=>e.unitKilled.owner===targetPlayer&&e.unitKilled.id===targetUnitId&&e.unitKilled.type===targetComponentType)?true:null;
   return {turn: Game.turn, age: Game.age, playerId, unitId, targetPlayer, targetUnitId,killConfirmed,...(combatObservation?{combatObservation,observationQuiescent}:{}),
+    ...(neutralOwner !== undefined ? {neutralTerritoryOwner: neutralOwner, neutralTerritoryPeacePreserved} : {}),
     attackerPresent: Boolean(attacker), attacksRemaining: attacks, attackConsumedOrAttackerLost: consumed, consumedUnitIds,
     participantObservations, allCapturedParticipantsConsumed: participantObservations ? participantObservations.every(p => p.attackConsumedOrLost) : null,
     targetDamage, targetLeftTile, attackObserved: consumed && (targetLeftTile === true || (targetDamage != null && targetDamage > beforeDamage)),

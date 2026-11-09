@@ -13,6 +13,20 @@
   const valid = location => location && Number.isInteger(location.x) && Number.isInteger(location.y) &&
     location.x >= 0 && location.y >= 0 && location.x < width && location.y < height;
   const revealed = location => valid(location) && GameplayMap.getRevealedState(id, location.x, location.y) !== RevealedStates.HIDDEN;
+  const tileOwnership = location => {
+    const unknown = {status: "unknown", playerId: null, civilization: null};
+    // Current native ownership is not evidence of last-known ownership in fog.
+    if (!valid(location) || GameplayMap.getRevealedState(id, location.x, location.y) !== RevealedStates.VISIBLE) return unknown;
+    try {
+      const ownerId = GameplayMap.getOwner?.(location.x, location.y);
+      if (ownerId === -1) return {status: "unowned", playerId: null, civilization: null};
+      if (!Number.isInteger(ownerId) || ownerId < 0 ||
+          ownerId !== id && player.Diplomacy?.hasMet(ownerId) !== true) return unknown;
+      const key = Players.get(ownerId)?.civilizationFullName;
+      return {status: ownerId === id ? "ours" : "foreign", playerId: ownerId,
+        civilization: key ? Locale.compose(key) : null};
+    } catch { return unknown; }
+  };
   const locationForPlot = index => Number.isInteger(index) && index >= 0 && index < width * height
     ? GameplayMap.getLocationFromIndex(index) : null;
   const name = key => key ? Locale.compose(key) : null;
@@ -35,7 +49,8 @@
       const location = locationForPlot(plot);
       if (!revealed(location) || attackPlots.has(plot)) continue;
       const result = checkMove(location);
-      options.push({location: {x: location.x, y: location.y}, availableNow: result ? Boolean(result.Success) : null, failureReasons: reasons(result)});
+      options.push({location: {x: location.x, y: location.y}, ownership: tileOwnership(location),
+        availableNow: result ? Boolean(result.Success) : null, failureReasons: reasons(result)});
     }
   }
   let target = null;
@@ -46,17 +61,19 @@
     const safePath = path?.plots && path.plots.every(plot => revealed(locationForPlot(plot)));
     target = {
       location: {x: destination.x, y: destination.y},
+      ownership: tileOwnership(destination),
       visibility: !revealed(destination) ? "unexplored" : GameplayMap.getRevealedState(id, destination.x, destination.y) === RevealedStates.VISIBLE ? "visible" : "fogged",
       moveAllowed: result ? Boolean(result.Success) : null,
       requiresConfirmation: result ? result.RequiresConfirmation === true : null,
       failureReasons: reasons(result),
-      path: safePath ? path.plots.map((plot, index) => ({location: locationForPlot(plot), turnLabel: path.turns?.[index] ?? null})) : null,
+      path: safePath ? path.plots.map((plot, index) => ({location: locationForPlot(plot),
+        ownership: tileOwnership(locationForPlot(plot)), turnLabel: path.turns?.[index] ?? null})) : null,
       pathNote: "Native turn labels, not inferred turns remaining; unavailable/unrevealed paths and raw obstacles are withheld"
     };
   }
   const railResult = deployed ? Game.UnitCommands.canStart(unit.id, "UNITCOMMAND_MOVE_BY_RAIL", {}, false) : null;
   const railOptions = [...new Set(railResult?.Plots ?? [])].map(locationForPlot).filter(revealed)
-    .map(location => ({location: {x: location.x, y: location.y}, availableNow: Boolean(railResult?.Success)}));
+    .map(location => ({location: {x: location.x, y: location.y}, ownership: tileOwnership(location), availableNow: Boolean(railResult?.Success)}));
   const rail = {
     operationAllowed: railResult ? Boolean(railResult.Success) : null,
     failureReasons: reasons(railResult), options: railOptions,
@@ -71,9 +88,10 @@
     const adjacent = deployed ? Game.UnitOperations.canStart(unit.id, "UNITOPERATION_FOUND_CITY_ADJACENT_PLOT", {}, false) : null;
     founding = {
       currentLocation: deployed ? {x: unit.location.x, y: unit.location.y} : null,
+      currentOwnership: tileOwnership(unit.location),
       availableNow: Boolean(current?.Success), failureReasons: reasons(current),
       adjacentOptions: (adjacent?.Plots ?? []).map(locationForPlot).filter(revealed)
-        .map(location => ({location, availableNow: Boolean(adjacent?.Success)}))
+        .map(location => ({location, ownership: tileOwnership(location), availableNow: Boolean(adjacent?.Success)}))
     };
   }
   let site = null;
@@ -87,13 +105,14 @@
       for (let xx = 0; xx < width; xx++) {
         if (!revealed({x: xx, y: yy}) || GameplayMap.getPlotDistance(destination.x, destination.y, xx, yy) > 3) continue;
         const found = resource(GameplayMap.getResourceType(xx, yy));
-        if (found) nearby.push({location: {x: xx, y: yy}, resource: found});
+        if (found) nearby.push({location: {x: xx, y: yy}, ownership: tileOwnership({x: xx, y: yy}), resource: found});
       }
     }
     const currentSite = deployed && destination.x === unit.location.x && destination.y === unit.location.y;
     const adjacentSite = founding?.adjacentOptions.find(option => option.location.x === destination.x && option.location.y === destination.y);
     site = {
       location: {x: destination.x, y: destination.y},
+      ownership: tileOwnership(destination),
       terrain: GameInfo.Terrains.lookup(GameplayMap.getTerrainType(destination.x, destination.y))?.TerrainType ?? null,
       feature: GameInfo.Features.lookup(GameplayMap.getFeatureType(destination.x, destination.y))?.FeatureType ?? null,
       biome: GameInfo.Biomes.lookup(GameplayMap.getBiomeType(destination.x, destination.y))?.BiomeType ?? null,

@@ -132,7 +132,8 @@
     const ui = Game.Diplomacy.getResponseDataForUI(event.uniqueID);
     if (ui?.actionID !== event.uniqueID || ui.initialPlayer !== event.initialPlayer || ui.targetPlayer !== localId || !Array.isArray(ui.responseList)) return null;
     const supportedAction = ["DIPLOMACY_ACTION_OPEN_BORDERS", "DIPLOMACY_ACTION_RESEARCH_COLLABORATION",
-      "DIPLOMACY_ACTION_CULTURAL_EXCHANGE", "DIPLOMACY_ACTION_LOCAL_FESTIVALS"].includes(event.actionTypeName);
+      "DIPLOMACY_ACTION_CULTURAL_EXCHANGE", "DIPLOMACY_ACTION_LOCAL_FESTIVALS",
+      "DIPLOMACY_ACTION_GINSING_AGREEMENT", "DIPLOMACY_ACTION_FARMERS_MARKET"].includes(event.actionTypeName);
     const hostileAction=["DIPLOMACY_ACTION_DENOUNCE","DIPLOMACY_ACTION_DENOUNCE_MILITARY_PRESENCE","DIPLOMACY_ACTION_SABOTAGE_TREASURY","DIPLOMACY_ACTION_SABOTAGE_MORALE",
       "DIPLOMACY_ACTION_SABOTAGE_RESEARCH","DIPLOMACY_ACTION_SABOTAGE_CIVIC_STUDY","DIPLOMACY_ACTION_SABOTAGE_MILITARY_PRODUCTION","DIPLOMACY_ACTION_SABOTAGE_FOOD_PRODUCTION"].includes(event.actionTypeName);
     const responseKeys = new Map([[responseTypes.DIPLOMACY_RESPONSE_ACCEPT, "accept"],
@@ -157,6 +158,123 @@
     const check=Game.PlayerOperations.canStart(localId,PlayerOperationTypes.SUPPORT_DIPLOMATIC_ACTION,{ID:event.uniqueID,Type:DiplomacyTokenTypes.DIPLOMACY_TOKEN_GLOBAL,Amount:1,SubType:initial},false);
     return{side:initial?'initial':'target',targetPlayerId:targetId,ownTokens:Number.isInteger(count)&&count>=0?count:null,quotedInfluenceCost:cost,availableNow:cost!==null&&check?.Success===true&&check.RequiresConfirmation!==true&&check.InsufficientFunds!==true,
       failureReasons:(check?.FailureReasons??[]).map(name).filter(Boolean),scope:'One token on own side only, not inferred war strength/yields or third-party backing'};
+  }
+
+  function callToArms() {
+    const notifications = Game.Notifications;
+    if (![notifications?.getIdsForPlayer, notifications?.getType, notifications?.getTypeName, notifications?.find]
+        .every(method => typeof method === "function")) return null;
+    let ids;
+    try { ids = notifications.getIdsForPlayer(localId); } catch { return null; }
+    if (!Array.isArray(ids)) return null;
+    const prompts = [], seen = new Set();
+    const validId = value => Number.isInteger(value) && value >= 0;
+    const operations = typeof PlayerOperationTypes === "undefined" ? {} : PlayerOperationTypes;
+    const actions = typeof DiplomacyActionTypes === "undefined" ? {} : DiplomacyActionTypes;
+    const eligibility = (operation, args) => {
+      const unknown = {operationAllowed: null, availableNow: null, requiresConfirmation: null, failureReasons: []};
+      if (!Number.isInteger(operation) || typeof Game.PlayerOperations?.canStart !== "function" ||
+          Object.hasOwn(args, "Type") && !Number.isInteger(args.Type)) return unknown;
+      try {
+        const result = Game.PlayerOperations.canStart(localId, operation, args, false);
+        const allowed = typeof result?.Success === "boolean" ? result.Success : null;
+        return {operationAllowed: allowed, availableNow: allowed === null ? null : allowed && result.InsufficientFunds !== true,
+          requiresConfirmation: typeof result?.RequiresConfirmation === "boolean" ? result.RequiresConfirmation : null,
+          failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
+      } catch { return unknown; }
+    };
+    const combined = (checks, key) => checks.some(check => check[key] === false) ? false
+      : checks.every(check => check[key] === true) ? true : null;
+    const participant = id => {
+      const other = Players.get(id);
+      return other?.isMajor === true ? {playerId: id, civilization: name(other.civilizationFullName),
+        leader: name(other.leaderName ?? GameInfo.Leaders.lookup(other.leaderType)?.Name)} : null;
+    };
+    for (const id of ids) {
+      if (id?.owner !== localId || !validId(id.id) || !validId(id.type)) continue;
+      const key = `${id.owner}:${id.id}:${id.type}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      let type, notification;
+      try {
+        type = notifications.getType(id);
+        if (notifications.getTypeName(type) !== "NOTIFICATION_DIPLOMATIC_ALLY_AT_WAR") continue;
+        notification = notifications.find(id);
+      } catch { return null; }
+      if (notification?.Dismissed === true || notification?.Expired === true) continue;
+      const prompt = {notification: {owner: id.owner, id: id.id, type: id.type}, status: "unavailable", responseOptions: null};
+      prompts.push(prompt);
+      try {
+        if (notification?.Type !== type || notification.Dismissed !== false || notification.Expired !== false ||
+            notification.BlocksTurnAdvancement !== true) continue;
+        // The native notification handler uses this link, with the pending queue as a fallback.
+        const eventId = notification.Target?.id ?? Game.Diplomacy.getNextCallToArms?.(localId);
+        if (!validId(eventId)) continue;
+        const event = Game.Diplomacy.getDiplomaticEventData?.(eventId);
+        if (event?.uniqueID !== eventId || event.hidden !== false || event.revealed !== true || event.failed !== false ||
+            event.gameTurnEnd !== -1 || !["DIPLOMACY_ACTION_DECLARE_WAR", "DIPLOMACY_ACTION_DECLARE_FORMAL_WAR"].includes(event.actionTypeName) ||
+            event.initialPlayer === event.targetPlayer || ![event.initialPlayer, event.targetPlayer]
+              .every(other => validId(other) && other !== localId && diplomacy.hasMet(other) === true)) continue;
+        const initialAllied = diplomacy.hasAllied(event.initialPlayer), targetAllied = diplomacy.hasAllied(event.targetPlayer);
+        if (typeof initialAllied !== "boolean" || typeof targetAllied !== "boolean" || !initialAllied && !targetAllied) continue;
+        const initial = participant(event.initialPlayer), target = participant(event.targetPlayer);
+        if (!initial || !target) continue;
+        const allies = [initialAllied ? initial : null, targetAllied ? target : null].filter(Boolean);
+        const bothAllied = initialAllied && targetAllied;
+        const join = (ally, opponent) => ({response: "join_war", allyPlayerId: ally.playerId, warTargetPlayerId: opponent.playerId,
+          name: Locale.compose("LOC_DIPLOMACY_ALLY_WAR_SUPPORT_ALLY", ally.leader),
+          description: bothAllied ? Locale.compose("LOC_DIPLOMACY_CALL_TO_ARMS_SUPPORT_ALLY_DESCRIPTION", opponent.leader)
+            : Locale.compose("LOC_DIPLOMACY_CALL_TO_ARMS_JOIN_WAR", ally.leader, opponent.leader),
+          ...eligibility(operations.DECLARE_WAR, {Player1: localId, Player2: opponent.playerId, Type: actions.DIPLOMACY_ACTION_DECLARE_WAR}),
+          supportedByWriteTool: false});
+        const options = [join(targetAllied ? target : initial, targetAllied ? initial : target)];
+        const cancelChecks = allies.map(ally => eligibility(operations.CANCEL_ALLIANCE,
+          {Player1: localId, Player2: ally.playerId, Type: actions.DIPLOMACY_ACTION_FORM_ALLIANCE}));
+        options.push({response: "stay_neutral", name: Locale.compose("LOC_DIPLOMACY_CALL_TO_ARMS_STAY_NEUTRAL_TITLE"),
+          description: bothAllied ? Locale.compose("LOC_DIPLOMACY_CALL_TO_ARMS_STAY_NEUTRAL_BOTH_ALLIES")
+            : Locale.compose("LOC_DIPLOMACY_CALL_TO_ARMS_STAY_NEUTRAL_ONE_ALLY", allies[0].leader),
+          breaksAllianceWithPlayerIds: allies.map(ally => ally.playerId), operationAllowed: combined(cancelChecks, "operationAllowed"),
+          availableNow: combined(cancelChecks, "availableNow"), supportedByWriteTool: false,
+          failureReasons: [...new Set(cancelChecks.flatMap(check => check.failureReasons))]});
+        if (bothAllied) options.push(join(initial, target));
+        else {
+          const ally = allies[0], opponent = initialAllied ? target : initial;
+          let cost = null, canPay = null;
+          try { cost = nonnegative(Game.Diplomacy.getPayToAvoidCallToArmsCost?.(localId, ally.playerId, opponent.playerId)); } catch { /* Unknown quote. */ }
+          try {
+            const allowed = Game.Diplomacy.canPayToAvoidCallToArms?.(localId, ally.playerId, opponent.playerId);
+            if (typeof allowed === "boolean") canPay = allowed;
+          } catch { /* Unknown native affordability. */ }
+          const check = eligibility(operations.PAY_TO_AVOID_CALL_TO_ARMS, {Player1: localId, Player2: ally.playerId, Player3: opponent.playerId});
+          let paymentToken = null;
+          try {
+            const gameStarted = typeof UI.getGameLoadingState === "function" && typeof UIGameLoadingState !== "undefined" &&
+              Number.isInteger(UIGameLoadingState.GameStarted) && UI.getGameLoadingState() === UIGameLoadingState.GameStarted;
+            if (gameStarted && typeof Configuration !== "undefined" && Configuration.getGame().isAnyMultiplayer === false &&
+                Number.isInteger(Game.age) && player.isTurnActive === true && GameContext.hasSentTurnComplete() === false && cost !== null &&
+                [player.Treasury?.goldBalance, player.DiplomacyTreasury?.diplomacyBalance].every(value => Number.isFinite(value) && value >= 0) &&
+                diplomacy.isAtWarWith(ally.playerId) === false && diplomacy.isAtWarWith(opponent.playerId) === false &&
+                Game.Diplomacy.getNextCallToArms?.(localId) === eventId) {
+              paymentToken = JSON.stringify({turn: Game.turn, age: Game.age, playerId: localId, warEventId: eventId,
+                notification: prompt.notification, initialPlayerId: initial.playerId, targetPlayerId: target.playerId,
+                allyPlayerId: ally.playerId, opponentPlayerId: opponent.playerId, quotedInfluenceCost: cost});
+            }
+          } catch { /* Missing payment context does not hide the read-only choices. */ }
+          options.push({response: "pay_influence", allyPlayerId: ally.playerId, opponentPlayerId: opponent.playerId,
+            name: Locale.compose("LOC_DIPLOMACY_CALL_TO_ARMS_PAY_INFLUENCE_TITLE", cost === null ? "?" : String(cost)),
+            description: Locale.compose("LOC_DIPLOMACY_CALL_TO_ARMS_PAY_INFLUENCE_DESCRIPTION", ally.leader, cost === null ? "?" : String(cost)),
+            ...check, quotedInfluenceCost: cost, canPay,
+            availableNow: canPay === false || check.availableNow === false || check.requiresConfirmation === true ? false
+              : cost !== null && canPay === true && check.availableNow === true ? true : null,
+            supportedByWriteTool: paymentToken !== null, paymentToken,
+            ...(paymentToken !== null ? {responseTool: "pay_civ7_call_to_arms"} : {}),
+            failureReasons: [...new Set([...check.failureReasons, ...(canPay === false ? [Locale.compose("LOC_DIPLOMACY_NOT_ENOUGH_INFLUENCE")] : [])])]});
+        }
+        Object.assign(prompt, {status: "pending", warEventId: eventId, initialPlayer: initial, targetPlayer: target,
+          alliedWithBoth: bothAllied, responseOptions: options});
+      } catch { /* Keep the notification visible with explicitly unavailable options. */ }
+    }
+    return prompts;
   }
 
   function ongoingActions(otherId) {
@@ -259,6 +377,7 @@
     scope: "Local player and met major counterparts; secondary choices are visibility-filtered",
     netInfluencePerTurn: player.Stats.getNetYield(YieldTypes.YIELD_DIPLOMACY),
     dealCount: (Game.DiplomacyDeals.getDealIds(localId) ?? []).length,
+    callToArms: callToArms(),
     detailNote: "Secondary choices include only met/local players, offered owned settlements with a matching revealed centre plot, offered currently visible settlement centres of the met primary counterpart, public unit types and offered amounts. City choices carry owner-qualified settlement identity; IDs alone cannot prove ownership. Hidden/fogged foreign centres, unrelated owners, ambiguous/missing plots, unsupported choices and raw target plots are omitted. No foreign city inventory or private yields/queues are queried. Exact selected-argument checks do not establish complete total costs; quoted secondary influence is not added to the primary quote. Project terms are definitions; duration/completion quotes are not guaranteed final expiry dates. Progress uses native event scores, not a duration formula. Incoming hidden/espionage events are omitted rather than attributed. Only supported white-peace or peace-plus-economic-lump working drafts expose tokens; asset concessions and enacted deal item accounting remain unsupported. Economic offers are native public negotiation quotes, not foreign treasury inventory. This readout never creates, changes or sends a deal",
     majorPlayers
   };

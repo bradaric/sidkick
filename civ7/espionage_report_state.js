@@ -1,0 +1,1 @@
+(() => espionageReport.observe(queryArguments.before))()

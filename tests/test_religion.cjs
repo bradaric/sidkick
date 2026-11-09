@@ -16,7 +16,7 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
   foundingStatus = {}, foundingResult = { Success: true }, missingFoundingStatus = false,
   missingFoundingCheck = false,
   packedValidCoordinates = false, offMap = false, unknownArmy = false, foreignArmy = false, foreignUnit = false,
-  spreadDescriptions = ['Native current ability description'] } = {}) {
+  spreadDescriptions = ['Native current ability description'], cityEvidence = null } = {}) {
   assert.ok(fs.existsSync(scriptPath), 'bundled religion query exists');
   const definitions = [
     { $index: 0, $hash: -200, BeliefType: 'OWN_FOUNDER', BeliefClassType: founderClass, Name: 'Own founder', Description: 'Selected founder effect' },
@@ -63,6 +63,9 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
       ...(foreignUnit ? [{id: {owner: 2, id: 99}, type: 'MISSIONARY', name: 'SECRET_FOREIGN_UNIT', location: {x: 1, y: 2}}] : [])] : [] },
     Cities: { getCities: () => cities }, Diplomacy: { hasMet: id => id === 1 } };
   const playerReads = [];
+  const cityReads = [], mapCityReads = [], privateReads = [];
+  const component = {owner: cityEvidence?.owner ?? 1, id: 50, type: 1};
+  const centre = cityEvidence?.centre ?? {x: 1, y: 2};
   const operations = [];
   const claimChecks = [];
   const result = vm.runInNewContext(fs.readFileSync(scriptPath, 'utf8'), {
@@ -71,7 +74,8 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
       playerReads.push(id);
       if (id === 0) return player;
       assert.equal(id, 1, 'unmet players must never be inspected');
-      return { civilizationFullName: 'Known civilization', Religion: { getReligionName: () => 'Known custom religion' } };
+      return { civilizationFullName: 'Known civilization', Religion: { getReligionName: () => 'Known custom religion' },
+        Cities: {getCities: () => {privateReads.push('inventory'); throw Error('Never enumerate foreign cities');}} };
     } },
     GameInfo: { Beliefs: definitions, Religions: religions, Units: { lookup: type => ({ UnitType: type, SpreadCharges: type === 'MISSIONARY' ? 3 : 0 }) } }, Locale: { compose: key => key },
     Armies: unknownArmy ? undefined : {get: armyId => {
@@ -80,7 +84,30 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
         return packed ? [{owner: 0, id: 7}, {owner: 2, id: 99}] : [];
       }};
     }},
-    GameplayMap: { getGridWidth: () => 10, getGridHeight: () => 10 },
+    GameplayMap: { getGridWidth: () => 10, getGridHeight: () => 10,
+      getRevealedState: (id, x, y) => x === 1 && y === 2
+        ? cityEvidence && Object.hasOwn(cityEvidence, 'visibility') ? cityEvidence.visibility : 2
+        : cityEvidence && Object.hasOwn(cityEvidence, 'centreVisibility') ? cityEvidence.centreVisibility : 2 },
+    RevealedStates: {HIDDEN: 0, REVEALED: 1, VISIBLE: 2},
+    ...(cityEvidence && !cityEvidence.missingApi ? {
+      MapCities: {getCity: (x, y) => {
+        mapCityReads.push({x, y});
+        return cityEvidence.noCity ? null : cityEvidence.wrongCentre && (x !== 1 || y !== 2)
+          ? {...component, id: 51} : component;
+      }},
+      Cities: {get: id => {
+        cityReads.push('identity');
+        assert.deepEqual(JSON.parse(JSON.stringify(id)), component);
+        return {id: {...component, ...cityEvidence.idOverride}, owner: cityEvidence.ownerOverride ?? component.owner,
+          location: centre,
+          get name() {cityReads.push('name'); return 'Cincinnati';},
+          get Religion() {cityReads.push('religion'); return cityEvidence.religionMissing ? undefined :
+            cityEvidence.types ?? {majorityReligion: -1, urbanReligion: 1020, ruralReligion: 1030};},
+          get population() {privateReads.push('population'); throw Error('No foreign population inspection');},
+          get Production() {privateReads.push('production'); throw Error('No foreign production inspection');},
+          get BuildQueue() {privateReads.push('queue'); throw Error('No foreign build queue inspection');}};
+      }},
+    } : {}),
     PlayerOperationTypes: { FOUND_PANTHEON: 'FOUND_PANTHEON', ADD_BELIEF: 'ADD_BELIEF',
       ...(!missingFoundingCheck ? { FOUND_RELIGION: 'FOUND_RELIGION' } : {}) },
     Game: {
@@ -114,7 +141,8 @@ function run({ created = true, canFound = false, earned = 3, pantheonChoices = 0
       } },
     },
   });
-  return { data: JSON.parse(JSON.stringify(result)), playerReads, operations, claimChecks };
+  assert.deepEqual(privateReads, [], 'optional city-read failures must not conceal private foreign queries');
+  return { data: JSON.parse(JSON.stringify(result)), playerReads, operations, claimChecks, cityReads, mapCityReads };
 }
 
 test('returns selected pantheon and belief effects, custom religion, and holy city', () => {
@@ -308,4 +336,60 @@ test('spread readiness preserves native action-panel descriptions without parsin
   assert.equal(unit.targetConversionPreview, null);
   assert.deepEqual(run({missionary: true, spreadDescriptions: null}).data.religiousUnits[0].additionalDescriptions, []);
   assert.deepEqual(run({missionary: true, packed: true}).data.religiousUnits[0].additionalDescriptions, []);
+});
+
+test('a deployed missionary reads its visible met foreign city religion, keeping split urban/rural faiths distinct', () => {
+  const {data, playerReads} = run({missionary: true, cityEvidence: {}});
+  const unit = data.religiousUnits[0];
+  assert.equal(unit.currentSettlementStatus, 'identified');
+  assert.deepEqual(unit.currentSettlement.id, {owner: 1, id: 50, type: 1});
+  assert.equal(unit.currentSettlement.name, 'Cincinnati');
+  assert.deepEqual(unit.currentSettlement.location, {x: 1, y: 2});
+  assert.equal(unit.currentSettlement.isLocal, false);
+  assert.equal(unit.currentSettlement.majority, null);
+  assert.equal(unit.currentSettlement.urban.name, 'Known custom religion');
+  assert.equal(unit.currentSettlement.rural.id, 'RELIGION_UNMET');
+  assert.equal(unit.currentSettlement.rural.founder, null);
+  assert.ok(!playerReads.includes(3), 'a public religion icon does not disclose its unmet founder');
+  assert.equal(unit.targetConversionPreview, null, 'current religion is not a spread forecast');
+  assert.equal(data.settlements.length, 2, 'owned settlements remain a separate inventory');
+});
+
+test('visible city tiles require a verified visible centre before reading city names or religion', () => {
+  const district = {centre: {x: 3, y: 4}};
+  assert.equal(run({missionary: true, cityEvidence: district}).data.religiousUnits[0].currentSettlementStatus, 'identified');
+  for (const cityEvidence of [{visibility: 0}, {visibility: 1}, {visibility: 99}, {visibility: null}, {owner: 3},
+    {...district, centreVisibility: 1}, {...district, centreVisibility: 0}, {...district, centreVisibility: null}, {...district, wrongCentre: true},
+    {ownerOverride: 2}, {idOverride: {id: 51}}, {idOverride: {type: 99}}, {centre: {x: 999, y: 2}}]) {
+    const {data, cityReads, mapCityReads} = run({missionary: true, cityEvidence});
+    assert.equal(data.religiousUnits[0].currentSettlement, null, JSON.stringify(cityEvidence));
+    assert.ok(!cityReads.includes('name') && !cityReads.includes('religion'), JSON.stringify(cityEvidence));
+    if (cityEvidence.visibility !== undefined || cityEvidence.owner === 3) assert.deepEqual(cityReads, []);
+    if (cityEvidence.visibility !== undefined) assert.deepEqual(mapCityReads, []);
+  }
+});
+
+test('packed/off-map/unknown deployment cannot inspect a foreign city even with plausible coordinates', () => {
+  for (const extra of [{packed: true, packedValidCoordinates: true}, {offMap: true}, {unknownArmy: true}, {foreignArmy: true}]) {
+    const {data, cityReads, mapCityReads} = run({missionary: true, cityEvidence: {}, ...extra});
+    assert.equal(data.religiousUnits[0].currentSettlement, null);
+    assert.deepEqual(cityReads, []);
+    assert.deepEqual(mapCityReads, []);
+  }
+});
+
+test('known religion absence is distinct from missing city data or a tile outside any city', () => {
+  const none = run({missionary: true, cityEvidence: {types: {majorityReligion: -1, urbanReligion: -1, ruralReligion: -1}}}).data.religiousUnits[0];
+  assert.equal(none.currentSettlementStatus, 'identified');
+  assert.equal(none.currentSettlement.majority, null);
+  assert.equal(none.currentSettlement.urban, null);
+  assert.equal(none.currentSettlement.rural, null);
+  for (const cityEvidence of [{missingApi: true}, {religionMissing: true}, {types: {majorityReligion: -1}},
+    {types: {majorityReligion: 999, urbanReligion: -1, ruralReligion: -1}}]) {
+    const unit = run({missionary: true, cityEvidence}).data.religiousUnits[0];
+    assert.equal(unit.currentSettlementStatus, 'unavailable');
+    assert.equal(unit.currentSettlement, null);
+    assert.equal(unit.chargesRemaining, 2, 'missing city facts must not discard owned-unit readiness');
+  }
+  assert.equal(run({missionary: true, cityEvidence: {noCity: true}}).data.religiousUnits[0].currentSettlementStatus, 'none');
 });

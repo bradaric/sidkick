@@ -29,6 +29,11 @@ async def run_started_script(
     return await _run_script(script_name, arguments, require_started=True)
 
 
+async def run_load_game_script(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Only this fixed loader may run from the menu; its bundled guard rejects transitions/MP."""
+    return await _run_script("save_load.js", {**arguments, "operation": "load"}, require_started=False)
+
+
 async def _run_script(
     script_name: str, arguments: dict[str, Any] | None, *, require_started: bool,
 ) -> dict[str, Any]:
@@ -47,6 +52,9 @@ async def _run_script(
     if script_name in {"diplomacy.js", "respond_first_meet.js", "first_meet_state.js"}:
         helper = (ROOT / "first_meet.js").read_text(encoding="utf-8")
         script = f"((firstMeet) => {{ return {script}\n}})({helper})"
+    if script_name in {"turn_context.js", "acknowledge_espionage_report.js", "espionage_report_state.js"}:
+        helper = (ROOT / "espionage_report_observation.js").read_text(encoding="utf-8")
+        script = f"((espionageReport) => {{ return {script}\n}})({helper})"
     if script_name in {"age_transition.js", "edit_dedication.js", "dedication_state.js"}:
         helper = (ROOT / "dedication_deck.js").read_text(encoding="utf-8")
         script = f"((dedicationDeck) => {{ return {script}\n}})({helper})"

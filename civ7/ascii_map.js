@@ -21,6 +21,20 @@
   const settlements = [], units = [], seenUnits = new Set();
   const known = id => id && Number.isInteger(id.owner) && id.owner >= 0 && Number.isInteger(id.id) && id.id >= 0 &&
     (id.owner === playerId || player.Diplomacy.hasMet(id.owner) === true);
+  const tileOwnership = (tx, ty, visible) => {
+    const unknown = {status: "unknown", playerId: null, civilization: null};
+    // A current native owner must not be exposed as last-known ownership in fog.
+    if (!visible) return unknown;
+    try {
+      const ownerId = GameplayMap.getOwner?.(tx, ty);
+      if (ownerId === -1) return {status: "unowned", playerId: null, civilization: null};
+      if (!Number.isInteger(ownerId) || ownerId < 0 ||
+          ownerId !== playerId && player.Diplomacy?.hasMet(ownerId) !== true) return unknown;
+      const key = Players.get(ownerId)?.civilizationFullName;
+      return {status: ownerId === playerId ? "ours" : "foreign", playerId: ownerId,
+        civilization: key ? Locale.compose(key) : null};
+    } catch { return unknown; }
+  };
   const terrainGlyphs = {TERRAIN_FLAT: " ", TERRAIN_HILL: "^", TERRAIN_MOUNTAIN: "M", TERRAIN_COAST: "~",
     TERRAIN_OCEAN: "O", TERRAIN_NAVIGABLE_RIVER: "="};
   const cells = [];
@@ -64,8 +78,12 @@
               const marker = id.owner === playerId ? "U" : player.Diplomacy.isAtWarWith(id.owner) === true ? "!" : "u";
               if (!unitMarker || marker === "!" || marker === "U" && unitMarker !== "!") unitMarker = marker;
               const def = GameInfo.Units.lookup(unit.type);
+              const nativeHealth = unit.Health;
+              const health = nativeHealth && Number.isFinite(nativeHealth.damage) && Number.isFinite(nativeHealth.maxDamage) &&
+                nativeHealth.maxDamage > 0 && nativeHealth.damage >= 0 && nativeHealth.damage <= nativeHealth.maxDamage ?
+                {current: nativeHealth.maxDamage - nativeHealth.damage, maximum: nativeHealth.maxDamage} : null;
               units.push({x: tx, y: ty, ownerId: id.owner, instanceId: id.id, unitType: def?.UnitType ?? null,
-                name: Locale.compose(unit.name ?? def?.Name ?? ""), marker});
+                name: Locale.compose(unit.name ?? def?.Name ?? ""), marker, health});
             }
           }
           marker = cityMarker ?? unitMarker ?? (citiesKnown && unitsKnown ? " " : "?");
@@ -75,14 +93,15 @@
       // This preserves all six native neighbors; geographic north projects upper-left.
       const q = tx - Math.floor(ty / 2);
       cells.push({x: tx, y: ty, terrain, visibility: visible ? "visible" : explored ? "fogged" : "unknown",
-        fill, marker, fogged: explored && !visible, left: 6 * q, top: -4 * ty - 2 * q});
+        ownership: tileOwnership(tx, ty, visible), fill, marker, fogged: explored && !visible, left: 6 * q, top: -4 * ty - 2 * q});
     }
   }
+  const tiles = cells.map(({x, y, terrain, visibility, marker, ownership}) => ({x, y, terrain, visibility, marker, ownership}));
   if (queryArguments.render === "svg") {
     if (Game.turn !== turn || Game.age !== age || GameContext.localPlayerID !== playerId || !UI.isInGame())
       throw Error("Game context changed while reading the map; request fresh state");
     return {turn, age, playerId, mapWidth, mapHeight, center: {x, y}, requestedSize: {width, height}, bounds,
-      tiles: cells.map(({x, y, terrain, visibility, marker}) => ({x, y, terrain, visibility, marker})),
+      tiles,
       settlements, units, coverage};
   }
   const minLeft = Math.min(...cells.map(cell => cell.left)), minTop = Math.min(...cells.map(cell => cell.top));
@@ -123,7 +142,7 @@
   if (Game.turn !== turn || Game.age !== age || GameContext.localPlayerID !== playerId || !UI.isInGame())
     throw Error("Game context changed while reading the ASCII map; request fresh state");
   return {turn, age, playerId, mapWidth, mapHeight, center: {x, y}, requestedSize: {width, height}, bounds,
-    ascii: rows.join("\n"), settlements, units, coverage,
+    ascii: rows.join("\n"), tiles, settlements, units, coverage,
     projection: {style: "flat-top", north: "upper-left", east: "upper-right",
       coordinates: "Native (x,y) labels at the right of each tile-content line, ordered left-to-right"},
     legend: {cell: "Terrain fills the upper/lower interiors; an occupant is centered, with FOG in the lower interior for explored fog. City markers take precedence, but all observed units remain listed",
@@ -131,5 +150,5 @@
       overlay: {C: "own city centre", c: "met foreign city centre", U: "own unit", u: "met foreign nonwar unit", "!": "met enemy unit",
         blank: "no displayed entity, or entities withheld in fog", "?": "entity APIs/data unavailable"},
       visibility: {FOG: "explored but currently fogged", "center ???": "unrevealed or unknown visibility", "no FOG or center ???": "currently visible"}},
-    scope: "Connected flat-top hex projection with +---+ outer caps and shared edges. Native odd-row coordinates and six-neighbor topology are preserved; north is upper-left, east upper-right. Requested native-coordinate bounds are clipped without wrapping; the projected outline is oblique, not rectangular. Base terrain only; no features, biomes, resources, yields or route/safety predictions. Fog contains no current city/unit details; invisible/unmet entities are omitted. An absent entity marker is not proof a tile is empty or safe. Coverage describes visible entity lookup availability within this viewport only"};
+    scope: "Connected flat-top hex projection with +---+ outer caps and shared edges. Native odd-row coordinates and six-neighbor topology are preserved; north is upper-left, east upper-right. Requested native-coordinate bounds are clipped without wrapping; the projected outline is oblique, not rectangular. Base terrain only; no features, biomes, resources, yields or route/safety predictions. Tile ownership is separate from occupants and is known only on currently visible tiles for local/met owners or unowned land; fogged, hidden, unmet or unavailable ownership is unknown. Fog contains no current city/unit details; invisible/unmet entities are omitted. An absent entity marker is not proof a tile is empty or safe. Coverage describes visible entity lookup availability within this viewport only"};
 })()

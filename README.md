@@ -22,7 +22,7 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 
 ### Opt-in gameplay actions (OpenCode first)
 
-The normal server exposes **27 game-read-only tools**. Starting it with both
+The normal server exposes **28 game-read-only tools**. Starting it with both
 `--transport stdio --enable-writes` additionally registers
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
@@ -94,6 +94,41 @@ fixture-tested. An approved repeat of the same two selections returned
 technology and all active policy/tradition/crisis groups were unchanged. The
 actions share submission serialization and bounded verification, but have
 separate native scripts, selectors and readback fields.
+
+#### Local single-player save/load
+
+`get_civ7_saved_games(limit=50, offset=0)` lists local manual, quick and auto
+game-state saves from a stable single-player game or the main menu. It returns
+bounded metadata and an exact `saveToken` binding the file's identity/revision,
+not its saved world state. Cloud, multiplayer, live-event, configuration and
+Age-transition saves are excluded. Required missing/unowned content blocks loading.
+
+Write mode additionally exposes:
+
+- `save_civ7_game(save_name, expected_turn)`: create a **new** local manual save
+  during an active single-player GameStarted turn. Names are 1–80 ASCII
+  letters/digits/spaces/underscores/hyphens, without paths, extensions, leading or
+  trailing spaces, or reserved device names. Existing names are rejected and
+  native `Overwrite=false` is always enforced. Verified success requires normal
+  serializer success plus the exact new file's turn/Age metadata and unchanged
+  current context; a native accepted request alone is not proof of saving.
+- `load_civ7_game(save_token, confirm_discard_unsaved_progress=true, expected_turn=null)`:
+  **discards unsaved progress** and replaces the current session. The user must
+  approve that exact load; the boolean flag is not conversational authorization.
+  Obtain the token from the browser; the action refreshes native metadata and
+  rejects stale, ambiguous or content-ineligible saves. Supply the current turn
+  in an active GameStarted game, or omit it only at the main menu. A separate
+  fixed loader supports the menu without relaxing any gameplay loading guard.
+
+The load result `status=submitted, loadCompleted=false` means native acceptance,
+**not completed loading**. Wait for loading/Begin, finish Begin manually if needed,
+then refresh gameplay evidence before acting. These tools never press Begin,
+delete saves, overwrite, sync to cloud or automatically retry a timeout,
+disconnect or cancellation. The operation may already have happened: inspect
+current state before any further explicitly authorized action.
+
+Save browsing is live-read-verified; save/load writes and menu behavior are
+fixture-tested only. No live save or load was executed for this implementation.
 
 #### Single ordinary-policy toggle
 
@@ -695,14 +730,20 @@ incoming events are still excluded before detailed reads.
 
 `respond_civ7_diplomatic_project(action_id, response, max_influence_cost,
 expected_turn)` supports `accept`, `support` or `reject` only for incoming Open
-Borders, Research Collaboration, Cultural Exchange and Local Festival from met
-peaceful major leaders. It proves local-target event provenance before querying
-the native response picker, checks the selected quote/cap/balance and exact
-`RESPOND_DIPLOMATIC_ACTION` permission, then rechecks identity and quote. No wars,
+Borders, Research Collaboration, Cultural Exchange, Local Festival, Ginseng
+Agreement and Farmers Market from met peaceful major leaders. It proves
+local-target event provenance before querying the native response picker, checks
+the selected quote/cap/balance and exact `RESPOND_DIPLOMATIC_ACTION` permission,
+then rechecks identity and quote. No wars,
 military demands, espionage, deals, outgoing-event support increments or changing
 an existing different response. Rejection can worsen relations/impose cooldowns;
 support spends Influence. Readback verifies the same event's recorded response,
 not promised yields or eventual completion.
+
+Ginseng Agreement (`DIPLOMACY_ACTION_GINSING_AGREEMENT`, matching the game's
+internal spelling) and Farmers Market responses have synthetic regression coverage
+for native quotes, all three response choices and safety checks; no live execution
+of these two projects was performed for this fix.
 
 Default remains 23 read-only tools; write mode has 49 tools (26 actions).
 **141 Python and 287 Node tests pass.**
@@ -840,8 +881,16 @@ Enemy territory, defensible districts, stacks, civilians (including native comba
 components on civilian formations), commanders, air/embarked attacks, declarations
 of war, captures and confirmation bypasses are excluded. Readback requires attack
 consumption/attacker disappearance **and** observed target damage or departure
-from the still-visible tile. A departure is not a kill claim; hidden state is
-never queried. Unknown/cancelled attacks are never repeated automatically.
+from the still-visible tile. Ordinary single-unit melee/ranged attacks, enemy-field
+variants, naval attacks and ship-to-shore unit attacks now enable the existing
+radius-1 combat observer by default. Readback waits for 500ms of captured-event
+quiet within the existing 15-second deadline. `after.killConfirmed` is `true` only
+when a captured native `UnitKilledInCombat` event matches the exact target identity
+and submitted attacker; otherwise it is `null` (unknown), not a claim of survival.
+A departure alone is never a kill claim, and hidden state is never queried.
+An unavailable observer rejects the attack before submission. Bounded observation
+does not prove complete splash/global effects. Air, commander and group attack
+defaults are unchanged. Unknown/cancelled attacks are never repeated automatically.
 
 Default remains 23 read-only tools; write mode has 55 tools (32 actions).
 **156 Python and 311 Node tests pass.** T62 native ranged attack by Field Cannon
@@ -1172,13 +1221,18 @@ and HP100. Other land armies retain their members.
 
 `naval_attack_civ7_unit(unit_id, target_player, target_unit_id, x, y, expected_turn)`
 uses the distinct native `UNITOPERATION_NAVAL_ATTACK` picker and selected check.
-Initial scope is a ready deployed unqueued unpacked nonreinforcing naval combat
-ship against one exact visible hostile naval combat ship on an own/unowned
-non-district water tile, in an existing met war. Native naval offered plots do not
+Scope is a ready deployed unqueued unpacked nonreinforcing naval combat
+ship against one exact visible hostile naval combat ship on a non-district water
+tile, in an existing met war. Own/unowned, enemy-owned and known third-party
+waters are supported equally for city-states and major civilizations. Foreign
+owners require met status and known war/peace state; ownership and diplomacy are
+bound and rechecked before submission. For neutral water owners, verified success
+also requires `after.neutralTerritoryPeacePreserved=true`. Native naval offered plots do not
 need the generic ranged picker's Modifiers. Existing land attack behavior is unchanged.
-No shore bombardment, civilian/stack/district/city targets, enemy territory, new war
+No shore bombardment, civilian/stack/district/city targets, new war
 or turn advancement. Verification retains primary-target attack consumption/loss
-plus visible damage/departure, not kills or complete splash effects.
+plus visible damage/departure, with exact native-event kill confirmation through
+the default radius-1 observer described above; not complete splash effects.
 
 **Positive naval fire is fixture-only.** Restoring Dreadnought3407900's movement
 did not produce native targets; actual MCP type rejection was tested on a land
@@ -1421,7 +1475,13 @@ Live typed synthetic Tank melee dealt48 damage; Frigate shore fire dealt25. No
 attack/damage effect forced. **208 Python / 378 Node pass; tools23/82 (59 actions).**
 
 `append_civ7_advanced_construction` queues an explicit Wonder/repair/overbuild/
-improvement intent on an exact visible owned city tile. Requires fresh placement
+improvement intent on an exact visible owned city tile. Wonder/improvement intents
+also support empty, unassigned non-foreign tiles explicitly offered in native
+`ExpandUrbanPlots`; ownership and city assignment must remain unchanged through
+validation. Such construction may claim a new tile. This exception has synthetic
+regression coverage, not positive live execution; the original T26 Hale o Keawe
+ownership state was not recorded. Rejections distinguish tile ownership/state,
+stale tokens and unavailable/full queues. Requires fresh placement
 targetToken, exact native offered/selected Append permission and matching native
 preview or damaged repair instance. Overbuild acknowledges an exact intact old
 building; Wonder/improvement rural replacement additionally needs explicit
@@ -1644,9 +1704,10 @@ negotiation remains fixture-only. Asset concessions are not supported here.
 including embarked founders; verifies consumed founder/new exact city and old-city
 preservation. `spread_civ7_foreign_religion` binds an exact visible met foreign
 centre under the Missionary and verifies own charge/unit consumption only, without
-reading foreign private effects. Test7077972's native adjacent picker rejected
-before request; current Modern has no Missionary definition. Positive cases remain
-fixture-only; no founding/spread effects forced.
+reading foreign private effects. Target-owner units may share that centre if native
+spread eligibility allows it; third-party stacks remain blocked. Test7077972's
+native adjacent picker rejected before request; current Modern has no Missionary
+definition. Positive cases remain fixture-only; no founding/spread effects forced.
 **234 Python / 421 Node pass; tools23/112 (89 actions).**
 
 `withdraw_civ7_capped_project_support` acknowledges explicit native definition
@@ -1838,6 +1899,21 @@ modifiers are fixture-tested only; no live probes, greetings or turns were issue
 for this fix. Refresh diplomacy for a new token after loading the updated server.
 Regression verification: **274 Python /497 Node tests pass**.
 
+**Call to Arms:** `get_civ7_diplomacy.callToArms` exposes pending ally-war
+notifications separately from ordinary incoming projects. It reports the native
+join-war, alliance-breaking neutrality and (when offered) paid-neutrality choices.
+`pay_civ7_call_to_arms` is an opt-in action for paid neutrality only: supply the
+fresh option's `paymentToken` as `payment_token`, its `allyPlayerId` and
+`opponentPlayerId` as `ally_player_id` and `opponent_player_id`, the prompt's
+`warEventId` as `war_event_id`, a required `max_influence_cost`, and fresh
+`expected_turn`. It binds the active single-player prompt and quote, requires
+exactly one allied side and peace with both, and submits one native payment.
+Readback requires the exact Influence debit, cleared prompt, unchanged Gold and
+preserved alliance/peace. Unknown or cancelled outcomes must never be retried
+automatically. Joining war and breaking alliances remain display-only choices
+in this response list. Reader/quote/token availability has been checked read-only
+in a live game; payment execution/readback is fixture-tested, not live-paid.
+
 Scope update and closeout, 2026-11-07: **Group 1 is closed under the user's revised
 no-additional-setup boundary.** All104 MCP writers now share a GameStarted gate
 before submissions, readbacks and helper initialization; read-only queries remain
@@ -2027,7 +2103,7 @@ Cards in `get_civ7_research_and_government` include an `impact` record. The firs
 
 ### City-state and independent diplomacy
 
-`get_civ7_city_states` returns met city-states and met/discovered independent powers, relationships, suzerains, selected bonus effects, eligible bonus choices, local influence, and diplomatic action eligibility/costs, including incorporation. Hidden players and target coordinates are excluded; an unmet suzerain's identity is `null`. The existing `get_civ7_diplomacy` tool remains focused on met major players.
+`get_civ7_city_states` returns met city-states and met/discovered independent powers, relationships, suzerains, selected bonus effects, eligible bonus choices, local influence, and diplomatic action eligibility/costs, including incorporation. For both city-states and independents, `type: {id, name}` reports the native specialization (for example, Scientific or Economic), never inferred from the power's name; an unknown specialization is `null`. Specialization alone does not establish eventual bonus eligibility, and independents still have no selected bonus or eligible bonus choices. Hidden players and target coordinates are excluded; an unmet suzerain's identity is `null`. The existing `get_civ7_diplomacy` tool remains focused on met major players.
 
 For action summaries, `availableNow` means the game offers the action for this power. If `requiresSecondaryTarget` is true (for example, choosing a unit to levy or a civilization to raid), the final target selection still needs its own eligibility check. `selectedTargetInfluenceCost` is the power-level UI quote, which can be a placeholder; `influenceCost` is `null` for secondary-target actions rather than implying a complete or zero cost. Other missing cost data also returns `null`.
 
@@ -2188,6 +2264,16 @@ expose no terrain/entity data; explored fog is dimmed and hatched, without curre
 city/unit details. This does not read biomes/features/resources or infer river
 courses, future movement or hidden units.
 
+Visible single-unit markers include a health bar and rounded whole-number remaining
+HP percentage; hover shows exact `HP current/maximum`. Bars are green above 50%,
+amber above 25%, and red at 25% or below. Coordinates sit above the marker to leave
+room for health below it. Missing/invalid health shows a dashed bar and `?`, never
+assumed full health. Stacked units also show `?` instead of misleading combined HP;
+hover lists each unit's HP. City markers keep priority, with any visible unit HP
+available on hover rather than presented as city health. Fogged/unknown tiles
+never expose unit health. Health is a snapshot from the latest map-tool call,
+not a live browser update.
+
 The tool is read-only with respect to the game. It writes only its own temporary
 preview cache, atomically replacing the SVG after successful collection/rendering.
 Invalid views, failed reads/renders or publication errors retain the previous
@@ -2274,6 +2360,31 @@ The existing units tool now includes unowned `experience.promotionChoices`, incl
 ### Coverage audit
 
 See [the coverage audit](docs/civ7-coverage-audit.md) for delivered boundaries, event/crisis/transition/later-Age gaps, source evidence and verification limits. All six agreed increments are accounted for there; this is not a claim that every Civilization VII mechanic is implemented or live-tested.
+
+### Unit-orders blockers
+
+`get_civ7_turn_context.unitOrders` exposes the native end-turn `blocker` code and
+`blockerName`, the read-only `canStartAny` result, and `firstReadyUnit` from
+`UI.Player.getFirstReadyUnit()`. The installed action panel uses that getter for
+unit blockers and its remaining-moves prompt; the query does not select a unit,
+cycle the UI, move the camera, issue orders or advance a turn.
+
+`firstReadyUnit` includes exact owner-qualified `componentId`, actionable
+`instanceId`, definition `id`, name, location, `movesRemaining`, `activityType` and
+`queueSize`. It is resolved only against one exact owned unit; foreign, stale or
+ambiguous IDs are withheld. Hidden/off-map/invalid locations are withheld. Queue
+size does not reveal an exact queued destination and does not authorize cancelling
+standing orders.
+
+`firstReadyUnitStatus` is `identified`, `none` (the getter returned no unit),
+`unavailable` (missing/failed evidence), or `unverified` (an invalid/unresolved ID).
+Unavailable evidence is not an empty checklist. This identifies the **next native
+cycle target**, not a complete list of blockers: a ready unit or remaining movement
+alone is not proof of the current blocker, and a different native blocker remains
+distinct. For a native `UNITS` blocker, report the identified unit rather than only
+the generic notification. After an authorized order batch, a fresh read can report
+the next target; do not change selection or issue orders merely to enumerate units.
+Source/fixture verification only; no live probes or actions were used for this addition.
 
 ### Crisis and pending narrative responses
 

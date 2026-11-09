@@ -12,8 +12,8 @@ PREVIEW_NAME = "sidkick-map.svg"
 PREVIEW_URL = f"http://127.0.0.1:8765/{PREVIEW_NAME}"
 TERRAINS = {
     "TERRAIN_FLAT": ("#6caa70", "LAND", ""),
-    "TERRAIN_HILL": ("#b9884f", "HILLS", "^^"),
-    "TERRAIN_MOUNTAIN": ("#a8aeb8", "MTN", "M"),
+    "TERRAIN_HILL": ("#3f7d46", "HILLS", "^^"),
+    "TERRAIN_MOUNTAIN": ("#9b7653", "MTN", "M"),
     "TERRAIN_COAST": ("#57b9cc", "COAST", "~~"),
     "TERRAIN_OCEAN": ("#24568f", "OCEAN", "~~"),
     "TERRAIN_NAVIGABLE_RIVER": ("#348fbe", "RIVER", "="),
@@ -66,6 +66,32 @@ def _validate(view):
             raise ValueError("Inconsistent map visibility or entity evidence")
 
 
+def _tile_ownership(tile, player_id):
+    unknown = {"status": "unknown", "playerId": None, "civilization": None}
+    ownership = tile.get("ownership")
+    if tile.get("visibility") != "visible" or not isinstance(ownership, dict):
+        return unknown
+    status, owner_id, civilization = (ownership.get(key) for key in ("status", "playerId", "civilization"))
+    if status == "unowned" and owner_id is None and civilization is None:
+        return {"status": "unowned", "playerId": None, "civilization": None}
+    if (status not in ("ours", "foreign") or type(owner_id) is not int or owner_id < 0
+            or status == "ours" and owner_id != player_id or status == "foreign" and owner_id == player_id
+            or civilization is not None and not isinstance(civilization, str)):
+        return unknown
+    return {"status": status, "playerId": owner_id, "civilization": civilization}
+
+
+def _unit_health(unit):
+    health = unit.get("health")
+    if not isinstance(health, dict):
+        return None
+    current, maximum = health.get("current"), health.get("maximum")
+    if (any(type(value) not in (int, float) or not math.isfinite(value) for value in (current, maximum))
+            or maximum <= 0 or not 0 <= current <= maximum):
+        return None
+    return current, maximum
+
+
 def render_svg(view: dict) -> str:
     """Render only bounded, already-filtered facts. Never execute markup from labels."""
     _validate(view)
@@ -82,7 +108,10 @@ def render_svg(view: dict) -> str:
     ET.SubElement(root, "title", {"id": "title"}).text = f"Sidkick map — Turn {view['turn']}"
     ET.SubElement(root, "rect", {"width": "100%", "height": "100%", "fill": "#0f172a"})
     style = ET.SubElement(root, "style")
-    style.text = "text{font-family:system-ui,sans-serif;text-anchor:middle;fill:#e2e8f0}.coord{font-size:9px}.label{font-size:9px;font-weight:700}"
+    style.text = ("text{font-family:system-ui,sans-serif;text-anchor:middle;fill:#e2e8f0}"
+                  ".coord{font-size:8px}.label{font-size:9px;font-weight:700}"
+                  ".unit-health{font-size:9px;font-weight:700;paint-order:stroke;stroke:#172333;"
+                  "stroke-width:2px;stroke-linejoin:round}")
     pattern = ET.SubElement(ET.SubElement(root, "defs"), "pattern",
                             {"id": "fog", "width": "10", "height": "10", "patternUnits": "userSpaceOnUse"})
     ET.SubElement(pattern, "path", {"d": "M0,10 L10,0", "stroke": "#e2e8f0", "opacity": ".3", "stroke-width": "2"})
@@ -98,20 +127,49 @@ def render_svg(view: dict) -> str:
                                          "transform": f"translate({x - min_x + (width - content_width) / 2:.2f} {y - min_y + 96:.2f})"})
         color, label, icon = TERRAINS.get(tile.get("terrain"), ("#293548", "UNKNOWN", "?"))
         state = tile["visibility"]
-        names = [str(item.get("name", "")) for item in view.get("settlements", []) + view.get("units", [])
+        tile_units = [unit for unit in view.get("units", [])
+                      if state == "visible" and unit.get("x") == tile["x"] and unit.get("y") == tile["y"]]
+        names = [str(item.get("name", "")) for item in view.get("settlements", [])
                  if state == "visible" and item.get("x") == tile["x"] and item.get("y") == tile["y"]]
-        ET.SubElement(group, "title").text = f"({tile['x']},{tile['y']}) | {label} | {state}" + (" | " + "; ".join(names) if names else "")
+        for unit in tile_units:
+            health = _unit_health(unit)
+            hp = f"{health[0]:g}/{health[1]:g}" if health else "?"
+            names.append(f"{unit.get('name', '')} — HP {hp}")
+        ownership = _tile_ownership(tile, view["playerId"])
+        owner_label = ownership["status"]
+        if owner_label == "ours" and ownership["civilization"]:
+            owner_label += f" ({ownership['civilization']})"
+        elif owner_label == "foreign":
+            owner_label = ownership["civilization"] or f"player #{ownership['playerId']}"
+        ET.SubElement(group, "title").text = (f"({tile['x']},{tile['y']}) | {label} | {state} | Owner: {owner_label}"
+                                             + (" | " + "; ".join(names) if names else ""))
         ET.SubElement(group, "polygon", {"points": points, "fill": color, "stroke": "#172333", "stroke-width": "2",
-                                         "opacity": ".5" if state == "fogged" else "1"})
+                                         "opacity": ".85" if state == "fogged" else "1"})
         if state == "fogged":
             ET.SubElement(group, "polygon", {"points": points, "fill": "url(#fog)"})
-        text(group, 0, -15, label, **{"class": "label"})
+        text(group, 0, -25, f"{tile['x']},{tile['y']}", **{"class": "coord"})
+        text(group, 0, -14, label, **{"class": "label"})
         marker = "?" if state == "unknown" else "FOG" if state == "fogged" else tile["marker"].strip() or icon
         if state == "visible" and tile["marker"] in {"C", "c", "U", "u", "!"}:
-            ET.SubElement(group, "circle", {"r": "14", "fill": "#b91c1c" if marker == "!" else "#f8fafc", "stroke": "#172333"})
+            ET.SubElement(group, "circle", {"r": "11", "fill": "#b91c1c" if marker == "!" else "#f8fafc", "stroke": "#172333"})
         text(group, 0, 7, marker, **{"font-size": "15" if marker == "FOG" else "21",
                                    "style": "fill:#172333" if state == "visible" and tile["marker"] in {"C", "c", "U", "u"} else ""})
-        text(group, 0, 24, f"{tile['x']},{tile['y']}", **{"class": "coord"})
+        if state == "visible" and tile["marker"] in {"U", "u", "!"}:
+            # A shared tile marker must not imply one unit's HP describes a stack.
+            health = _unit_health(tile_units[0]) if len(tile_units) == 1 else None
+            ET.SubElement(group, "rect", {"class": "health-track", "x": "-21", "y": "14", "width": "42",
+                                          "height": "5", "rx": "2", "fill": "#172333"})
+            if health:
+                fraction = health[0] / health[1]
+                color = "#4ade80" if fraction > .5 else "#fbbf24" if fraction > .25 else "#f87171"
+                ET.SubElement(group, "rect", {"class": "health-fill", "x": "-20", "y": "15",
+                                              "width": f"{40 * fraction:.2f}", "height": "3", "rx": "1", "fill": color})
+                percent = f"{math.floor(100 * fraction + .5)}%"
+            else:
+                ET.SubElement(group, "path", {"d": "M-18,16.5 H18", "stroke": "#94a3b8",
+                                              "stroke-width": "1", "stroke-dasharray": "3 2"})
+                percent = "?"
+            text(group, 0, 29, percent, **{"class": "unit-health"})
     for index, (color, label, _) in enumerate([*TERRAINS.values(), ("#293548", "UNKNOWN", "")]):
         x, y = 40 + (index % 4) * 180, height - 53 + (index // 4) * 25
         ET.SubElement(root, "rect", {"x": str(x), "y": str(y - 11), "width": "15", "height": "15", "fill": color})
@@ -140,5 +198,6 @@ def publish_preview(view: dict, directory: Path | None = None) -> dict:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
     return {key: view[key] for key in ("turn", "age", "playerId", "center", "bounds", "requestedSize", "coverage")} | {
+        "tiles": [{"x": tile["x"], "y": tile["y"], "ownership": _tile_ownership(tile, view["playerId"])} for tile in view["tiles"]],
         "previewUrl": PREVIEW_URL, "previewPath": str(directory / PREVIEW_NAME), "previewUpdated": True,
         "projection": "north-up pointy-top SVG", "scope": "Static local preview cache; latest successful tool call wins. No game actions, HTTP game control or automatic refresh. A loopback viewer and SSH tunnel are required."}

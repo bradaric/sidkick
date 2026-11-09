@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 from mcp.server.mcpserver.exceptions import ToolError
 from civ7 import queries
-from civ7.svg_preview import PREVIEW_NAME, PREVIEW_URL, publish_preview, render_svg
+from civ7.svg_preview import PREVIEW_NAME, PREVIEW_URL, TERRAINS, publish_preview, render_svg
 from sidkick.server import create_server
 
 
@@ -25,6 +25,147 @@ def view():
 
 
 class SvgRenderingTests(unittest.TestCase):
+    def test_tile_ownership_tooltips_do_not_change_map_geometry_colors_markers_or_health(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for ownership, label in [
+            ({'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}, 'ours (Rome)'),
+            ({'status': 'foreign', 'playerId': 1, 'civilization': 'Egypt'}, 'Egypt'),
+            ({'status': 'foreign', 'playerId': 1, 'civilization': None}, 'player #1'),
+            ({'status': 'unowned', 'playerId': None, 'civilization': None}, 'unowned'),
+        ]:
+            with self.subTest(ownership=ownership):
+                data = view()
+                data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+                baseline = ET.fromstring(render_svg(data))
+                data['tiles'][1]['ownership'] = ownership
+                root = ET.fromstring(render_svg(data))
+                self.assertIn(f'Owner: {label}', root.find('.//s:g[@data-x="2"]/s:title', ns).text)
+                for image in (baseline, root):
+                    for tile in image.findall('.//s:g[@class="tile"]', ns):
+                        tile.remove(tile.find('s:title', ns))
+                self.assertEqual(ET.tostring(root), ET.tostring(baseline))
+
+    def test_missing_invalid_or_nonvisible_ownership_is_unknown_without_leaking_labels(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        invalid = [None, [], {}, {'status': 'unknown', 'playerId': 1, 'civilization': 'SECRET'},
+                   {'status': 'ours', 'playerId': 1, 'civilization': 'SECRET'},
+                   {'status': 'foreign', 'playerId': 0, 'civilization': 'SECRET'},
+                   {'status': 'foreign', 'playerId': True, 'civilization': 'SECRET'},
+                   {'status': 'unowned', 'playerId': 1, 'civilization': 'SECRET'}]
+        for ownership in invalid:
+            data = view()
+            data['tiles'][1]['ownership'] = ownership
+            svg = render_svg(data)
+            self.assertIn('Owner: unknown', ET.fromstring(svg).find('.//s:g[@data-x="2"]/s:title', ns).text)
+            self.assertNotIn('SECRET', svg)
+        data = view()
+        for tile in (data['tiles'][0], data['tiles'][2]):
+            tile['ownership'] = {'status': 'foreign', 'playerId': 1, 'civilization': 'SECRET'}
+        self.assertNotIn('SECRET', render_svg(data))
+
+    def test_ownership_labels_are_escaped_as_plain_text(self):
+        data = view()
+        data['tiles'][1]['ownership'] = {'status': 'foreign', 'playerId': 1,
+                                        'civilization': 'Egypt <script>bad()</script> & friends'}
+        svg = render_svg(data)
+        self.assertIn('Egypt &lt;script&gt;bad()&lt;/script&gt; &amp; friends', svg)
+        self.assertFalse(ET.fromstring(svg).findall('.//{http://www.w3.org/2000/svg}script'))
+
+    def test_preview_response_includes_only_visibility_safe_tile_ownership(self):
+        data = view()
+        data['tiles'][1]['ownership'] = {'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}
+        data['tiles'][2]['ownership'] = {'status': 'foreign', 'playerId': 1, 'civilization': 'SECRET'}
+        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:
+            result = publish_preview(data, Path(directory))
+        self.assertEqual(result['tiles'], [
+            {'x': 1, 'y': 2, 'ownership': {'status': 'unknown', 'playerId': None, 'civilization': None}},
+            {'x': 2, 'y': 2, 'ownership': {'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}},
+            {'x': 3, 'y': 2, 'ownership': {'status': 'unknown', 'playerId': None, 'civilization': None}},
+        ])
+
+    def test_fog_preserves_terrain_colors_with_only_light_dimming_and_hatching(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for terrain, (color, _, _) in TERRAINS.items():
+            with self.subTest(terrain=terrain):
+                data = view()
+                data['tiles'][1]['terrain'] = terrain
+                data['tiles'][2]['terrain'] = terrain
+                root = ET.fromstring(render_svg(data))
+                visible = root.find('.//s:g[@data-x="2"]', ns)
+                fogged = root.find('.//s:g[@data-x="3"]', ns)
+                for tile in (visible, fogged):
+                    self.assertEqual(tile.find('s:polygon', ns).attrib['fill'], color)
+                self.assertEqual(visible.find('s:polygon', ns).attrib['opacity'], '1')
+                self.assertEqual(fogged.find('s:polygon', ns).attrib['opacity'], '.85')
+                self.assertIsNotNone(fogged.find('s:polygon[@fill="url(#fog)"]', ns))
+                self.assertIsNone(visible.find('s:polygon[@fill="url(#fog)"]', ns))
+                self.assertIn('FOG', [node.text for node in fogged.findall('s:text', ns)])
+                unknown = root.find('.//s:g[@data-x="1"]/s:polygon', ns)
+                self.assertEqual(unknown.attrib['fill'], '#293548')
+                self.assertEqual(unknown.attrib['opacity'], '1')
+
+    def test_visible_unit_health_bar_percentage_and_exact_hp_tooltip(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for current, maximum, percent, color in [
+            (100, 100, '100%', '#4ade80'), (72, 100, '72%', '#4ade80'),
+            (40, 100, '40%', '#fbbf24'), (18, 100, '18%', '#f87171'),
+            (0, 100, '0%', '#f87171'), (72, 200, '36%', '#fbbf24'),
+            (50, 100, '50%', '#fbbf24'), (25, 100, '25%', '#f87171'),
+            (1, 3, '33%', '#fbbf24'),
+        ]:
+            with self.subTest(current=current, maximum=maximum):
+                data = view()
+                data['units'][0]['health'] = {'current': current, 'maximum': maximum}
+                root = ET.fromstring(render_svg(data))
+                tile = root.find('.//s:g[@data-x="2"]', ns)
+                fill = tile.find('s:rect[@class="health-fill"]', ns)
+                self.assertIsNotNone(fill)
+                self.assertAlmostEqual(float(fill.attrib['width']), 40 * current / maximum, places=2)
+                self.assertEqual(fill.attrib['fill'], color)
+                self.assertEqual(tile.find('s:text[@class="unit-health"]', ns).text, percent)
+                self.assertIn(f'HP {current}/{maximum}', tile.find('s:title', ns).text)
+                self.assertEqual(tile.find('s:text[@class="coord"]', ns).attrib['y'], '-25')
+
+    def test_missing_or_invalid_health_renders_unknown_without_a_filled_bar(self):
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        for health in [None, {}, [], {'current': True, 'maximum': 100},
+                       {'current': -1, 'maximum': 100}, {'current': 101, 'maximum': 100},
+                       {'current': 1, 'maximum': 0}, {'current': float('nan'), 'maximum': 100},
+                       {'current': 1, 'maximum': float('inf')}, {'current': '72', 'maximum': 100}]:
+            with self.subTest(health=health):
+                data = view()
+                data['units'][0]['health'] = health
+                root = ET.fromstring(render_svg(data))
+                self.assertFalse(root.findall('.//s:rect[@class="health-fill"]', ns))
+                label = root.find('.//s:text[@class="unit-health"]', ns)
+                self.assertIsNotNone(label)
+                self.assertEqual(label.text, '?')
+                self.assertIn('HP ?', root.find('.//s:g[@data-x="2"]/s:title', ns).text)
+
+    def test_stacked_units_list_individual_hp_without_inventing_combined_health(self):
+        data = view()
+        data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+        data['units'].append({'x': 2, 'y': 2, 'name': 'Infantry',
+                              'health': {'current': 18, 'maximum': 100}})
+        root = ET.fromstring(render_svg(data))
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        self.assertFalse(root.findall('.//s:rect[@class="health-fill"]', ns))
+        label = root.find('.//s:text[@class="unit-health"]', ns)
+        self.assertIsNotNone(label)
+        self.assertEqual(label.text, '?')
+        tooltip = root.find('.//s:g[@data-x="2"]/s:title', ns).text
+        self.assertIn('HP 72/100', tooltip)
+        self.assertIn('Infantry — HP 18/100', tooltip)
+
+    def test_city_markers_do_not_show_unit_health_as_city_health(self):
+        data = view()
+        data['tiles'][1]['marker'] = 'C'
+        data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+        root = ET.fromstring(render_svg(data))
+        ns = {'s': 'http://www.w3.org/2000/svg'}
+        self.assertFalse(root.findall('.//s:text[@class="unit-health"]', ns))
+        self.assertIn('HP 72/100', root.find('.//s:g[@data-x="2"]/s:title', ns).text)
+
     def test_svg_is_north_up_colored_and_escapes_labels_without_active_content(self):
         data = view()
         data['tiles'][0]['terrain'] = None
@@ -35,8 +176,10 @@ class SvgRenderingTests(unittest.TestCase):
         self.assertFalse(root.findall('.//s:script', ns))
         self.assertFalse(root.findall('.//s:image', ns))
         self.assertIn('North', svg)
-        self.assertIn('#b9884f', svg)
-        self.assertIn('#a8aeb8', svg)
+        self.assertEqual(root.find('.//s:g[@data-x="2"]/s:polygon', ns).attrib['fill'], '#3f7d46')
+        self.assertEqual(root.find('.//s:g[@data-x="3"]/s:polygon', ns).attrib['fill'], '#9b7653')
+        legend_colors = {node.attrib['fill'] for node in root.findall('s:rect', ns)}
+        self.assertTrue({'#3f7d46', '#9b7653'} <= legend_colors)
         self.assertIn('FOG', svg)
         self.assertIn('&lt;script&gt;', svg)
         self.assertIn('&amp;', svg)
@@ -46,11 +189,15 @@ class SvgRenderingTests(unittest.TestCase):
     def test_hidden_or_fogged_entities_never_enter_svg_tooltips(self):
         data = view()
         data['tiles'][0]['terrain'] = None
-        data['units'].append({'x': 1, 'y': 2, 'name': 'HIDDEN UNIT'})
+        data['units'].append({'x': 1, 'y': 2, 'name': 'HIDDEN UNIT', 'health': {'current': 37, 'maximum': 41}})
+        data['units'].append({'x': 3, 'y': 2, 'name': 'FOGGED UNIT', 'health': {'current': 29, 'maximum': 31}})
         data['settlements'].append({'x': 3, 'y': 2, 'name': 'FOGGED CITY'})
         svg = render_svg(data)
         self.assertNotIn('HIDDEN UNIT', svg)
         self.assertNotIn('FOGGED CITY', svg)
+        self.assertNotIn('FOGGED UNIT', svg)
+        self.assertNotIn('HP 37/41', svg)
+        self.assertNotIn('HP 29/31', svg)
 
     def test_svg_native_north_is_up_and_east_is_right_not_the_ascii_oblique_projection(self):
         data = view()
@@ -141,6 +288,8 @@ class SvgMapToolTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_pipeline_updates_fixed_cache_from_one_mocked_game_read(self):
         data = view()
         data['age'] = -610349106
+        data['units'][0]['health'] = {'current': 72, 'maximum': 100}
+        data['tiles'][1]['ownership'] = {'status': 'ours', 'playerId': 0, 'civilization': 'Rome'}
         with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory, \
                 patch('civ7.svg_preview.PREVIEW_DIR', Path(directory)), \
                 patch('civ7.queries.run_script', new_callable=AsyncMock, return_value=data) as run:
@@ -149,6 +298,9 @@ class SvgMapToolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result.structured_content['age'],-610349106)
             self.assertEqual(result.structured_content['previewUrl'],PREVIEW_URL)
             self.assertIn('Turn 11',(Path(directory)/PREVIEW_NAME).read_text())
+            self.assertIn('72%', (Path(directory)/PREVIEW_NAME).read_text())
+            self.assertIn('Owner: ours (Rome)', (Path(directory)/PREVIEW_NAME).read_text())
+            self.assertEqual(result.structured_content['tiles'][1]['ownership'], data['tiles'][1]['ownership'])
             run.assert_awaited_once_with('ascii_map.js',{'x':2,'y':2,'width':3,'height':1,'render':'svg'})
 
     async def test_tool_is_default_game_read_only_and_publishes_one_bounded_snapshot(self):
