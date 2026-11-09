@@ -390,7 +390,7 @@
     };
   }
   function syncretismSelection() {
-    const state = {status: "unavailable", pending: null, choiceMade: null, chosen: null, choices: [],
+    const state = {status: "unavailable", pending: null, choiceMade: null, chosen: null, choices: [], responseTool: "choose_civ7_syncretism",
       note: "Native Syncretism picker candidates and public reward descriptions only. Availability requires an active owned chooser notification, no prior selection and native permission. Unit replacement notices are native forecasts, not instance IDs. Unlocks do not imply current build placement, research eligibility, slotted Tradition effects or simulated net yields. Read-only; never selects or opens the chooser"};
     try {
       if (typeof SyncreticChoiceTypes === "undefined" || !Game.Unlocks ||

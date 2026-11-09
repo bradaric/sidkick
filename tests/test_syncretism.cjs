@@ -71,6 +71,7 @@ test('research reports exact native Syncretism civilizations by reward family wi
   const {data, checks} = run();
   assert.ok(data.syncretism, 'Syncretism comparison is included in the existing research query');
   assert.equal(data.syncretism.status, 'ready'); assert.equal(data.syncretism.pending, true);
+  assert.equal(data.syncretism.responseTool, 'choose_civ7_syncretism');
   assert.equal(data.syncretism.choiceMade, false); assert.equal(data.syncretism.chosen, null);
   assert.deepEqual(data.syncretism.choices.map(c => [c.kind, c.choiceId, c.civilization.id]),
     [['units', -123, 'CIV_NORMAN'], ['infrastructure', -123, 'CIV_NORMAN'], ['self', -456, 'CIV_MAYA']]);

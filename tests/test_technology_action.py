@@ -188,6 +188,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "choose_civ7_religious_action",
             "befriend_civ7_independent",
             "choose_civ7_city_state_bonus",
+            "choose_civ7_syncretism",
             "perform_civ7_local_civilian_action",
             "resettle_civ7_migrant",
             "connect_civ7_merchant_road",

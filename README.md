@@ -2125,6 +2125,28 @@ This is read-only: no chooser navigation, reward selection or gameplay request.
 Live T68 readout verified the four offered foreign civilizations, Maya's Milpa I
 and Tradition slot, and native unit-replacement warnings. No choice was submitted.
 
+`choose_civ7_syncretism(kind, choice_id, expected_turn, confirm_unit_replacements=False)`
+commits one exact offered `units`, `infrastructure` or `self` (Affirmation) choice.
+Use the signed `choiceId` from the matching reader row, **not** the civilization
+hash; `syncretism.responseTool` identifies the opt-in action. Requires one active
+owned chooser reminder, no prior selection, current native family membership and
+reward identity, an active single-player GameStarted turn, disabled auto-end-turn
+and native permission without cost/confirmation. It rejects replacing an already
+chosen reward. Unit choices, rewards containing units and native unit-replacement
+evidence require explicit `confirm_unit_replacements=true` after the user reviews
+and authorizes that consequence. The acknowledgement is not generic permission
+to bypass other native confirmations.
+
+Rechecks pending identity, rewards, replacement warnings, balances and readiness
+before one native request. Read-only verification (up to 15 seconds) requires the
+exact chosen civilization/family, captured reminder clearance, no remaining active
+Syncretism reminder, unchanged Gold/Influence and the same turn/Age/player. This
+verifies the committed selection, **not** complete unlock/unit-replacement/yield
+accounting or chooser popup closure. No separate Tradition-slotting, research or
+turn-advance requests are sent. Unknown/cancelled outcomes must never be retried
+automatically. Positive selection is fixture-tested only; no reward was selected
+in-game for this implementation.
+
 ### Leader attribute trees
 
 `get_civ7_research_and_government` includes attribute points and next-point progress, plus each applicable branch's purchased perks, effect descriptions, unlocks, prerequisite links and `prerequisiteMode` (for example, `OR` does not require every incoming node). Inapplicable nodes are excluded; visible legend-locked nodes retain their lock reason. Wildcard points remain a shared balance, not a separate spendable balance for each branch.
