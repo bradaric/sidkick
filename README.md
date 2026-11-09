@@ -500,6 +500,39 @@ war declaration, native submission retry or turn advancement was issued. All
 three approved actions are now live-verified and manually confirmed, including
 the final Scout inspection.
 
+#### Triumph completion popup closure
+
+`get_civ7_turn_context.triumphPopup` reports the currently visible Triumph
+completion popup, its rendered title/body and a fresh `popupToken` when native
+Close is safely available. It is separate from `NOTIFICATION_LEGACY_COMPLETED`:
+activating those notifications opens the Legacies screen, not this popup.
+
+`close_civ7_triumph_popup(popup_token, expected_turn)` presses only the sole
+native Close control, using its `engine-input` accept/FINISH event. It rejects
+stale, absent, ambiguous, hidden, disabled or covered controls and requires an
+active single-player GameStarted turn with auto-end-turn disabled. Readback
+verifies that the **captured DOM popup detached**, with unchanged Gold/Influence
+and turn/Age/player. Another queued popup may appear, even with identical text;
+the tool never closes that next popup. No notification dismissal, opening UI,
+reward selection, spending, turn advancement or automatic retry after unknown/
+cancelled results. Discovery is live-read-verified; positive closing is
+fixture-tested only. No popup was closed during implementation.
+
+#### Town-focus reminder acknowledgement
+
+`acknowledge_civ7_town_focus_reminder(notification_id, component_type, expected_turn)`
+acknowledges one exact owned `NOTIFICATION_CHOOSE_TOWN_PROJECT` from
+`get_civ7_turn_context.notifications[].id`. It uses the native
+`CityOperations.CONSIDER_TOWN_PROJECT` operation sent when viewing a Town's focus
+panel, not a focus change or generic dismissal. The owned Town comes from the
+notification target; ambiguous duplicate reminders are rejected. Active
+single-player GameStarted turn and disabled auto-end-turn are required.
+Readback verifies exact reminder clearance, unchanged growth/project mode and
+Gold. Other turn blockers and popup UI closure are not implied. Repeating the
+already-selected focus remains a no-op and does not acknowledge this reminder.
+Submits once, never retries unknown/cancelled calls. Positive acknowledgement is
+fixture-tested only; no live reminder was cleared for this implementation.
+
 #### Town focus, city upgrades and specialists
 
 - `set_civ7_town_focus(settlement, focus, expected_turn)` uses an exact offered
@@ -2109,7 +2142,31 @@ For action summaries, `availableNow` means the game offers the action for this p
 
 Major-player diplomacy uses the same selected-target cost semantics, retaining its existing `available` field name. It reads the current engine's `targetList1` and that target's `costYieldD`, combines project and selected-target failure reasons, and never treats another player's target as an available choice for the queried leader. `targetChoices` is zero or one for that leader only. `secondaryTargetChoices` is `null` when a secondary selection is required (otherwise zero), rather than disclosing counts from unfiltered target lists. Zero-cost actions remain zero; missing costs remain `null`.
 
-`bonusChoices[].eligible` follows the game's bonus picker; `availableNow` additionally requires a pending choice for this city-state, local suzerainty, and the engine's selection check. It does not imply an existing bonus can be replaced. `ongoingActions` includes only projects initiated by you against that power, with direct progress, required progress, turns remaining, and befriending support cost/eligibility. Other players' ongoing projects are omitted. City-state data and attribute trees are included in snapshots and exports. These tools never spend influence, select bonuses, befriend, levy, or incorporate anything.
+`bonusChoices[].eligible` follows the game's bonus picker; `availableNow` additionally requires a pending choice for this city-state, local suzerainty, and the engine's selection check. It does not imply an existing bonus can be replaced. `ongoingActions` includes only projects initiated by you against that power, with direct progress, required progress, turns remaining, and befriending support cost/eligibility. City-state data and attribute trees are included in snapshots and exports. These read-only queries never spend influence, select bonuses, befriend, levy, or incorporate anything.
+
+`befriendingRace` adds revealed ongoing befriending projects by you and met rivals:
+`participants[]` includes `eventId`, player identity, `isLocal`, `progress`,
+`requiredProgress`, native `progressPerTurn`/`turnsRemaining`, and `stages[]` with
+thresholds, reached flags, native remaining turns and descriptions. Missing native
+timings stay `null`; no ETAs are invented. `contested` means multiple included
+participants, not a complete inventory of unmet players. Hidden, unrevealed,
+failed, ended and other foreign diplomatic projects remain omitted. Forecasts
+can change with further support and do not guarantee who wins.
+
+`support_civ7_befriending(event_id, target_player_id, max_influence_cost, expected_turn)`
+buys **one** additional support token for your exact active befriending project;
+it does not start a new project or support another player's race/war. Use your
+`ongoingActions[].id` and `supportAction.influenceCost`, not a rival event ID or
+the initial Befriend cost. Requires a peaceful met/discovered independent,
+active single-player GameStarted turn, disabled auto-end-turn, native permission
+without confirmation, and a fresh affordable quote within the explicit cap.
+Rechecks identity, support, quote and balances immediately before one native
+`SUPPORT_DIPLOMATIC_ACTION` request. Read-only verification (up to 15 seconds)
+requires exactly one own token increment, exact Influence debit, unchanged Gold
+and progress, and the same turn/Age/player; reports the new native rate/ETA.
+It does not guarantee victory or account for every rival/relationship effect.
+Unknown/cancelled results must never be retried automatically. Positive support
+execution is fixture-tested only; no live Influence was spent for this change.
 
 ### Major-player diplomacy detail
 

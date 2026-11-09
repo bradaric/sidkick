@@ -80,7 +80,8 @@
             {ID: event.uniqueID, Type: DiplomacyTokenTypes.DIPLOMACY_TOKEN_GLOBAL, Amount: 1, SubType: true}, false);
           supportAction = {
             influenceCost: cost(Game.Diplomacy.getInfluenceForNextSupport(event.uniqueID, id, true)),
-            availableNow: Boolean(result.Success),
+            availableNow: result?.Success === true && result.RequiresConfirmation !== true && result.InsufficientFunds !== true,
+            responseTool: "support_civ7_befriending",
             failureReasons: reasons(result)
           };
         }
@@ -98,6 +99,32 @@
           supportAction
         };
       });
+  }
+
+  function befriendingRace(otherId) {
+    const participants = (Game.Diplomacy.getPlayerEvents(otherId) ?? [])
+      .filter(event => event.targetPlayer === otherId &&
+        event.actionType === DiplomacyActionTypes.DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN &&
+        event.hidden === false && event.revealed === true && event.failed === false && event.gameTurnEnd === -1 &&
+        Number.isInteger(event.uniqueID) && event.uniqueID >= 0 && Number.isInteger(event.initialPlayer) &&
+        event.initialPlayer >= 0 && (event.initialPlayer === id || diplomacy.hasMet(event.initialPlayer) === true))
+      .map(event => {
+        const completion = Game.Diplomacy.getCompletionData(event.uniqueID);
+        return {
+          ...knownPlayer(event.initialPlayer), eventId: event.uniqueID,
+          progress: cost(event.progressScore), requiredProgress: cost(event.completionScore),
+          progressPerTurn: cost(completion?.progressPerTurn), turnsRemaining: cost(completion?.turnsToCompletion),
+          stages: (Game.Diplomacy.getStages(event.uniqueID) ?? []).map((stage, index) => ({
+            requiredProgress: cost(stage.requiredProgress),
+            turnsRemaining: cost(completion?.stageTurnsToComplete?.[index]),
+            reached: Number.isFinite(stage.requiredProgress) && Number.isFinite(event.progressScore)
+              ? event.progressScore >= stage.requiredProgress : null,
+            description: name(stage.stageToolTip)
+          }))
+        };
+      });
+    return {contested: participants.length > 1, participants,
+      scope: "Revealed ongoing befriending by local/met players only; not a complete unmet-player race inventory or a victory guarantee"};
   }
 
   const powers = [];
@@ -138,12 +165,13 @@
       bonus: bonusInfo(bonus),
       bonusChoices,
       actions: actions(otherId),
-      ongoingActions: ongoingActions(otherId)
+      ongoingActions: ongoingActions(otherId),
+      befriendingRace: befriendingRace(otherId)
     });
   }
   return {
     turn: Game.turn,
-    scope: "Met city-states and met/discovered independents; ongoing actions initiated by the local player only",
+    scope: "Met city-states and met/discovered independents; own ongoing actions plus revealed known-player befriending races only",
     influence: {balance: player.DiplomacyTreasury?.diplomacyBalance ?? null, netPerTurn: player.Stats.getNetYield(YieldTypes.YIELD_DIPLOMACY)},
     pendingBonusSelection: powers.some(power => power.playerId === bonusSelection) ? bonusSelection : null,
     powers

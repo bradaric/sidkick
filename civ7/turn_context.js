@@ -226,6 +226,7 @@
     pendingEventsCoverage: {reportedPendingCount: stories.getNumPendingMet(),
       scope: "Native local pending IDs plus the two UI queue heads; trial choices are not modeled. Base costs are definition values, not runtime quotes"},
     quests,
+    triumphPopup: typeof triumphPopup === "undefined" ? {status: "unavailable", availableNow: false} : triumphPopup.snapshot(),
     notifications
   };
 })()

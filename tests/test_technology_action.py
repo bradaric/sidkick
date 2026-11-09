@@ -134,6 +134,8 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(set(enabled) - set(normal), {
             "save_civ7_game", "load_civ7_game",
             "acknowledge_civ7_espionage_report", "pay_civ7_call_to_arms",
+            "acknowledge_civ7_town_focus_reminder",
+            "close_civ7_triumph_popup",
             "edit_civ7_dedication",
             "select_civ7_technology", "select_civ7_civic", "set_civ7_policy_active",
             "assign_civ7_resource",
@@ -222,6 +224,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "airdrop_civ7_infantry",
             "airdrop_civ7_infantry_group",
             "support_civ7_own_war",
+            "support_civ7_befriending",
             "manage_civ7_alliance",
             "activate_civ7_commander_great_person",
             "respond_civ7_hostile_project",

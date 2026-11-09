@@ -301,6 +301,16 @@ async def manage_alliance(target_player_id: StrictInt, action: Literal["form", "
     return await _execute_and_verify("alliance_action.js",{"target_player_id":target_player_id,"action":action,"expected_turn":expected_turn},"alliance_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
+async def support_befriending(event_id: StrictInt, target_player_id: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
+    """Buy one capped native support token for an exact own ongoing befriending project."""
+    if any(type(v) is not int or v < 0 for v in (event_id, target_player_id, expected_turn)) or type(max_influence_cost) not in (int, float) or not math.isfinite(max_influence_cost) or max_influence_cost < 0:
+        raise ValueError("Exact own befriending event/target, finite Influence cap and expected turn required")
+    return await _execute_and_verify("support_befriending.js", {
+        "event_id": event_id, "target_player_id": target_player_id,
+        "max_influence_cost": max_influence_cost, "expected_turn": expected_turn,
+    }, "befriending_support_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def support_own_war(event_id: StrictInt, target_player_id: StrictInt, max_influence_cost: StrictFloat, expected_turn: StrictInt) -> dict[str, Any]:
     """Add exactly one native runtime-priced support token to own side of an exact ongoing war."""
     if any(type(v) is not int or v<0 for v in (event_id,target_player_id,expected_turn)) or type(max_influence_cost) not in (int,float) or not math.isfinite(max_influence_cost) or max_influence_cost<0:
@@ -891,6 +901,26 @@ async def acknowledge_espionage_report(
             return {**result, "status": "unknown", **({"after": after} if after is not None else {}),
                     "phase": "continue" if continued else "open", "error": f"{type(exc).__name__}: {exc}",
                     "reason": "Report acknowledgement is unverified; the popup may remain open. Inspect current state; never retry automatically"}
+
+
+async def close_triumph_popup(popup_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Press native Close once on the exact currently visible Triumph completion popup."""
+    if not isinstance(popup_token, str) or not popup_token or len(popup_token) > 100000 or type(expected_turn) is not int or expected_turn < 0:
+        raise ValueError("Fresh exact Triumph popup token and expected turn required")
+    return await _execute_and_verify("close_triumph_popup.js", {
+        "popup_token": popup_token, "expected_turn": expected_turn, "request_id": uuid4().hex,
+    }, "triumph_popup_state.js")
+
+
+async def acknowledge_town_focus(
+    notification_id: StrictInt, component_type: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Acknowledge one owned Town-focus reminder without changing its current focus."""
+    if any(type(v) is not int or v < 0 for v in (notification_id, component_type, expected_turn)):
+        raise ValueError("Exact local Town reminder component and expected turn required")
+    return await _execute_and_verify("acknowledge_town_focus.js", {
+        "notification_id": notification_id, "component_type": component_type, "expected_turn": expected_turn,
+    }, "town_focus_reminder_state.js")
 
 
 async def acknowledge_advisor_warning(
