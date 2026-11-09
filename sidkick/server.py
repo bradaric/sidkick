@@ -8,6 +8,8 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import Icon, ToolAnnotations
 
 from civ7.actions import (
+    save_game,
+    load_game,
     edit_dedication,
     attack_unit,
     army_ranged_attack,
@@ -119,6 +121,7 @@ from civ7.actions import (
 )
 from civ7.player import snapshot
 from civ7.queries import (
+    saved_games,
     civilopedia,
     peace_city_offer,
     age_transition,
@@ -187,6 +190,17 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Civilopedia content is unknown, not proof that there is no requirement."
         ),
     )
+    server.tool(
+        name="get_civ7_saved_games", title="List local Civ VII single-player saves",
+        description=("Read local single-player game-state save metadata, including manual, quick and auto saves, "
+                     "from the main menu or a stable loaded single-player game. Bounded limit 1–100 (default50), "
+                     "offset0–10000. Returns exact persistent saveToken/revision, turn, Age, campaign GUID and "
+                     "required-content availability; never reads saved world inventories. Excludes cloud, multiplayer, "
+                     "transition/configuration files, directories and live events. No save/load/delete/sync or UI navigation. "
+                     "Loading requires a fresh token and explicit permission to discard unsaved progress."),
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        structured_output=True,
+    )(saved_games)
     server.tool(
         name="get_civ7_civilopedia", title="Search or read the loaded Civ VII Civilopedia",
         description=(
@@ -330,6 +344,33 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="save_civ7_game", title="Create a new local Civ VII save",
+            description=("WRITE LOCAL SAVE: create one new named single-player game-state save using save_name "
+                         "(1–80 ASCII letters/digits/spaces/_/-, no paths/extensions/reserved names) and fresh expected_turn. "
+                         "Requires active single-player GameStarted turn. Refreshes local inventory and refuses existing names; "
+                         "native Overwrite=false, never quicksave/overwrite/delete/cloud/multiplayer. Submits once, waits up to15s "
+                         "for normal serializer success plus exact new file/turn/Age metadata in unchanged context. "
+                         "Unknown/cancelled outcomes may have saved; inspect get_civ7_saved_games, never retry automatically. "
+                         "Requires explicit user instruction to create this save."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(save_game)
+        server.tool(
+            name="load_civ7_game", title="Load an exact local Civ VII save",
+            description=("DISCARD UNSAVED PROGRESS / CHANGE SESSION: load exactly one listed local single-player save "
+                         "by fresh save_token from get_civ7_saved_games.saves[].saveToken and required "
+                         "confirm_discard_unsaved_progress=true. Requires explicit user approval for this exact load and loss "
+                         "of unsaved progress; the flag alone is not user authorization. Supply current expected_turn in an "
+                         "active single-player GameStarted game; omit only at the main menu. Fresh native local inventory, "
+                         "revision and required-content checks; rejects transitional loading, cloud/multiplayer, ambiguous/stale "
+                         "files, missing/unowned mods and transition/configuration saves. Fixed native loadGame with no server, "
+                         "no sync/deletion/overwrite or auto-Begin. Submits once: status=submitted means native acceptance only, "
+                         "loadCompleted=false, not verified completion. Wait for loading/Begin and refresh gameplay evidence. "
+                         "Timeout/disconnection/cancellation may follow a successful load; never retry automatically."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(load_game)
         server.tool(
             name="edit_civ7_dedication", title="Edit one Civ VII Dedication selection",
             description=(

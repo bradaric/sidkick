@@ -29,6 +29,11 @@ async def run_started_script(
     return await _run_script(script_name, arguments, require_started=True)
 
 
+async def run_load_game_script(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Only this fixed loader may run from the menu; its bundled guard rejects transitions/MP."""
+    return await _run_script("save_load.js", {**arguments, "operation": "load"}, require_started=False)
+
+
 async def _run_script(
     script_name: str, arguments: dict[str, Any] | None, *, require_started: bool,
 ) -> dict[str, Any]:

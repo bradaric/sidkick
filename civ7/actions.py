@@ -2,12 +2,16 @@
 
 import asyncio
 import math
+import re
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import StrictBool, StrictFloat, StrictInt, StrictStr
 
-# Every submission/readback uses the loading gate; ordinary queries keep run_script.
+# Gameplay submissions/readbacks retain the loading gate; the fixed menu loader has its own guard.
 from civ7.connection import run_started_script as run_script
+from civ7.connection import run_load_game_script
+from civ7.save_games import read_save_inventory
 
 
 # Serialize submission and readback within this process, not across MCP servers.
@@ -16,6 +20,64 @@ _VERIFICATION_TIMEOUT = 2.0
 _VERIFICATION_INTERVAL = 0.1
 _TURN_VERIFICATION_TIMEOUT = 60.0
 _COMBAT_VERIFICATION_TIMEOUT = 15.0
+
+
+async def save_game(save_name: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Create one new local single-player save; no overwrite or automatic retry."""
+    if (not isinstance(save_name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _-]{0,79}", save_name)
+            or save_name != save_name.strip() or re.fullmatch(r"CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]", save_name, re.I)
+            or type(expected_turn) is not int or expected_turn < 0):
+        raise ValueError("Safe new save name (1–80 ASCII letters/digits/spaces/_/-) and expected turn required")
+    async with _action_lock:
+        result = {"status": "unknown"}
+        try:
+            inventory = await read_save_inventory()
+            if inventory.get("status") != "ready":
+                return inventory
+            result = await run_script("save_load.js", {"operation": "save", "save_name": save_name,
+                "expected_turn": expected_turn, "inventory_id": inventory["inventoryId"], "request_id": uuid4().hex})
+            if result.get("status") != "submitted":
+                return result
+            before = result["before"]
+            async with asyncio.timeout(15):
+                while True:
+                    state = await run_script("save_load.js", {"operation": "save_state", "request_id": result["requestId"]})
+                    if state.get("context") != before or state.get("status") != "ready":
+                        raise ValueError("Game context or save observation changed")
+                    if state.get("serializerComplete") is True:
+                        if state.get("serializerOk") is not True:
+                            return {**result, "status": "unknown", "after": state,
+                                    "reason": "Native save did not confirm success; inspect saves and never retry automatically"}
+                        after = await read_save_inventory()
+                        matches = [f for f in after.get("saves", []) if f.get("fileName", "").lower() == f"{save_name}.Civ7Save".lower()
+                                   and f.get("currentTurn") == before.get("turn") and f.get("age") == before.get("ageType")]
+                        if after.get("status") == "ready" and after.get("context") == before and len(matches) == 1:
+                            return {**result, "status": "verified_applied", "save": matches[0], "after": state}
+                        raise ValueError("Serializer succeeded but the exact new save metadata is unverified")
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Save outcome is unverified; inspect saves and never retry automatically"}
+
+
+async def load_game(
+    save_token: StrictStr, confirm_discard_unsaved_progress: StrictBool, expected_turn: StrictInt | None = None,
+) -> dict[str, Any]:
+    """Request one exact listed local save from game or menu; acceptance is not completed loading."""
+    if (not isinstance(save_token, str) or not save_token or len(save_token) > 100000
+            or confirm_discard_unsaved_progress is not True
+            or expected_turn is not None and (type(expected_turn) is not int or expected_turn < 0)):
+        raise ValueError("Exact fresh save token, explicit discard confirmation and current turn (omit only in menu) required")
+    async with _action_lock:
+        try:
+            inventory = await read_save_inventory()
+            if inventory.get("status") != "ready":
+                return inventory
+            return await run_load_game_script({"inventory_id": inventory["inventoryId"], "save_token": save_token,
+                "confirm_discard_unsaved_progress": True, "expected_turn": expected_turn})
+        except Exception as exc:
+            return {"status": "unknown", "loadCompleted": False, "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Load may already be underway; inspect loading state and never retry automatically"}
 
 
 async def edit_dedication(

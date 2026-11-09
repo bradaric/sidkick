@@ -22,7 +22,7 @@ The ChatGPT bridge scripts below do **not** manage OpenCode's process. Do not st
 
 ### Opt-in gameplay actions (OpenCode first)
 
-The normal server exposes **27 game-read-only tools**. Starting it with both
+The normal server exposes **28 game-read-only tools**. Starting it with both
 `--transport stdio --enable-writes` additionally registers
 `select_civ7_technology`, `select_civ7_civic`, `set_civ7_policy_active`,
 `assign_civ7_resource`, `move_civ7_great_work`, `buy_civ7_attribute_node`,
@@ -94,6 +94,41 @@ fixture-tested. An approved repeat of the same two selections returned
 technology and all active policy/tradition/crisis groups were unchanged. The
 actions share submission serialization and bounded verification, but have
 separate native scripts, selectors and readback fields.
+
+#### Local single-player save/load
+
+`get_civ7_saved_games(limit=50, offset=0)` lists local manual, quick and auto
+game-state saves from a stable single-player game or the main menu. It returns
+bounded metadata and an exact `saveToken` binding the file's identity/revision,
+not its saved world state. Cloud, multiplayer, live-event, configuration and
+Age-transition saves are excluded. Required missing/unowned content blocks loading.
+
+Write mode additionally exposes:
+
+- `save_civ7_game(save_name, expected_turn)`: create a **new** local manual save
+  during an active single-player GameStarted turn. Names are 1–80 ASCII
+  letters/digits/spaces/underscores/hyphens, without paths, extensions, leading or
+  trailing spaces, or reserved device names. Existing names are rejected and
+  native `Overwrite=false` is always enforced. Verified success requires normal
+  serializer success plus the exact new file's turn/Age metadata and unchanged
+  current context; a native accepted request alone is not proof of saving.
+- `load_civ7_game(save_token, confirm_discard_unsaved_progress=true, expected_turn=null)`:
+  **discards unsaved progress** and replaces the current session. The user must
+  approve that exact load; the boolean flag is not conversational authorization.
+  Obtain the token from the browser; the action refreshes native metadata and
+  rejects stale, ambiguous or content-ineligible saves. Supply the current turn
+  in an active GameStarted game, or omit it only at the main menu. A separate
+  fixed loader supports the menu without relaxing any gameplay loading guard.
+
+The load result `status=submitted, loadCompleted=false` means native acceptance,
+**not completed loading**. Wait for loading/Begin, finish Begin manually if needed,
+then refresh gameplay evidence before acting. These tools never press Begin,
+delete saves, overwrite, sync to cloud or automatically retry a timeout,
+disconnect or cancellation. The operation may already have happened: inspect
+current state before any further explicitly authorized action.
+
+Save browsing is live-read-verified; save/load writes and menu behavior are
+fixture-tested only. No live save or load was executed for this implementation.
 
 #### Single ordinary-policy toggle
 
