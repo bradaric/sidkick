@@ -28,6 +28,7 @@ from civ7.actions import (
     upgrade_army,
     acknowledge_agenda,
     acknowledge_advisor_warning,
+    acknowledge_town_focus,
     acknowledge_espionage_report,
     append_city_production,
     assign_resource,
@@ -1593,6 +1594,23 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(acknowledge_advisor_warning)
+        server.tool(
+            name="acknowledge_civ7_town_focus_reminder", title="Acknowledge Civ VII Town focus reminder without changing focus",
+            description=("CHANGE GAME STATE: acknowledge one exact owned NOTIFICATION_CHOOSE_TOWN_PROJECT using "
+                         "notification_id and component_type from get_civ7_turn_context.notifications[].id.id/id.type "
+                         "and fresh expected_turn. Derives the exact owned Town from the native reminder target; "
+                         "rejects duplicate reminders for that Town, stale/foreign/unknown identities and non-Towns. "
+                         "Uses one native CityOperations.CONSIDER_TOWN_PROJECT request, like viewing the Town-focus "
+                         "panel; never CHANGE_GROWTH_MODE, generic notification dismissal or UI navigation. Requires "
+                         "active single-player GameStarted turn, auto-end-turn disabled and exact native permission "
+                         "without cost/confirmation. Verifies reminder dismissal/expiry/removal, unchanged Town "
+                         "growth/project mode and Gold in the same turn/Age/player. Can remove this turn blocker, "
+                         "not other blockers; no focus change, spending, turn advancement or popup-closure claim. "
+                         "Submits once, polls read-only up to2s. Requires explicit acknowledgement authorization; "
+                         "unknown/cancelled outcomes must never be retried automatically."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(acknowledge_town_focus)
         server.tool(
             name="acknowledge_civ7_espionage_report", title="Continue one Civ VII espionage report",
             description=("CHANGE GAME/UI STATE: activate exactly one owned NOTIFICATION_DIPLOMATIC_ACTION_ESPIONAGE "

@@ -893,6 +893,17 @@ async def acknowledge_espionage_report(
                     "reason": "Report acknowledgement is unverified; the popup may remain open. Inspect current state; never retry automatically"}
 
 
+async def acknowledge_town_focus(
+    notification_id: StrictInt, component_type: StrictInt, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Acknowledge one owned Town-focus reminder without changing its current focus."""
+    if any(type(v) is not int or v < 0 for v in (notification_id, component_type, expected_turn)):
+        raise ValueError("Exact local Town reminder component and expected turn required")
+    return await _execute_and_verify("acknowledge_town_focus.js", {
+        "notification_id": notification_id, "component_type": component_type, "expected_turn": expected_turn,
+    }, "town_focus_reminder_state.js")
+
+
 async def acknowledge_advisor_warning(
     notification_id: StrictInt, component_type: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:

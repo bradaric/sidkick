@@ -500,6 +500,21 @@ war declaration, native submission retry or turn advancement was issued. All
 three approved actions are now live-verified and manually confirmed, including
 the final Scout inspection.
 
+#### Town-focus reminder acknowledgement
+
+`acknowledge_civ7_town_focus_reminder(notification_id, component_type, expected_turn)`
+acknowledges one exact owned `NOTIFICATION_CHOOSE_TOWN_PROJECT` from
+`get_civ7_turn_context.notifications[].id`. It uses the native
+`CityOperations.CONSIDER_TOWN_PROJECT` operation sent when viewing a Town's focus
+panel, not a focus change or generic dismissal. The owned Town comes from the
+notification target; ambiguous duplicate reminders are rejected. Active
+single-player GameStarted turn and disabled auto-end-turn are required.
+Readback verifies exact reminder clearance, unchanged growth/project mode and
+Gold. Other turn blockers and popup UI closure are not implied. Repeating the
+already-selected focus remains a no-op and does not acknowledge this reminder.
+Submits once, never retries unknown/cancelled calls. Positive acknowledgement is
+fixture-tested only; no live reminder was cleared for this implementation.
+
 #### Town focus, city upgrades and specialists
 
 - `set_civ7_town_focus(settlement, focus, expected_turn)` uses an exact offered
