@@ -43,7 +43,10 @@
     if (kind === "shore" && (GameplayMap.isWater(x, y) !== false || GameplayMap.isWater(unit.location.x, unit.location.y) !== true)) return null;
     const owner = GameplayMap.getOwner(x, y);
     if (territory === "own_unowned") {
-      if (![playerId, -1].includes(owner)) return null;
+      // Naval fire targets the wartime ship, not the neutral owner of its water.
+      // Keep every other attack mode inside its existing territory boundary.
+      if (![playerId, -1].includes(owner) && !(kind === "naval" && Number.isInteger(owner) && owner >= 0 &&
+          owner !== targetPlayer && player.Diplomacy.hasMet(owner) === true && player.Diplomacy.isAtWarWith(owner) === false)) return null;
     } else {
       // Separate enemy-field modes positively exclude undefended centres as well
       // as districts. Melee may enter this field, never a settlement/capture tile.
@@ -74,10 +77,14 @@
   }
   const enemy = target();
   if (!enemy) return reject("Target is not the exact single visible hostile combat unit on an allowed field tile; no civilian, stack, district or city attacks");
+  const tileOwner = GameplayMap.getOwner(x, y);
+  const neutralOwner = kind === "naval" && ![playerId, -1].includes(tileOwner) ? tileOwner : null;
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type,
     location: {x: unit.location.x, y: unit.location.y}, moves: unit.Movement.movementMovesRemaining,
     attacks: unit.Combat.attacksRemaining, hasAttacked: unit.Combat.hasAttacked ?? null,
-    targetPlayer, targetUnitId: targetId, targetType: enemy.type, targetComponentType: enemy.id.type, targetDamage: enemy.Health.damage, targetTerritory: territory};
+    targetPlayer, targetUnitId: targetId, targetType: enemy.type, targetComponentType: enemy.id.type, targetDamage: enemy.Health.damage,
+    targetTerritory: neutralOwner !== null ? "neutral_water" : territory,
+    ...(neutralOwner !== null ? {neutralTerritoryOwner: neutralOwner} : {})};
   const args = {X: x, Y: y}, plot = GameplayMap.getIndexFromLocation(location);
   const operation = kind === "melee" ? UnitOperationTypes.MOVE_TO : ["naval", "shore"].includes(kind) ? "UNITOPERATION_NAVAL_ATTACK" : UnitOperationTypes.RANGE_ATTACK;
   if (kind === "melee") {
@@ -95,6 +102,7 @@
   if (check?.Success !== true || check.RequiresConfirmation === true) return reject("Native attack is blocked or requires an unsupported confirmation", check?.FailureReasons ?? []);
   const fresh = target();
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true ||
+      (neutralOwner !== null && GameplayMap.getOwner(x, y) !== neutralOwner) ||
       GameContext.hasSentTurnComplete() !== false || player.Diplomacy.isAtWarWith(targetPlayer) !== true ||
       unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType || unit.isOnMap !== true ||
       unit.operationQueueSize !== 0 || unit.location.x !== before.location.x || unit.location.y !== before.location.y ||
@@ -103,17 +111,20 @@
   const verificationArguments = {unit_id: unitId, attacker_component_type: before.componentType, attacker_type: before.unitType,
     before_attacks: before.attacks, target_player: targetPlayer, target_unit_id: targetId,
     target_component_type: before.targetComponentType, target_type: before.targetType, before_target_damage: before.targetDamage, x, y};
+  if (neutralOwner !== null) verificationArguments.neutral_territory_owner = neutralOwner;
   if(observe){
     if(typeof combatObserver==="undefined")return reject("Fixed internal combat observer is unavailable");
     const observed=combatObserver.capture(playerId,x,y,radius,unit.id);
     if(!observed?.some(u=>u.owner===targetPlayer&&u.instanceId===targetId&&u.componentType===before.targetComponentType))return reject("Complete bounded visible observation baseline unavailable");
-    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||unit.Combat.attacksRemaining!==before.attacks||target()?.Health.damage!==before.targetDamage)return reject("Combat changed while capturing observation baseline");
+    if(Game.turn!==before.turn||Game.age!==before.age||GameContext.localPlayerID!==playerId||unit.Combat.attacksRemaining!==before.attacks||
+      (neutralOwner!==null&&GameplayMap.getOwner(x,y)!==neutralOwner)||target()?.Health.damage!==before.targetDamage)return reject("Combat changed while capturing observation baseline");
     try{verificationArguments.observation_token=combatObserver.start(playerId,unit.id,observed,15000);}
     catch(error){return reject("Native bounded combat event observation unavailable");}
     before.observedUnitCount=observed.length;before.observationRadius=radius;
   }
   try{Game.UnitOperations.sendRequest(unit.id, operation, args);}
   catch(error){if(observe)combatObserver.read(verificationArguments.observation_token,true);throw error;}
-  return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, attackObserved: true,...(observe?{observationQuiescent:true}:{})}, verificationArguments,
+  return {status: "submitted", before, expected: {unitId, targetPlayer, targetUnitId: targetId, attackObserved: true,
+    ...(neutralOwner !== null ? {neutralTerritoryPeacePreserved: true} : {}),...(observe?{observationQuiescent:true}:{})}, verificationArguments,
     verificationScope: observe?"Attack consumption/loss plus primary effect, with captured visible-unit health deltas/departures and exact native local-attack kill attributions. Unknown departures are not kills. Observation is bounded, not complete hidden/out-of-radius/interception/global effect accounting":"Attack consumed/attacker lost plus visible primary-target damage or departure; not a damage forecast, kill or capture claim. Native splash and other side effects may affect additional units and are not fully verified"};
 })()

@@ -37,6 +37,8 @@ class NavalAttackTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(enabled['naval_attack_civ7_unit'].annotations.read_only_hint)
         self.assertTrue(enabled['naval_attack_civ7_unit'].annotations.destructive_hint)
         self.assertFalse(enabled['naval_attack_civ7_unit'].annotations.idempotent_hint)
+        self.assertIn('met peaceful third-party', enabled['naval_attack_civ7_unit'].description)
+        self.assertIn('verifies peace', enabled['naval_attack_civ7_unit'].description)
         with patch('civ7.actions.run_script', new_callable=AsyncMock) as run:
             with self.assertRaises(ValueError): await actions.naval_attack_unit(True, 1, 20, 3, 3, 62)
             with self.assertRaises(ToolError):
@@ -53,3 +55,21 @@ class NavalAttackTests(unittest.IsolatedAsyncioTestCase):
         with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=asyncio.CancelledError) as run:
             with self.assertRaises(asyncio.CancelledError): await actions.naval_attack_unit(10, 1, 20, 3, 3, 62)
             self.assertEqual(run.await_count, 1)
+
+    async def test_neutral_water_readback_requires_peace_without_resubmitting(self):
+        before = {'turn': 62, 'age': 42, 'playerId': 0}
+        captured = {'unit_id': 10, 'before_attacks': 1, 'target_unit_id': 20, 'neutral_territory_owner': 2}
+        submitted = {'status': 'submitted', 'before': before, 'verificationArguments': captured,
+                     'expected': {'attackObserved': True, 'neutralTerritoryPeacePreserved': True}}
+        for preserved in (True, False):
+            async def execute(script, arguments):
+                if script == 'attack_unit.js':
+                    return submitted
+                return {**before, 'attackObserved': True, 'neutralTerritoryPeacePreserved': preserved}
+            with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=execute) as run, \
+                    patch('civ7.actions._COMBAT_VERIFICATION_TIMEOUT', 0.01):
+                result = await actions.naval_attack_unit(10, 1, 20, 3, 3, 62)
+            self.assertEqual(result['status'], 'verified_applied' if preserved else 'unknown')
+            writes = [call for call in run.await_args_list if call.args[0] == 'attack_unit.js']
+            self.assertEqual(len(writes), 1)
+            self.assertEqual(run.await_args_list[1].args, ('unit_attack_state.js', captured))

@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const {test} = require('node:test');
 
 function run(o = {}, script = 'attack_unit.js') {
+  let tileOwner = o.tileOwner ?? (o.enemyTile ? 1 : -1), neutralWar = o.neutralWar ?? false;
   const calls = [], attacker = {id: {owner: o.foreign ? 1 : 0, id: 10, type: 26}, type: 100,
     isOnMap: !o.offMap, isCommanderUnit: o.commander ?? false, isEmbarked: o.embarked ?? false,
     operationQueueSize: o.queued ? 1 : 0, location: {x: 2, y: 3},
@@ -23,7 +24,8 @@ function run(o = {}, script = 'attack_unit.js') {
   if (o.negativeAttacks) attacker.Combat.attacksRemaining = -1;
   const player = {isTurnActive: !o.inactive, Units: {getUnits: () => [...(o.deadAttacker ? [] : [attacker]), ...(o.secondParticipant ? [second] : []), ...(o.group ? [commander] : [])]},
     Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 10 : -1},
-    Diplomacy: {hasMet: () => !o.unmet, isAtWarWith: () => !o.peace}};
+    Diplomacy: {hasMet: owner => owner === 2 ? o.neutralMetUnknown ? null : !o.neutralUnmet : !o.unmet,
+      isAtWarWith: owner => owner === 2 ? o.neutralWarUnknown ? null : neutralWar : !o.peace}};
   const args = {unit_id: 10, commander_id: 30, target_player: 1, target_unit_id: 20, x: 3, y: 3, kind: 'melee', attack_kind: 'ranged', expected_turn: 62,
     attacker_component_type: 26, attacker_type: 100, before_attacks: 1, before_has_attacked: false,
     target_component_type: 26, target_type: 200, before_target_damage: 0, ...o.args};
@@ -33,7 +35,7 @@ function run(o = {}, script = 'attack_unit.js') {
        Units: {lookup: type => ({UnitType: type===300&&o.navalGroup?'UNIT_FLEET_COMMANDER':type === 100 ? 'UNIT_RANGED' : `UNIT_${type}`, Domain: type === 200 && o.shoreLandTarget ? 'DOMAIN_LAND' : o.air ? 'DOMAIN_AIR' : o.sea ? 'DOMAIN_SEA' : 'DOMAIN_LAND',
        FormationClass: type === 200 && o.civilianDefinition ? 'FORMATION_CLASS_CIVILIAN' : type === 200 && o.shoreLandTarget ? 'FORMATION_CLASS_LAND_COMBAT' : o.sea ? 'FORMATION_CLASS_NAVAL' : 'FORMATION_CLASS_LAND_COMBAT'})}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2,
-      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => o.tileOwner ?? (o.enemyTile ? 1 : -1),
+      getPlotDistance: () => o.distant ? 2 : 1, getIndexFromLocation: l => l.x + l.y * 10, getOwner: () => tileOwner,
       isWater: x => o.shoreSource ? x === 2 : o.waterTarget ?? o.sea ?? false},
     RevealedStates: {VISIBLE: 2}, Visibility: {isVisible: () => !o.invisible},
     MapCities: {getCity: () => o.noCity ? null : {owner: 1, id: 9, type: 1},
@@ -59,6 +61,8 @@ function run(o = {}, script = 'attack_unit.js') {
         if (o.changed) context.Game.turn++;
         if (o.changedTarget) target.Health.damage++;
         if (o.changedDistrict) district.getDamage++;
+        if (o.changedNeutralWar) neutralWar = true;
+        if (o.changedTileOwner) tileOwner = 0;
         return {Success: !o.blocked, RequiresConfirmation: o.confirm ?? false,
           Plots: o.unreachable ? [] : [33], ...(o.noModifiers ? {} : {Modifiers: [o.blockedPlot ? 8 : 9]})};
        }, sendRequest: (id, operation, args) => {calls.push({kind: 'send', id, operation, args}); if (o.sendThrows) throw Error('Lost acknowledgement');}}}};
@@ -68,8 +72,13 @@ function run(o = {}, script = 'attack_unit.js') {
     context.engine={on:(name,cb)=>{(listeners[name]??=[]).push(cb);return{clear:()=>{listeners[name]=listeners[name].filter(c=>c!==cb);}};}};
     context.MapUnits.getUnits=(x,y)=>x===2&&y===3?[attacker.id]:x===3&&y===3&&!gone?[target.id]:[];
     context.combatObserver=vm.runInNewContext(fs.readFileSync('civ7/combat_observation.js','utf8'),context);
+    if (o.warDuringObservation) {
+      const capture = context.combatObserver.capture;
+      context.combatObserver.capture = (...args) => {const result = capture(...args); neutralWar = true; return result;};
+    }
     context.Game.UnitOperations.sendRequest=(id,operation,args)=>{
       calls.push({kind:'send',id,operation,args});attacker.Combat.attacksRemaining=0;target.Health.damage=30;district.getDamage=30;
+      if (o.warAfterSend) neutralWar = true;
       for(const cb of listeners.Combat??[])cb({attacker:attacker.id,defender:target.id});
       if(o.nativeKill){for(const cb of listeners.UnitKilledInCombat??[])cb({unitKiller:attacker.id,unitKilled:target.id});gone=true;}
       if(o.departed)gone=true;
@@ -190,6 +199,47 @@ test('naval attack uses the distinct native naval operation and its offered plot
     {group: true, unknownArmy: true}, {hidden: true}, {peace: true}, {reinforcing: true}]) {
     const result = run({sea: true, args: {kind: 'naval'}, ...o});
     assert.equal(result.data.status, 'rejected', JSON.stringify(o)); assert.equal(result.calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('native naval fire permits an exact wartime ship in met peaceful third-party water and verifies peace', () => {
+  const r = run({sea: true, tileOwner: 2, observe: true, noModifiers: true, args: {kind: 'naval'}});
+  assert.equal(r.data.status, 'submitted');
+  assert.equal(r.data.before.neutralTerritoryOwner, 2);
+  assert.equal(r.data.before.targetTerritory, 'neutral_water');
+  assert.equal(r.data.verificationArguments.neutral_territory_owner, 2);
+  assert.equal(r.data.expected.neutralTerritoryPeacePreserved, true);
+  assert.equal(r.after.neutralTerritoryPeacePreserved, true);
+  assert.equal(r.after.attackObserved, true);
+  assert.deepEqual(r.calls.filter(c => c.kind === 'send'), [{kind: 'send', id: {owner: 0, id: 10, type: 26},
+    operation: 'UNITOPERATION_NAVAL_ATTACK', args: {X: 3, Y: 3}}]);
+});
+
+test('neutral-water exception never permits unknown diplomacy, wartime territory, changed context or other attack kinds', () => {
+  for (const extra of [{neutralUnmet: true}, {neutralMetUnknown: true}, {neutralWar: true}, {neutralWarUnknown: true},
+    {changedNeutralWar: true}, {changedTileOwner: true}, {observe: true, warDuringObservation: true},
+    {tileOwner: 1}, {tileOwner: -2}, {tileOwner: 2.5}, {tileOwner: true},
+    {confirm: true}, {unreachable: true}, {blocked: true}, {peace: true}, {stacked: true}, {wrongDefender: true},
+    {district: true}, {undefendedDistrict: true}, {waterTarget: false}, {shoreLandTarget: true}, {hidden: true},
+    {args: {kind: 'ranged'}}, {args: {kind: 'melee'}}, {args: {kind: 'shore', target_territory: 'enemy_field'}}]) {
+    const r = run({sea: true, tileOwner: 2, args: {kind: 'naval'}, ...extra});
+    assert.equal(r.data.status, 'rejected', JSON.stringify(extra));
+    assert.equal(r.calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('neutral-water combat readback reports a new war instead of verifying preserved peace', () => {
+  const r = run({sea: true, tileOwner: 2, observe: true, warAfterSend: true, args: {kind: 'naval'}});
+  assert.equal(r.data.status, 'submitted');
+  assert.equal(r.after.attackObserved, true);
+  assert.equal(r.after.neutralTerritoryPeacePreserved, false);
+  assert.equal(r.calls.filter(c => c.kind === 'send').length, 1);
+  for (const owner of [0, 1, -1, true, null]) {
+    assert.throws(() => run({args: {neutral_territory_owner: owner}}, 'unit_attack_state.js'), /neutral.*owner/i);
+  }
+  for (const extra of [{neutralMetUnknown: true}, {neutralWarUnknown: true}]) {
+    const state = run({...extra, args: {neutral_territory_owner: 2}}, 'unit_attack_state.js');
+    assert.equal(state.data.neutralTerritoryPeacePreserved, false);
   }
 });
 
