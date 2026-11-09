@@ -224,6 +224,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "airdrop_civ7_infantry",
             "airdrop_civ7_infantry_group",
             "support_civ7_own_war",
+            "support_civ7_befriending",
             "manage_civ7_alliance",
             "activate_civ7_commander_great_person",
             "respond_civ7_hostile_project",

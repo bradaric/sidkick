@@ -2142,7 +2142,31 @@ For action summaries, `availableNow` means the game offers the action for this p
 
 Major-player diplomacy uses the same selected-target cost semantics, retaining its existing `available` field name. It reads the current engine's `targetList1` and that target's `costYieldD`, combines project and selected-target failure reasons, and never treats another player's target as an available choice for the queried leader. `targetChoices` is zero or one for that leader only. `secondaryTargetChoices` is `null` when a secondary selection is required (otherwise zero), rather than disclosing counts from unfiltered target lists. Zero-cost actions remain zero; missing costs remain `null`.
 
-`bonusChoices[].eligible` follows the game's bonus picker; `availableNow` additionally requires a pending choice for this city-state, local suzerainty, and the engine's selection check. It does not imply an existing bonus can be replaced. `ongoingActions` includes only projects initiated by you against that power, with direct progress, required progress, turns remaining, and befriending support cost/eligibility. Other players' ongoing projects are omitted. City-state data and attribute trees are included in snapshots and exports. These tools never spend influence, select bonuses, befriend, levy, or incorporate anything.
+`bonusChoices[].eligible` follows the game's bonus picker; `availableNow` additionally requires a pending choice for this city-state, local suzerainty, and the engine's selection check. It does not imply an existing bonus can be replaced. `ongoingActions` includes only projects initiated by you against that power, with direct progress, required progress, turns remaining, and befriending support cost/eligibility. City-state data and attribute trees are included in snapshots and exports. These read-only queries never spend influence, select bonuses, befriend, levy, or incorporate anything.
+
+`befriendingRace` adds revealed ongoing befriending projects by you and met rivals:
+`participants[]` includes `eventId`, player identity, `isLocal`, `progress`,
+`requiredProgress`, native `progressPerTurn`/`turnsRemaining`, and `stages[]` with
+thresholds, reached flags, native remaining turns and descriptions. Missing native
+timings stay `null`; no ETAs are invented. `contested` means multiple included
+participants, not a complete inventory of unmet players. Hidden, unrevealed,
+failed, ended and other foreign diplomatic projects remain omitted. Forecasts
+can change with further support and do not guarantee who wins.
+
+`support_civ7_befriending(event_id, target_player_id, max_influence_cost, expected_turn)`
+buys **one** additional support token for your exact active befriending project;
+it does not start a new project or support another player's race/war. Use your
+`ongoingActions[].id` and `supportAction.influenceCost`, not a rival event ID or
+the initial Befriend cost. Requires a peaceful met/discovered independent,
+active single-player GameStarted turn, disabled auto-end-turn, native permission
+without confirmation, and a fresh affordable quote within the explicit cap.
+Rechecks identity, support, quote and balances immediately before one native
+`SUPPORT_DIPLOMATIC_ACTION` request. Read-only verification (up to 15 seconds)
+requires exactly one own token increment, exact Influence debit, unchanged Gold
+and progress, and the same turn/Age/player; reports the new native rate/ETA.
+It does not guarantee victory or account for every rival/relationship effect.
+Unknown/cancelled results must never be retried automatically. Positive support
+execution is fixture-tested only; no live Influence was spent for this change.
 
 ### Major-player diplomacy detail
 

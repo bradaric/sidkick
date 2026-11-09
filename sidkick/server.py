@@ -86,6 +86,7 @@ from civ7.actions import (
     airdrop_infantry_group,
     travel_unit,
     support_own_war,
+    support_befriending,
     manage_alliance,
     activate_commander_great_person,
     respond_hostile_diplomatic_project,
@@ -462,6 +463,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "accounting. One request,15-second readback; no peace, new war, turn or retry."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(support_own_war)
+        server.tool(
+            name="support_civ7_befriending", title="Add one capped Civ VII befriending support token",
+            description=("CHANGE GAME STATE: buy one additional support token on your own exact ongoing "
+                         "befriending project. Supply event_id from get_civ7_city_states.powers[].ongoingActions[].id, "
+                         "target_player_id, max_influence_cost and fresh expected_turn. Requires unique revealed "
+                         "local GIVE_INFLUENCE_TOKEN event, peaceful met/discovered independent, active single-player "
+                         "GameStarted turn and disabled auto-end-turn. Rechecks native next-support quote, cap, "
+                         "balance, identity and SUPPORT_DIPLOMATIC_ACTION permission without confirmation. Verifies "
+                         "one own token increment, exact Influence debit, unchanged Gold/progress and same turn/Age/player; "
+                         "reports native new rate/ETA. Not starting a project, backing a rival/war, an incoming response "
+                         "or guaranteed victory. Requires authorization to spend Influence. One request, read-only "
+                         "verification up to15s; no turn advance or automatic retry of unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(support_befriending)
         server.tool(
             name="airdrop_civ7_infantry_group",title="Airdrop exact complete Civ VII Infantry payload",
             description=("CHANGE GAME STATE: exact complete2–7 packed Infantry unit_ids, promoted Airborne "
@@ -2265,9 +2281,12 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "specializations (type.id/name, never inferred from names), suzerains, current "
             "bonus effects and eligible bonus choices, local influence, diplomatic action "
             "eligibility and selected-target costs including incorporation, plus your "
-            "ongoing befriending progress and support costs. Bonus eligibility is not a "
+            "ongoing befriending progress and support costs for support_civ7_befriending. "
+            "befriendingRace includes revealed active local/met rival event IDs, progress/requiredProgress, "
+            "native progressPerTurn/turnsRemaining and stage thresholds/timings. No inferred race-win guarantee "
+            "or complete unmet-player inventory. Bonus eligibility is not a "
             "pending selection; actions may require secondary targets. Omits hidden "
-            "locations, unmet suzerain identities, and other players' ongoing projects. "
+            "locations, unmet identities, hidden projects and other non-befriending foreign projects. "
             "Read-only: never spends influence, selects bonuses, or incorporates powers."
         ),
         annotations=read_only,

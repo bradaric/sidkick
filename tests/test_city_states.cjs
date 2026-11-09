@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0, independentType = 'MILITARISTIC', independentMet = false } = {}) {
+function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0, independentType = 'MILITARISTIC', independentMet = false, rival = {}, missingCompletion = false } = {}) {
   const script = path.join(__dirname, '../civ7/city_states.js');
   assert.ok(fs.existsSync(script), 'bundled city-state query exists');
   const playerReads = [], projectReads = [], completionReads = [], operations = [];
@@ -35,7 +35,7 @@ function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0, inde
       targetList1: [{ targetID: 4, costYieldD: 680, resultData: { FailureReasons: ['Already running'] } }], targetList2: [], resultData: { FailureReasons: ['Already running'] } },
     {actionTypeName:'DIPLOMACY_ACTION_INCITE_RAID',actionType:100,operationType:'RAID',projectStatus:0,targetList1:[{targetID:4,costYieldD:0}],targetList2:[{parameterName:'Player3',targetID:1,costYieldD:40},{parameterName:'Player3',targetID:3,costYieldD:1}],resultData:{}},
   ];
-  const ownEvent = { uniqueID: 9, initialPlayer: 0, targetPlayer: 4, actionTypeName: 'DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN', actionType: 99, name: 'Befriending', progressScore: 20, completionScore: 60, support: 2, gameTurnStart: 89 };
+  const ownEvent = { uniqueID: 9, initialPlayer: 0, targetPlayer: 4, actionTypeName: 'DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN', actionType: 99, name: 'Befriending', progressScore: 20, completionScore: 60, support: 2, gameTurnStart: 89, hidden: false, revealed: true, failed: false, gameTurnEnd: -1 };
   const result = vm.runInNewContext(fs.readFileSync(script, 'utf8'), {
     UI: { isInGame: () => inGame }, GameContext: { localPlayerID: playerId }, Locale: { compose: s => s },
     Players: {
@@ -62,10 +62,12 @@ function run({ pendingBonus = 2, suzerain = 0, inGame = true, playerId = 0, inde
       Diplomacy: {
         getProjectDataForUI: (id, target) => { assert.equal(id, 0); projectReads.push(target); return projects(target); },
         getPlayerEvents: target => target === 4 ? [ownEvent,
-          { ...ownEvent, uniqueID: 10, initialPlayer: 1, progressScore: 999999 },
+          { ...ownEvent, uniqueID: 10, initialPlayer: 1, progressScore: 36, ...rival },
           { ...ownEvent, uniqueID: 11, targetPlayer: 2 },
+          { ...ownEvent, uniqueID: 12, initialPlayer: 3, progressScore: 999999 },
         ] : [],
-        getCompletionData: eventId => { completionReads.push(eventId); assert.equal(eventId, 9); return { requiredProgress: 60, turnsToCompletion: 20, progressPerTurn: 2 }; },
+        getCompletionData: eventId => { completionReads.push(eventId); assert.ok([9, 10].includes(eventId)); return missingCompletion ? null : { requiredProgress: 60, turnsToCompletion: eventId === 9 ? 20 : 12, progressPerTurn: 2, stageTurnsToComplete: [-1, -1, eventId === 9 ? 13 : 5, eventId === 9 ? 20 : 12] }; },
+        getStages: eventId => { assert.ok([9, 10].includes(eventId)); return [{requiredProgress: 0, stageToolTip: 'Hostile'}, {requiredProgress: 30, stageToolTip: 'Friendly'}, {requiredProgress: 45, stageToolTip: 'City-state'}, {requiredProgress: 60, stageToolTip: 'Suzerain'}]; },
         getInfluenceForNextSupport: (eventId, id, positive) => { assert.equal(eventId, 9); assert.equal(id, 0); assert.equal(positive, true); return 400; },
       },
       PlayerOperations: { canStart: (id, op, args, visible) => {
@@ -128,10 +130,36 @@ test('local ongoing befriending uses direct progress and includes support cost a
   assert.equal(events[0].turnsRemaining, 20);
   assert.equal(events[0].supportAction.influenceCost, 400);
   assert.equal(events[0].supportAction.availableNow, true);
-  assert.deepEqual(completionReads, [9]);
+  assert.ok(completionReads.includes(9));
   assert.ok(operations.some(c => c.op === 'SUPPORT' && c.args.ID === 9 && c.args.Type === 'GLOBAL' && c.args.Amount === 1 && c.args.SubType === true));
   assert.equal(data.powers[1].actions[0].availableNow, false);
   assert.deepEqual(data.powers[1].actions[0].failureReasons, ['Already running']);
+});
+
+test('contested befriending exposes native revealed known rival progress and stage timings', () => {
+  const {data} = run(), race = data.powers[1].befriendingRace;
+  assert.equal(race.contested, true);
+  assert.deepEqual(race.participants.map(p => [p.playerId, p.isLocal, p.progress, p.requiredProgress, p.progressPerTurn, p.turnsRemaining]),
+    [[0, true, 20, 60, 2, 20], [1, false, 36, 60, 2, 12]]);
+  assert.deepEqual(race.participants[1].stages[2], {requiredProgress: 45, turnsRemaining: 5, reached: false, description: 'City-state'});
+  assert.equal(race.participants[1].stages[1].reached, true);
+  assert.match(data.scope, /revealed.*befriending/i);
+});
+
+test('race omits hidden, unrevealed, failed, ended, wrong-target/type and unmet rival projects', () => {
+  for (const rival of [{hidden: true}, {revealed: false}, {failed: true}, {gameTurnEnd: 99}, {targetPlayer: 2},
+    {actionType: 123}, {initialPlayer: 3}]) {
+    const {data, completionReads} = run({rival});
+    assert.deepEqual(data.powers[1].befriendingRace.participants.map(p => p.playerId), [0]);
+    assert.equal(data.powers[1].befriendingRace.contested, false);
+    assert.ok(!completionReads.includes(10));
+  }
+});
+
+test('missing native completion data stays unknown rather than manufacturing race ETAs', () => {
+  const race = run({missingCompletion: true}).data.powers[1].befriendingRace;
+  assert.equal(race.participants[1].turnsRemaining, null);
+  assert.equal(race.participants[1].stages[2].turnsRemaining, null);
 });
 
 test('secondary-target actions do not treat placeholder costs as complete totals', () => {
