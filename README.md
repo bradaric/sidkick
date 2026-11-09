@@ -2100,6 +2100,31 @@ Do not add quotes to whole-building totals or subtract source/destination quotes
 
 `celebration` includes active/current celebration, native duration, remaining turns only while active, and actual native picker choices including extras. Choice `availableNow` requires both `Happiness.canChoose()` and the native operation check. Government celebration descriptions are rendered with the current native duration, not a projected duration after switching; definition amounts that scale by game speed are not final runtime quotes. `netYieldChange` remains `null`. These queries never open a chooser, change government, choose a celebration or select research.
 
+### Syncretism chooser comparison
+
+`get_civ7_research_and_government.syncretism` reports native `units`,
+`infrastructure` and `self` (Affirmation) candidates, with civilization names,
+signed native `choiceId`s and exact `rewards[]` IDs, names and loaded descriptions.
+These are native picker candidates, not guessed associations or a civilization
+catalog. The native choice ID is a **legacy civilization trait hash**, not the
+civilization hash. Rewards include units, buildings, improvements, unique
+quarters, Traditions and culture slots; Affirmation's extra Tradition slot is
+not silently omitted. Unit descriptions use the same public configuration text
+as the chooser where present, falling back to the loaded unit definition.
+
+`replacementWarnings[]` preserves native notices such as “Will replace 7 Units,”
+bound to public unit-type IDs rather than private unit instances. Unit rewards
+also expose the native `replacedUnitUnlocked` check. `pending`, `choiceMade` and
+`chosen` distinguish previews from an outstanding or already-resolved choice.
+Each `availableNow` requires an active owned chooser notification, no prior
+selection and exact native permission without confirmation. Missing APIs or
+incomplete definitions are labelled `unavailable`/`partial`; unknown is not proof
+there are no options. Descriptions are unlock benefits, not build-placement,
+research-eligibility, automatic Tradition-slotting or net-yield forecasts.
+This is read-only: no chooser navigation, reward selection or gameplay request.
+Live T68 readout verified the four offered foreign civilizations, Maya's Milpa I
+and Tradition slot, and native unit-replacement warnings. No choice was submitted.
+
 ### Leader attribute trees
 
 `get_civ7_research_and_government` includes attribute points and next-point progress, plus each applicable branch's purchased perks, effect descriptions, unlocks, prerequisite links and `prerequisiteMode` (for example, `OR` does not require every incoming node). Inapplicable nodes are excluded; visible legend-locked nodes retain their lock reason. Wildcard points remain a shared balance, not a separate spendable balance for each branch.

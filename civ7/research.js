@@ -389,6 +389,79 @@
       note: "Local entry/branch civic research checks and visible unlock benefits, not immediate ideology adoption/change permission. Adoption-order effects/arguments are conditional definitions, not the local player's rank or promised slots; unmet-player counts are not queried. RivalIdeology is a definition link, not a diplomatic forecast"
     };
   }
+  function syncretismSelection() {
+    const state = {status: "unavailable", pending: null, choiceMade: null, chosen: null, choices: [],
+      note: "Native Syncretism picker candidates and public reward descriptions only. Availability requires an active owned chooser notification, no prior selection and native permission. Unit replacement notices are native forecasts, not instance IDs. Unlocks do not imply current build placement, research eligibility, slotted Tradition effects or simulated net yields. Read-only; never selects or opens the chooser"};
+    try {
+      if (typeof SyncreticChoiceTypes === "undefined" || !Game.Unlocks ||
+          typeof Game.Unlocks.getSyncreticCivUnlocksForChoice !== "function") return state;
+      const groups = [
+        ["units", SyncreticChoiceTypes.SYNCRETIC_CHOICE_UNITS, PlayerOperationTypes.CHOOSE_SYNCRETISM_UNITS, "getUnitChoiceSyncreticUnlocks"],
+        ["infrastructure", SyncreticChoiceTypes.SYNCRETIC_CHOICE_INFRASTRUCTURE, PlayerOperationTypes.CHOOSE_SYNCRETISM_INFRASTRUCTURE, "getInfrastructureChoiceSyncreticUnlocks"],
+        ["self", SyncreticChoiceTypes.SYNCRETIC_CHOICE_SELF, PlayerOperationTypes.CHOOSE_SYNCRETISM_SELF, "getSelfChoiceSyncreticUnlocks"]
+      ];
+      const selectedCiv = player.Identity.getSyncreticCivType(), selectedKind = player.Identity.getSyncreticChoiceType();
+      if (![selectedCiv, selectedKind].every(Number.isInteger)) return state;
+      state.choiceMade = selectedCiv !== -1;
+      const describeCiv = def => def ? {id: def.CivilizationType, name: name(def.Name)} : null;
+      if (state.choiceMade) state.chosen = {civilization: describeCiv(GameInfo.Civilizations.lookup(selectedCiv)),
+        kind: groups.find(([, flag]) => flag === selectedKind)?.[0] ?? null};
+      const notifications = Game.Notifications.getIdsForPlayer(id);
+      if (!Array.isArray(notifications)) return state;
+      let unknownNotification = false;
+      state.pending = notifications.some(notificationId => {
+        if (notificationId.owner !== id || Game.Notifications.getTypeName(Game.Notifications.getType(notificationId)) !== "NOTIFICATION_CHOOSE_SYNCRETISM") return false;
+        const notification = Game.Notifications.find(notificationId);
+        if (typeof notification?.Dismissed !== "boolean" || typeof notification?.Expired !== "boolean") unknownNotification = true;
+        return notification?.Dismissed === false && notification.Expired === false;
+      });
+      if (!state.pending && unknownNotification) state.pending = null;
+      let complete = state.pending !== null && (!state.choiceMade || Boolean(state.chosen.civilization && state.chosen.kind));
+      const rewardTables = {KIND_UNIT: [GameInfo.Units, "UnitType"], KIND_CONSTRUCTIBLE: [GameInfo.Constructibles, "ConstructibleType"],
+        KIND_QUARTER: [GameInfo.UniqueQuarters, "UniqueQuarterType"], KIND_TRADITION: [GameInfo.Traditions, "TraditionType"],
+        KIND_CULTURE_SLOT: [GameInfo.CultureSlots, "CultureSlotType"]};
+      for (const [kind, flag, operation, getter] of groups) {
+        if (!Number.isInteger(flag) || !Number.isInteger(operation)) { complete = false; continue; }
+        const offered = Game.Unlocks.getSyncreticCivUnlocksForChoice(id, flag);
+        if (!Array.isArray(offered)) { complete = false; continue; }
+        for (const choiceId of new Set(offered)) {
+          if (!Number.isInteger(choiceId) || choiceId === -1) { complete = false; continue; }
+          // The native CivilizationType operation argument is a legacy-trait hash, not the civilization hash.
+          const trait = GameInfo.LegacyCivilizationTraits.lookup(choiceId);
+          const civ = trait && GameInfo.Civilizations.lookup(trait.CivilizationType);
+          const check = civ ? Game.PlayerOperations.canStart(id, operation, {CivilizationType: choiceId}, false) : null;
+          const unlocks = civ && typeof Game.Unlocks[getter] === "function" ? Game.Unlocks[getter](civ.CivilizationType) : null;
+          if (!civ || !Array.isArray(unlocks) || typeof check?.Success !== "boolean") complete = false;
+          const rewards = Array.isArray(unlocks) ? unlocks.map(unlock => {
+            const [table, key] = rewardTables[unlock.kind] ?? [], def = table?.lookup(unlock.typeHash);
+            if (!def) complete = false;
+            const unit = unlock.kind === "KIND_UNIT";
+            const baseDescription = unit && def && typeof Database !== "undefined" && typeof Database.query === "function"
+              ? Database.query("config", "SELECT Description from CivilizationItems where Type=?", def.UnitType)?.[0]?.Description : null;
+            return {kind: unlock.kind, id: def?.[key] ?? null, name: name(def?.Name),
+              description: name(baseDescription ?? def?.Description),
+              ...(unit ? {replacedUnitUnlocked: def && typeof player.Units?.isReplacedUnitUnlocked === "function"
+                ? player.Units.isReplacedUnitUnlocked(def.UnitType, true, false) ?? null : null} : {})};
+          }) : null;
+          state.choices.push({kind, choiceId, civilization: describeCiv(civ), rewards,
+            operationAllowed: typeof check?.Success === "boolean" ? check.Success : null,
+            availableNow: Boolean(civ) && state.pending === true && state.choiceMade === false && check?.Success === true && check.RequiresConfirmation !== true,
+            failureReasons: (check?.FailureReasons ?? []).map(name).filter(Boolean),
+            replacementWarnings: (check?.AdditionalDescription ?? []).map((description, index) => ({
+              unitId: Number.isInteger(check.Units?.[index]) ? GameInfo.Units.lookup(check.Units[index])?.UnitType ?? null : null,
+              description: name(description)
+            }))});
+        }
+      }
+      state.status = complete ? "ready" : "partial";
+    } catch {
+      // Older game builds/missing native evidence must not break the rest of the research query.
+      state.status = "unavailable";
+      for (const choice of state.choices) choice.availableNow = false;
+    }
+    return state;
+  }
+
   return {
     turn: Game.turn,
     technology: {
@@ -406,6 +479,7 @@
     } : null,
     governmentSelection,
     celebration,
+    syncretism: syncretismSelection(),
     ideology,
     policies: {
       totalCapacity: player.Culture.getNumAllCultureSlots(),
