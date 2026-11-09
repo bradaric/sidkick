@@ -26,6 +26,7 @@ from civ7.actions import (
     upgrade_army,
     acknowledge_agenda,
     acknowledge_advisor_warning,
+    acknowledge_espionage_report,
     append_city_production,
     assign_resource,
     unassign_resource,
@@ -1548,6 +1549,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(acknowledge_advisor_warning)
+        server.tool(
+            name="acknowledge_civ7_espionage_report", title="Continue one Civ VII espionage report",
+            description=("CHANGE GAME/UI STATE: activate exactly one owned NOTIFICATION_DIPLOMATIC_ACTION_ESPIONAGE "
+                         "report, wait for its matching native popup and press only Continue. Required notification_id, "
+                         "component_type and report_token come from get_civ7_turn_context.notifications[].id and "
+                         "espionageReport.reportToken; expected_turn must be fresh. Single-player active GameStarted "
+                         "turn with auto-end-turn disabled only. Binds report contents/event and unique rendered body; "
+                         "mismatched/ambiguous panels stop without clicking. Native activation can change UI focus/selection. "
+                         "Verifies report acknowledgement, popup closure and unchanged Gold/Influence. No generic dismissal, "
+                         "Go to Diplomacy, retaliation, new diplomatic decision, spending or explicit turn advance. Opens once, "
+                         "Continues once, polls read-only for up to 15 seconds. Unknown/cancelled outcomes can leave the "
+                         "popup open; inspect state and never automatically retry. Requires explicit acknowledgement authorization."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(acknowledge_espionage_report)
         server.tool(
             name="choose_civ7_government", title="Choose Civ VII government",
             description=("CHANGE GAME STATE: resolve a pending government choice using an exact current-Age "

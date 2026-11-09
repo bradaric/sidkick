@@ -787,6 +787,50 @@ async def acknowledge_agenda(notification_id: StrictInt, expected_turn: StrictIn
                                      "agenda_state.js")
 
 
+async def acknowledge_espionage_report(
+    notification_id: StrictInt, component_type: StrictInt, report_token: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Activate one exact informational report, then its native Continue button; never navigate diplomacy."""
+    if (any(type(value) is not int or value < 0 for value in (notification_id, component_type, expected_turn))
+            or not isinstance(report_token, str) or not report_token or len(report_token) > 100000):
+        raise ValueError("Exact local espionage report component, token and expected turn required")
+    async with _action_lock:
+        result = {"status": "unknown"}
+        after = None
+        continued = False
+        try:
+            result = await run_script("acknowledge_espionage_report.js", {
+                "notification_id": notification_id, "component_type": component_type,
+                "report_token": report_token, "expected_turn": expected_turn, "phase": "open",
+            })
+            if result.get("status") in {"rejected", "already_active"}:
+                return result
+            if result.get("status") != "submitted":
+                raise ValueError("Unexpected report activation response")
+            before = result.get("before", {})
+            if before.get("turn") != expected_turn or any(type(before.get(key)) is not int for key in ("turn", "age", "playerId")):
+                raise ValueError("Unverified report activation context")
+            async with asyncio.timeout(_COMBAT_VERIFICATION_TIMEOUT):
+                while True:
+                    after = await run_script("espionage_report_state.js", {"before": before})
+                    if (any(type(after.get(key)) is not int or after[key] != before[key] for key in ("turn", "age", "playerId"))
+                            or after.get("identityUnchanged") is not True or after.get("balancesUnchanged") is not True
+                            or after.get("uiStatus") not in {"closed", "matching"}):
+                        raise ValueError("Report, UI, currency balances or game context changed")
+                    if not continued and after["uiStatus"] == "matching":
+                        continued = True
+                        continuation = await run_script("acknowledge_espionage_report.js", {"phase": "continue", "before": before})
+                        if continuation.get("status") != "submitted":
+                            raise ValueError("Native report Continue was rejected or unverified")
+                    elif continued and after.get("acknowledged") is True and after.get("popupClosed") is True:
+                        return {**result, "status": "verified_applied", "after": after}
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", **({"after": after} if after is not None else {}),
+                    "phase": "continue" if continued else "open", "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Report acknowledgement is unverified; the popup may remain open. Inspect current state; never retry automatically"}
+
+
 async def acknowledge_advisor_warning(
     notification_id: StrictInt, component_type: StrictInt, expected_turn: StrictInt,
 ) -> dict[str, Any]:

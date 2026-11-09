@@ -47,6 +47,9 @@ async def _run_script(
     if script_name in {"diplomacy.js", "respond_first_meet.js", "first_meet_state.js"}:
         helper = (ROOT / "first_meet.js").read_text(encoding="utf-8")
         script = f"((firstMeet) => {{ return {script}\n}})({helper})"
+    if script_name in {"turn_context.js", "acknowledge_espionage_report.js", "espionage_report_state.js"}:
+        helper = (ROOT / "espionage_report_observation.js").read_text(encoding="utf-8")
+        script = f"((espionageReport) => {{ return {script}\n}})({helper})"
     if script_name in {"age_transition.js", "edit_dedication.js", "dedication_state.js"}:
         helper = (ROOT / "dedication_deck.js").read_text(encoding="utf-8")
         script = f"((dedicationDeck) => {{ return {script}\n}})({helper})"

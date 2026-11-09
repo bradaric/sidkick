@@ -61,9 +61,13 @@
     const notification = Game.Notifications.find(id);
     if (!notification) return null;
     const type = Game.Notifications.getType(id);
+    const typeName = Game.Notifications.getTypeName(type);
     return {
       id: {owner: id.owner, id: id.id, type: id.type},
-      type: Game.Notifications.getTypeName(type),
+      type: typeName,
+      ...(typeName === "NOTIFICATION_DIPLOMATIC_ACTION_ESPIONAGE" ? {
+        espionageReport: typeof espionageReport === "undefined" ? null : espionageReport.snapshot(playerId, id)
+      } : {}),
       summary: name(Game.Notifications.getSummary(id)),
       severity: Game.Notifications.getSeverity(id),
       blocksTurn: Boolean(Game.Notifications.getBlocksTurnAdvancement(id)),
