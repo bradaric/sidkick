@@ -49,6 +49,7 @@ from civ7.actions import (
     choose_religious_action,
     befriend_independent,
     choose_city_state_bonus,
+    choose_syncretism,
     local_civilian_action,
     resettle_migrant,
     connect_merchant_road,
@@ -332,7 +333,14 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "plus current government, governmentSelection and celebration picker choices with "
             "passives/benefits, conditional traditions and native eligibility. Government/"
             "celebration availableNow requires a confirmed pending choice, not native permission "
-            "alone. Includes policies, traditions, crisis cards, and leader attribute "
+            "alone. syncretism includes exact native units/infrastructure/self civilization candidates, "
+            "signed choiceIds, reward IDs/descriptions including Affirmation Traditions and culture slots, "
+            "native unit-replacement warnings, pending/chosen state and eligibility. Its availableNow requires "
+            "an active owned Syncretism notification, no prior selection and native permission; previews alone "
+            "are not availability. Missing evidence is labelled unavailable/partial. Use the opt-in "
+            "choose_civ7_syncretism action with exact kind/choiceId and fresh turn after authorizing selection. "
+            "This reader never selects a reward. "
+            "Includes policies, traditions, crisis cards, and leader attribute "
             "points, purchased/available perks, effects, prerequisites, base costs and wildcard funding. "
             "Cards include audited base-science estimates for Pet Kot, Milpa I and Tequitl, "
             "with qualifying counts/evidence. Other impacts are explicitly unknown. "
@@ -980,6 +988,24 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(choose_city_state_bonus)
+        server.tool(
+            name="choose_civ7_syncretism", title="Choose one exact pending Civ VII Syncretism reward",
+            description=("CHANGE GAME STATE: commit one offered Syncretism choice using kind=units/infrastructure/self "
+                         "(self is Affirmation), signed choice_id from fresh get_civ7_research_and_government.syncretism.choices[].choiceId "
+                         "and expected_turn. The choice ID is a legacy-trait hash, NOT a civilization hash. Requires one "
+                         "exact active owned chooser reminder, no prior selection, current family membership/rewards, "
+                         "active single-player GameStarted turn, disabled auto-end-turn and native zero-cost permission "
+                         "without confirmation. Unit choices, rewards containing units or native replacement warnings "
+                         "require explicit confirm_unit_replacements=true after user review/authorization. Rechecks "
+                         "identity, rewards, warnings, balances and readiness before one native request. Verifies "
+                         "chosen civilization/family, captured reminder clearance, no pending Syncretism reminder "
+                         "and unchanged Gold/Influence in the same turn/Age/player. This commits the choice and can "
+                         "replace units. Not complete reward/replacement/yield accounting or popup closure; never "
+                         "issues a separate Tradition-slotting request or advances turns. Requires explicit selection authorization. "
+                         "Read-only verification up to15s; unknown/cancelled outcomes must never be retried automatically."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(choose_syncretism)
         server.tool(
             name="choose_civ7_religious_action", title="Choose Civ VII pantheon, belief or religion",
             description=("CHANGE GAME STATE: one fixed kind pantheon/belief/found with exact choice "

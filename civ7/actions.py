@@ -247,6 +247,21 @@ async def befriend_independent(target_player_id: StrictInt, max_influence_cost: 
     return await _start_project("independent", target_player_id, "DIPLOMACY_ACTION_GIVE_INFLUENCE_TOKEN", max_influence_cost, expected_turn)
 
 
+async def choose_syncretism(
+    kind: Literal["units", "infrastructure", "self"], choice_id: StrictInt, expected_turn: StrictInt,
+    confirm_unit_replacements: StrictBool = False,
+) -> dict[str, Any]:
+    """Commit one exact offered Syncretism choice; unit replacement needs explicit acknowledgement."""
+    if (kind not in ("units", "infrastructure", "self") or type(choice_id) is not int or choice_id == -1
+            or not -(2**31) <= choice_id < 2**31 or type(expected_turn) is not int or expected_turn < 0
+            or type(confirm_unit_replacements) is not bool):
+        raise ValueError("Exact Syncretism family, signed native choice ID, expected turn and boolean replacement acknowledgement required")
+    return await _execute_and_verify("choose_syncretism.js", {
+        "kind": kind, "choice_id": choice_id, "expected_turn": expected_turn,
+        "confirm_unit_replacements": confirm_unit_replacements,
+    }, "syncretism_state.js", verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
+
+
 async def choose_city_state_bonus(city_state_id: StrictInt, bonus: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
     """Choose one exact native-eligible pending city-state bonus under local suzerainty."""
     if any(type(v) is not int or v < 0 for v in (city_state_id, expected_turn)) or not isinstance(bonus, str) or not bonus:
