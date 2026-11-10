@@ -949,7 +949,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="perform_civ7_local_civilian_action", title="Found a current-tile settlement or perform Civ VII civilian activity",
             description=("CHANGE GAME STATE: kind=found performs Found Settlement directly under the Settler "
                          "at its current tile; no x/y or movement is needed. Fixed kinds "
-                         "found/excavate/research/spread/great_person/resettle "
+                         "found/excavate/research/spread/great_person/resettle/treat_sick "
                          "by exact unit_id at its current visible own/unowned tile with fresh expected_turn. "
                          "Optional exact ability must be linked to that fixed native operation/command. "
                          "Requires ready deployed unembarked unqueued role-eligible unpacked/nonreinforcing "
@@ -957,10 +957,14 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "Excavation also accepts a visible UI-filtered ruin outside any settlement under "
                          "the native neutral-owner sentinel. Found "
                          "requires unowned non-settlement tile; spread/resettle currently owned settlement "
-                         "only. Verifies exact new settlement/consumed settler, exact archaeology order/research "
+                         "only. kind=treat_sick performs Treat the Sick using a Physician at its current "
+                         "owned settlement tile; native permission checks infected Urban District eligibility "
+                         "and positive known charges are required. Verifies exact new settlement/consumed "
+                         "settler, exact archaeology order/research "
                          "change, spread/Great Person charge or unit consumption, or resettle consumption plus "
                          "population/pending increase. Queued archaeology is not completion/artifact reward; "
-                         "consumption is not full religious/Great Person effect accounting. No movement, "
+                         "consumption is not full religious/Great Person effect accounting. Treat the Sick "
+                         "verifies charge/unit consumption, not unrest removal or bonus yields. No movement, "
                          "foreign conversion, adjacent founding, road building, turn or Age advancement. "
                          "One submission,15-second readback, never retry unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),

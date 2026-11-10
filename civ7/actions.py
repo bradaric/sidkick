@@ -566,9 +566,9 @@ async def resettle_migrant(unit_id: StrictInt, x: StrictInt, y: StrictInt, impro
         "population_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def local_civilian_action(unit_id: StrictInt, kind: Literal["found", "excavate", "research", "spread", "great_person", "resettle"], expected_turn: StrictInt, ability: StrictStr | None = None) -> dict[str, Any]:
+async def local_civilian_action(unit_id: StrictInt, kind: Literal["found", "excavate", "research", "spread", "great_person", "resettle", "treat_sick"], expected_turn: StrictInt, ability: StrictStr | None = None) -> dict[str, Any]:
     """Perform one fixed native civilian activity only at its proven current own/unowned location."""
-    if (any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or kind not in ("found", "excavate", "research", "spread", "great_person", "resettle") or
+    if (any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or kind not in ("found", "excavate", "research", "spread", "great_person", "resettle", "treat_sick") or
             ability is not None and (not isinstance(ability,str) or not ability)):
         raise ValueError("Exact owned unit, supported local activity/ability and expected turn are required")
     return await _execute_and_verify("local_civilian_action.js", {"unit_id":unit_id,"kind":kind,"expected_turn":expected_turn,"ability":ability},

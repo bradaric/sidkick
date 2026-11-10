@@ -34,7 +34,7 @@ class LocalCivilianTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_local_activity_fixed_intents_are_strict_opt_in_and_single_submission(self):
         self.assertTrue(callable(getattr(actions,'local_civilian_action',None)))
-        for kind in ('found','excavate','research','spread','great_person','resettle'):
+        for kind in ('found','excavate','research','spread','great_person','resettle','treat_sick'):
             with patch('civ7.actions.run_script',new_callable=AsyncMock,return_value={'status':'rejected'}) as run:
                 await actions.local_civilian_action(10,kind,62)
             self.assertEqual(run.await_args.args,('local_civilian_action.js',{'unit_id':10,'kind':kind,'expected_turn':62,'ability':None}))
@@ -46,3 +46,24 @@ class LocalCivilianTests(unittest.IsolatedAsyncioTestCase):
             run.assert_not_awaited()
         with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=TimeoutError) as run:
             self.assertEqual((await actions.local_civilian_action(10,'found',62))['status'],'unknown');self.assertEqual(run.await_count,1)
+
+    async def test_treat_sick_is_discoverable_and_dispatches_through_mcp(self):
+        server = create_server(enable_writes=True)
+        tool = next(t for t in server._tool_manager.list_tools() if t.name == 'perform_civ7_local_civilian_action')
+        self.assertIn('treat_sick', tool.parameters['properties']['kind']['enum'])
+        self.assertIn('Treat the Sick', tool.description)
+        args = {'unit_id': 10, 'kind': 'treat_sick', 'expected_turn': 62}
+        before = {'turn': 62, 'age': 42, 'playerId': 0}
+        verification = {**args, 'before_charges': 3}
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=[
+            {'status': 'submitted', 'before': before, 'expected': {'unitId': 10, 'activityObserved': True},
+             'verificationArguments': verification},
+            {**before, 'unitId': 10, 'activityObserved': True, 'chargeConsumed': True}]) as run:
+            result = await server.call_tool(tool.name, args)
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content['status'], 'verified_applied')
+        self.assertEqual([call.args for call in run.await_args_list], [
+            ('local_civilian_action.js', {**args, 'ability': None}), ('local_civilian_state.js', verification)])
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=TimeoutError) as run:
+            self.assertEqual((await actions.local_civilian_action(10, 'treat_sick', 62))['status'], 'unknown')
+            self.assertEqual(run.await_count, 1)

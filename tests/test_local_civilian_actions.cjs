@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const {test} = require('node:test');
-const OPS = {found: 'UNITOPERATION_FOUND_CITY',found_adjacent:'UNITOPERATION_FOUND_CITY_ADJACENT_PLOT',foreign_spread:'UNITOPERATION_SPREAD_RELIGION', excavate: 'UNITOPERATION_EXCAVATE', research: 'UNITOPERATION_RESEARCH_ARTIFACTS', spread: 'UNITOPERATION_SPREAD_RELIGION', great_person: 'UNITCOMMAND_ACTIVATE_GREAT_PERSON', resettle: 'UNITCOMMAND_RESETTLE'};
+const OPS = {found: 'UNITOPERATION_FOUND_CITY',found_adjacent:'UNITOPERATION_FOUND_CITY_ADJACENT_PLOT',foreign_spread:'UNITOPERATION_SPREAD_RELIGION', excavate: 'UNITOPERATION_EXCAVATE', research: 'UNITOPERATION_RESEARCH_ARTIFACTS', spread: 'UNITOPERATION_SPREAD_RELIGION', great_person: 'UNITCOMMAND_ACTIVATE_GREAT_PERSON', resettle: 'UNITCOMMAND_RESETTLE', treat_sick: 'UNITCOMMAND_TREAT_SICK'};
 function run(o = {}, script = 'local_civilian_action.js') {
   const calls = [], kind = o.kind ?? 'found', operation = OPS[kind];
   const location = o.location ?? {x: 3, y: 3};
@@ -12,9 +12,9 @@ function run(o = {}, script = 'local_civilian_action.js') {
     location, Movement: {movementMovesRemaining: 2}};
   const city = {id: {owner: foreignSpread?1:0, id: 7, type: 1},owner:foreignSpread?1:0, location: kind==='found_adjacent'?{x:4,y:3}:location, population: o.applied ? 6 : 5, pendingPopulation: 0};
   if(foreignSpread)Object.defineProperty(city,'population',{get(){throw Error('Foreign population must not be read');}});
-  const def = {UnitType: 'UNIT_TEST', FoundCity: founding, ExtractsArtifacts: ['excavate','research'].includes(kind), SpreadCharges: ['spread','foreign_spread'].includes(kind) ? 3 : 0};
+  const def = {UnitType: kind==='treat_sick'?'UNIT_PHYSICIAN':'UNIT_TEST', FoundCity: founding, ExtractsArtifacts: ['excavate','research'].includes(kind), SpreadCharges: ['spread','foreign_spread'].includes(kind) ? 3 : 0};
   const ctx = {queryArguments: {kind, unit_id: 10, expected_turn: 62, ability: null, unit_type: 100, component_type: 26,
-      operation, operation_hash: 500, command: ['great_person','resettle'].includes(kind), args: {X: location.x, Y: location.y, UnitAbilityType: -1}, location,
+      operation, operation_hash: 500, command: ['great_person','resettle','treat_sick'].includes(kind), args: {X: location.x, Y: location.y, UnitAbilityType: -1}, location,
        baseline_cities: [], before_charges: 3, before_research: 0, continent: 1, source_city_id: 7, before_population: 5, before_pending_population: 0,
        ...(kind==='found_adjacent'?{x:4,y:3,location:{x:4,y:3}}:{}),...(foreignSpread?{target_player:1,target_city_id:7}:{}),...o.args},
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => Boolean(o.sent)},
@@ -24,7 +24,7 @@ function run(o = {}, script = 'local_civilian_action.js') {
     GameInfo: {Units: {lookup: () => o.wrongRole ? {} : def}, Constructibles: {lookup: () => ({ConstructibleType:'IMPROVEMENT_RUINS'})}, UnitOperations: {lookup: () => ({$hash: 500})}, UnitCommands: {lookup: () => ({$hash: 500})}, UnitAbilities: {lookup: () => null}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2, getIndexFromLocation:l=>l.x+l.y*10,
       getPlotDistance:()=>o.distant?2:1,isWater:()=>Boolean(o.waterTarget),getOwner: () => o.neutralRuin ? 63 : founding ? -1 : o.foreign||foreignSpread ? 1 : 0, getContinentType: () => 1}, RevealedStates: {VISIBLE: 2},
-    MapCities: {getCity: () => founding || o.neutralRuin ? null : city.id},Cities:{get:()=>city}, MapUnits: {getUnits: x => {
+    MapCities: {getCity: () => founding || o.neutralRuin || o.noCity ? null : o.cityChanged && calls.some(c=>c.kind==='check') ? {...city.id,id:8} : city.id},Cities:{get:()=>city}, MapUnits: {getUnits: x => {
       if (kind==='found_adjacent'&&x===4) return [];
       if (o.unknownStack) return null;
       const owners = calls.some(c=>c.kind==='check') ? o.stackAfterCheck ?? o.stackOwners ?? [] : o.stackOwners ?? [];
@@ -44,6 +44,30 @@ test('fixed local civilian activities use exact owned current tile and one nativ
     const r=run({kind}); assert.equal(r.data.status,'submitted',kind); assert.equal(r.calls.at(-1).op,OPS[kind]);
     assert.equal(run({kind,applied:true},'local_civilian_state.js').data.activityObserved,true,kind);
   }
+});
+test('Treat the Sick sends exactly one fixed current-tile command for an owned Physician', () => {
+  const {data, calls} = run({kind:'treat_sick'});
+  assert.equal(data.status, 'submitted');
+  assert.deepEqual(calls.filter(c=>c.kind==='send'), [{kind:'send',id:{owner:0,id:10,type:26},op:'UNITCOMMAND_TREAT_SICK',args:{X:3,Y:3,UnitAbilityType:-1}}]);
+  assert.equal(data.verificationArguments.command, true);
+  assert.equal(data.verificationArguments.before_charges, 3);
+});
+test('Treat the Sick rejects ineligible Physicians, unknown charges and changed settlements without submission', () => {
+  for (const o of [{wrongRole:true},{noCity:true},{cityChanged:true},{foreign:true},{neutralRuin:true},
+    {charges:0},{charges:null},{charges:1.5},{charges:-1},{blocked:true},{confirm:true},
+    {queued:true},{reinforcing:true},{hidden:true},{embarked:true},{sent:true},{inactive:true},
+    {changed:true},{stackOwners:[1]},{missingSource:true},{unknownStack:true},
+    {args:{expected_turn:61}},{args:{ability:'UNLINKED_ABILITY'}}]) {
+    const r = run({kind:'treat_sick',...o});
+    assert.equal(r.data.status, 'rejected', JSON.stringify(o));
+    assert.equal(r.calls.filter(c=>c.kind==='send').length, 0, JSON.stringify(o));
+  }
+});
+test('Treat the Sick readback observes charge or unit consumption, not just a queued order', () => {
+  for (const o of [{applied:true},{lost:true}])
+    assert.equal(run({kind:'treat_sick',...o},'local_civilian_state.js').data.activityObserved,true);
+  for (const o of [{},{queued:true},{charges:null},{charges:3},{charges:4}])
+    assert.equal(run({kind:'treat_sick',...o},'local_civilian_state.js').data.activityObserved,false);
 });
 test('found at (4,9) uses the tile beneath the Settler, not adjacent founding or a movement workaround', () => {
   const location = {x: 4, y: 9};

@@ -1559,7 +1559,7 @@ Current save has no known independent or pending picker, so positive live cases
 remain unavailable. **211 Python / 385 Node pass; tools23/86 (63 actions).**
 
 `perform_civ7_local_civilian_action` exposes only fixed found/excavate/research/
-spread/great_person/resettle intents at a proven current tile, with role, visibility,
+spread/great_person/resettle/treat_sick intents at a proven current tile, with role, visibility,
 owner, queue, packing/reinforcement, linked ability and native permission guards.
 Founding verifies one new exact settlement plus consumed Settler and preserved old
 settlements. Archaeology can verify a queued exact operation, not completed reward;
@@ -1569,6 +1569,13 @@ Live test Settler founded1179665 `(1,8)` preserving all17 prior settlements; Exp
 queued excavation at `(14,19)`. Research is natively Hegemony-gated; Modern has no
 missionary definition/eligible Great Person activation. No turn or forced effect.
 **212 Python / 388 Node pass; tools23/87 (64 actions).**
+
+`kind=treat_sick` performs **Treat the Sick** with an exact ready owned Physician
+at its current owned settlement tile. Native selected permission must allow the
+infected Urban District action without confirmation and report positive known
+charges. Readback verifies charge/unit consumption, not unrest removal or bonus
+yields. No movement or turn advancement; unknown outcomes are never retried.
+Covered by mocked transport/JavaScript fixtures; live treatment has not been tested.
 
 `resettle_civ7_migrant` uses the explicit native acquire-tile path: exact ready
 Migrant, visible empty same-city/unowned x/y and approved improvement from native
