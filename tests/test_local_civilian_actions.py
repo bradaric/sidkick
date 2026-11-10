@@ -52,13 +52,15 @@ class LocalCivilianTests(unittest.IsolatedAsyncioTestCase):
         tool = next(t for t in server._tool_manager.list_tools() if t.name == 'perform_civ7_local_civilian_action')
         self.assertIn('treat_sick', tool.parameters['properties']['kind']['enum'])
         self.assertIn('Treat the Sick', tool.description)
+        self.assertIn('Unrest removal', tool.description)
+        self.assertNotIn('positive known charges', tool.description)
         args = {'unit_id': 10, 'kind': 'treat_sick', 'expected_turn': 62}
         before = {'turn': 62, 'age': 42, 'playerId': 0}
-        verification = {**args, 'before_charges': 3}
+        verification = {**args, 'before_charges': None, 'source_city': {'owner': 0, 'id': 7, 'type': 1}, 'before_unrest': True}
         with patch('civ7.actions.run_script', new_callable=AsyncMock, side_effect=[
             {'status': 'submitted', 'before': before, 'expected': {'unitId': 10, 'activityObserved': True},
              'verificationArguments': verification},
-            {**before, 'unitId': 10, 'activityObserved': True, 'chargeConsumed': True}]) as run:
+            {**before, 'unitId': 10, 'activityObserved': True, 'unrestRemoved': True}]) as run:
             result = await server.call_tool(tool.name, args)
         self.assertFalse(result.is_error)
         self.assertEqual(result.structured_content['status'], 'verified_applied')

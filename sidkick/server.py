@@ -959,12 +959,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "requires unowned non-settlement tile; spread/resettle currently owned settlement "
                          "only. kind=treat_sick performs Treat the Sick using a Physician at its current "
                          "owned settlement tile; native permission checks infected Urban District eligibility "
-                         "and positive known charges are required. Verifies exact new settlement/consumed "
+                         "and known current Unrest is required for effect verification. Verifies exact new settlement/consumed "
                          "settler, exact archaeology order/research "
                          "change, spread/Great Person charge or unit consumption, or resettle consumption plus "
                          "population/pending increase. Queued archaeology is not completion/artifact reward; "
                          "consumption is not full religious/Great Person effect accounting. Treat the Sick "
-                         "verifies charge/unit consumption, not unrest removal or bonus yields. No movement, "
+                         "verifies Unrest removal in the exact captured owned settlement, not infection "
+                         "removal, charge accounting or bonus yields. No movement, "
                          "foreign conversion, adjacent founding, road building, turn or Age advancement. "
                          "One submission,15-second readback, never retry unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),

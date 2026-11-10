@@ -54,6 +54,7 @@
   const city = cities.find(c => same(c.id, cityAt));
   if (kind === "found" && (GameplayMap.getOwner(location.x, location.y) !== -1 || cityAt && cityAt.owner >= 0)) return reject("Founding requires an unowned tile outside an existing settlement");
   if (["spread", "resettle", "treat_sick"].includes(kind) && (!city || GameplayMap.getOwner(location.x, location.y) !== playerId)) return reject("Spread/resettle/Treat the Sick scope is the current owned settlement only");
+  if (kind === "treat_sick" && city.Happiness?.hasUnrest !== true) return reject("Treat the Sick requires known Unrest in the current owned settlement for effect verification");
   const abilityDef = ability === null ? null : GameInfo.UnitAbilities.lookup(ability);
   if (ability !== null && (abilityDef?.UnitAbilityType !== ability || !Number.isInteger(abilityDef.$index) || (command ? abilityDef.CommandType : abilityDef.OperationType) !== operation)) return reject("Exact supplied ability must belong to this fixed operation/command");
   const args = adjacent?{X:destination.x,Y:destination.y}:{X: location.x, Y: location.y, UnitAbilityType: abilityDef?.$index ?? -1};
@@ -64,22 +65,26 @@
       kind === "research" && (![continent, research].every(v => Number.isInteger(v) && v >= 0)) ||
       kind === "resettle" && (![city.population, city.pendingPopulation].every(v => Number.isInteger(v) && v >= 0))) return reject("Owned settlement/research/population baseline is unknown");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type, location,
-    moves: unit.Movement.movementMovesRemaining,embarked:unit.isEmbarked,destination, cityIds, research, population: city?.population ?? null, pendingPopulation: city?.pendingPopulation ?? null};
+    moves: unit.Movement.movementMovesRemaining,embarked:unit.isEmbarked,destination, cityIds, research, population: city?.population ?? null, pendingPopulation: city?.pendingPopulation ?? null,
+    sourceCity: kind === "treat_sick" ? cityIds.find(id => same(id, city.id)) : null, unrest: kind === "treat_sick" ? city.Happiness.hasUnrest : null};
   if(adjacent){const picker=api.canStart(unit.id,operation,{},false);if(picker?.Success!==true||!Array.isArray(picker.Plots)||!picker.Plots.includes(GameplayMap.getIndexFromLocation(destination)))return reject("Exact adjacent founding plot not offered natively",picker?.FailureReasons??[]);}
   if (kind === "resettle") {
     const picker = api.canStart(unit.id, operation, {}, false);
     if (picker?.Success !== true || !Array.isArray(picker.Plots) || !picker.Plots.includes(GameplayMap.getIndexFromLocation(location))) return reject("Current tile is not offered for resettlement; choose an explicit native expansion destination instead");
   }
   const check = api.canStart(unit.id, operation, args, false);
-  if (check?.Success !== true || check.RequiresConfirmation === true || (spreading || kind === "treat_sick") && (!Number.isInteger(check.ChargesRemaining) || check.ChargesRemaining <= 0)) return reject("Native local activity failed, needs confirmation or has unknown spread/treatment charges", check?.FailureReasons ?? []);
+  if (check?.Success !== true) return reject("Native local activity is not permitted", check?.FailureReasons ?? []);
+  if (check.RequiresConfirmation === true) return reject("Native local activity requires confirmation", check.FailureReasons ?? []);
+  if (spreading && (!Number.isInteger(check.ChargesRemaining) || check.ChargesRemaining <= 0)) return reject("Native spread charges are unknown or exhausted", check.FailureReasons ?? []);
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType ||
       unit.isOnMap !== true || unit.isDead === true || unit.isEmbarked !== before.embarked || unit.operationQueueSize !== 0 || unit.location.x !== location.x || unit.location.y !== location.y || unit.Movement.movementMovesRemaining !== before.moves || !clear() || !foreignTarget()||!adjacentTarget()||
       JSON.stringify(player.Cities.getCities().filter(c => c.id.owner === playerId).map(c => ({owner:c.id.owner,id:c.id.id,type:c.id.type})).sort((a,b)=>a.id-b.id)) !== JSON.stringify(cityIds) ||
-      kind === "treat_sick" && (!same(MapCities.getCity(location.x, location.y), city.id) || GameplayMap.getOwner(location.x, location.y) !== playerId) ||
+      kind === "treat_sick" && (!same(MapCities.getCity(location.x, location.y), before.sourceCity) || GameplayMap.getOwner(location.x, location.y) !== playerId || city.Happiness?.hasUnrest !== before.unrest) ||
       kind === "research" && player.Culture.getNumAgesResearched(continent) !== research || kind === "resettle" && (city.population !== before.population || city.pendingPopulation !== before.pendingPopulation)) return reject("Civilian unit, settlement, research or turn changed during validation");
   api.sendRequest(unit.id, operation, args);
   return {status: "submitted", before, expected: {unitId, activityObserved: true}, verificationArguments: {unit_id: unitId, kind, unit_type: before.unitType, component_type: before.componentType,
     location:destination, operation, operation_hash: operationHash, command, args, baseline_cities: cityIds, before_charges: Number.isInteger(check.ChargesRemaining) ? check.ChargesRemaining : null,
-    continent, before_research: research, source_city_id: city?.id.id ?? null, before_population: before.population, before_pending_population: before.pendingPopulation},
-    verificationScope: "Founding: new exact owned settlement and consumed settler. Archaeology: exact operation queued or observed research/charge consumption, not future artifact reward. Spread/Great Person/Treat the Sick: charge/unit consumed, not full effect accounting or verified unrest removal. Resettle: consumed charge/unit plus observed population/pending growth. No turn advancement"};
+    continent, before_research: research, source_city_id: city?.id.id ?? null, before_population: before.population, before_pending_population: before.pendingPopulation,
+    source_city: before.sourceCity, before_unrest: before.unrest},
+    verificationScope: "Founding: new exact owned settlement and consumed settler. Archaeology: exact operation queued or observed research/charge consumption, not future artifact reward. Spread/Great Person: charge/unit consumed, not full effect accounting. Treat the Sick: Unrest removed in the exact captured owned settlement, not infection removal, charge accounting or bonus yields. Resettle: consumed charge/unit plus observed population/pending growth. No turn advancement"};
 })()

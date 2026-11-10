@@ -1572,10 +1572,13 @@ missionary definition/eligible Great Person activation. No turn or forced effect
 
 `kind=treat_sick` performs **Treat the Sick** with an exact ready owned Physician
 at its current owned settlement tile. Native selected permission must allow the
-infected Urban District action without confirmation and report positive known
-charges. Readback verifies charge/unit consumption, not unrest removal or bonus
-yields. No movement or turn advancement; unknown outcomes are never retried.
-Covered by mocked transport/JavaScript fixtures; live treatment has not been tested.
+infected Urban District action without confirmation; known current Unrest is
+required for effect verification. Readback verifies Unrest removal in the exact
+captured owned settlement, not infection removal, charge accounting or bonus yields.
+The native command can return only `{Success: true}`, without `ChargesRemaining`;
+treatment does not require that unsupported field. No movement or turn advancement;
+unknown outcomes are never retried. Covered by mocked transport/JavaScript fixtures
+using the live-observed native permission shape; live treatment has not been executed.
 
 `resettle_civ7_migrant` uses the explicit native acquire-tile path: exact ready
 Migrant, visible empty same-city/unowned x/y and approved improvement from native
