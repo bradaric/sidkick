@@ -286,8 +286,10 @@ advancement, project cancellation or additional write calls are queued.
   improvement or Wonder in an owned city or town, only when natively repairable
   and offered for purchase. Requires the exact item type ID and a fresh visible
   owned assigned tile's `targetToken` from `get_civ7_building_placements`.
-  Checks the selected-tile native `Cost`, sufficient Gold and the approved cap;
-  rejects confirmation, queued/in-progress orders and stale target/context.
+  Checks the selected-tile native `Cost`, falling back only when null/absent to
+  `city.Gold.getBuildingPurchaseCost(YieldTypes.YIELD_GOLD, item)`, just like the
+  game UI. Missing/invalid quotes still reject. Checks sufficient Gold and the
+  approved cap; rejects confirmation, queued/in-progress orders and stale target/context.
   Submits once and verifies that the **same instance** became undamaged, with
   the tile ledger otherwise unchanged and the production queue preserved.
   Gold loss alone is not proof. No bulk repair, new construction, overbuilding,

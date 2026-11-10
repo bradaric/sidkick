@@ -74,7 +74,8 @@
       (intent === "repair" && general.RepairDamaged !== true)) return reject("Exact native construction/repair plot or intent is not offered", general?.FailureReasons ?? []);
   const check = api.canStart(city.id, operation, args, false);
   if (blocked(check)) return reject("Selected native advanced construction failed or requires confirmation", check?.FailureReasons ?? []);
-  const cost = purchase ? check.Cost : null;
+  // Repair permission checks can omit Cost; use the same native fallback as the production chooser.
+  const cost = purchase ? check.Cost ?? city.Gold?.getBuildingPurchaseCost?.(YieldTypes.YIELD_GOLD, def.ConstructibleType) : null;
   if (purchase && (!Number.isFinite(cost) || cost < 0 || cost > cap || !Number.isFinite(before.gold) || before.gold < cost)) {
     return {...reject("Repair purchase quote or Gold balance is missing, insufficient or over cap"), quotedGoldCost: cost ?? null};
   }

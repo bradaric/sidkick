@@ -16,6 +16,12 @@ function run(o = {}, script = 'advanced_construction.js') {
   });
   const queue = Object.hasOwn(o, 'queue') ? o.queue : o.applied ? [{type: 100, location: {x: 3, y: 3}}] : [];
   const city = {id: {owner: 0, id: 7, type: 1}, name: 'Home', isTown: Boolean(o.town), BuildQueue: {getQueue: () => queue},
+    Gold: o.noGold ? undefined : {getBuildingPurchaseCost: (yieldType, item) => {
+      calls.push({kind: 'quote', yieldType, item});
+      if (o.quoteChangesGold) player.Treasury.goldBalance = 0;
+      if (o.quoteChangesTarget) old.damaged = false;
+      return o.fallbackCost;
+    }},
     Yields: {calculateAllBuildingsPlacements: () => ({buildings: [{constructibleType: 100, placements: [{plotID: 33, overbuiltConstructibleID: o.previous ?? (intent === 'overbuild' || o.replaceImprovement ? 2 : -1)}]}]})}};
   let tileOwner = o.foreign ? 1 : o.unowned ? -1 : 0;
   let tileCity = Object.hasOwn(o, 'tileCity') ? o.tileCity : o.unassigned ? {owner: -1, id: -1, type: 0} : city.id;
@@ -43,7 +49,7 @@ function run(o = {}, script = 'advanced_construction.js') {
     MapConstructibles: {getConstructibles: () => o.unavailableTile ? null : assets.map(c => c.id)}, Constructibles: {getByComponentID: id => assets.find(c => JSON.stringify(c.id) === JSON.stringify(id))},
     MapCities: {getCity: () => tileCity}, GameplayMap: {getIndexFromLocation: l => l.x + l.y * 10, getLocationFromIndex: () => ({x: 3, y: 3}),
       getOwner: () => tileOwner, getRevealedState: () => o.hidden ? 0 : 2}, RevealedStates: {VISIBLE: 2}, PlayerIds: o.noPlayerIds ? undefined : {NO_PLAYER: -1},
-    CityOperationTypes: {BUILD: 10}, CityOperationsParametersValues: {Append: 20}, CityCommandTypes: {PURCHASE: 30},
+    CityOperationTypes: {BUILD: 10}, CityOperationsParametersValues: {Append: 20}, CityCommandTypes: {PURCHASE: 30}, YieldTypes: {YIELD_GOLD: 77},
     Game: {turn: 62, age: 42, CityOperations: native, CityCommands: native}};
   let data; try {data = vm.runInNewContext(fs.readFileSync(`civ7/${script}`, 'utf8'), ctx);} catch(e) {if (!o.sendThrows) throw e; data = {error: e.message};}
   return JSON.parse(JSON.stringify({data, calls}));
@@ -137,6 +143,44 @@ test('tile ownership, unavailable ledger, stale token and queue failures have di
 });
 
 const repairPurchase = {intent: 'repair', args: {mode: 'purchase', max_gold_cost: 120}};
+test('repair purchases use the native UI price getter when canStart omits Cost', () => {
+  for (const missing of [undefined, null]) {
+    const {data, calls} = run({...repairPurchase, constructibleClass: 'IMPROVEMENT', gold: 795.66796875,
+      generalResult: {Cost: missing}, selectedResult: {Cost: missing}, fallbackCost: 24,
+      args: {mode: 'purchase', max_gold_cost: 24}});
+    assert.equal(data.status, 'submitted');
+    assert.equal(data.quotedGoldCost, 24);
+    assert.deepEqual(calls.filter(c => c.kind === 'quote'), [{kind: 'quote', yieldType: 77, item: 'CONSTRUCTIBLE_TEST'}]);
+    assert.equal(calls.filter(c => c.kind === 'send').length, 1);
+    assert.equal(data.expected.repairObserved, true);
+  }
+  for (const fallbackCost of [0, 23.5]) {
+    const {data} = run({...repairPurchase, selectedResult: {Cost: undefined}, fallbackCost,
+      gold: fallbackCost, args: {mode: 'purchase', max_gold_cost: fallbackCost}});
+    assert.equal(data.status, 'submitted');
+    assert.equal(data.quotedGoldCost, fallbackCost);
+  }
+});
+
+test('fallback repair prices cannot bypass budget, missing/invalid quotes or changed state', () => {
+  for (const extra of [{fallbackCost: undefined}, {fallbackCost: null}, {fallbackCost: NaN},
+    {fallbackCost: Infinity}, {fallbackCost: -1}, {fallbackCost: '24'}, {fallbackCost: true}, {noGold: true},
+    {fallbackCost: 120.01}, {gold: 23}, {quoteChangesGold: true}, {quoteChangesTarget: true}]) {
+    const {data, calls} = run({...repairPurchase, generalResult: {Cost: 1}, selectedResult: {Cost: undefined},
+      fallbackCost: 24, ...extra});
+    assert.equal(data.status, 'rejected', JSON.stringify(extra));
+    assert.equal(calls.filter(c => c.kind === 'send').length, 0);
+  }
+});
+
+test('explicit selected repair Cost takes precedence, including zero and invalid values', () => {
+  for (const cost of [0, 23.5, 121, -1, NaN, Infinity, '24', true]) {
+    const {data, calls} = run({...repairPurchase, selectedResult: {Cost: cost}, fallbackCost: 24});
+    assert.equal(data.status, cost === 0 || cost === 23.5 ? 'submitted' : 'rejected');
+    assert.equal(calls.filter(c => c.kind === 'quote').length, 0);
+  }
+});
+
 test('repair purchases use one exact native command and selected-tile cost, including towns and repairable classes', () => {
   for (const constructibleClass of ['BUILDING', 'IMPROVEMENT', 'WONDER']) {
     for (const town of [false, true]) {
