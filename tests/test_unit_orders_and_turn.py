@@ -57,7 +57,7 @@ class UnitOrdersAndTurnTests(unittest.IsolatedAsyncioTestCase):
  async def test_end_turn_reports_unit_needing_orders_after_queued_movement_without_resubmission(self):
   unit={'instanceId':42,'name':'Western Scout','location':{'x':2,'y':3},'movesRemaining':2,'queueSize':0}
   after={**BEFORE,'active':True,'sent':False,'hasBlocker':False,'blockerName':'NONE',
-         'canStartAny':True,'firstReadyUnitStatus':'identified','firstReadyUnit':unit}
+         'canStartAny':True,'firstReadyUnitStatus':'identified','firstReadyUnit':unit,'remainingMovesBlocker':True}
   with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
    {'status':'submitted','before':BEFORE}, {**BEFORE,'active':True,'sent':True}, after])as run,patch(
    'civ7.actions.asyncio.sleep',new_callable=AsyncMock):
@@ -93,9 +93,22 @@ class UnitOrdersAndTurnTests(unittest.IsolatedAsyncioTestCase):
    self.assertEqual(result['status'],'verified_applied')
    self.assertEqual(run.await_count,3)
 
+ async def test_ready_cycle_target_without_remaining_moves_blocker_does_not_claim_unit_needs_orders(self):
+  after={**BEFORE,'active':True,'sent':False,'hasBlocker':False,'canStartAny':True,
+         'firstReadyUnitStatus':'identified','firstReadyUnit':{'instanceId':42},'remainingMovesBlocker':False}
+  with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
+   {'status':'submitted','before':BEFORE},after,
+   {**BEFORE,'turn':60,'active':True,'sent':False}])as run,patch(
+   'civ7.actions.asyncio.sleep',new_callable=AsyncMock):
+   result=await actions.end_turn(59)
+  self.assertEqual(result['status'],'verified_applied')
+  self.assertEqual(run.await_count,3)
+
  async def test_unverified_unit_or_unavailable_permission_does_not_claim_blocked(self):
   for evidence in ({'canStartAny':True,'firstReadyUnitStatus':'unverified','firstReadyUnit':None},
-                   {'canStartAny':None,'firstReadyUnitStatus':'identified','firstReadyUnit':{'instanceId':42}}):
+                   {'canStartAny':None,'firstReadyUnitStatus':'identified','firstReadyUnit':{'instanceId':42}},
+                   {'canStartAny':True,'firstReadyUnitStatus':'identified','firstReadyUnit':{'instanceId':42},
+                    'remainingMovesBlocker':None}):
    after={**BEFORE,'active':True,'sent':False,'hasBlocker':False,**evidence}
    with patch('civ7.actions.run_script',new_callable=AsyncMock,side_effect=[
     {'status':'submitted','before':BEFORE},after,TimeoutError])as run:

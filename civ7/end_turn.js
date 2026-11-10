@@ -12,7 +12,14 @@
   const blocker = Game.Notifications.getEndTurnBlockingType(playerId);
   if (blocker !== EndTurnBlockingTypes.NONE) return {...reject("A native end-turn blocker remains"), blocker};
   const ready = UI.Player.getFirstReadyUnit();
-  if (Game.UnitOperations.canStartAny(playerId) === true && ready?.owner === playerId && Number.isInteger(ready.id) && ready.id >= 0) return reject("A unit still needs an explicit order");
+  const unit = ready?.owner === playerId && [ready.id, ready.type].every(v => Number.isInteger(v) && v >= 0)
+    ? Units.get(ready) : null;
+  const identified = unit?.id?.owner === playerId && unit.id.id === ready?.id && unit.id.type === ready?.type;
+  const readiness = remainingMoves(Game.UnitOperations.canStartAny(playerId),
+    ready == null ? "none" : identified ? "identified" : "unverified", unit);
+  if (readiness.remainingMovesBlocker !== false) return {
+    ...reject(readiness.remainingMovesBlocker === true ? "A unit still needs an explicit order" : "Unit turn readiness is unavailable"),
+    ...readiness};
   const before = {turn: Game.turn, age: Game.age, playerId};
   if (before.turn !== expectedTurn || GameContext.localPlayerID !== playerId || player.isTurnActive !== true ||
       GameContext.hasSentTurnComplete() !== false || Game.Notifications.getEndTurnBlockingType(playerId) !== EndTurnBlockingTypes.NONE) return reject("Turn state changed during validation");

@@ -812,7 +812,7 @@ async def end_turn(expected_turn: StrictInt) -> dict[str, Any]:
                         return {**result, "status": "verified_applied", "after": after}
                     if after["turn"] == expected_turn and after.get("active") is True and after.get("sent") is False:
                         unit = after.get("firstReadyUnit") if after.get("firstReadyUnitStatus") == "identified" else None
-                        needs_order = after.get("canStartAny") is True and unit is not None
+                        needs_order = after.get("remainingMovesBlocker") is True
                         if after.get("hasBlocker") is True or needs_order:
                             if after.get("hasBlocker") is True:
                                 reason = f"Turn did not advance: native end-turn blocker {after.get('blockerName') or after.get('blocker')} remains."

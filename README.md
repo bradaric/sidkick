@@ -611,7 +611,10 @@ advanced. **278 Python /502 Node tests pass**. Tool counts are
   wake, except an explicit Scout auto-explore order can replace its old order if
   the native check allows it. No raw operation IDs, attacks or disbanding are exposed.
 - `end_civ7_turn(expected_turn)` requires a verified single-player active local
-  turn, no native blockers and no ready unit needing an order. Submits once and
+  turn, no native blockers and no native remaining-moves prompt. The prompt follows
+  the user's unit-cycling preference: when remaining-moves cycling is off, a ready
+  unit blocks only if it can move and has not moved. Unknown readiness rejects
+  submission rather than bypassing the check. Submits once and
   polls for at most 60 seconds for exactly the next active local turn, same Age
   and player. It never forces completion, ignores blockers or makes pending
   choices. New blockers or timeout can leave the result `unknown`; inspect fresh
@@ -2482,6 +2485,14 @@ standing orders.
 
 `firstReadyUnitStatus` is `identified`, `none` (the getter returned no unit),
 `unavailable` (missing/failed evidence), or `unverified` (an invalid/unresolved ID).
+
+`unitOrders.remainingMovesBlocker` separately follows the native action panel's
+`showRemainingMovesState()` rule, using `canStartAny`, `cycleRemainingMoves`
+(the user's `isUnitCycle_RemainingMoves` preference), and the ready unit's
+`canMove`/`hasMoved` flags. It is `true`, `false`, or `null` for unknown evidence.
+A first-ready unit with movement left is not by itself proof of a blocker.
+The turn-submission guard and post-submission readback use this same rule.
+
 Unavailable evidence is not an empty checklist. This identifies the **next native
 cycle target**, not a complete list of blockers: a ready unit or remaining movement
 alone is not proof of the current blocker, and a different native blocker remains

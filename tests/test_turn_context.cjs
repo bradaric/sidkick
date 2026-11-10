@@ -14,7 +14,10 @@ function run({ variable = false, trial = false, conditional = true, pending = tr
   const unitReads = [];
   const ownedUnits = unitOrders.units ?? [];
   const noUiMutation = () => assert.fail('readiness must not select, cycle, focus or order units');
-  const result = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/turn_context.js'), 'utf8'), {
+  const helper = fs.readFileSync(path.join(__dirname, '../civ7/remaining_moves.js'), 'utf8');
+  const script = fs.readFileSync(path.join(__dirname, '../civ7/turn_context.js'), 'utf8');
+  const result = vm.runInNewContext(`((remainingMoves)=>${script})(${helper})`, {
+    Configuration: {getUser: () => ({isUnitCycle_RemainingMoves: unitOrders.cycleRemainingMoves ?? false})},
     UI: { isInGame: () => true, Player: {
       ...(!unitOrders.missingReadyGetter ? {getFirstReadyUnit: () => {
         unitReads.push('firstReady');
@@ -76,7 +79,7 @@ function run({ variable = false, trial = false, conditional = true, pending = tr
 function readyUnit(overrides = {}) {
   return {id: {owner: 0, id: 42, type: 26}, type: 100, name: 'Western Scout',
     isOnMap: true, location: {x: 2, y: 3}, Movement: {movementMovesRemaining: 2},
-    activityType: 7, operationQueueSize: 0, ...overrides};
+    activityType: 7, operationQueueSize: 0, canMove: true, hasMoved: false, ...overrides};
 }
 
 test('turn context identifies the exact native first-ready owned unit without selecting it', () => {
@@ -89,7 +92,7 @@ test('turn context identifies the exact native first-ready owned unit without se
   assert.equal(data.unitOrders.firstReadyUnitStatus, 'identified');
   assert.deepEqual(data.unitOrders.firstReadyUnit, {
     componentId: unit.id, instanceId: 42, id: 'UNIT_SCOUT', name: 'Western Scout',
-    location: {x: 2, y: 3}, movesRemaining: 2, activityType: 7, queueSize: 0,
+    location: {x: 2, y: 3}, movesRemaining: 2, activityType: 7, queueSize: 0, canMove: true, hasMoved: false,
   });
   assert.deepEqual(unitReads, ['canStartAny', 'firstReady']);
   assert.match(data.unitOrders.scope, /not.*(all|full|complete)/i);
@@ -105,6 +108,18 @@ test('unspent movement does not invent a ready unit and other native blockers st
   assert.equal(other.blockerName, 'PRODUCTION');
   assert.equal(other.canStartAny, false);
   assert.equal(other.firstReadyUnit.instanceId, 42, 'a ready cycle target does not replace the actual native blocker');
+});
+
+test('turn context uses the native cycling preference and movement flags for unit blockers', () => {
+  for (const [overrides, cycleRemainingMoves, expected] of [
+    [{}, false, true], [{hasMoved: true}, false, false], [{canMove: false}, false, false],
+    [{hasMoved: true}, true, true],
+  ]) {
+    const unit = readyUnit(overrides);
+    const result = run({unitOrders: {ready: unit.id, units: [unit], cycleRemainingMoves}}).data.unitOrders;
+    assert.equal(result.remainingMovesBlocker, expected);
+    assert.equal(result.cycleRemainingMoves, cycleRemainingMoves);
+  }
 });
 
 test('missing or failed ready-unit APIs remain unavailable, not a false empty checklist', () => {
