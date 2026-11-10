@@ -27,7 +27,9 @@
               instanceId: ready.id, id: def?.UnitType ?? unit.type, name: key ? Locale.compose(key) : null,
               location: visibleLocation ? {x: location.x, y: location.y} : null,
               movesRemaining: Number.isFinite(unit.Movement?.movementMovesRemaining) ? unit.Movement.movementMovesRemaining : null,
-              queueSize: Number.isInteger(unit.operationQueueSize) && unit.operationQueueSize >= 0 ? unit.operationQueueSize : null};
+              queueSize: Number.isInteger(unit.operationQueueSize) && unit.operationQueueSize >= 0 ? unit.operationQueueSize : null,
+              canMove: typeof unit.canMove === "boolean" ? unit.canMove : null,
+              hasMoved: typeof unit.hasMoved === "boolean" ? unit.hasMoved : null};
             unitOrders.firstReadyUnitStatus = "identified";
           }
         }
@@ -41,5 +43,6 @@
     sent: GameContext.hasSentTurnComplete(), blocker,
     hasBlocker: Number.isInteger(blocker) ? blocker !== EndTurnBlockingTypes.NONE : null,
     blockerName: Object.keys(EndTurnBlockingTypes).find(k => EndTurnBlockingTypes[k] === blocker) ?? null,
-    extendedGame: Game.AgeProgressManager.isExtendedGame, ...unitOrders};
+    extendedGame: Game.AgeProgressManager.isExtendedGame, ...unitOrders,
+    ...remainingMoves(unitOrders.canStartAny, unitOrders.firstReadyUnitStatus, unitOrders.firstReadyUnit)};
 })()

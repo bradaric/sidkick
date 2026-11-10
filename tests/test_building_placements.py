@@ -52,6 +52,33 @@ class PlacementToolTests(unittest.IsolatedAsyncioTestCase):
 
 
 class QueryArgumentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_turn_scripts_receive_the_shared_remaining_moves_helper(self) -> None:
+        helper = (Path(__file__).resolve().parents[1] / 'civ7/remaining_moves.js').read_text()
+        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as temp:
+            root = Path(temp)
+            (root / 'remaining_moves.js').write_text(helper)
+            for name in ('espionage_report_observation.js', 'triumph_popup.js'):
+                (root / name).write_text('({})')
+            for name in ('end_turn.js', 'turn_state.js', 'turn_context.js'):
+                with self.subTest(script=name):
+                    (root / name).write_text('(() => remainingMoves(false, "none", null))()')
+                    reader = asyncio.StreamReader()
+                    payload = b'SIDKICK_RESULT:{"ok":true}\0'
+                    reader.feed_data(struct.pack('<II', len(payload), 3) + payload)
+                    writer = Mock(drain=AsyncMock(), wait_closed=AsyncMock())
+                    with patch('civ7.connection.ROOT', root), patch(
+                        'civ7.connection.asyncio.open_connection', new_callable=AsyncMock,
+                        return_value=(reader, writer),
+                    ):
+                        await run_script(name, {'expected_turn': 59})
+                    javascript = writer.write.call_args.args[0][8:].decode().removeprefix('CMD:65535:').removesuffix('\0')
+                    result = subprocess.run(
+                        ['node', '-e', "const vm=require('node:vm');let s='';process.stdin.on('data',c=>s+=c);process.stdin.on('end',()=>console.log(vm.runInNewContext(s)));"],
+                        input=javascript, text=True, capture_output=True, check=True, timeout=10,
+                    )
+                    decoded = json.loads(result.stdout.removeprefix('SIDKICK_RESULT:'))
+                    self.assertIs(decoded['remainingMovesBlocker'], False)
+
     async def test_combat_helper_is_fixed_bundle_not_user_javascript(self) -> None:
         with tempfile.TemporaryDirectory(dir='/tmp/opencode') as temp:
             root=Path(temp)

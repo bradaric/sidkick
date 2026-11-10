@@ -7,13 +7,14 @@ const {test} = require('node:test');
 function unit(overrides = {}) {
   return {id: {owner: 0, id: 42, type: 26}, type: 100, name: 'Western Scout',
     isOnMap: true, location: {x: 2, y: 3}, Movement: {movementMovesRemaining: 2},
-    operationQueueSize: 0, ...overrides};
+    operationQueueSize: 0, canMove: true, hasMoved: false, ...overrides};
 }
 
 function run(o = {}) {
   const owned = o.unit ?? unit();
   const noMutation = () => assert.fail('turn readback must not select, order or advance');
   const context = {
+    Configuration: {getUser: () => ({isUnitCycle_RemainingMoves: o.cycleRemainingMoves ?? false})},
     UI: {isInGame: () => true, Player: {
       ...(!o.missingReady ? {getFirstReadyUnit: () => {
         if (o.throwReady) throw Error('unavailable');
@@ -35,8 +36,9 @@ function run(o = {}) {
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10,
       getRevealedState: (id, x) => x === 9 ? 0 : 1}, RevealedStates: {HIDDEN: 0},
   };
-  return JSON.parse(JSON.stringify(vm.runInNewContext(
-    fs.readFileSync(path.join(__dirname, '../civ7/turn_state.js'), 'utf8'), context)));
+  const helper = fs.readFileSync(path.join(__dirname, '../civ7/remaining_moves.js'), 'utf8');
+  const script = fs.readFileSync(path.join(__dirname, '../civ7/turn_state.js'), 'utf8');
+  return JSON.parse(JSON.stringify(vm.runInNewContext(`((remainingMoves)=>${script})(${helper})`, context)));
 }
 
 test('turn readback identifies the native first-ready unit and actual remaining movement/queue', () => {
@@ -46,7 +48,19 @@ test('turn readback identifies the native first-ready unit and actual remaining 
   assert.equal(data.canStartAny, true);
   assert.equal(data.firstReadyUnitStatus, 'identified');
   assert.deepEqual(data.firstReadyUnit, {componentId: unit().id, instanceId: 42,
-    id: 'UNIT_SCOUT', name: 'Western Scout', location: {x: 2, y: 3}, movesRemaining: 2, queueSize: 0});
+    id: 'UNIT_SCOUT', name: 'Western Scout', location: {x: 2, y: 3}, movesRemaining: 2, queueSize: 0,
+    canMove: true, hasMoved: false});
+});
+
+test('readback distinguishes first-ready units from native remaining-moves blockers', () => {
+  assert.equal(run().remainingMovesBlocker, true);
+  for (const overrides of [{hasMoved: true}, {canMove: false}]) {
+    assert.equal(run({unit: unit(overrides)}).remainingMovesBlocker, false);
+    assert.equal(run({unit: unit(overrides), cycleRemainingMoves: true}).remainingMovesBlocker, true);
+  }
+  assert.equal(run({ready: null}).remainingMovesBlocker, false);
+  assert.equal(run({missingPermission: true}).remainingMovesBlocker, null);
+  assert.equal(run({ready: {...unit().id, owner: 1}}).remainingMovesBlocker, null);
 });
 
 test('ready cycle target stays separate from the native blocker and is not inferred from movement', () => {

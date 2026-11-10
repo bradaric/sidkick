@@ -184,7 +184,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "melee_attack_civ7_enemy_field",
             "bombard_civ7_shore_district",
             "naval_attack_civ7_land_unit",
-            "append_civ7_advanced_construction",
+            "append_civ7_advanced_construction", "purchase_civ7_repair",
             "choose_civ7_religious_action",
             "befriend_civ7_independent",
             "choose_civ7_city_state_bonus",

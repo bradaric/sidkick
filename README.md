@@ -281,14 +281,29 @@ advancement, project cancellation or additional write calls are queued.
   the native purchase command's exact `Cost`, rejects missing/over-cap quotes
   and insufficient Gold, and preserves zero/fractional costs. Purchases create
   assets and can add upkeep. Projects and town-to-city upgrades are excluded.
+- `purchase_civ7_repair(settlement, item, x, y, target_token, max_gold_cost,
+  expected_turn)` buys one repair of an existing completed damaged building,
+  improvement or Wonder in an owned city or town, only when natively repairable
+  and offered for purchase. Requires the exact item type ID and a fresh visible
+  owned assigned tile's `targetToken` from `get_civ7_building_placements`.
+  Checks the selected-tile native `Cost`, falling back only when null/absent to
+  `city.Gold.getBuildingPurchaseCost(YieldTypes.YIELD_GOLD, item)`, just like the
+  game UI. Missing/invalid quotes still reject. Checks sufficient Gold and the
+  approved cap; rejects confirmation, queued/in-progress orders and stale target/context.
+  Submits once and verifies that the **same instance** became undamaged, with
+  the tile ledger otherwise unchanged and the production queue preserved.
+  Gold loss alone is not proof. No bulk repair, new construction, overbuilding,
+  turn advancement or automatic retry of unknown/cancelled outcomes. Offline
+  fixture/adapter coverage only; live repair purchases have not been verified.
 
 The settlement is an exact displayed name (case-insensitive); the item is an
-exact type ID from `get_civ7_available_decisions`. Both handlers require an
+exact type ID from `get_civ7_available_decisions`. Both ordinary handlers require an
 active local turn and exact native permission. Buildings additionally require
 both x and y from `get_civ7_building_placements`, an explicitly revealed native
 legal plot, and a placement preview whose overbuilt ID is `-1`. Omit coordinates
-for units/projects. No wonders, repairs, purchases of queued/in-progress items,
-overbuilding or automatic tile selection are supported.
+for units/projects. These two ordinary construction/purchase handlers do not
+support wonders, repairs, purchases of queued/in-progress items, overbuilding
+or automatic tile selection. Use the dedicated repair tool above to buy repairs.
 Building validation uses two native checks: the coordinate-free result supplies
 `Plots`/`ExpandUrbanPlots` for tile membership, then the X/Y-specific result must
 permit the exact tile and supplies the purchase cost. The latter can omit plot
@@ -611,7 +626,10 @@ advanced. **278 Python /502 Node tests pass**. Tool counts are
   wake, except an explicit Scout auto-explore order can replace its old order if
   the native check allows it. No raw operation IDs, attacks or disbanding are exposed.
 - `end_civ7_turn(expected_turn)` requires a verified single-player active local
-  turn, no native blockers and no ready unit needing an order. Submits once and
+  turn, no native blockers and no native remaining-moves prompt. The prompt follows
+  the user's unit-cycling preference: when remaining-moves cycling is off, a ready
+  unit blocks only if it can move and has not moved. Unknown readiness rejects
+  submission rather than bypassing the check. Submits once and
   polls for at most 60 seconds for exactly the next active local turn, same Age
   and player. It never forces completion, ignores blockers or makes pending
   choices. New blockers or timeout can leave the result `unknown`; inspect fresh
@@ -1518,7 +1536,8 @@ stale tokens and unavailable/full queues. Requires fresh placement
 targetToken, exact native offered/selected Append permission and matching native
 preview or damaged repair instance. Overbuild acknowledges an exact intact old
 building; Wonder/improvement rural replacement additionally needs explicit
-`replace_improvement=true`. No purchase/instant completion or bulk repair.
+`replace_improvement=true`. This append tool does not purchase/instantly complete
+items or bulk-repair; use `purchase_civ7_repair` for one exact capped repair purchase.
 Live Copan Eiffel Tower, Obshchina and Brickyard-over-Guildhall queue appends each
 verified, then only new tails cancelled and original Scout queue restored. Repair
 is fixture-only after a native-blocked setup attempt. Completion/effects require
@@ -1540,7 +1559,7 @@ Current save has no known independent or pending picker, so positive live cases
 remain unavailable. **211 Python / 385 Node pass; tools23/86 (63 actions).**
 
 `perform_civ7_local_civilian_action` exposes only fixed found/excavate/research/
-spread/great_person/resettle intents at a proven current tile, with role, visibility,
+spread/great_person/resettle/treat_sick intents at a proven current tile, with role, visibility,
 owner, queue, packing/reinforcement, linked ability and native permission guards.
 Founding verifies one new exact settlement plus consumed Settler and preserved old
 settlements. Archaeology can verify a queued exact operation, not completed reward;
@@ -1550,6 +1569,16 @@ Live test Settler founded1179665 `(1,8)` preserving all17 prior settlements; Exp
 queued excavation at `(14,19)`. Research is natively Hegemony-gated; Modern has no
 missionary definition/eligible Great Person activation. No turn or forced effect.
 **212 Python / 388 Node pass; tools23/87 (64 actions).**
+
+`kind=treat_sick` performs **Treat the Sick** with an exact ready owned Physician
+at its current owned settlement tile. Native selected permission must allow the
+infected Urban District action without confirmation; known current Unrest is
+required for effect verification. Readback verifies Unrest removal in the exact
+captured owned settlement, not infection removal, charge accounting or bonus yields.
+The native command can return only `{Success: true}`, without `ChargesRemaining`;
+treatment does not require that unsupported field. No movement or turn advancement;
+unknown outcomes are never retried. Covered by mocked transport/JavaScript fixtures
+using the live-observed native permission shape; live treatment has not been executed.
 
 `resettle_civ7_migrant` uses the explicit native acquire-tile path: exact ready
 Migrant, visible empty same-city/unowned x/y and approved improvement from native
@@ -2482,6 +2511,14 @@ standing orders.
 
 `firstReadyUnitStatus` is `identified`, `none` (the getter returned no unit),
 `unavailable` (missing/failed evidence), or `unverified` (an invalid/unresolved ID).
+
+`unitOrders.remainingMovesBlocker` separately follows the native action panel's
+`showRemainingMovesState()` rule, using `canStartAny`, `cycleRemainingMoves`
+(the user's `isUnitCycle_RemainingMoves` preference), and the ready unit's
+`canMove`/`hasMoved` flags. It is `true`, `false`, or `null` for unknown evidence.
+A first-ready unit with movement left is not by itself proof of a blocker.
+The turn-submission guard and post-submission readback use this same rule.
+
 Unavailable evidence is not an empty checklist. This identifies the **next native
 cycle target**, not a complete list of blockers: a ready unit or remaining movement
 alone is not proof of the current blocker, and a different native blocker remains

@@ -27,6 +27,29 @@
     return {...state, queueAppendObserved: samePrefix && last?.type === def.$hash &&
       (!isBuilding || (last.location?.x === x && last.location?.y === y))};
   }
+  if (queryArguments.construction_intent === "repair") {
+    const baseline = queryArguments.baseline_tile;
+    if (!isBuilding || !Number.isInteger(x) || x < 0 || !Number.isInteger(y) || y < 0 ||
+        !Array.isArray(baseline) || baseline.filter(c => c.type === def.$hash && c.complete === true && c.damaged === true).length !== 1) {
+      throw Error("Captured exact damaged repair instance and tile are required");
+    }
+    const assigned = MapCities.getCity(x, y);
+    if (city.id.type !== queryArguments.city_component_type || GameplayMap.getRevealedState(playerId, x, y) !== RevealedStates.VISIBLE ||
+        GameplayMap.getOwner(x, y) !== playerId || assigned?.owner !== playerId || assigned.id !== cityId || assigned.type !== city.id.type) {
+      return {...state, repairObserved: false};
+    }
+    const ids = MapConstructibles.getConstructibles(x, y), tile = [];
+    if (!Array.isArray(ids) || ids.length > 16) return {...state, repairObserved: false};
+    for (const id of ids) {
+      const c = id.owner === playerId ? Constructibles.getByComponentID(id) : null;
+      if (!c || c.id?.owner !== playerId || c.id.id !== id.id || c.id.type !== id.type || !Number.isInteger(c.type) ||
+          typeof c.complete !== "boolean" || typeof c.damaged !== "boolean" || c.location?.x !== x || c.location?.y !== y) return {...state, repairObserved: false};
+      tile.push({owner: id.owner, instanceId: id.id, componentType: id.type, type: c.type, complete: c.complete, damaged: c.damaged});
+    }
+    tile.sort((a, b) => a.instanceId - b.instanceId || a.componentType - b.componentType);
+    const repaired = baseline.map(c => c.type === def.$hash && c.complete === true && c.damaged === true ? {...c, damaged: false} : c);
+    return {...state, tile, repairObserved: JSON.stringify(queue) === JSON.stringify(baselineQueue) && JSON.stringify(tile) === JSON.stringify(repaired)};
+  }
   const validId = id => id?.owner === playerId && Number.isInteger(id.id) && id.id >= 0 && Number.isInteger(id.type);
   if (!Array.isArray(baselineIds) || baselineIds.some(id => !validId(id))) throw Error("Captured owned asset identities are required");
   if (!isUnit && (!isBuilding || !Number.isInteger(x) || x < 0 || !Number.isInteger(y) || y < 0)) throw Error("Exact purchased building tile is required");

@@ -566,9 +566,9 @@ async def resettle_migrant(unit_id: StrictInt, x: StrictInt, y: StrictInt, impro
         "population_state.js",verification_timeout=_COMBAT_VERIFICATION_TIMEOUT)
 
 
-async def local_civilian_action(unit_id: StrictInt, kind: Literal["found", "excavate", "research", "spread", "great_person", "resettle"], expected_turn: StrictInt, ability: StrictStr | None = None) -> dict[str, Any]:
+async def local_civilian_action(unit_id: StrictInt, kind: Literal["found", "excavate", "research", "spread", "great_person", "resettle", "treat_sick"], expected_turn: StrictInt, ability: StrictStr | None = None) -> dict[str, Any]:
     """Perform one fixed native civilian activity only at its proven current own/unowned location."""
-    if (any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or kind not in ("found", "excavate", "research", "spread", "great_person", "resettle") or
+    if (any(type(v) is not int or v < 0 for v in (unit_id, expected_turn)) or kind not in ("found", "excavate", "research", "spread", "great_person", "resettle", "treat_sick") or
             ability is not None and (not isinstance(ability,str) or not ability)):
         raise ValueError("Exact owned unit, supported local activity/ability and expected turn are required")
     return await _execute_and_verify("local_civilian_action.js", {"unit_id":unit_id,"kind":kind,"expected_turn":expected_turn,"ability":ability},
@@ -618,6 +618,22 @@ async def append_advanced_construction(settlement: StrictStr, item: StrictStr, c
         raise ValueError("Exact city, constructible/intent, tile token and expected turn are required")
     return await _execute_and_verify("advanced_construction.js", {
         "settlement": settlement.strip(), "item": item, "construction_intent": construction_intent, "x": x, "y": y, "target_token": target_token, "expected_turn": expected_turn, "replace_improvement": replace_improvement,
+    }, "city_construction_state.js")
+
+
+async def purchase_repair(
+    settlement: StrictStr, item: StrictStr, x: StrictInt, y: StrictInt, target_token: StrictStr,
+    max_gold_cost: StrictInt | StrictFloat, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Buy one exact damaged constructible's repair within a Gold cap; never retry submission."""
+    if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item
+            or any(type(v) is not int or v < 0 for v in (x, y, expected_turn))
+            or not isinstance(target_token, str) or not target_token or len(target_token) > 100000
+            or type(max_gold_cost) not in (int, float) or not math.isfinite(max_gold_cost) or max_gold_cost < 0):
+        raise ValueError("Exact settlement, constructible, tile token, finite Gold cap and expected turn are required")
+    return await _execute_and_verify("advanced_construction.js", {
+        "mode": "purchase", "construction_intent": "repair", "settlement": settlement.strip(), "item": item,
+        "x": x, "y": y, "target_token": target_token, "max_gold_cost": max_gold_cost, "expected_turn": expected_turn,
     }, "city_construction_state.js")
 
 
@@ -812,7 +828,7 @@ async def end_turn(expected_turn: StrictInt) -> dict[str, Any]:
                         return {**result, "status": "verified_applied", "after": after}
                     if after["turn"] == expected_turn and after.get("active") is True and after.get("sent") is False:
                         unit = after.get("firstReadyUnit") if after.get("firstReadyUnitStatus") == "identified" else None
-                        needs_order = after.get("canStartAny") is True and unit is not None
+                        needs_order = after.get("remainingMovesBlocker") is True
                         if after.get("hasBlocker") is True or needs_order:
                             if after.get("hasBlocker") is True:
                                 reason = f"Turn did not advance: native end-turn blocker {after.get('blockerName') or after.get('blocker')} remains."

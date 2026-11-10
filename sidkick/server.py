@@ -46,6 +46,7 @@ from civ7.actions import (
     bombard_shore_district,
     naval_attack_land_unit,
     append_advanced_construction,
+    purchase_repair,
     choose_religious_action,
     befriend_independent,
     choose_city_state_bonus,
@@ -948,7 +949,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="perform_civ7_local_civilian_action", title="Found a current-tile settlement or perform Civ VII civilian activity",
             description=("CHANGE GAME STATE: kind=found performs Found Settlement directly under the Settler "
                          "at its current tile; no x/y or movement is needed. Fixed kinds "
-                         "found/excavate/research/spread/great_person/resettle "
+                         "found/excavate/research/spread/great_person/resettle/treat_sick "
                          "by exact unit_id at its current visible own/unowned tile with fresh expected_turn. "
                          "Optional exact ability must be linked to that fixed native operation/command. "
                          "Requires ready deployed unembarked unqueued role-eligible unpacked/nonreinforcing "
@@ -956,10 +957,15 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "Excavation also accepts a visible UI-filtered ruin outside any settlement under "
                          "the native neutral-owner sentinel. Found "
                          "requires unowned non-settlement tile; spread/resettle currently owned settlement "
-                         "only. Verifies exact new settlement/consumed settler, exact archaeology order/research "
+                         "only. kind=treat_sick performs Treat the Sick using a Physician at its current "
+                         "owned settlement tile; native permission checks infected Urban District eligibility "
+                         "and known current Unrest is required for effect verification. Verifies exact new settlement/consumed "
+                         "settler, exact archaeology order/research "
                          "change, spread/Great Person charge or unit consumption, or resettle consumption plus "
                          "population/pending increase. Queued archaeology is not completion/artifact reward; "
-                         "consumption is not full religious/Great Person effect accounting. No movement, "
+                         "consumption is not full religious/Great Person effect accounting. Treat the Sick "
+                         "verifies Unrest removal in the exact captured owned settlement, not infection "
+                         "removal, charge accounting or bonus yields. No movement, "
                          "foreign conversion, adjacent founding, road building, turn or Age advancement. "
                          "One submission,15-second readback, never retry unknown/cancelled outcomes."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
@@ -1044,6 +1050,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(append_advanced_construction)
+        server.tool(
+            name="purchase_civ7_repair", title="Buy one Civ VII repair with Gold",
+            description=("CHANGE GAME STATE: buy one repair of an exact completed damaged constructible in an owned city or town. "
+                         "Use exact settlement name, item type ID, x/y and fresh get_civ7_building_placements "
+                         "targetToken as target_token, approved max_gold_cost and expected_turn. Requires a currently visible "
+                         "owned assigned tile, repairable building/improvement/Wonder, one exact damaged instance, native "
+                         "offered repair plot and selected PURCHASE permission without confirmation, and sufficient Gold "
+                         "within cap. Spends Gold and restores an existing asset; does not create a new one. Verifies "
+                         "the same completed instance became undamaged with the tile ledger otherwise unchanged and "
+                         "production queue preserved; Gold loss alone is not proof. No bulk repair, new construction, "
+                         "overbuilding, queued/in-progress items or turn advancement. Requires the user's exact-action "
+                         "instruction. Submits once; never automatically retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(purchase_repair)
         server.tool(
             name="pay_civ7_call_to_arms", title="Pay Influence to avoid an allied war",
             description=("CHANGE GAME STATE: pay one pending Call to Arms to preserve the alliance without joining war. "
@@ -1738,7 +1759,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         server.tool(
             name="end_civ7_turn", title="End one Civ VII turn",
             description=("CHANGE GAME STATE: submit exactly one active single-player turn using fresh expected_turn. "
-                         "Requires no native turn blockers or ready unit needing an order; never skips blockers, "
+                         "Requires no native turn blockers or remaining-moves prompt under the user's native "
+                         "unit-cycling preference; a first-ready unit alone is not a blocker. Never skips blockers, "
                          "forces turn completion or selects pending choices. Waits up to 60 seconds for exactly "
                          "the next active local turn in the same Age/player context. Returns blocked with native "
                          "blocker/first-ready-unit details if the same turn remains active and needs attention. "
@@ -2335,10 +2357,12 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Get active quests, crisis timing, notifications, deadlines, and Age progress "
             "for the local player. unitOrders includes the native blocker code/name, "
             "canStartAny and the exact first-ready owned unit's instanceId/componentId, name, "
-            "location, remaining movement, activity and queue size from the action panel's "
+            "location, remaining movement, canMove/hasMoved, activity and queue size from the action panel's "
             "read-only getFirstReadyUnit getter. firstReadyUnitStatus distinguishes identified, "
             "none, unavailable and unverified. This is one native cycle target, not all blocking "
-            "units; other blockers and unspent movement are distinct. Never selects/cycles units "
+            "units; other blockers and unspent movement are distinct. remainingMovesBlocker follows the "
+            "native cycleRemainingMoves preference and movement flags (null means unknown); use it, not "
+            "first-ready identity alone, to identify the native remaining-moves prompt. Never selects/cycles units "
             "or infers an exact queued destination. Includes pending local narrative/crisis response choices, "
             "injected rewards/actions, base costs, affordability and read-only eligibility. "
             "Trial-specific choices and runtime cost quotes are unknown. Owned crisis settlement "

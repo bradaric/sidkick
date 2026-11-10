@@ -48,7 +48,9 @@
         location: unit.isOnMap === true ? safeLocation(unit.location) : null,
         movesRemaining: Number.isFinite(unit.Movement?.movementMovesRemaining) ? unit.Movement.movementMovesRemaining : null,
         activityType: Number.isInteger(unit.activityType) ? unit.activityType : null,
-        queueSize: Number.isInteger(unit.operationQueueSize) && unit.operationQueueSize >= 0 ? unit.operationQueueSize : null};
+        queueSize: Number.isInteger(unit.operationQueueSize) && unit.operationQueueSize >= 0 ? unit.operationQueueSize : null,
+        canMove: typeof unit.canMove === "boolean" ? unit.canMove : null,
+        hasMoved: typeof unit.hasMoved === "boolean" ? unit.hasMoved : null};
       result.firstReadyUnitStatus = "identified";
     } catch {
       result.firstReadyUnitStatus = "unavailable";
@@ -205,6 +207,7 @@
 
   const currentAgePoints = Game.AgeProgressManager.getCurrentAgeProgressionPoints();
   const maximumAgePoints = Game.AgeProgressManager.getMaxAgeProgressionPoints();
+  const unitOrders = unitOrderEvidence();
   return {
     turn: Game.turn,
     age: name(GameInfo.Ages.lookup(Game.age)?.Name),
@@ -221,7 +224,7 @@
         : null
     },
     crisis,
-    unitOrders: unitOrderEvidence(),
+    unitOrders: {...unitOrders, ...remainingMoves(unitOrders.canStartAny, unitOrders.firstReadyUnitStatus, unitOrders.firstReadyUnit)},
     pendingEvents,
     pendingEventsCoverage: {reportedPendingCount: stories.getNumPendingMet(),
       scope: "Native local pending IDs plus the two UI queue heads; trial choices are not modeled. Base costs are definition values, not runtime quotes"},
