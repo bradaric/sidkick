@@ -7,6 +7,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import StrictInt, StrictStr
 
 from civ7.connection import run_script
+from civ7.connection import run_transition_loading_script
+from civ7.connection import run_started_script as run_transition_started_script
 from civ7.save_games import read_save_inventory
 from civ7.svg_preview import publish_preview
 
@@ -162,6 +164,17 @@ async def turn_context() -> dict[str, Any]:
 
 async def age_transition() -> dict[str, Any]:
     return await run_script("age_transition.js")
+
+
+async def transition_workflow() -> dict[str, Any]:
+    """Explicit transition execution evidence, including profile Memento metadata reads."""
+    loading = await run_transition_loading_script({"operation": "observe"})
+    if loading.get("phase") != "started":
+        return loading
+    # During reload even defining a gameplay helper may touch unavailable native catalogs.
+    # The outer GameStarted gate runs before evaluating any helper or profile getter.
+    state = await run_transition_started_script("transition_workflow_state.js")
+    return await run_transition_loading_script({"operation": "observe"}) if state.get("status") == "rejected" else state
 
 
 async def explored_map() -> dict[str, Any]:

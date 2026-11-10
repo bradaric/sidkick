@@ -2545,6 +2545,59 @@ Opt-in `select_civ7_transition_civilization` accepts an exact `civilization` ID,
 
 `carryOverRules` provides **source-inspected estimates**, not a final-state simulation. For the installed post-load script's ORIGINAL and KEEP_MORE settings, the next Exploration/Modern gold and Influence cap estimates use the native game-speed adjustment. `currentGoldAboveCap` and `currentInfluenceAboveCap` compare today's balances with those estimates, not predicted losses. The script's non-capital-city regression precedes retention cards; final city/town status, retained units, dynamic card effects and other transition outcomes are not predicted. Unknown modes/next Ages return unknown caps. No transition is performed to verify these estimates. Transition planning data is also included as `ageTransition` in snapshots/exports.
 
+### Age-transition execution workflow
+
+`get_civ7_transition_workflow` is a separate, explicit read for execution. Unlike the
+profile-free planning query and broad snapshots, it intentionally reads native
+Memento/slot profile metadata **while civilization selection is pending**. It never
+instantiates the Memento UI model or marks items seen. Missing metadata, unknown
+locks or invalid transition parameters cannot authorize equipping or confirmation.
+
+All actions remain opt-in via the existing write-enabled stdio server. Refresh the
+workflow after every step: its `workflowToken` binds current choices, profile
+eligibility, deck, effects, owned settlements, capital and permissions. Actions take
+that value as `workflow_token` plus `expected_turn`; the loading action instead
+takes `loading_token`. Native active single-player readiness, auto-end-turn disabled
+and action-specific pending-phase checks are required. No action automatically
+chooses a loadout, fills a deck, retries an uncertain request or takes extra turns.
+
+| Phase/action | Scope and verification |
+| --- | --- |
+| `open_civ7_transition` | Activate the exact pending civilization notification; verify the chooser opens. |
+| `select_civ7_transition_civilization` | Existing transition-only civilization selector; use its planning-query selection token. |
+| `select_civ7_transition_memento` | One exact transition slot and eligible Memento ID or `NONE`; verify every slot. No toggles, implicit duplicate swaps or profile writes. Clear an old slot explicitly before moving a Memento. |
+| `confirm_civ7_transition_choices` | With `confirm=true`, send only native `Finished`. Verify choice clearance or exact next-Age arrival; confirmation alone is **not** completed loading. |
+| `advance_civ7_age_transition` | With `confirm=true`, submit turn completion once **only** at a native non-final/non-extended, unblocked Age boundary with known unit readiness. Observe the civilization-choice phase or exact next-Age/civilization/progression-count arrival. Ordinary end-turn safeguards are unchanged. |
+| `begin_civ7_transition_age` | Only native `WaitingForUIReady` with the transition-specific enabled, visible, unobstructed **Continue** control and a fresh `loadingToken`. Verify the same loaded Age becomes `GameStarted`. Never the ordinary save-load Begin screen, an Apple Arcade review request or a generic loading bypass. |
+| `edit_civ7_dedication` | Existing current-deck card add/remove, with its deck token and point cap; no effects or finalization. |
+| `view_civ7_transition_map` | Activate the exact native View Map control; verify chooser/Dedication screen closure without confirming. Close the Dedication screen before individual effect/capital/completion actions: its effect-event listener otherwise submits further effects automatically. |
+| `apply_civ7_dedication_effect` | One selected, unique non-placement effect; verify its native reported amount decreases once and selected cards persist. Never substitute a submission/event alone for effect completion. |
+| `place_civ7_dedication_effect` | One selected settlement-placement effect at explicit revealed native-legal coordinates; verify effect consumption, one new owned settlement at the target and preservation of existing settlements/cards. No hidden-map queries or manufactured effects. |
+| `select_civ7_transition_capital` | One exact native owned candidate during pending Dedications; verify capital identity. `Swap=false`: no settlement-name swaps/renaming. |
+| `complete_civ7_dedications` | With `confirm=true`, require resolved effects, known capital and native completion permission. Remaining legacy points additionally require `accept_unused_points=true`. Verify the completed deck and cleared transition notification; never force-complete/discard effects. |
+
+There are **two distinct confirmations**: civilization/Mementos before loading,
+then new-Age Dedications/capital afterward. Follow the reported phase; do not
+assume `Finished` necessarily loads immediately or that loading resolves the deck.
+`transitionCompleted` becomes true only for a started, resolved transition, not
+merely an accepted request or Continue-ready screen. Cross-Age actions observe for
+up to 60 seconds without resubmission; the general gameplay loading gate is not
+relaxed. The one fixed loading script alone can acknowledge the transition Continue
+screen. Unknown/cancelled outcomes require fresh inspection before any next action.
+
+Finalization can reload the campaign, cap balances, regress settlements and apply
+irreversible card/capital effects. Descriptions and carry-over estimates are not
+complete reward/yield forecasts. This workflow is source-inspected and tested with
+offline native/UI fixtures only: positive live transition/effect execution remains
+unvalidated. No live game, profile or save changes were made during implementation.
+
+Native references: `notification-train/panel-notification-train.js` and
+`notification-handlers.js`; `ui-next/screens/age-transition/age-transition-screen.js`
+and `age-transition-load-screen.js`; `core/ui-next/screens/create-game/memento-select-model.js`;
+`ui-next/screens/load-screen/load-screen-bootstrap.js` and `load-screen-model.js`;
+`ui-next/screens/legacies/dedications-model.js` and `legacies-support.js`;
+`ui/advanced-start/model-advanced-start.js`; `ui/action/panel-action.js`.
+
 ### Civilopedia reference lookup
 
 `get_civ7_civilopedia` is read-only and available by default. It reads the loaded

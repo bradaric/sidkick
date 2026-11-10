@@ -11,6 +11,7 @@ from pydantic import StrictBool, StrictFloat, StrictInt, StrictStr
 # Gameplay submissions/readbacks retain the loading gate; the fixed menu loader has its own guard.
 from civ7.connection import run_started_script as run_script
 from civ7.connection import run_load_game_script
+from civ7.connection import run_transition_loading_script
 from civ7.save_games import read_save_inventory
 
 
@@ -20,6 +21,7 @@ _VERIFICATION_TIMEOUT = 2.0
 _VERIFICATION_INTERVAL = 0.1
 _TURN_VERIFICATION_TIMEOUT = 60.0
 _COMBAT_VERIFICATION_TIMEOUT = 15.0
+_TRANSITION_TIMEOUT = 60.0
 
 
 async def save_game(save_name: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
@@ -91,6 +93,167 @@ async def select_transition_civilization(
     return await _execute_and_verify("select_transition_civilization.js", {
         "civilization": civilization, "selection_token": selection_token, "expected_turn": expected_turn,
     }, "transition_civilization_state.js")
+
+
+def _transition_arguments(workflow_token: str, expected_turn: int) -> dict[str, Any]:
+    if (not isinstance(workflow_token, str) or not workflow_token or len(workflow_token) > 250000
+            or type(expected_turn) is not int or not 0 <= expected_turn <= 2**53 - 1):
+        raise ValueError("Fresh exact workflow token and expected turn required")
+    return {"workflow_token": workflow_token, "expected_turn": expected_turn}
+
+
+async def open_transition(workflow_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Activate only the pending civilization notification and verify the chooser opens."""
+    return await _execute_and_verify("transition_workflow_action.js", {
+        **_transition_arguments(workflow_token, expected_turn), "operation": "open",
+    }, "transition_workflow_state.js")
+
+
+async def view_transition_map(workflow_token: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
+    """Use the exact native View Map control without confirming any choices."""
+    return await _execute_and_verify("transition_workflow_action.js", {
+        **_transition_arguments(workflow_token, expected_turn), "operation": "view_map",
+    }, "transition_workflow_state.js")
+
+
+async def select_transition_memento(
+    slot: StrictStr, memento: StrictStr, workflow_token: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Set one transition-only Memento; no implicit swap, toggle or profile mutation."""
+    if (not isinstance(slot, str) or not slot.startswith("AgeTransitionPlayerMemento") or len(slot) > 512
+            or not isinstance(memento, str) or not memento.strip() or len(memento) > 512):
+        raise ValueError("Exact transition slot and Memento ID (or NONE) required")
+    return await _execute_and_verify("transition_workflow_action.js", {
+        **_transition_arguments(workflow_token, expected_turn), "operation": "memento", "slot": slot, "memento": memento,
+    }, "transition_workflow_state.js")
+
+
+async def apply_dedication_effect(
+    effect_id: StrictStr, workflow_token: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Apply one pending non-placement effect, verifying its native remaining amount."""
+    if not isinstance(effect_id, str) or not effect_id.strip() or len(effect_id) > 512:
+        raise ValueError("Exact pending effect ID required")
+    return await _execute_and_verify("transition_workflow_action.js", {
+        **_transition_arguments(workflow_token, expected_turn), "operation": "effect", "effect_id": effect_id,
+    }, "transition_workflow_state.js")
+
+
+async def select_transition_capital(
+    city_id: StrictInt, workflow_token: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Select one native owned candidate without swapping settlement names."""
+    if type(city_id) is not int or not 0 <= city_id <= 2**53 - 1:
+        raise ValueError("Exact owned capital candidate ID required")
+    return await _execute_and_verify("transition_workflow_action.js", {
+        **_transition_arguments(workflow_token, expected_turn), "operation": "capital", "city_id": city_id,
+    }, "transition_workflow_state.js")
+
+
+async def place_dedication_effect(
+    effect_id: StrictStr, x: StrictInt, y: StrictInt, workflow_token: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Place one selected settlement effect on an exact revealed native-legal plot."""
+    if (not isinstance(effect_id, str) or not effect_id.strip() or len(effect_id) > 512
+            or any(type(value) is not int or not 0 <= value <= 2**53 - 1 for value in (x, y))):
+        raise ValueError("Exact pending placement effect ID and nonnegative revealed coordinates required")
+    return await _execute_and_verify("transition_workflow_action.js", {
+        **_transition_arguments(workflow_token, expected_turn), "operation": "place_effect", "effect_id": effect_id, "x": x, "y": y,
+    }, "transition_workflow_state.js")
+
+
+async def complete_dedications(
+    workflow_token: StrictStr, expected_turn: StrictInt, confirm: StrictBool, accept_unused_points: StrictBool,
+) -> dict[str, Any]:
+    """Close the resolved current transition deck, never force-complete pending effects."""
+    if confirm is not True or type(accept_unused_points) is not bool:
+        raise ValueError("Explicit deck confirmation and unused-point acknowledgement required")
+    return await _execute_and_verify("transition_workflow_action.js", {
+        **_transition_arguments(workflow_token, expected_turn), "operation": "complete_deck",
+        "confirm": confirm, "accept_unused_points": accept_unused_points,
+    }, "transition_workflow_state.js")
+
+
+async def confirm_transition_choices(
+    workflow_token: StrictStr, expected_turn: StrictInt, confirm: StrictBool,
+) -> dict[str, Any]:
+    """Confirm the exact current civilization/Memento choices, not necessarily completed loading."""
+    if confirm is not True:
+        raise ValueError("Explicit transition-choice confirmation required")
+    return await _observe_transition_action("confirm_choices", {
+        **_transition_arguments(workflow_token, expected_turn), "confirm": confirm,
+    })
+
+
+async def advance_age_transition(
+    workflow_token: StrictStr, expected_turn: StrictInt, confirm: StrictBool,
+) -> dict[str, Any]:
+    """Advance only an unblocked native Age boundary; never an ordinary next turn."""
+    if confirm is not True:
+        raise ValueError("Explicit irreversible Age-boundary confirmation required")
+    return await _observe_transition_action("advance", {
+        **_transition_arguments(workflow_token, expected_turn), "confirm": confirm,
+    })
+
+
+async def begin_transition_age(loading_token: StrictStr) -> dict[str, Any]:
+    """Acknowledge only the ready new-Age Continue screen, not arbitrary game loading."""
+    if not isinstance(loading_token, str) or not loading_token or len(loading_token) > 250000:
+        raise ValueError("Exact current transition loading token required")
+    return await _observe_transition_action("begin", {"loading_token": loading_token})
+
+
+async def _observe_transition_action(operation: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    # Unlike ordinary actions these may legitimately replace the entire turn/Age/UI context.
+    # Submit once under the shared lock, then use only the fixed read-only loading observer.
+    async with _action_lock:
+        result: dict[str, Any] = {"status": "unknown", "transitionCompleted": False}
+        after = None
+        try:
+            args = {**arguments, "operation": operation}
+            result = (await run_transition_loading_script(args) if operation == "begin"
+                      else await run_script("transition_workflow_action.js", args))
+            if result.get("status") in {"rejected", "already_active"}:
+                return result
+            if result.get("status") != "submitted":
+                raise ValueError("Unexpected transition submission response")
+            before = result["before"]
+            if any(type(before.get(key)) is not int for key in ("turn", "age", "playerId", "previousAgeCount")):
+                raise ValueError("Missing transition origin context")
+            async with asyncio.timeout(_TRANSITION_TIMEOUT):
+                while True:
+                    after = await run_transition_loading_script({"operation": "observe"})
+                    same_player = type(after.get("playerId")) is int and after["playerId"] == before["playerId"]
+                    same_origin = same_player and all(type(after.get(key)) is int and after[key] == before[key]
+                                                     for key in ("turn", "age", "previousAgeCount"))
+                    arrived = (same_player and after.get("phase") in {"started", "awaiting_begin"}
+                               and type(after.get("turn")) is int and after["turn"] >= 0
+                               and type(after.get("age")) is int and after["age"] != before["age"]
+                               and after.get("ageType") == before.get("nextAge")
+                               and after.get("civilization") == before.get("nextCivilization", before.get("civilization"))
+                               and type(after.get("previousAgeCount")) is int
+                               and after["previousAgeCount"] == before["previousAgeCount"] + 1)
+                    choices_confirmed = (operation == "confirm_choices" and same_origin and after.get("phase") == "started"
+                                         and after.get("ageType") == before.get("ageType") and after.get("choicePending") is False)
+                    chooser_ready = (operation == "advance" and same_player and after.get("phase") == "started"
+                                     and type(after.get("turn")) is int and before["turn"] <= after["turn"] <= before["turn"] + 1
+                                     and after.get("age") == before["age"] and after.get("ageType") == before.get("ageType")
+                                     and after.get("previousAgeCount") == before["previousAgeCount"]
+                                     and after.get("choicePending") is True)
+                    begun = (operation == "begin" and same_origin and after.get("phase") == "started"
+                             and after.get("ageType") == before.get("ageType")
+                             and after.get("civilization") == before.get("civilization"))
+                    if arrived or choices_confirmed or chooser_ready or begun:
+                        return {**result, "status": "verified_applied", "after": after,
+                                "transitionCompleted": after.get("transitionCompleted") is True if arrived or begun else False,
+                                "requiresBegin": after.get("phase") == "awaiting_begin"}
+                    if after.get("phase") not in {"loading", "unavailable"} and not same_origin:
+                        raise ValueError("Unexpected game/Age/civilization/progression context; do not retry")
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", "transitionCompleted": False, "after": after,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "reason": "Transition may already be underway/applied; refresh workflow/loading state, never retry automatically"}
 
 
 async def edit_dedication(

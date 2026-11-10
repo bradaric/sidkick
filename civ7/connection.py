@@ -34,6 +34,11 @@ async def run_load_game_script(arguments: dict[str, Any]) -> dict[str, Any]:
     return await _run_script("save_load.js", {**arguments, "operation": "load"}, require_started=False)
 
 
+async def run_transition_loading_script(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Fixed loading observer/Begin only; never relax the gameplay transport gate."""
+    return await _run_script("transition_loading.js", arguments, require_started=False)
+
+
 async def _run_script(
     script_name: str, arguments: dict[str, Any] | None, *, require_started: bool,
 ) -> dict[str, Any]:
@@ -42,7 +47,11 @@ async def _run_script(
         raise ValueError("Civ VII queries must be bundled JavaScript files")
 
     script = script_path.read_text(encoding="utf-8")
-    if script_name in {"end_turn.js", "turn_state.js", "turn_context.js"}:
+    # Bind this dependent helper innermost so the outer fixed preludes are in its lexical scope.
+    if script_name in {"transition_workflow_state.js", "transition_workflow_action.js"}:
+        helper = (ROOT / "transition_workflow.js").read_text(encoding="utf-8")
+        script = f"((transitionWorkflow) => {{ return {script}\n}})({helper})"
+    if script_name in {"end_turn.js", "turn_state.js", "turn_context.js", "transition_workflow_state.js", "transition_workflow_action.js"}:
         helper = (ROOT / "remaining_moves.js").read_text(encoding="utf-8")
         script = f"((remainingMoves) => {{ return {script}\n}})({helper})"
     if script_name in {"attack_unit.js", "unit_attack_state.js", "army_attack.js", "air_attack_unit.js", "air_attack_state.js", "group_air_attack.js", "group_air_attack_state.js", "ranged_district_attack.js", "district_attack_state.js", "commander_attack.js", "assault_city.js", "city_assault_state.js"}:
@@ -61,10 +70,10 @@ async def _run_script(
     if script_name in {"turn_context.js", "close_triumph_popup.js", "triumph_popup_state.js"}:
         helper = (ROOT / "triumph_popup.js").read_text(encoding="utf-8")
         script = f"((triumphPopup) => {{ return {script}\n}})({helper})"
-    if script_name in {"age_transition.js", "edit_dedication.js", "dedication_state.js"}:
+    if script_name in {"age_transition.js", "edit_dedication.js", "dedication_state.js", "transition_workflow_state.js", "transition_workflow_action.js"}:
         helper = (ROOT / "dedication_deck.js").read_text(encoding="utf-8")
         script = f"((dedicationDeck) => {{ return {script}\n}})({helper})"
-    if script_name in {"age_transition.js", "select_transition_civilization.js", "transition_civilization_state.js"}:
+    if script_name in {"age_transition.js", "select_transition_civilization.js", "transition_civilization_state.js", "transition_workflow_state.js", "transition_workflow_action.js"}:
         helper = (ROOT / "transition_civilization.js").read_text(encoding="utf-8")
         script = f"((transitionCivilization) => {{ return {script}\n}})({helper})"
     if arguments is not None:
