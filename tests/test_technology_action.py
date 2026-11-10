@@ -137,6 +137,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "acknowledge_civ7_town_focus_reminder",
             "close_civ7_triumph_popup",
             "edit_civ7_dedication",
+            "select_civ7_transition_civilization",
             "select_civ7_technology", "select_civ7_civic", "set_civ7_policy_active",
             "assign_civ7_resource",
             "buy_civ7_attribute_node",

@@ -11,6 +11,7 @@ from civ7.actions import (
     save_game,
     load_game,
     edit_dedication,
+    select_transition_civilization,
     attack_unit,
     army_ranged_attack,
     army_melee_attack,
@@ -356,6 +357,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        server.tool(
+            name="select_civ7_transition_civilization", title="Select a pending Civ VII next-Age civilization",
+            description=(
+                "CHANGE PENDING TRANSITION SELECTION ONLY: read get_civ7_age_transition.civilizations first; "
+                "requires selectionOpen, exact civilization ID with selectionPermission=true, fresh selectionToken "
+                "as selection_token and expected_turn. Requires an active GameStarted single-player turn, a unique "
+                "blocking CHOOSE_CIVILIZATION notification and an editable transition-specific selector. Rechecks "
+                "native domain validity and alternative unlock paths before setting AgeTransitionPlayerCivilization "
+                "once; verifies the pending value in unchanged turn/Age/player/notification context. Never finalizes "
+                "the transition, navigates screens, selects Mementos/Dedications/capital or advances Age/turn. "
+                "Unknown/cancelled outcomes must be inspected, never automatically retried. Live execution unvalidated."
+            ),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(select_transition_civilization)
         server.tool(
             name="save_civ7_game", title="Create a new local Civ VII save",
             description=("WRITE LOCAL SAVE: create one new named single-player game-state save using save_name "
@@ -2380,7 +2396,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII age-transition planning data",
         description=(
             "Read next-Age civilization candidates from the transition-specific selector, "
-            "native local unlock requirements/progress and current/transition Memento setup "
+            "native local unlock requirements/progress, civilization selectionOpen/selectionPermission "
+            "and a fresh selectionToken for opt-in select_civ7_transition_civilization; current/transition Memento setup "
             "candidates. Dedications include native deckSize/openSlotCount, selectionOpen, "
             "selecting/full_unconfirmed/completed/unknown phase, current costs/limits, add/remove "
             "eligibility and a fresh deckToken for edit_civ7_dedication. This is deck capacity, "

@@ -14,7 +14,8 @@ function run({ bypass = false, closed = true, full = false, missingProgress = fa
     domain: { possibleValues: [{ value: 'M', name: 'Memento', invalidReason: 0 }] } };
   const futureSlot = { ...currentSlot, ID: 'AgeTransitionPlayerMementoMajorSlot', value: { value: 'NONE', name: 'None' } };
   const helper = fs.readFileSync(path.join(__dirname, '../civ7/dedication_deck.js'), 'utf8');
-  const data = vm.runInNewContext(`((dedicationDeck) => { return ${fs.readFileSync(script, 'utf8')}\n})(${helper})`, {
+  const selectionHelper = fs.readFileSync(path.join(__dirname, '../civ7/transition_civilization.js'), 'utf8');
+  const data = vm.runInNewContext(`((dedicationDeck, transitionCivilization) => { return ${fs.readFileSync(script, 'utf8')}\n})(${helper}, ${selectionHelper})`, {
     UI: { isInGame: () => true, getGameLoadingState: () => 8 }, UIGameLoadingState: {GameStarted: 8},
     GameContext: { localPlayerID: 0, hasSentTurnComplete: () => false }, Locale: { compose: (text, ...args) => [text, ...args].join('|') },
     Players: { get: id => { assert.equal(id, 0); return {
@@ -81,7 +82,9 @@ test('next-Age civilizations combine the transition selector with native local u
   assert.equal(locked.unlocked, false, 'a valid selector entry is not itself an unlock');
   assert.equal(locked.eligibleByChecks, false);
   assert.equal(unlocked.eligibleByChecks, true);
-  assert.equal(unlocked.selectionPermission, null);
+  assert.equal(unlocked.selectionPermission, false, 'planning eligibility alone cannot authorize selection');
+  assert.equal(data.civilizations.selectionOpen, false);
+  assert.equal(data.civilizations.selectionToken, null);
   assert.equal(locked.unlockPaths[0].requirements[0].current, 1);
   assert.equal(locked.unlockPaths[0].requirements[0].total, 3);
   assert.equal(locked.unlockPaths[0].requirements[0].met, false);

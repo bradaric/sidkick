@@ -64,6 +64,9 @@ async def _run_script(
     if script_name in {"age_transition.js", "edit_dedication.js", "dedication_state.js"}:
         helper = (ROOT / "dedication_deck.js").read_text(encoding="utf-8")
         script = f"((dedicationDeck) => {{ return {script}\n}})({helper})"
+    if script_name in {"age_transition.js", "select_transition_civilization.js", "transition_civilization_state.js"}:
+        helper = (ROOT / "transition_civilization.js").read_text(encoding="utf-8")
+        script = f"((transitionCivilization) => {{ return {script}\n}})({helper})"
     if arguments is not None:
         # Parse data rather than interpolating selectors as executable JavaScript.
         encoded = json.dumps(json.dumps(arguments, allow_nan=False))

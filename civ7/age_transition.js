@@ -90,11 +90,17 @@
     influenceCap = Game.EconomicRules.adjustForGameSpeed(keepMore ? next.AgeType === "AGE_MODERN" ? 1200 : 800 : 500);
   }
   const finish = Game.PlayerOperations.canStart(id, PlayerOperationTypes.SET_AGE_TRANSITION_DATA, {Finished: true}, false);
+  const selection = transitionCivilization.snapshot();
+  for (const choice of civilizations) {
+    const matches = selection?.choices.filter(candidate => candidate.id === choice.id) ?? [];
+    choice.selectionPermission = matches.length === 1 && matches[0].selectionPermission === true;
+  }
   return {
     turn: Game.turn, currentAge: {id: currentAge?.AgeType ?? null, name: name(currentAge?.Name)}, nextAge,
     civilizations: {parameter: "AgeTransitionPlayerCivilization", parameterAvailable: Boolean(civParameter),
+      selectionOpen: selection?.selectionOpen === true, selectionToken: selection?.selectionToken ?? null,
       selected: civParameter?.value?.value ?? null, unlockBypassEnabled: bypass, choices: civilizations,
-      note: "Native unlock progress plus next-Age transition-domain validity; requirement links are not interpreted as all being required. Selection permission is not inferred"},
+      note: "Planning eligibility is distinct from selectionPermission, which requires a pending local civilization choice and editable transition selector. No finalization"},
     dedications,
     mementos: {currentSlots, transitionSlots, profileMetadataQueried: false,
       note: "Filtered local setup candidates only. Profile unlock status/equip permission are unknown; no Online metaprogression calls are made"},

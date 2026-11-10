@@ -80,6 +80,19 @@ async def load_game(
                     "reason": "Load may already be underway; inspect loading state and never retry automatically"}
 
 
+async def select_transition_civilization(
+    civilization: StrictStr, selection_token: StrictStr, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Change only the pending next-Age civilization; never finalize the transition."""
+    if (not isinstance(civilization, str) or not civilization.strip() or len(civilization) > 512
+            or not isinstance(selection_token, str) or not selection_token or len(selection_token) > 250000
+            or type(expected_turn) is not int or not 0 <= expected_turn <= 2**53 - 1):
+        raise ValueError("Exact civilization ID, fresh selection token and expected turn required")
+    return await _execute_and_verify("select_transition_civilization.js", {
+        "civilization": civilization, "selection_token": selection_token, "expected_turn": expected_turn,
+    }, "transition_civilization_state.js")
+
+
 async def edit_dedication(
     card_id: StrictStr, operation: Literal["add", "remove"], deck_token: StrictStr,
     max_legacy_point_cost: StrictInt, expected_turn: StrictInt,
