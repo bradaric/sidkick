@@ -17,8 +17,9 @@ function fixture(options = {}) {
     location: id === 12 ? {x: 4, y: 5} : {x: id - 9, y: 1}});
   const selection = () => ({turn: state.turn, age: state.age, playerId: 0, nextAge: 'AGE_MODERN',
     selected: state.acknowledged ? 'CIVILIZATION_MAYA' : 'CIVILIZATION_PRUSSIA', selectionOpen: state.pending && options.editable !== false,
-    notification: oldAge() ? {owner: 0, id: 7, type: 9} : null,
-    notificationBlocksTurn: oldAge() ? Boolean(state.pending) : null, choicesAcknowledged: Boolean(state.acknowledged),
+    notification: oldAge() && !(state.acknowledged && options.removeAcknowledgedNotice) ? {owner: 0, id: 7, type: 9} : null,
+    notificationBlocksTurn: oldAge() && !(state.acknowledged && options.removeAcknowledgedNotice) ? Boolean(state.pending) : null,
+    choicesAcknowledged: Boolean(state.acknowledged && !options.removeAcknowledgedNotice),
     choices: [{id: 'CIVILIZATION_PRUSSIA', selectionPermission: options.editable !== false && state.pending,
       setupReason: 0, unlocked: true}]});
   let snapshots = 0;
@@ -27,7 +28,7 @@ function fixture(options = {}) {
       Player: {getFirstReadyUnit: () => null}}, UIGameLoadingState: {GameStarted: 8},
     Configuration: {getGame: () => ({isAnyMultiplayer: options.multiplayer ?? false, previousAgeCount: oldAge() ? 1 : 2}),
       getUser: () => ({isAutoEndTurn: options.autoEnd ?? false})}, Autoplay: {isActive: options.autoplay ?? false},
-    GameContext: {localPlayerID: 0, hasSentTurnComplete: () => false,
+    GameContext: {localPlayerID: 0, hasSentTurnComplete: () => options.sent ?? false,
       sendTurnComplete: () => {calls.push(['advance']); state.turn++;}},
     Locale: {compose: key => key}, EndTurnBlockingTypes: {NONE: 0}, RevealedStates: {HIDDEN: 0},
     GameplayMap: {getGridWidth: () => 20, getGridHeight: () => 20, getRevealedState: () => options.unknownPlot ? undefined : options.hiddenPlot ? 0 : 1},
@@ -53,7 +54,7 @@ function fixture(options = {}) {
       selectionOpen: !oldAge() && !state.completed, selectionComplete: oldAge() || state.completed,
       selectedCardIds: ['CARD_A'], totalLegacyPoints: 2, deckSize: 3,
       selected: [{id: 'CARD_A', effects: [{id: 'EFFECT_A', placementRequired: options.placement ?? false, reportedAmount: state.amount}]}]})},
-    Players: {get: () => ({isTurnActive: true, civilizationType: 99,
+    Players: {get: () => ({isTurnActive: options.active ?? true, civilizationType: 99,
       Cities: {getCapital: () => city(state.capital), getCityIds: () => [city(10).id, city(11).id, ...(state.placed ? [city(12).id] : [])],
         getPotentialSwitchCapitalCityIds: () => [city(11).id]},
       AdvancedStart: {getPlacementComplete: () => state.completed},
@@ -63,7 +64,10 @@ function fixture(options = {}) {
     PlayerOperationTypes: {SET_AGE_TRANSITION_DATA: 'FINISH', ADVANCED_START_USE_EFFECT: 'EFFECT',
       ADVANCED_START_MARK_COMPLETED: 'COMPLETE', SELECT_CAPITAL: 'CAPITAL', ADVANCED_START_PLACE_SETTLEMENT: 'PLACE'},
     Game: {get turn() {return state.turn;}, get age() {return state.age;},
-      AgeProgressManager: {get isAgeOver() {return options.ageOver ?? oldAge();}, isExtendedGame: false, isFinalAge: false},
+      AgeProgressManager: {get isAgeOver() {return 'ageOver' in options ? options.ageOver : oldAge();},
+        isExtendedGame: options.extended ?? false, isFinalAge: options.finalAge ?? false,
+        getCurrentAgeProgressionPoints: () => options.currentProgress,
+        getMaxAgeProgressionPoints: () => options.maximumProgress},
       UnitOperations: {canStartAny: () => false},
       Notifications: {getIdsForPlayer: () => oldAge() || !state.completed || options.retainCompletedNotice ? [{owner: 0, id: 7, type: 9}] : [],
         getType: () => 9, getTypeName: () => oldAge() ? 'NOTIFICATION_CHOOSE_CIVILIZATION' : 'NOTIFICATION_AGE_TRANSITION',
@@ -279,6 +283,72 @@ test('acknowledgement with native isAgeOver=false remains incomplete and exposes
   assert.equal(f.before.ageBoundary.nativeAgeOver, false);
   assert.equal(f.before.ageBoundary.blocker, 0);
   assert.equal(f.before.ageBoundary.remainingMovesBlocker, false);
+});
+
+test('live T125 regression: acknowledged 140/140 permits one boundary submission despite isAgeOver=false', () => {
+  const f = fixture({ageOver: false, currentProgress: 140, maximumProgress: 140,
+    state: {pending: false, acknowledged: true}});
+  assert.equal(f.before.ageBoundary.nativeAgeOver, false);
+  assert.equal(f.before.ageBoundary.progressComplete, true);
+  assert.equal(f.before.ageBoundary.boundarySource, 'acknowledged_progress_complete');
+  assert.equal(f.before.advanceReady, true);
+  assert.equal(f.before.advanceAllowed, false, 'missing receipt still requires an explicit expected civilization');
+  assert.equal(f.before.nextAction, 'advance_civ7_age_transition');
+  assert.equal(f.act('advance', {confirm: true}).status, 'rejected');
+  const result = f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_PRUSSIA'});
+  assert.equal(result.status, 'submitted');
+  assert.equal(result.before.nextCivilization, 'CIVILIZATION_PRUSSIA');
+  assert.equal(f.before.transitionCompleted, false);
+  assert.deepEqual(f.calls, [['advance']], 'no re-selection, repeat Finished or extra turn');
+});
+
+test('the progression fallback preserves every other boundary safeguard and rejects incomplete/unknown counts', () => {
+  for (const changes of [
+    {currentProgress: 139}, {currentProgress: null}, {maximumProgress: null}, {maximumProgress: 0},
+    {currentProgress: '140'}, {maximumProgress: '140'}, {currentProgress: Infinity}, {currentProgress: NaN},
+    {ageOver: undefined}, {ageOver: null}, {extended: true}, {finalAge: true}, {blocker: 3},
+    {unitBlocker: true}, {unitBlocker: null}, {sent: true}, {active: false}, {multiplayer: true},
+    {loading: true}, {autoEnd: true}, {autoplay: true},
+    {state: {pending: false, acknowledged: true, panel: true}},
+    {state: {pending: true}}, {state: {pending: false, completed: true}},
+  ]) {
+    const f = fixture({ageOver: false, currentProgress: 140, maximumProgress: 140,
+      state: {pending: false, acknowledged: true}, ...changes});
+    assert.equal(f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_PRUSSIA'}).status,
+      'rejected', JSON.stringify(changes));
+    assert.deepEqual(f.calls, []);
+  }
+});
+
+test('captured loadout can advance on complete native progress without a recovery override', () => {
+  const f = fixture({retainChoice: true, ageOver: false, currentProgress: 141, maximumProgress: 140});
+  assert.equal(f.act('confirm_choices', {confirm: true}).status, 'submitted');
+  const ack = f.read();
+  assert.equal(ack.advanceAllowed, true);
+  const result = f.act('advance', {confirm: true, workflow_token: ack.workflowToken});
+  assert.equal(result.status, 'submitted');
+  assert.equal(result.before.nextCivilization, 'CIVILIZATION_PRUSSIA');
+  assert.deepEqual(f.calls.map(call => call[0]), ['FINISH', 'advance']);
+});
+
+test('a captured confirmation with a cleared notification also uses native completed progression', () => {
+  const f = fixture({retainChoice: true, removeAcknowledgedNotice: true, ageOver: false,
+    currentProgress: 140, maximumProgress: 140});
+  f.act('confirm_choices', {confirm: true});
+  const ack = f.read();
+  assert.equal(ack.phase, 'choices_acknowledged');
+  assert.equal(ack.nextCivilization, 'CIVILIZATION_PRUSSIA');
+  assert.equal(ack.advanceAllowed, true);
+  assert.equal(ack.transitionCompleted, false);
+});
+
+test('progress changing during validation rejects before the boundary submission', () => {
+  const options = {ageOver: false, currentProgress: 140, maximumProgress: 140,
+    state: {pending: false, acknowledged: true}};
+  options.race = () => {options.currentProgress = 139;};
+  const f = fixture(options);
+  assert.equal(f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_PRUSSIA'}).status, 'rejected');
+  assert.deepEqual(f.calls, []);
 });
 
 test('a confirmation receipt cannot follow changed origin context or override the captured civilization', () => {

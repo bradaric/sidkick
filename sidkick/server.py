@@ -387,11 +387,15 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
              "If requiresChooserClose=true, use view_civ7_transition_map with a fresh workflow token; never re-confirm to close the screen. "
              "Refresh workflow: a separately approved advance_civ7_age_transition may still be needed. May initiate reload/carry-over effects.", confirm_transition_choices),
             ("advance_civ7_age_transition", "Advance an unblocked Civ VII Age boundary",
-             "IRREVERSIBLE AGE BOUNDARY: confirm=true, native isAgeOver, non-final/non-extended Age, no blockers and known unit readiness required. "
+             "IRREVERSIBLE AGE BOUNDARY: confirm=true and either native isAgeOver=true, or acknowledged choices with "
+             "native isAgeOver=false and known current progression >= positive maximum (the native action-panel transition criterion). "
+             "Non-final/non-extended Age, no blockers and known unit readiness remain required; this fallback never permits an ordinary turn. "
              "Close the chooser first with view_civ7_transition_map. Send turn complete ONCE only at this boundary; never an ordinary extra turn. "
              "For acknowledged choices, retain the captured expected loadout rather than the reset setup selector. If "
              "requiresExpectedCivilization=true (pre-fix/missing receipt), explicitly provide expected_civilization from the previously "
              "selected loadout; it must be in recoveryCivilizations and is an arrival expectation, not proof of native stored choices. "
+             "When advanceReady=true and requiresExpectedCivilization=true, supply that expectation even though advanceAllowed=false "
+             "without it. Follow workflow.nextAction; do not try the closed civilization selector again. "
              "Never re-submit Finished or reapply staged selections as recovery. Observe either the next civilization-choice phase "
              "or exact next-Age/civilization/previousAgeCount+1 arrival. Does not auto-Begin. Carry-over can regress settlements/cap balances.", advance_age_transition),
             ("begin_civ7_transition_age", "Begin a ready newly loaded Civ VII Age",
@@ -2494,7 +2498,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "confirmedLoadout is a context-bound pre-submission expectation, NOT migration proof; stagedCivilization may have reset to the old civ. "
             "Close an acknowledged chooser with view_civ7_transition_map before advancement. Without a captured loadout, "
             "nextCivilization stays unknown and requiresExpectedCivilization requests an explicit eligible expected_civilization on advance. "
-            "ageBoundary exposes native Age-over/extended/final flags and native/unit blockers when advancement is unavailable. "
+            "ageBoundary exposes native flags, progression current/maximum/progressComplete, boundarySource and native/unit blockers. "
+            "Acknowledged progression-complete choices may advance even with nativeAgeOver=false; nextAction names the exact next step. "
+            "advanceReady=true is native eligibility; advanceAllowed may remain false only because an explicit recovery expectation is missing. "
             "effects are selected cards' native reported remaining amounts, not predicted reward totals. Resolve placement effects "
             "separately with place_civ7_dedication_effect at an explicit revealed native-legal plot. "
             "dedicationPanelOpen must be false for individual effects/capital/completion to avoid native UI auto-cascades; "

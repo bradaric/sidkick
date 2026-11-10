@@ -2567,7 +2567,7 @@ chooses a loadout, fills a deck, retries an uncertain request or takes extra tur
 | `select_civ7_transition_civilization` | Existing transition-only civilization selector; use its planning-query selection token. |
 | `select_civ7_transition_memento` | One exact transition slot and eligible Memento ID or `NONE`; verify every slot. No toggles, implicit duplicate swaps or profile writes. Clear an old slot explicitly before moving a Memento. |
 | `confirm_civ7_transition_choices` | With `confirm=true`, send only native `Finished`. Verify choice clearance or exact next-Age arrival; confirmation alone is **not** completed loading. |
-| `advance_civ7_age_transition` | With `confirm=true`, submit turn completion once **only** at a native non-final/non-extended, unblocked Age boundary with known unit readiness. Observe the civilization-choice phase or exact next-Age/civilization/progression-count arrival. Ordinary end-turn safeguards are unchanged. |
+| `advance_civ7_age_transition` | With `confirm=true`, submit turn completion once **only** at a non-final/non-extended, unblocked Age boundary with known unit readiness: native `isAgeOver=true`, or acknowledged choices with `isAgeOver=false` and known current progression at/above a positive maximum. Observe the civilization-choice phase or exact next-Age/civilization/progression-count arrival. Ordinary end-turn safeguards are unchanged. |
 | `begin_civ7_transition_age` | Only native `WaitingForUIReady` with the transition-specific enabled, visible, unobstructed **Continue** control and a fresh `loadingToken`. Verify the same loaded Age becomes `GameStarted`. Never the ordinary save-load Begin screen, an Apple Arcade review request or a generic loading bypass. |
 | `edit_civ7_dedication` | Existing current-deck card add/remove, with its deck token and point cap; no effects or finalization. |
 | `view_civ7_transition_map` | Activate the exact native View Map control; verify chooser/Dedication screen closure without confirming. Close the Dedication screen before individual effect/capital/completion actions: its effect-event listener otherwise submits further effects automatically. |
@@ -2603,10 +2603,18 @@ from the previously selected loadout. It must be an eligible next-Age entry in
 the civilization to verify on arrival—it neither proves/repairs native stored
 choices nor reconstructs missing Memento evidence. No reset selector value is
 silently trusted and no `Finished`/selection request is retried.
-`ageBoundary` reports the native Age-over/extended/final flags, native blocker and
-remaining-moves blocker so an acknowledged state does not hide why advancement
-is still unavailable. The old Age's already-completed deck is never treated as
-completion of an acknowledged upcoming transition.
+`ageBoundary` reports the native flags, current/maximum progression,
+`progressComplete`, `boundarySource` and native/unit blockers. The native action
+panel offers transition when progression reaches the maximum; its `isAgeOver`
+flag can still be false (observed at Exploration T125, 140/140). For **acknowledged
+choices only**, known completed progression therefore supplies the boundary gate
+even with that flag false. Incomplete/unknown progression, unknown flags,
+ordinary turns, open chooser, multiplayer, final/extended Ages and other blockers
+do not gain permission. `nextAction` reports View Map or boundary advancement.
+`advanceReady=true` means native readiness; if `requiresExpectedCivilization=true`,
+provide the explicit recovery expectation even though `advanceAllowed=false`
+without it. Do not reselect or repeat Finished. The old Age's already-completed
+deck is never treated as completion of an acknowledged upcoming transition.
 
 `transitionCompleted` becomes true only for a started, resolved transition, not
 merely an accepted request or Continue-ready screen. Cross-Age actions observe for

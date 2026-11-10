@@ -113,8 +113,18 @@
         receipt.previousAgeCount === previousAgeCount && receipt.nextAge === selection.nextAge &&
         JSON.stringify(receipt.ownedSettlements) === JSON.stringify(ownedSettlements) &&
         (!choiceNotification || JSON.stringify(receipt.notification) === JSON.stringify(choiceNotification));
+      let currentProgress = null, maximumProgress = null;
+      try {
+        currentProgress = Game.AgeProgressManager.getCurrentAgeProgressionPoints();
+        maximumProgress = Game.AgeProgressManager.getMaxAgeProgressionPoints();
+      } catch { currentProgress = null; maximumProgress = null; }
+      // panel-action.js offers the Age transition at max progression, even while isAgeOver is false.
+      const progressComplete = Number.isFinite(currentProgress) && currentProgress >= 0 &&
+        Number.isFinite(maximumProgress) && maximumProgress > 0 ? currentProgress >= maximumProgress : null;
+      const nativeAgeOver = Game.AgeProgressManager.isAgeOver;
       const choicesAcknowledged = selection.choicesAcknowledged === true ||
-        !choicePending && !choiceNotification && Boolean(sameReceiptContext) && Game.AgeProgressManager.isAgeOver === true;
+        !choicePending && !choiceNotification && Boolean(sameReceiptContext) &&
+          (nativeAgeOver === true || nativeAgeOver === false && progressComplete === true);
       const confirmedLoadout = choicesAcknowledged && sameReceiptContext && typeof receipt.civilization === "string" && Array.isArray(receipt.mementoSelections)
         ? {civilization: receipt.civilization, mementoSelections: receipt.mementoSelections} : null;
       const requiresExpectedCivilization = choicesAcknowledged && confirmedLoadout === null;
@@ -141,7 +151,9 @@
       const unit = readyId?.owner === playerId && typeof Units !== "undefined" ? Units.get(readyId) : null;
       const identified = unit?.id?.owner === playerId && unit.id.id === readyId?.id && unit.id.type === readyId?.type;
       const movement = remainingMoves(Game.UnitOperations.canStartAny(playerId), readyId == null ? "none" : identified ? "identified" : "unverified", unit);
-      const advanceReady = !choicePending && chooserPanels.length === 0 && Game.AgeProgressManager.isAgeOver === true && Game.AgeProgressManager.isExtendedGame === false &&
+      const boundarySource = nativeAgeOver === true ? "native_age_over"
+        : choicesAcknowledged && nativeAgeOver === false && progressComplete === true ? "acknowledged_progress_complete" : null;
+      const advanceReady = !choicePending && chooserPanels.length === 0 && boundarySource !== null && Game.AgeProgressManager.isExtendedGame === false &&
         Game.AgeProgressManager.isFinalAge === false && typeof selection?.nextAge === "string" && Number.isInteger(blocker) &&
         Number.isInteger(EndTurnBlockingTypes.NONE) && blocker === EndTurnBlockingTypes.NONE &&
         movement.remainingMovesBlocker === false;
@@ -160,10 +172,14 @@
         mementos: profile, mementoSelections: profile.slots.map(slot => ({parameter: slot.parameter, selected: slot.selected})),
         selectedCardIds: deck?.selectedCardIds ?? null, totalLegacyPoints: deck?.totalLegacyPoints ?? null,
         effectsKnown, effects, capitalId, capitals, ownedSettlements, finishAllowed, completeDeckAllowed, advanceReady, advanceAllowed, transitionCompleted,
-        ageBoundary: {nativeAgeOver: Game.AgeProgressManager.isAgeOver ?? null,
+        ageBoundary: {nativeAgeOver: nativeAgeOver ?? null,
+          currentProgress: Number.isFinite(currentProgress) ? currentProgress : null,
+          maximumProgress: Number.isFinite(maximumProgress) ? maximumProgress : null, progressComplete, boundarySource,
           extendedGame: Game.AgeProgressManager.isExtendedGame ?? null, finalAge: Game.AgeProgressManager.isFinalAge ?? null,
           blocker, remainingMovesBlocker: movement.remainingMovesBlocker},
         selectionComplete: deck?.selectionComplete ?? null,
+        nextAction: choicesAcknowledged && chooserPanels.length === 1 ? "view_civ7_transition_map"
+          : choicesAcknowledged && advanceReady ? "advance_civ7_age_transition" : null,
         phase: choicePending ? "choices" : choicesAcknowledged ? "choices_acknowledged" : dedicationActive ? "dedications" : advanceAllowed ? "boundary_ready" : transitionCompleted ? "complete" : "unavailable"};
       return {...state, workflowToken: JSON.stringify(state)};
     } catch { return {phase: "unavailable", workflowToken: null}; }
