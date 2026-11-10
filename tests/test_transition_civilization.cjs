@@ -81,6 +81,17 @@ test('transition selection advertises eligibility without writes and honors alte
   assert.deepEqual(writes, []);
 });
 
+test('a retained non-blocking civilization notification is acknowledged, not a selectable choice', () => {
+  const {before, writes} = run({readOnly: true, blocks: false});
+  assert.ok(before, 'acknowledged notification must remain readable');
+  assert.equal(before.selectionOpen, false);
+  assert.equal(before.choicesAcknowledged, true);
+  assert.equal(before.notificationBlocksTurn, false);
+  assert.equal(before.selectionToken, null);
+  assert.ok(before.choices.every(c => c.selectionPermission === false));
+  assert.deepEqual(writes, []);
+});
+
 test('the planning query exposes the same guarded selection token and permission without mutations', () => {
   const {data, writes} = run({query: true});
   assert.equal(data.civilizations.selectionOpen, true);

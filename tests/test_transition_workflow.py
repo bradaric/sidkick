@@ -86,6 +86,32 @@ class TransitionWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(submit.await_count, 1)
         self.assertEqual(observe.await_count, 1)
 
+    async def test_nonblocking_acknowledgement_reports_success_and_chooser_cleanup_without_resubmission(self):
+        before = {'turn': 125, 'age': 1, 'playerId': 0, 'ageType': 'AGE_EXPLORATION',
+                  'nextAge': 'AGE_MODERN', 'nextCivilization': 'CIVILIZATION_PRUSSIA', 'previousAgeCount': 1}
+        with patch('civ7.actions.run_script', new_callable=AsyncMock,
+                   return_value={'status': 'submitted', 'before': before}) as submit, \
+                patch('civ7.actions.run_transition_loading_script', new_callable=AsyncMock,
+                      return_value={**before, 'phase': 'started', 'choicePending': False,
+                                    'choicesAcknowledged': True, 'chooserOpen': True}):
+            result = await actions.confirm_transition_choices('token', 125, True)
+        self.assertEqual(result['status'], 'verified_applied')
+        self.assertFalse(result['transitionCompleted'])
+        self.assertTrue(result['requiresChooserClose'])
+        self.assertEqual(result['nextAction'], 'view_civ7_transition_map')
+        self.assertEqual(submit.await_count, 1)
+
+    async def test_recovery_passes_explicit_expected_civilization_without_reconfirming_choices(self):
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value={'status': 'rejected'}) as submit:
+            await actions.advance_age_transition('token', 125, True, expected_civilization='CIVILIZATION_PRUSSIA')
+        self.assertEqual(submit.call_args.args[1]['operation'], 'advance')
+        self.assertEqual(submit.call_args.args[1]['expected_civilization'], 'CIVILIZATION_PRUSSIA')
+        for value in ('', ' ', True, 'x' * 513):
+            with patch('civ7.actions.run_script', new_callable=AsyncMock) as run:
+                with self.assertRaises(ValueError):
+                    await actions.advance_age_transition('token', 125, True, expected_civilization=value)
+                run.assert_not_awaited()
+
     async def test_new_age_arrival_requires_exact_target_civilization_age_and_progression(self):
         self.assertTrue(callable(getattr(actions, 'advance_age_transition', None)))
         before = {'turn': 125, 'age': 1, 'playerId': 0, 'ageType': 'AGE_EXPLORATION',

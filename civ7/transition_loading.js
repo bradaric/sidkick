@@ -34,17 +34,32 @@
       if (typeof state.ageType !== "string" || typeof state.civilization !== "string") return {phase: "unavailable", transitionCompleted: false};
       const ids = Game.Notifications.getIdsForPlayer(playerId);
       if (!Array.isArray(ids)) return {phase: "unavailable", transitionCompleted: false};
-      const pending = typeName => ids.some(id => {
-        if (id.owner !== playerId || Game.Notifications.getTypeName(Game.Notifications.getType(id)) !== typeName) return false;
-        const n = Game.Notifications.find(id);
-        if (!n || typeof n.Dismissed !== "boolean" || typeof n.Expired !== "boolean") throw Error("Unknown notification state");
-        return !n.Dismissed && !n.Expired;
-      });
+      let choicesAcknowledged = false;
+      const pending = typeName => {
+        const active = [];
+        for (const id of ids) {
+          if (id.owner !== playerId || Game.Notifications.getTypeName(Game.Notifications.getType(id)) !== typeName) continue;
+          const n = Game.Notifications.find(id);
+          if (!n || typeof n.Dismissed !== "boolean" || typeof n.Expired !== "boolean") throw Error("Unknown notification state");
+          if (n.Dismissed || n.Expired) continue;
+          const blocks = Game.Notifications.getBlocksTurnAdvancement(id);
+          if (typeof blocks !== "boolean") throw Error("Unknown notification blocking state");
+          active.push(blocks);
+        }
+        if (active.length > 1) throw Error("Ambiguous transition notifications");
+        if (typeName === "NOTIFICATION_CHOOSE_CIVILIZATION") choicesAcknowledged = active.length === 1 && active[0] === false;
+        return active.some(blocks => blocks);
+      };
       const choicePending = pending("NOTIFICATION_CHOOSE_CIVILIZATION"), dedicationPending = pending("NOTIFICATION_AGE_TRANSITION");
       const selectionComplete = player.AdvancedStart?.getPlacementComplete();
-      return {...state, phase: started ? "started" : "awaiting_begin", choicePending,
+      let chooserOpen = null;
+      try {
+        const roots = [...document.querySelectorAll("#age-transition-screen")].filter(node => node.isConnected === true && node.getClientRects().length > 0);
+        if (roots.length <= 1) chooserOpen = roots.length === 1;
+      } catch { /* UI cleanup availability is separate from native acknowledgement. */ }
+      return {...state, phase: started ? "started" : "awaiting_begin", choicePending, choicesAcknowledged, chooserOpen,
         selectionComplete: typeof selectionComplete === "boolean" ? selectionComplete : null,
-        transitionCompleted: started && count > 0 && !choicePending && !dedicationPending && selectionComplete === true &&
+        transitionCompleted: started && count > 0 && !choicePending && !choicesAcknowledged && !dedicationPending && selectionComplete === true &&
           Game.AgeProgressManager?.isAgeOver === false,
         loadingToken: waiting && beginControl() ? JSON.stringify(state) : null};
     } catch { return {phase: "unavailable", transitionCompleted: false}; }

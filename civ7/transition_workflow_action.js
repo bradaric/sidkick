@@ -7,6 +7,7 @@
   const before = transitionWorkflow.snapshot();
   if (!before.workflowToken || before.workflowToken !== token || before.turn !== turn) return reject("Transition phase/context changed or token is stale");
   let type, args, expected, control, verificationArguments;
+  let expectedCivilization = before.nextCivilization;
   if (operation === "open") {
     if (!before.choicePending || !before.choiceNotification) return reject("No pending civilization chooser");
     if (before.chooserOpen) return {status: "already_active", before};
@@ -27,7 +28,15 @@
     if (a.confirm !== true || !before.finishAllowed) return reject("Explicit confirmation and fully valid civilization/Memento loadout required");
     type = PlayerOperationTypes.SET_AGE_TRANSITION_DATA; args = {Finished: true};
   } else if (operation === "advance") {
-    if (a.confirm !== true || !before.advanceAllowed) return reject("Explicit confirmation and an unblocked non-final Age boundary required; not an ordinary end turn");
+    if (a.expected_civilization != null) {
+      if (typeof a.expected_civilization !== "string" || !a.expected_civilization || a.expected_civilization.length > 512 ||
+          expectedCivilization !== null && a.expected_civilization !== expectedCivilization ||
+          before.requiresExpectedCivilization && !before.recoveryCivilizations.includes(a.expected_civilization))
+        return reject("Expected civilization conflicts with the captured loadout or is not an eligible next-Age recovery target");
+      expectedCivilization = a.expected_civilization;
+    }
+    if (a.confirm !== true || !(before.advanceAllowed || before.advanceReady && before.requiresExpectedCivilization && expectedCivilization !== null))
+      return reject("Explicit confirmation, closed chooser and an unblocked Age boundary required; acknowledged choices without a receipt also require expected_civilization. Never re-confirm Finished");
   } else if (operation === "effect" || operation === "place_effect") {
     const matches = before.effects.filter(effect => effect.id === a.effect_id);
     const placing = operation === "place_effect";
@@ -64,12 +73,21 @@
   if (type !== undefined && Game.PlayerOperations.canStart(before.playerId, type, args, false)?.Success !== true) return reject("Native operation is blocked");
   const latest = transitionWorkflow.snapshot();
   if (latest.workflowToken !== token || control && transitionWorkflow.viewMapControl() !== control) return reject("Transition choices, eligibility or UI changed during validation");
+  if (operation === "confirm_choices") {
+    // Keep this in the current UI runtime so a lost transport response does not lose the target.
+    // Record before submission; a later native acknowledgement, not this record, proves acceptance.
+    globalThis.__sidkickTransitionConfirmation = JSON.parse(JSON.stringify({turn: before.turn, age: before.age,
+      playerId: before.playerId, previousAgeCount: before.previousAgeCount, nextAge: before.nextAge,
+      civilization: before.nextCivilization, mementoSelections: before.mementoSelections,
+      notification: before.choiceNotification, ownedSettlements: before.ownedSettlements}));
+  }
   if (operation === "open") Game.Notifications.activate(before.choiceNotification);
   else if (operation === "view_map") control.dispatchEvent(new CustomEvent("engine-input", {bubbles: false, cancelable: true,
     detail: {name: "accept", status: InputActionStatuses.FINISH}}));
   else if (operation === "memento") GameSetup.setPlayerParameterValue(before.playerId, a.slot, a.memento);
   else if (operation === "advance") GameContext.sendTurnComplete();
   else Game.PlayerOperations.sendRequest(before.playerId, type, args);
-  return {status: "submitted", before, ...(expected ? {expected} : {}), ...(verificationArguments ? {verificationArguments} : {}),
+  return {status: "submitted", before: operation === "advance" ? {...before, nextCivilization: expectedCivilization} : before,
+    ...(expected ? {expected} : {}), ...(verificationArguments ? {verificationArguments} : {}),
     verificationScope: "One explicitly requested transition step only. No profile writes, name swaps, implicit Memento swaps, card auto-fill, force-completion, extra turns or automatic retries. Applied effect requires observed native amount decrement; it is not a complete reward/carry-over forecast"};
 })()

@@ -2579,6 +2579,35 @@ chooses a loadout, fills a deck, retries an uncertain request or takes extra tur
 There are **two distinct confirmations**: civilization/Mementos before loading,
 then new-Age Dedications/capital afterward. Follow the reported phase; do not
 assume `Finished` necessarily loads immediately or that loading resolves the deck.
+After `Finished`, the civilization notification can **remain present but become
+non-blocking**. This is `choices_acknowledged`, not another pending selection.
+Confirmation readback accepts that native acknowledgement without resubmission.
+If the chooser is still open, `requiresChooserClose`/`nextAction` direct the caller
+to the separate `view_civ7_transition_map` action. Advancement requires it closed;
+confirmation itself still sends only `Finished`.
+
+The action captures the expected civilization and Memento selections in the current
+UI runtime **before submission**, bound to origin turn/Age/player/progression,
+notification and owned-settlement identities. The read-only workflow exposes this
+as `confirmedLoadout` only after acknowledgement. This is an **arrival expectation**,
+not proof of migrated content. Native setup selectors can reset to the old civ
+after acknowledgement; `stagedCivilization` reports that draft separately and must
+not overwrite the captured target or cause another confirmation.
+
+For pre-fix confirmations or a missing/context-mismatched receipt,
+`nextCivilization` remains unknown and `requiresExpectedCivilization` is true.
+After inspecting the acknowledged state and closing the chooser, a separately
+approved `advance_civ7_age_transition` can take explicit `expected_civilization`
+from the previously selected loadout. It must be an eligible next-Age entry in
+`recoveryCivilizations`; it cannot override a captured target. This supplies only
+the civilization to verify on arrival—it neither proves/repairs native stored
+choices nor reconstructs missing Memento evidence. No reset selector value is
+silently trusted and no `Finished`/selection request is retried.
+`ageBoundary` reports the native Age-over/extended/final flags, native blocker and
+remaining-moves blocker so an acknowledged state does not hide why advancement
+is still unavailable. The old Age's already-completed deck is never treated as
+completion of an acknowledged upcoming transition.
+
 `transitionCompleted` becomes true only for a started, resolved transition, not
 merely an accepted request or Continue-ready screen. Cross-Age actions observe for
 up to 60 seconds without resubmission; the general gameplay loading gate is not

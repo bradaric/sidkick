@@ -13,21 +13,25 @@
       const ids = Game.Notifications.getIdsForPlayer(playerId);
       if (!Array.isArray(ids)) return null;
       const notices = [];
+      let notificationBlocksTurn = null;
       for (const id of ids) {
         if (id.owner !== playerId) continue;
         const type = Game.Notifications.getType(id);
         if (Game.Notifications.getTypeName(type) !== "NOTIFICATION_CHOOSE_CIVILIZATION") continue;
         const notice = Game.Notifications.find(id);
+        const blocks = Game.Notifications.getBlocksTurnAdvancement(id);
         if (!notice || notice.Type !== type || notice.Dismissed !== false || notice.Expired !== false ||
-            Game.Notifications.getBlocksTurnAdvancement(id) !== true ||
+            typeof blocks !== "boolean" ||
             ![id.id, id.type, notice.AddedOnTurn].every(value => Number.isSafeInteger(value) && value >= 0) ||
             notice.AddedOnTurn > Game.turn) return null;
         notices.push({owner: playerId, id: id.id, type: id.type, addedOnTurn: notice.AddedOnTurn});
+        notificationBlocksTurn = blocks;
       }
+      if (notices.length > 1) return null;
       const selectionOpen = UI.isInGame() === true && Number.isInteger(UIGameLoadingState.GameStarted) &&
         UI.getGameLoadingState() === UIGameLoadingState.GameStarted && Configuration.getGame().isAnyMultiplayer === false &&
         (typeof Autoplay === "undefined" || Autoplay.isActive === false) && Players.get(playerId)?.isTurnActive === true &&
-        GameContext.hasSentTurnComplete() === false && notices.length === 1 && Boolean(next?.PlayerCivilizationDomain) &&
+        GameContext.hasSentTurnComplete() === false && notices.length === 1 && notificationBlocksTurn === true && Boolean(next?.PlayerCivilizationDomain) &&
         parameter?.readOnly === false && parameter.hidden !== true && parameter.invalidReason === GameSetupParameterInvalidReason.Valid &&
         typeof parameter.value?.value === "string";
       const bypass = Configuration.getGame().getValue("NoCivilizationUnlocks") === true;
@@ -41,6 +45,7 @@
         });
       const state = {turn: Game.turn, age: Game.age, playerId, nextAge: next?.AgeType ?? null,
         selected: parameter?.value?.value ?? null, selectionOpen, notification: notices.length === 1 ? notices[0] : null,
+        notificationBlocksTurn, choicesAcknowledged: notices.length === 1 && notificationBlocksTurn === false,
         unlockBypassEnabled: bypass, choices};
       return {...state, selectionToken: selectionOpen ? JSON.stringify(state) : null};
     } catch { return null; } // Missing native phase/permission data never authorizes a write.

@@ -10,19 +10,22 @@ function fixture(options = {}) {
   const state = {turn: 125, age: 1, pending: true, panel: false, amount: 1, completed: false,
     capital: 10, memento: 'M_A', other: 'NONE', ...options.state};
   const calls = [], reads = [];
+  const oldAge = () => Boolean(state.pending || state.acknowledged);
   const parameter = (id, value) => ({ID: id, hidden: false, readOnly: false, invalidReason: 0,
     value: {value}, domain: {possibleValues: ['NONE', 'M_A', 'M_B'].map(value => ({value, invalidReason: 0}))}});
   const city = id => ({id: {owner: 0, id, type: 2}, owner: 0, name: `City ${id}`, isCapital: state.capital === id,
     location: id === 12 ? {x: 4, y: 5} : {x: id - 9, y: 1}});
   const selection = () => ({turn: state.turn, age: state.age, playerId: 0, nextAge: 'AGE_MODERN',
-    selected: 'CIVILIZATION_PRUSSIA', selectionOpen: state.pending && options.editable !== false,
-    notification: state.pending ? {owner: 0, id: 7, type: 9} : null,
-    choices: [{id: 'CIVILIZATION_PRUSSIA', selectionPermission: options.editable !== false}]});
+    selected: state.acknowledged ? 'CIVILIZATION_MAYA' : 'CIVILIZATION_PRUSSIA', selectionOpen: state.pending && options.editable !== false,
+    notification: oldAge() ? {owner: 0, id: 7, type: 9} : null,
+    notificationBlocksTurn: oldAge() ? Boolean(state.pending) : null, choicesAcknowledged: Boolean(state.acknowledged),
+    choices: [{id: 'CIVILIZATION_PRUSSIA', selectionPermission: options.editable !== false && state.pending,
+      setupReason: 0, unlocked: true}]});
   let snapshots = 0;
   const context = vm.createContext({
     UI: {isInGame: () => true, getGameLoadingState: () => options.loading ? 2 : 8,
       Player: {getFirstReadyUnit: () => null}}, UIGameLoadingState: {GameStarted: 8},
-    Configuration: {getGame: () => ({isAnyMultiplayer: options.multiplayer ?? false, previousAgeCount: state.pending ? 1 : 2}),
+    Configuration: {getGame: () => ({isAnyMultiplayer: options.multiplayer ?? false, previousAgeCount: oldAge() ? 1 : 2}),
       getUser: () => ({isAutoEndTurn: options.autoEnd ?? false})}, Autoplay: {isActive: options.autoplay ?? false},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => false,
       sendTurnComplete: () => {calls.push(['advance']); state.turn++;}},
@@ -47,7 +50,7 @@ function fixture(options = {}) {
     },
     transitionCivilization: {snapshot: () => {snapshots++; if (snapshots === 3) options.race?.(state); return selection();}},
     dedicationDeck: {snapshot: () => ({turn: state.turn, age: state.age, playerId: 0, deckToken: 'deck',
-      selectionOpen: !state.pending && !state.completed, selectionComplete: state.completed,
+      selectionOpen: !oldAge() && !state.completed, selectionComplete: oldAge() || state.completed,
       selectedCardIds: ['CARD_A'], totalLegacyPoints: 2, deckSize: 3,
       selected: [{id: 'CARD_A', effects: [{id: 'EFFECT_A', placementRequired: options.placement ?? false, reportedAmount: state.amount}]}]})},
     Players: {get: () => ({isTurnActive: true, civilizationType: 99,
@@ -55,29 +58,30 @@ function fixture(options = {}) {
         getPotentialSwitchCapitalCityIds: () => [city(11).id]},
       AdvancedStart: {getPlacementComplete: () => state.completed},
     })}, Cities: {get: id => city(id.id)},
-    GameInfo: {Ages: {lookup: () => ({AgeType: state.pending ? 'AGE_EXPLORATION' : 'AGE_MODERN'})},
+    GameInfo: {Ages: {lookup: () => ({AgeType: oldAge() ? 'AGE_EXPLORATION' : 'AGE_MODERN'})},
       Civilizations: {lookup: () => ({CivilizationType: 'CIVILIZATION_PRUSSIA'})}},
     PlayerOperationTypes: {SET_AGE_TRANSITION_DATA: 'FINISH', ADVANCED_START_USE_EFFECT: 'EFFECT',
       ADVANCED_START_MARK_COMPLETED: 'COMPLETE', SELECT_CAPITAL: 'CAPITAL', ADVANCED_START_PLACE_SETTLEMENT: 'PLACE'},
     Game: {get turn() {return state.turn;}, get age() {return state.age;},
-      AgeProgressManager: {get isAgeOver() {return options.ageOver ?? state.pending;}, isExtendedGame: false, isFinalAge: false},
+      AgeProgressManager: {get isAgeOver() {return options.ageOver ?? oldAge();}, isExtendedGame: false, isFinalAge: false},
       UnitOperations: {canStartAny: () => false},
-      Notifications: {getIdsForPlayer: () => state.pending || !state.completed ? [{owner: 0, id: 7, type: 9}] : [],
-        getType: () => 9, getTypeName: () => state.pending ? 'NOTIFICATION_CHOOSE_CIVILIZATION' : 'NOTIFICATION_AGE_TRANSITION',
+      Notifications: {getIdsForPlayer: () => oldAge() || !state.completed || options.retainCompletedNotice ? [{owner: 0, id: 7, type: 9}] : [],
+        getType: () => 9, getTypeName: () => oldAge() ? 'NOTIFICATION_CHOOSE_CIVILIZATION' : 'NOTIFICATION_AGE_TRANSITION',
         find: () => ({Type: 9, Dismissed: false, Expired: false, AddedOnTurn: 125}),
-        getBlocksTurnAdvancement: () => true, getEndTurnBlockingType: () => options.blocker ?? (state.pending || !state.completed ? 9 : 0),
+        getBlocksTurnAdvancement: () => !state.acknowledged && !state.completed,
+        getEndTurnBlockingType: () => options.blocker ?? (state.acknowledged || state.completed ? 0 : 9),
         activate: id => {calls.push(['open', {...id}]); state.panel = true;}},
       PlayerOperations: {canStart: () => ({Success: options.allowed ?? true}),
         sendRequest: (id, type, args) => {calls.push([type, id, {...args}]);
-          if (type === 'FINISH') state.pending = false;
+          if (type === 'FINISH') {state.pending = false; state.acknowledged = Boolean(options.retainChoice);}
           if (type === 'EFFECT' && !options.ignoreEffect) state.amount--;
           if (type === 'PLACE') {state.amount--; state.placed = true;}
           if (type === 'CAPITAL') state.capital = args.City;
           if (type === 'COMPLETE') state.completed = true;}},
     },
     document: {querySelectorAll: selector => {
-      if (selector === '#age-transition-screen') return state.panel && state.pending ? [panel] : [];
-      if (selector === 'screen-dedication-selection') return state.panel && !state.pending ? [panel] : [];
+      if (selector === '#age-transition-screen') return state.panel && oldAge() ? [panel] : [];
+      if (selector === 'screen-dedication-selection') return state.panel && !oldAge() ? [panel] : [];
       return [];
     }},
   });
@@ -180,6 +184,12 @@ test('deck completion refuses pending effects and requires explicit unused-point
   assert.equal(f.read().transitionCompleted, true);
 });
 
+test('a completed deck with a retained non-blocking transition notification is still readable as complete', () => {
+  const f = fixture({retainCompletedNotice: true, state: {pending: false, amount: 0}});
+  assert.equal(f.act('complete_deck', {confirm: true, accept_unused_points: true}).status, 'submitted');
+  assert.equal(f.read().transitionCompleted, true);
+});
+
 test('placement effects use one exact revealed legal plot and verify a new owned settlement', () => {
   const f = fixture({placement: true, state: {pending: false}});
   const r = f.act('place_effect', {effect_id: 'EFFECT_A', x: 4, y: 5});
@@ -227,4 +237,59 @@ test('refreshed tokens let the workflow proceed through explicit choices and dec
   assert.equal(act('complete_deck', {confirm: true, accept_unused_points: true}).status, 'submitted');
   assert.equal(f.read().transitionCompleted, true);
   assert.equal(f.calls.some(call => call[0] === 'advance'), false);
+});
+
+test('acknowledged choices retain the submitted loadout after selector reset, allow closure, and never re-confirm', () => {
+  const f = fixture({retainChoice: true, state: {panel: true}});
+  assert.equal(f.act('confirm_choices', {confirm: true}).status, 'submitted');
+  const ack = f.read();
+  assert.equal(ack.phase, 'choices_acknowledged');
+  assert.equal(ack.choicePending, false);
+  assert.equal(ack.choicesAcknowledged, true);
+  assert.equal(ack.nextCivilization, 'CIVILIZATION_PRUSSIA', 'never use the reset Maya setup selector as the target');
+  assert.deepEqual(ack.confirmedLoadout.mementoSelections, f.before.mementoSelections);
+  assert.equal(ack.advanceAllowed, false, 'close the stale chooser before boundary advancement');
+  assert.equal(f.act('confirm_choices', {confirm: true, workflow_token: ack.workflowToken}).status, 'rejected');
+  assert.equal(f.act('view_map', {workflow_token: ack.workflowToken}).status, 'submitted');
+  const closed = f.read();
+  assert.equal(closed.advanceAllowed, true);
+  assert.equal(f.act('advance', {workflow_token: closed.workflowToken, confirm: true}).status, 'submitted');
+  assert.equal(f.calls.filter(call => call[0] === 'FINISH').length, 1);
+  assert.equal(f.calls.filter(call => call[0] === 'set').length, 0);
+});
+
+test('pre-fix acknowledged state never guesses the reset selector target; explicit recovery expectation is required', () => {
+  const f = fixture({state: {pending: false, acknowledged: true}});
+  assert.equal(f.before.phase, 'choices_acknowledged');
+  assert.equal(f.before.nextCivilization, null);
+  assert.equal(f.before.requiresExpectedCivilization, true);
+  assert.equal(f.act('advance', {confirm: true}).status, 'rejected');
+  assert.equal(f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_MAYA'}).status, 'rejected');
+  const result = f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_PRUSSIA'});
+  assert.equal(result.status, 'submitted');
+  assert.equal(result.before.nextCivilization, 'CIVILIZATION_PRUSSIA');
+  assert.deepEqual(f.calls, [['advance']]);
+});
+
+test('acknowledgement with native isAgeOver=false remains incomplete and exposes the boundary blocker', () => {
+  const f = fixture({ageOver: false, state: {pending: false, acknowledged: true}});
+  assert.equal(f.before.phase, 'choices_acknowledged');
+  assert.equal(f.before.transitionCompleted, false);
+  assert.equal(f.before.advanceReady, false);
+  assert.equal(f.before.ageBoundary.nativeAgeOver, false);
+  assert.equal(f.before.ageBoundary.blocker, 0);
+  assert.equal(f.before.ageBoundary.remainingMovesBlocker, false);
+});
+
+test('a confirmation receipt cannot follow changed origin context or override the captured civilization', () => {
+  const f = fixture({retainChoice: true});
+  f.act('confirm_choices', {confirm: true});
+  const ack = f.read();
+  assert.equal(f.act('advance', {confirm: true, workflow_token: ack.workflowToken,
+    expected_civilization: 'CIVILIZATION_MEXICO'}).status, 'rejected');
+  f.state.turn++;
+  const changed = f.read();
+  assert.equal(changed.confirmedLoadout, null);
+  assert.equal(changed.nextCivilization, null);
+  assert.equal(changed.advanceAllowed, false);
 });

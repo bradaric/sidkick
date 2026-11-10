@@ -19,7 +19,12 @@ function run(options = {}) {
     Configuration: {getGame: () => ({isAnyMultiplayer: options.multiplayer ?? false, previousAgeCount: options.count ?? 2}),
       getUser: () => ({isAutoEndTurn: options.autoEnd ?? false})},
     Autoplay: {isActive: false}, GameContext: {localPlayerID: 0},
-    Game: {turn: 1, age: 99, AgeProgressManager: {isAgeOver: options.ageOver ?? false}, Notifications: {getIdsForPlayer: () => []}},
+    Game: {turn: 1, age: 99, AgeProgressManager: {isAgeOver: options.ageOver ?? false}, Notifications: {
+      getIdsForPlayer: () => options.retainedChoice ? [{owner: 0, id: 1082, type: 20}] : [],
+      getType: () => 20, getTypeName: () => 'NOTIFICATION_CHOOSE_CIVILIZATION',
+      find: () => ({Dismissed: false, Expired: false}),
+      getBlocksTurnAdvancement: () => options.choiceBlocks,
+    }},
     GameInfo: {Ages: {lookup: () => ({AgeType: 'AGE_MODERN'})},
       Civilizations: {lookup: () => ({CivilizationType: 'CIVILIZATION_PRUSSIA'})}},
     Players: {get: () => ({civilizationType: 3, AdvancedStart: {getPlacementComplete: () => options.completed ?? false}})},
@@ -61,4 +66,16 @@ test('new Age loading readiness is not transition completion; only a completed s
 
 test('a native exception after Begin invocation is ambiguous, never a preflight rejection', () => {
   assert.throws(() => run({throwAfterBegin: true}), /ambiguous Begin/);
+});
+
+test('retained non-blocking choice is acknowledged without claiming Age arrival or sending another request', () => {
+  const {before, calls} = run({started: true, retainedChoice: true, choiceBlocks: false});
+  assert.equal(before.choicePending, false);
+  assert.equal(before.choicesAcknowledged, true);
+  assert.equal(before.transitionCompleted, false);
+  assert.equal(calls, 0);
+  assert.equal(run({started: true, retainedChoice: true, choiceBlocks: true}).before.choicePending, true);
+  assert.equal(run({started: true, retainedChoice: true}).before.phase, 'unavailable', 'unknown blocking state fails closed');
+  assert.equal(run({started: true, retainedChoice: true, choiceBlocks: false, completed: true}).before.transitionCompleted,
+    false, 'the old completed deck does not complete an acknowledged upcoming transition');
 });

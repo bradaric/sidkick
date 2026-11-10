@@ -186,13 +186,16 @@ async def confirm_transition_choices(
 
 
 async def advance_age_transition(
-    workflow_token: StrictStr, expected_turn: StrictInt, confirm: StrictBool,
+    workflow_token: StrictStr, expected_turn: StrictInt, confirm: StrictBool, expected_civilization: StrictStr | None = None,
 ) -> dict[str, Any]:
     """Advance only an unblocked native Age boundary; never an ordinary next turn."""
     if confirm is not True:
         raise ValueError("Explicit irreversible Age-boundary confirmation required")
+    if expected_civilization is not None and (not isinstance(expected_civilization, str) or not expected_civilization.strip() or len(expected_civilization) > 512):
+        raise ValueError("Exact previously selected expected civilization ID required for recovery")
     return await _observe_transition_action("advance", {
         **_transition_arguments(workflow_token, expected_turn), "confirm": confirm,
+        **({"expected_civilization": expected_civilization} if expected_civilization is not None else {}),
     })
 
 
@@ -246,7 +249,10 @@ async def _observe_transition_action(operation: str, arguments: dict[str, Any]) 
                     if arrived or choices_confirmed or chooser_ready or begun:
                         return {**result, "status": "verified_applied", "after": after,
                                 "transitionCompleted": after.get("transitionCompleted") is True if arrived or begun else False,
-                                "requiresBegin": after.get("phase") == "awaiting_begin"}
+                                "requiresBegin": after.get("phase") == "awaiting_begin",
+                                "requiresChooserClose": choices_confirmed and after.get("chooserOpen") is True,
+                                "nextAction": "view_civ7_transition_map" if choices_confirmed and after.get("chooserOpen") is True
+                                    else "get_civ7_transition_workflow"}
                     if after.get("phase") not in {"loading", "unavailable"} and not same_origin:
                         raise ValueError("Unexpected game/Age/civilization/progression context; do not retry")
                     await asyncio.sleep(_VERIFICATION_INTERVAL)

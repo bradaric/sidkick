@@ -382,11 +382,17 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
              "Never toggle, clear another slot, implicitly swap duplicates or mark Mementos seen. To move one, explicitly clear its old slot first.", select_transition_memento),
             ("confirm_civ7_transition_choices", "Confirm Civ VII civilization and Memento choices",
              "IRREVERSIBLE CAMPAIGN STEP: requires confirm=true and the exact valid civilization/Memento loadout. "
-             "Submit only SET_AGE_TRANSITION_DATA Finished once. Choice acknowledgement is NOT completed Age loading. "
-             "Refresh workflow: an explicit advance_civ7_age_transition may still be needed. May initiate reload/carry-over effects.", confirm_transition_choices),
+             "Capture the expected civilization/Memento loadout before submitting SET_AGE_TRANSITION_DATA Finished once. "
+             "The native choice notification may remain NON-BLOCKING: this is acknowledgement, not a pending selection or completed Age loading. "
+             "If requiresChooserClose=true, use view_civ7_transition_map with a fresh workflow token; never re-confirm to close the screen. "
+             "Refresh workflow: a separately approved advance_civ7_age_transition may still be needed. May initiate reload/carry-over effects.", confirm_transition_choices),
             ("advance_civ7_age_transition", "Advance an unblocked Civ VII Age boundary",
              "IRREVERSIBLE AGE BOUNDARY: confirm=true, native isAgeOver, non-final/non-extended Age, no blockers and known unit readiness required. "
-             "Send turn complete ONCE only at this boundary; never an ordinary extra turn. Observe either the next civilization-choice phase "
+             "Close the chooser first with view_civ7_transition_map. Send turn complete ONCE only at this boundary; never an ordinary extra turn. "
+             "For acknowledged choices, retain the captured expected loadout rather than the reset setup selector. If "
+             "requiresExpectedCivilization=true (pre-fix/missing receipt), explicitly provide expected_civilization from the previously "
+             "selected loadout; it must be in recoveryCivilizations and is an arrival expectation, not proof of native stored choices. "
+             "Never re-submit Finished or reapply staged selections as recovery. Observe either the next civilization-choice phase "
              "or exact next-Age/civilization/previousAgeCount+1 arrival. Does not auto-Begin. Carry-over can regress settlements/cap balances.", advance_age_transition),
             ("begin_civ7_transition_age", "Begin a ready newly loaded Civ VII Age",
              "Use exact fresh loading_token from get_civ7_transition_workflow.loadingToken. Only a previously transitioned single-player Age "
@@ -2479,11 +2485,16 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
     server.tool(
         name="get_civ7_transition_workflow", title="Inspect Civ VII transition execution phases",
         description=(
-            "Explicit read-only transition workflow: choices, boundary_ready, loading, awaiting_begin, dedications, complete or unavailable. "
+            "Explicit read-only transition workflow: choices, choices_acknowledged, boundary_ready, loading, awaiting_begin, dedications, complete or unavailable. "
             "Refresh before each separate transition action; workflowToken binds current phase/loadout/deck/effects/capital/permissions. "
             "During civilization choices INTENTIONALLY reads Online.Metaprogression Memento and slot metadata to check locks; "
             "unlike get_civ7_age_transition, this is not profile-free. Never marks items seen or writes/equips profile data. "
             "mementos.loadoutValid/choices selectionPermission gate equipping and confirmation. Unknown data fails closed. "
+            "A retained non-blocking civilization notification means choices_acknowledged; never re-confirm or reselect. "
+            "confirmedLoadout is a context-bound pre-submission expectation, NOT migration proof; stagedCivilization may have reset to the old civ. "
+            "Close an acknowledged chooser with view_civ7_transition_map before advancement. Without a captured loadout, "
+            "nextCivilization stays unknown and requiresExpectedCivilization requests an explicit eligible expected_civilization on advance. "
+            "ageBoundary exposes native Age-over/extended/final flags and native/unit blockers when advancement is unavailable. "
             "effects are selected cards' native reported remaining amounts, not predicted reward totals. Resolve placement effects "
             "separately with place_civ7_dedication_effect at an explicit revealed native-legal plot. "
             "dedicationPanelOpen must be false for individual effects/capital/completion to avoid native UI auto-cascades; "

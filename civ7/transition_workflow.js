@@ -9,9 +9,11 @@
     for (const id of ids) {
       if (id.owner !== playerId || Game.Notifications.getTypeName(Game.Notifications.getType(id)) !== typeName) continue;
       const n = Game.Notifications.find(id);
+      const blocks = Game.Notifications.getBlocksTurnAdvancement(id);
       if (!n || n.Type !== Game.Notifications.getType(id) || n.Dismissed !== false || n.Expired !== false ||
-          Game.Notifications.getBlocksTurnAdvancement(id) !== true ||
+          typeof blocks !== "boolean" ||
           ![id.id, id.type, n.AddedOnTurn].every(value => Number.isSafeInteger(value) && value >= 0) || n.AddedOnTurn > Game.turn) return null;
+      if (!blocks) continue;
       result.push({owner: playerId, id: id.id, type: id.type});
     }
     return result;
@@ -78,7 +80,8 @@
       // Do not submit one-effect operations while that model is mounted, even if hidden.
       const dedicationModelMounted = document.querySelectorAll("screen-dedication-selection").length > 0 ||
         document.querySelectorAll("screen-advanced-start").length > 0;
-      const profile = mementos(selection), choicePending = selection.notification !== null;
+      const profile = mementos(selection), choicePending = selection.notification !== null && selection.notificationBlocksTurn === true;
+      if (selection.notification !== null && typeof selection.notificationBlocksTurn !== "boolean") throw Error("Unknown civilization notification blocking state");
       const effects = [];
       let effectsKnown = Array.isArray(deck?.selected);
       for (const card of deck?.selected ?? []) {
@@ -102,6 +105,19 @@
       }
       ownedSettlements.sort((a, b) => a.id - b.id);
       if (new Set(ownedSettlements.map(city => city.id)).size !== ownedSettlements.length) throw Error("Ambiguous owned settlements");
+      const choiceNotification = selection.notification ? {owner: selection.notification.owner, id: selection.notification.id, type: selection.notification.type} : null;
+      // An expected loadout captured BEFORE Finished, not a claim about migration results.
+      // Native acknowledgement can reset the setup selector to the old civilization.
+      const receipt = globalThis.__sidkickTransitionConfirmation;
+      const sameReceiptContext = receipt && receipt.turn === Game.turn && receipt.age === Game.age && receipt.playerId === playerId &&
+        receipt.previousAgeCount === previousAgeCount && receipt.nextAge === selection.nextAge &&
+        JSON.stringify(receipt.ownedSettlements) === JSON.stringify(ownedSettlements) &&
+        (!choiceNotification || JSON.stringify(receipt.notification) === JSON.stringify(choiceNotification));
+      const choicesAcknowledged = selection.choicesAcknowledged === true ||
+        !choicePending && !choiceNotification && Boolean(sameReceiptContext) && Game.AgeProgressManager.isAgeOver === true;
+      const confirmedLoadout = choicesAcknowledged && sameReceiptContext && typeof receipt.civilization === "string" && Array.isArray(receipt.mementoSelections)
+        ? {civilization: receipt.civilization, mementoSelections: receipt.mementoSelections} : null;
+      const requiresExpectedCivilization = choicesAcknowledged && confirmedLoadout === null;
       const capitals = [];
       if (dedicationActive) {
         const ownedIds = player.Cities.getCityIds();
@@ -125,23 +141,30 @@
       const unit = readyId?.owner === playerId && typeof Units !== "undefined" ? Units.get(readyId) : null;
       const identified = unit?.id?.owner === playerId && unit.id.id === readyId?.id && unit.id.type === readyId?.type;
       const movement = remainingMoves(Game.UnitOperations.canStartAny(playerId), readyId == null ? "none" : identified ? "identified" : "unverified", unit);
-      const advanceAllowed = !choicePending && Game.AgeProgressManager.isAgeOver === true && Game.AgeProgressManager.isExtendedGame === false &&
+      const advanceReady = !choicePending && chooserPanels.length === 0 && Game.AgeProgressManager.isAgeOver === true && Game.AgeProgressManager.isExtendedGame === false &&
         Game.AgeProgressManager.isFinalAge === false && typeof selection?.nextAge === "string" && Number.isInteger(blocker) &&
         Number.isInteger(EndTurnBlockingTypes.NONE) && blocker === EndTurnBlockingTypes.NONE &&
         movement.remainingMovesBlocker === false;
-      const transitionCompleted = previousAgeCount > 0 && !choicePending && notices?.length === 0 &&
+      const advanceAllowed = advanceReady && !requiresExpectedCivilization;
+      const transitionCompleted = previousAgeCount > 0 && !choicePending && !choicesAcknowledged && notices?.length === 0 &&
         deck?.selectionComplete === true && Game.AgeProgressManager.isAgeOver === false;
       const state = {turn: Game.turn, age: Game.age, playerId, ageType: GameInfo.Ages.lookup(Game.age)?.AgeType ?? null,
         previousAgeCount, civilization: choicePending ? selection.selected : GameInfo.Civilizations.lookup(player.civilizationType)?.CivilizationType ?? null,
-        nextAge: selection?.nextAge ?? null, nextCivilization: selection?.selected ?? null, choicePending, chooserOpen: chooserPanels.length === 1,
-        choiceNotification: choicePending ? {owner: selection.notification.owner, id: selection.notification.id, type: selection.notification.type} : null,
+        nextAge: selection?.nextAge ?? null, nextCivilization: choicesAcknowledged ? confirmedLoadout?.civilization ?? null : selection.selected,
+        choicePending, choicesAcknowledged, confirmedLoadout, requiresExpectedCivilization, stagedCivilization: selection.selected,
+        recoveryCivilizations: requiresExpectedCivilization ? selection.choices.filter(choice => choice.unlocked === true &&
+          choice.setupReason === GameSetupDomainValueInvalidReason.Valid).map(choice => choice.id) : [], chooserOpen: chooserPanels.length === 1,
+        choiceNotification,
         dedicationPanelOpen: dedicationModelMounted,
         dedicationActive, dedicationNotification: notices?.length === 1 ? notices[0] : null,
         mementos: profile, mementoSelections: profile.slots.map(slot => ({parameter: slot.parameter, selected: slot.selected})),
         selectedCardIds: deck?.selectedCardIds ?? null, totalLegacyPoints: deck?.totalLegacyPoints ?? null,
-        effectsKnown, effects, capitalId, capitals, ownedSettlements, finishAllowed, completeDeckAllowed, advanceAllowed, transitionCompleted,
+        effectsKnown, effects, capitalId, capitals, ownedSettlements, finishAllowed, completeDeckAllowed, advanceReady, advanceAllowed, transitionCompleted,
+        ageBoundary: {nativeAgeOver: Game.AgeProgressManager.isAgeOver ?? null,
+          extendedGame: Game.AgeProgressManager.isExtendedGame ?? null, finalAge: Game.AgeProgressManager.isFinalAge ?? null,
+          blocker, remainingMovesBlocker: movement.remainingMovesBlocker},
         selectionComplete: deck?.selectionComplete ?? null,
-        phase: choicePending ? "choices" : dedicationActive ? "dedications" : advanceAllowed ? "boundary_ready" : transitionCompleted ? "complete" : "unavailable"};
+        phase: choicePending ? "choices" : choicesAcknowledged ? "choices_acknowledged" : dedicationActive ? "dedications" : advanceAllowed ? "boundary_ready" : transitionCompleted ? "complete" : "unavailable"};
       return {...state, workflowToken: JSON.stringify(state)};
     } catch { return {phase: "unavailable", workflowToken: null}; }
   }
