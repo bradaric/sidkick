@@ -281,14 +281,27 @@ advancement, project cancellation or additional write calls are queued.
   the native purchase command's exact `Cost`, rejects missing/over-cap quotes
   and insufficient Gold, and preserves zero/fractional costs. Purchases create
   assets and can add upkeep. Projects and town-to-city upgrades are excluded.
+- `purchase_civ7_repair(settlement, item, x, y, target_token, max_gold_cost,
+  expected_turn)` buys one repair of an existing completed damaged building,
+  improvement or Wonder in an owned city or town, only when natively repairable
+  and offered for purchase. Requires the exact item type ID and a fresh visible
+  owned assigned tile's `targetToken` from `get_civ7_building_placements`.
+  Checks the selected-tile native `Cost`, sufficient Gold and the approved cap;
+  rejects confirmation, queued/in-progress orders and stale target/context.
+  Submits once and verifies that the **same instance** became undamaged, with
+  the tile ledger otherwise unchanged and the production queue preserved.
+  Gold loss alone is not proof. No bulk repair, new construction, overbuilding,
+  turn advancement or automatic retry of unknown/cancelled outcomes. Offline
+  fixture/adapter coverage only; live repair purchases have not been verified.
 
 The settlement is an exact displayed name (case-insensitive); the item is an
-exact type ID from `get_civ7_available_decisions`. Both handlers require an
+exact type ID from `get_civ7_available_decisions`. Both ordinary handlers require an
 active local turn and exact native permission. Buildings additionally require
 both x and y from `get_civ7_building_placements`, an explicitly revealed native
 legal plot, and a placement preview whose overbuilt ID is `-1`. Omit coordinates
-for units/projects. No wonders, repairs, purchases of queued/in-progress items,
-overbuilding or automatic tile selection are supported.
+for units/projects. These two ordinary construction/purchase handlers do not
+support wonders, repairs, purchases of queued/in-progress items, overbuilding
+or automatic tile selection. Use the dedicated repair tool above to buy repairs.
 Building validation uses two native checks: the coordinate-free result supplies
 `Plots`/`ExpandUrbanPlots` for tile membership, then the X/Y-specific result must
 permit the exact tile and supplies the purchase cost. The latter can omit plot
@@ -1521,7 +1534,8 @@ stale tokens and unavailable/full queues. Requires fresh placement
 targetToken, exact native offered/selected Append permission and matching native
 preview or damaged repair instance. Overbuild acknowledges an exact intact old
 building; Wonder/improvement rural replacement additionally needs explicit
-`replace_improvement=true`. No purchase/instant completion or bulk repair.
+`replace_improvement=true`. This append tool does not purchase/instantly complete
+items or bulk-repair; use `purchase_civ7_repair` for one exact capped repair purchase.
 Live Copan Eiffel Tower, Obshchina and Brickyard-over-Guildhall queue appends each
 verified, then only new tails cancelled and original Scout queue restored. Repair
 is fixture-only after a native-blocked setup attempt. Completion/effects require

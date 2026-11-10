@@ -621,6 +621,22 @@ async def append_advanced_construction(settlement: StrictStr, item: StrictStr, c
     }, "city_construction_state.js")
 
 
+async def purchase_repair(
+    settlement: StrictStr, item: StrictStr, x: StrictInt, y: StrictInt, target_token: StrictStr,
+    max_gold_cost: StrictInt | StrictFloat, expected_turn: StrictInt,
+) -> dict[str, Any]:
+    """Buy one exact damaged constructible's repair within a Gold cap; never retry submission."""
+    if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(item, str) or not item
+            or any(type(v) is not int or v < 0 for v in (x, y, expected_turn))
+            or not isinstance(target_token, str) or not target_token or len(target_token) > 100000
+            or type(max_gold_cost) not in (int, float) or not math.isfinite(max_gold_cost) or max_gold_cost < 0):
+        raise ValueError("Exact settlement, constructible, tile token, finite Gold cap and expected turn are required")
+    return await _execute_and_verify("advanced_construction.js", {
+        "mode": "purchase", "construction_intent": "repair", "settlement": settlement.strip(), "item": item,
+        "x": x, "y": y, "target_token": target_token, "max_gold_cost": max_gold_cost, "expected_turn": expected_turn,
+    }, "city_construction_state.js")
+
+
 async def edit_production_queue(settlement: StrictStr, queue_token: StrictStr, action: Literal["cancel", "swap"], index: StrictInt, expected_turn: StrictInt, other_index: StrictInt | None = None) -> dict[str, Any]:
     """Cancel one exact queued order or swap adjacent entries using a captured whole-queue token."""
     if (not isinstance(settlement, str) or not settlement.strip() or not isinstance(queue_token, str) or

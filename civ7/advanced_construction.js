@@ -1,14 +1,17 @@
 (() => {
-  const {settlement, item, construction_intent: intent, target_token: token, x, y, expected_turn: expectedTurn, replace_improvement: replaceImprovement = false} = queryArguments;
+  const {settlement, item, construction_intent: intent, target_token: token, x, y, expected_turn: expectedTurn, replace_improvement: replaceImprovement = false,
+    mode = "append", max_gold_cost: cap} = queryArguments;
+  const purchase = mode === "purchase";
   const reject = (reason, failureReasons = []) => ({status: "rejected", reason, failureReasons});
   if (typeof settlement !== "string" || !settlement.trim() || typeof item !== "string" || !item || !["wonder", "repair", "overbuild", "improvement"].includes(intent) ||
+      !["append", "purchase"].includes(mode) || (purchase && (intent !== "repair" || !Number.isFinite(cap) || cap < 0)) ||
       typeof replaceImprovement !== "boolean" || (replaceImprovement && !["wonder", "overbuild", "improvement"].includes(intent)) ||
       typeof token !== "string" || !token || token.length > 100000 || ![x, y, expectedTurn].every(v => Number.isInteger(v) && v >= 0)) return reject("Exact city, constructible/intent, tile token and expected turn are required");
   if (!UI.isInGame()) return reject("Load a save first");
   const playerId = GameContext.localPlayerID, player = Players.get(playerId);
   if (!Number.isInteger(playerId) || playerId < 0 || !player || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || Game.turn !== expectedTurn) return reject("A fresh active local turn is required");
   const matches = player.Cities.getCities().filter(c => c.id.owner === playerId && Locale.compose(c.name).toLowerCase() === settlement.toLowerCase());
-  if (matches.length !== 1 || matches[0].isTown !== false) return reject("One unique owned city, not a town, is required");
+  if (matches.length !== 1 || (!purchase && matches[0].isTown !== false)) return reject("One unique owned settlement is required; production append requires a city");
   const city = matches[0], def = GameInfo.Constructibles.lookup(item), klass = intent === "wonder" ? "WONDER" : intent === "improvement" ? "IMPROVEMENT" : "BUILDING";
   if (def?.ConstructibleType !== item || !Number.isInteger(def.$hash) || (intent === "repair" ? !["BUILDING", "IMPROVEMENT", "WONDER"].includes(def.ConstructibleClass) || def.Repairable !== true : def.ConstructibleClass !== klass)) return reject("Exact constructible class/intent is not supported");
   const plot = GameplayMap.getIndexFromLocation({x, y}), l = Number.isInteger(plot) && plot >= 0 ? GameplayMap.getLocationFromIndex(plot) : null;
@@ -43,7 +46,7 @@
   if (tile === null) return reject("Target tile constructible state is unavailable or invalid");
   if (JSON.stringify(tile) !== token) return reject("Tile token is stale; refresh building placements");
   if (!Array.isArray(queue)) return reject("Production queue is unavailable");
-  if (queue.length >= 64) return reject("Production queue is full");
+  if (!purchase && queue.length >= 64) return reject("Production queue is full");
   if (intent === "repair") {
     if (tile.filter(c => c.type === def.$hash && c.complete && c.damaged).length !== 1) return reject("Repair requires one exact completed damaged instance of the selected type on this tile");
   } else {
@@ -57,21 +60,33 @@
       if (old?.ConstructibleClass !== (replaceImprovement ? "IMPROVEMENT" : "BUILDING") || tile.filter(c => c.type === old.$hash && c.complete && !c.damaged).length !== 1) return reject("Replacement requires one exact known intact old constructible matching the native preview and acknowledged class");
     } else if (previous !== -1) return reject("This intent must not overbuild another constructible");
   }
-  if (!Number.isInteger(CityOperationsParametersValues.Append)) return reject("Native Append mode is unavailable");
-  const args = {ConstructibleType: def.$hash, X: x, Y: y, InsertMode: CityOperationsParametersValues.Append};
+  if (!purchase && !Number.isInteger(CityOperationsParametersValues.Append)) return reject("Native Append mode is unavailable");
+  const args = {ConstructibleType: def.$hash, X: x, Y: y, ...(!purchase ? {InsertMode: CityOperationsParametersValues.Append} : {})};
+  const api = purchase ? Game.CityCommands : Game.CityOperations;
+  const operation = purchase ? CityCommandTypes.PURCHASE : CityOperationTypes.BUILD;
   const blocked = c => c?.Success !== true || c.RequiresConfirmation === true || c.InQueue || c.InProgress || c.MoveToNewLocation || c.InsufficientFunds ||
     (intent !== "repair" && (c.RepairDamaged || c.AlreadyExists));
-  const before = {turn: Game.turn, age: Game.age, playerId, cityId: city.id.id, componentType: city.id.type, queue: JSON.parse(JSON.stringify(queue)), tile, ownership};
-  const general = Game.CityOperations.canStart(city.id, CityOperationTypes.BUILD, {ConstructibleType: def.$hash, InsertMode: args.InsertMode}, false);
+  const before = {turn: Game.turn, age: Game.age, playerId, cityId: city.id.id, componentType: city.id.type, queue: JSON.parse(JSON.stringify(queue)), tile, ownership,
+    ...(purchase ? {gold: player.Treasury?.goldBalance ?? null} : {})};
+  const general = api.canStart(city.id, operation, {ConstructibleType: def.$hash, ...(!purchase ? {InsertMode: args.InsertMode} : {})}, false);
   if (blocked(general) || ![...(general.Plots ?? []), ...(general.ExpandUrbanPlots ?? [])].includes(plot) ||
       (ownership.requiresExpansion && !(general.ExpandUrbanPlots ?? []).includes(plot)) ||
       (intent === "repair" && general.RepairDamaged !== true)) return reject("Exact native construction/repair plot or intent is not offered", general?.FailureReasons ?? []);
-  const check = Game.CityOperations.canStart(city.id, CityOperationTypes.BUILD, args, false);
+  const check = api.canStart(city.id, operation, args, false);
   if (blocked(check)) return reject("Selected native advanced construction failed or requires confirmation", check?.FailureReasons ?? []);
+  const cost = purchase ? check.Cost : null;
+  if (purchase && (!Number.isFinite(cost) || cost < 0 || cost > cap || !Number.isFinite(before.gold) || before.gold < cost)) {
+    return {...reject("Repair purchase quote or Gold balance is missing, insufficient or over cap"), quotedGoldCost: cost ?? null};
+  }
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false ||
-      city.id.owner !== playerId || city.id.type !== before.componentType || city.isTown !== false || JSON.stringify(city.BuildQueue.getQueue()) !== JSON.stringify(before.queue) || JSON.stringify(tileState()) !== token) return reject("City, tile, queue or context changed during validation");
-  const verificationArguments = {mode: "append", city_id: before.cityId, item, x, y, baseline_queue: before.queue, baseline_asset_ids: [], construction_intent: intent};
-  Game.CityOperations.sendRequest(city.id, CityOperationTypes.BUILD, args);
-  return {status: "submitted", before, expected: {cityId: before.cityId, item, queueAppendObserved: true}, verificationArguments,
-    verificationScope: "Exact queued advanced construction with preserved queue prefix and placement only; completion, repaired HP, replacement destruction/yields or Wonder ownership require later readback, not claimed now"};
+      city.id.owner !== playerId || city.id.id !== before.cityId || city.id.type !== before.componentType || (!purchase && city.isTown !== false) ||
+      (purchase && (!Number.isFinite(player.Treasury?.goldBalance) || player.Treasury.goldBalance < cost)) ||
+      JSON.stringify(city.BuildQueue.getQueue()) !== JSON.stringify(before.queue) || JSON.stringify(tileState()) !== token) return reject("City, tile, queue, balance or context changed during validation");
+  const verificationArguments = {mode, city_id: before.cityId, item, x, y, baseline_queue: before.queue, baseline_asset_ids: [], construction_intent: intent,
+    ...(purchase ? {baseline_tile: tile, city_component_type: before.componentType} : {})};
+  api.sendRequest(city.id, operation, args);
+  return {status: "submitted", before, expected: {cityId: before.cityId, item, [purchase ? "repairObserved" : "queueAppendObserved"]: true}, verificationArguments,
+    ...(purchase ? {quotedGoldCost: cost} : {}),
+    verificationScope: purchase ? "Same completed damaged constructible instance became intact at the exact owned tile; unchanged tile ledger and production queue otherwise. Gold loss alone is not proof; yield changes are not verified."
+      : "Exact queued advanced construction with preserved queue prefix and placement only; completion, repaired HP, replacement destruction/yields or Wonder ownership require later readback, not claimed now"};
 })()

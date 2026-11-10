@@ -46,6 +46,7 @@ from civ7.actions import (
     bombard_shore_district,
     naval_attack_land_unit,
     append_advanced_construction,
+    purchase_repair,
     choose_religious_action,
     befriend_independent,
     choose_city_state_bonus,
@@ -1044,6 +1045,21 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(append_advanced_construction)
+        server.tool(
+            name="purchase_civ7_repair", title="Buy one Civ VII repair with Gold",
+            description=("CHANGE GAME STATE: buy one repair of an exact completed damaged constructible in an owned city or town. "
+                         "Use exact settlement name, item type ID, x/y and fresh get_civ7_building_placements "
+                         "targetToken as target_token, approved max_gold_cost and expected_turn. Requires a currently visible "
+                         "owned assigned tile, repairable building/improvement/Wonder, one exact damaged instance, native "
+                         "offered repair plot and selected PURCHASE permission without confirmation, and sufficient Gold "
+                         "within cap. Spends Gold and restores an existing asset; does not create a new one. Verifies "
+                         "the same completed instance became undamaged with the tile ledger otherwise unchanged and "
+                         "production queue preserved; Gold loss alone is not proof. No bulk repair, new construction, "
+                         "overbuilding, queued/in-progress items or turn advancement. Requires the user's exact-action "
+                         "instruction. Submits once; never automatically retry unknown/cancelled outcomes."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(purchase_repair)
         server.tool(
             name="pay_civ7_call_to_arms", title="Pay Influence to avoid an allied war",
             description=("CHANGE GAME STATE: pay one pending Call to Arms to preserve the alliance without joining war. "
