@@ -24,7 +24,7 @@ function game(o = {}) {
     Players: {get: () => ({isTurnActive: !o.inactive})}, Game: {turn: 40, age: -123},
     GameInfo: {Ages: {lookup: () => ({AgeType: 'AGE_EXPLORATION'})}},
     SaveLocations: {LOCAL_STORAGE: 1}, SaveTypes: {SINGLE_PLAYER: 1},
-    SaveFileTypes: {GAME_STATE: 0}, SaveLocationCategories: {NORMAL: 1, QUICKSAVE: 2, AUTOSAVE: 4},
+    SaveFileTypes: {GAME_STATE: 0}, SaveLocationCategories: {NORMAL: 1, QUICKSAVE: 2, AUTOSAVE: 4, PREVIOUS: 8, DIRECTORY: 16},
     ServerType: {SERVER_TYPE_NONE: 0}, SerializerResult: {RESULT_OK: 0, RESULT_PENDING: 1},
     ModAllowance: {Full: 2}, Modding: {
       getModHandle: id => o.missingMod ? null : id,
@@ -84,6 +84,49 @@ test('new saves use native local single-player no-overwrite parameters and obser
   g.emit('SaveComplete', {options: 1, result: 0}); assert.equal(state().serializerOk, true);
   assert.equal(g.events.get('SaveComplete').size, 0);
   assert.equal(g.calls.filter(c => c[0] === 'save').length, 1);
+});
+
+test('captured live normal-save event with options=65 records success instead of timing out', () => {
+  const g = game(); g.list([]); g.save('Fresh');
+  g.emit('SaveComplete', {result: 0, type: 1, options: 65, fileType: 0});
+  const state = g.run({operation: 'save_state', request_id: 'saving'});
+  assert.equal(state.serializerComplete, true);
+  assert.equal(state.serializerOk, true);
+  assert.equal(state.nativeResult, 0);
+  assert.equal(g.events.get('SaveComplete').size, 0);
+  assert.equal(g.calls.filter(c => c[0] === 'save').length, 1);
+});
+
+test('non-category flags never let auto, quick, previous, directory or uncategorized events verify a manual save', () => {
+  for (const options of [0, 64, null, true, 65.5,
+    ...[2, 4, 8, 16].flatMap(category => [category, category | 1, category | 64, category | 65])]) {
+    const g = game(); g.list([]); g.save('Fresh');
+    g.emit('SaveComplete', {options, result: 0});
+    assert.equal(g.run({operation: 'save_state', request_id: 'saving'}).serializerComplete, false, String(options));
+    assert.equal(g.calls.filter(c => c[0] === 'save').length, 1);
+  }
+});
+
+test('flagged manual completions retain pending, filename and failure checks', () => {
+  const g = game(); g.list([]); g.save('Fresh');
+  const state = () => g.run({operation: 'save_state', request_id: 'saving'});
+  g.emit('SaveComplete', {options: 65, result: 1});
+  assert.equal(state().serializerComplete, false);
+  g.emit('SaveComplete', {options: 65, result: 0, fileName: 'Other.Civ7Save'});
+  assert.equal(state().serializerComplete, false);
+  g.emit('SaveComplete', {options: 65, result: 4, fileName: 'Fresh.Civ7Save'});
+  assert.equal(state().serializerComplete, true);
+  assert.equal(state().serializerOk, false);
+  assert.equal(g.calls.filter(c => c[0] === 'save').length, 1);
+});
+
+test('missing category-mask constants reject saving without affecting read-only inventory', () => {
+  for (const missing of ['PREVIOUS', 'DIRECTORY']) {
+    const g = game(); delete g.context.SaveLocationCategories[missing];
+    assert.equal(g.list([]).status, 'ready');
+    assert.equal(g.save('Fresh').status, 'rejected');
+    assert.equal(g.calls.some(c => c[0] === 'save'), false);
+  }
 });
 
 test('save collisions, paths, reserved names, stale contexts and non-single-player states never write', () => {

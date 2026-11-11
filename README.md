@@ -112,6 +112,10 @@ Write mode additionally exposes:
   native `Overwrite=false` is always enforced. Verified success requires normal
   serializer success plus the exact new file's turn/Age metadata and unchanged
   current context; a native accepted request alone is not proof of saving.
+  Completion options are matched by save-category bits, not the entire options
+  value: a captured successful manual save reported `options=65` (`NORMAL=1`
+  plus a non-category flag `64`). Quick, auto, previous and directory categories
+  cannot verify a manual save. The 15-second bound and exact-file checks remain.
 - `load_civ7_game(save_token, confirm_discard_unsaved_progress=true, expected_turn=null)`:
   **discards unsaved progress** and replaces the current session. The user must
   approve that exact load; the boolean flag is not conversational authorization.

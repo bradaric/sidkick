@@ -127,11 +127,16 @@
   const fileName = `${a.save_name}.Civ7Save`;
   if (q.entries.some(e => e.public.fileName.toLowerCase() === fileName.toLowerCase() ||
       e.public.displayName.toLowerCase() === a.save_name.toLowerCase())) return reject("Save already exists; overwriting is never supported");
+  const categories = [SaveLocationCategories.NORMAL, SaveLocationCategories.QUICKSAVE,
+    SaveLocationCategories.AUTOSAVE, SaveLocationCategories.PREVIOUS, SaveLocationCategories.DIRECTORY];
+  if (!categories.every(Number.isInteger)) return reject("Native save category mask unavailable");
+  const categoryMask = categories.reduce((mask, category) => mask | category, 0);
   const s = {id: a.request_id, context: current, expires: now + 15000, finished: false};
   store.save = s;
   s.listener = engine.on("SaveComplete", event => {
-    // Autosave/quicksave completion must never verify a manual save.
-    if (!Number.isInteger(event?.options) || (event.options & ~SaveLocationCategories.NORMAL) !== 0 ||
+    // Options also contain non-category flags: live normal saves report 65 (1 | 64).
+    // Require exactly NORMAL among category bits; auto/quick completions never verify this save.
+    if (!Number.isInteger(event?.options) || (event.options & categoryMask) !== SaveLocationCategories.NORMAL ||
         !Number.isInteger(event.result) || event.result === SerializerResult.RESULT_PENDING ||
         (typeof event.fileName === "string" && event.fileName.toLowerCase() !== fileName.toLowerCase())) return;
     s.result = event.result; s.finished = true; s.listener.clear(); clearTimeout(s.timer);
