@@ -21,7 +21,7 @@ function run({ bypass = false, closed = true, full = false, missingProgress = fa
     Players: { get: id => { assert.equal(id, 0); return {
       Treasury: { goldBalance: 12000 }, DiplomacyTreasury: { diplomacyBalance: 1500 }, isTurnActive: true,
       Cities: { getCities: () => [{ name: 'Capital', isCapital: true }, { name: 'City', isTown: false }] },
-      AdvancedStart: { getPlacementComplete: () => closed, getDeckSize: () => 3,
+      AdvancedStart: { getPlacementComplete: () => closed, getDeckSize: () => full ? 3 : 1,
         getCards: () => Array.from({ length: full ? 3 : 1 }, () => ({ info: {...card, id: 'CARD_ALREADY_SELECTED'} })), getAvailableCards: () => [card],
         getLegacyPoints: () => [{ category: 1, value: 2 }] },
     }; } },
@@ -103,12 +103,12 @@ test('Dedication costs and limits belong to the current deck, not a fabricated f
   const data = run();
   assert.equal(data.dedications.deckAge, 'AGE_EXPLORATION');
   assert.equal(data.dedications.nextAgeChoices, null);
-  assert.equal(data.dedications.deckSize, 3);
+  assert.equal(data.dedications.deckSize, 1);
   assert.equal(data.dedications.choices[0].costs[0].amount, 2);
   assert.equal(data.dedications.choices[0].individualLimit, 1);
   assert.equal(data.dedications.choices[0].operationAllowed, true);
   assert.equal(data.dedications.choices[0].availableNow, false, 'completed decks cannot be changed despite permissive operation checks');
-  assert.equal(run({ closed: false, full: true }).dedications.choices[0].availableNow, false);
+  assert.equal(run({ closed: false, full: true }).dedications.choices[0].availableNow, true, 'selected count is not capacity');
   assert.equal(run({ closed: false }).dedications.choices[0].availableNow, true);
   assert.ok(!JSON.stringify(data).includes('999'), 'raw effect metadata is not exposed');
 });

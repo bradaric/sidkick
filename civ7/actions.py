@@ -200,7 +200,7 @@ async def advance_age_transition(
 
 
 async def begin_transition_age(loading_token: StrictStr) -> dict[str, Any]:
-    """Acknowledge only the ready new-Age Continue screen, not arbitrary game loading."""
+    """Acknowledge one ready transition loading Continue or in-game Age welcome Begin."""
     if not isinstance(loading_token, str) or not loading_token or len(loading_token) > 250000:
         raise ValueError("Exact current transition loading token required")
     return await _observe_transition_action("begin", {"loading_token": loading_token})
@@ -226,10 +226,16 @@ async def _observe_transition_action(operation: str, arguments: dict[str, Any]) 
             async with asyncio.timeout(_TRANSITION_TIMEOUT):
                 while True:
                     after = await run_transition_loading_script({"operation": "observe"})
+                    if operation in {"advance", "confirm_choices"} and after.get("phase") == "loading":
+                        # Large empires can take longer to load than the action timeout. Loading
+                        # is progress, not proof of exact arrival and never permission to resubmit.
+                        return {**result, "status": "submitted", "after": after, "loadingObserved": True,
+                                "transitionCompleted": False, "requiresFreshState": True,
+                                "nextAction": "get_civ7_transition_workflow"}
                     same_player = type(after.get("playerId")) is int and after["playerId"] == before["playerId"]
                     same_origin = same_player and all(type(after.get(key)) is int and after[key] == before[key]
                                                      for key in ("turn", "age", "previousAgeCount"))
-                    arrived = (same_player and after.get("phase") in {"started", "awaiting_begin"}
+                    arrived = (same_player and after.get("phase") in {"started", "awaiting_begin", "awaiting_welcome"}
                                and type(after.get("turn")) is int and after["turn"] >= 0
                                and type(after.get("age")) is int and after["age"] != before["age"]
                                and after.get("ageType") == before.get("nextAge")
@@ -243,15 +249,25 @@ async def _observe_transition_action(operation: str, arguments: dict[str, Any]) 
                                      and after.get("age") == before["age"] and after.get("ageType") == before.get("ageType")
                                      and after.get("previousAgeCount") == before["previousAgeCount"]
                                      and after.get("choicePending") is True)
-                    begun = (operation == "begin" and same_origin and after.get("phase") == "started"
+                    begun = (operation == "begin" and same_origin
+                             and (after.get("phase") == "started" or
+                                  before.get("phase") == "awaiting_begin" and after.get("phase") == "awaiting_welcome")
                              and after.get("ageType") == before.get("ageType")
                              and after.get("civilization") == before.get("civilization"))
+                    if (operation == "advance" and same_origin and after.get("phase") == "started"
+                            and after.get("active") is True and after.get("sent") is False
+                            and after.get("choicePending") is False
+                            and (after.get("hasBlocker") is True or after.get("unitOrdersPending") is True)):
+                        return {**result, "status": "blocked", "after": after, "transitionCompleted": False,
+                                "nextAction": "get_civ7_turn_context",
+                                "reason": "Native boundary turn reactivated with pending tasks. Inspect and explicitly resolve them before a fresh boundary request; no automatic retry"}
                     if arrived or choices_confirmed or chooser_ready or begun:
                         return {**result, "status": "verified_applied", "after": after,
                                 "transitionCompleted": after.get("transitionCompleted") is True if arrived or begun else False,
-                                "requiresBegin": after.get("phase") == "awaiting_begin",
+                                "requiresBegin": after.get("phase") in {"awaiting_begin", "awaiting_welcome"},
                                 "requiresChooserClose": choices_confirmed and after.get("chooserOpen") is True,
-                                "nextAction": "view_civ7_transition_map" if choices_confirmed and after.get("chooserOpen") is True
+                                "nextAction": "begin_civ7_transition_age" if after.get("phase") in {"awaiting_begin", "awaiting_welcome"}
+                                    else "view_civ7_transition_map" if choices_confirmed and after.get("chooserOpen") is True
                                     else "get_civ7_transition_workflow"}
                     if after.get("phase") not in {"loading", "unavailable"} and not same_origin:
                         raise ValueError("Unexpected game/Age/civilization/progression context; do not retry")

@@ -38,10 +38,11 @@
         !cards.every(card => typeof card?.info?.id === "string" && card.info.id.length > 0) ||
         !available.every(card => typeof card?.id === "string" && card.id.length > 0)) return null;
     const size = advanced.getDeckSize(), closed = advanced.getPlacementComplete();
-    const deckSize = Number.isSafeInteger(size) && size >= cards.length ? size : null;
+    // Live Modern setup: native size is 0 before ADD and 1 afterwards, not a capacity.
+    const deckSize = Number.isSafeInteger(size) && size === cards.length ? size : null;
     const selectionComplete = typeof closed === "boolean" ? closed : null;
     const selectionOpen = selectionComplete === false && deckSize !== null && ready(playerId);
-    const openSlotCount = selectionComplete === true ? 0 : deckSize === null || selectionComplete === null ? null : deckSize - cards.length;
+    const openSlotCount = selectionComplete === true ? 0 : null;
     const legacyPoints = costs(advanced.getLegacyPoints()), totalLegacyPoints = total(legacyPoints);
     const describe = info => ({id: info.id, name: cardText(info.name), description: cardText(info.description),
       costs: costs(info.cost), individualLimit: info.individualLimit ?? null, groupLimit: info.groupLimit ?? null,
@@ -52,7 +53,8 @@
       PlayerOperationTypes.ADVANCED_START_MODIFY_DECK, {Type: type, ID: cardId}, false);
     const selected = cards.map(card => {
       const result = check("REMOVE", card.info.id);
-      return {...describe(card.info), removeAllowed: selectionOpen && totalLegacyPoints !== null &&
+      return {...describe(card.info), instanceId: Number.isSafeInteger(card.id) ? card.id : null,
+        removeAllowed: selectionOpen && totalLegacyPoints !== null &&
         total(costs(card.info.cost)) !== null && cards.filter(other => other.info.id === card.info.id).length === 1 && result?.Success === true,
         failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
     });
@@ -60,20 +62,20 @@
       const result = check("ADD", info.id), selectedCount = cards.filter(card => card.info.id === info.id).length;
       const withinLimit = Number.isInteger(info.individualLimit) && (info.individualLimit <= 0 || selectedCount < info.individualLimit);
       const quote = total(costs(info.cost));
-      return {...describe(info), selectedCount, slotAvailable: openSlotCount !== null && openSlotCount > 0,
+      return {...describe(info), selectedCount, slotAvailable: null,
         operationAllowed: result?.Success === true,
-        availableNow: selectionOpen && openSlotCount > 0 && withinLimit && quote !== null && totalLegacyPoints !== null &&
+        availableNow: selectionOpen && withinLimit && quote !== null && totalLegacyPoints !== null &&
           quote <= totalLegacyPoints && available.filter(other => other.id === info.id).length === 1 && result?.Success === true,
         failureReasons: (result?.FailureReasons ?? []).map(name).filter(Boolean)};
     });
     const state = {turn: Game.turn, age: Game.age, playerId, deckAge: GameInfo.Ages.lookup(Game.age)?.AgeType ?? null,
       deckSize, selectionComplete, selectionOpen, openSlotCount,
       phase: selectionComplete === true ? "completed" : selectionComplete === null || deckSize === null ? "unknown"
-        : openSlotCount === 0 ? "full_unconfirmed" : "selecting",
+        : choices.some(card => card.availableNow) ? "selecting" : "full_unconfirmed",
       legacyPoints, totalLegacyPoints, selected, choices,
       selectedCardIds: cards.map(card => card.info.id).sort(), nextAgeChoices: null};
     return {...state, deckToken: JSON.stringify(state),
-      note: "Current engine deck only; slot count is capacity, not a focused/numbered UI slot. Completed decks cannot reopen. Add/remove only edits selection: effects, capital choice and final confirmation are separate and unsupported by this writer. Future cards are unknown"};
+      note: "Current engine deck only; deckSize is the selected-card count, NOT capacity. Open slot count and slot availability are unknown; native ADD permission, limits and legacy points determine eligibility. Completed decks cannot reopen. Add/remove only edits selection; effects, capital and completion are separate actions. Future cards are unknown"};
   }
   return {snapshot, ready, total};
 })()

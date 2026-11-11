@@ -9,7 +9,7 @@ function fixture(options = {}) {
   assert.ok(fs.existsSync(path.join(__dirname, '../civ7/transition_workflow.js')), 'guarded transition workflow exists');
   const state = {turn: 125, age: 1, pending: true, panel: false, amount: 1, completed: false,
     capital: 10, memento: 'M_A', other: 'NONE', ...options.state};
-  const calls = [], reads = [];
+  const calls = [], reads = [], handlers = new Map();
   const oldAge = () => Boolean(state.pending || state.acknowledged);
   const parameter = (id, value) => ({ID: id, hidden: false, readOnly: false, invalidReason: 0,
     value: {value}, domain: {possibleValues: ['NONE', 'M_A', 'M_B'].map(value => ({value, invalidReason: 0}))}});
@@ -25,12 +25,12 @@ function fixture(options = {}) {
   let snapshots = 0;
   const context = vm.createContext({
     UI: {isInGame: () => true, getGameLoadingState: () => options.loading ? 2 : 8,
-      Player: {getFirstReadyUnit: () => null}}, UIGameLoadingState: {GameStarted: 8},
+      Player: {getFirstReadyUnit: () => options.readyUnit ? {owner: 0, id: 77, type: 26} : null}}, UIGameLoadingState: {GameStarted: 8},
     Configuration: {getGame: () => ({isAnyMultiplayer: options.multiplayer ?? false, previousAgeCount: oldAge() ? 1 : 2}),
       getUser: () => ({isAutoEndTurn: options.autoEnd ?? false})}, Autoplay: {isActive: options.autoplay ?? false},
     GameContext: {localPlayerID: 0, hasSentTurnComplete: () => options.sent ?? false,
       sendTurnComplete: () => {calls.push(['advance']); state.turn++;}},
-    Locale: {compose: key => key}, EndTurnBlockingTypes: {NONE: 0}, RevealedStates: {HIDDEN: 0},
+    Locale: {compose: key => options.localized && key.includes('VIEW_MAP') ? 'View Map' : key}, EndTurnBlockingTypes: {NONE: 0}, RevealedStates: {HIDDEN: 0},
     GameplayMap: {getGridWidth: () => 20, getGridHeight: () => 20, getRevealedState: () => options.unknownPlot ? undefined : options.hiddenPlot ? 0 : 1},
     remainingMoves: () => ({remainingMovesBlocker: 'unitBlocker' in options ? options.unitBlocker : false}),
     GameSetupParameterInvalidReason: {Valid: 0}, GameSetupDomainValueInvalidReason: {Valid: 0},
@@ -53,7 +53,7 @@ function fixture(options = {}) {
     dedicationDeck: {snapshot: () => ({turn: state.turn, age: state.age, playerId: 0, deckToken: 'deck',
       selectionOpen: !oldAge() && !state.completed, selectionComplete: oldAge() || state.completed,
       selectedCardIds: ['CARD_A'], totalLegacyPoints: 2, deckSize: 3,
-      selected: [{id: 'CARD_A', effects: [{id: 'EFFECT_A', placementRequired: options.placement ?? false, reportedAmount: state.amount}]}]})},
+      selected: [{id: 'CARD_A', instanceId: state.cardInstance ?? 1, effects: [{id: 'EFFECT_A', placementRequired: options.placement ?? false, reportedAmount: state.amount}]}]})},
     Players: {get: () => ({isTurnActive: options.active ?? true, civilizationType: 99,
       Cities: {getCapital: () => city(state.capital), getCityIds: () => [city(10).id, city(11).id, ...(state.placed ? [city(12).id] : [])],
         getPotentialSwitchCapitalCityIds: () => [city(11).id]},
@@ -68,7 +68,7 @@ function fixture(options = {}) {
         isExtendedGame: options.extended ?? false, isFinalAge: options.finalAge ?? false,
         getCurrentAgeProgressionPoints: () => options.currentProgress,
         getMaxAgeProgressionPoints: () => options.maximumProgress},
-      UnitOperations: {canStartAny: () => false},
+      UnitOperations: {canStartAny: () => 'canStartAny' in options ? options.canStartAny : false},
       Notifications: {getIdsForPlayer: () => oldAge() || !state.completed || options.retainCompletedNotice ? [{owner: 0, id: 7, type: 9}] : [],
         getType: () => 9, getTypeName: () => oldAge() ? 'NOTIFICATION_CHOOSE_CIVILIZATION' : 'NOTIFICATION_AGE_TRANSITION',
         find: () => ({Type: 9, Dismissed: false, Expired: false, AddedOnTurn: 125}),
@@ -78,16 +78,26 @@ function fixture(options = {}) {
       PlayerOperations: {canStart: () => ({Success: options.allowed ?? true}),
         sendRequest: (id, type, args) => {calls.push([type, id, {...args}]);
           if (type === 'FINISH') {state.pending = false; state.acknowledged = Boolean(options.retainChoice);}
-          if (type === 'EFFECT' && !options.ignoreEffect) state.amount--;
-          if (type === 'PLACE') {state.amount--; state.placed = true;}
+          if (type === 'EFFECT' && !options.ignoreEffect) {
+            if (!options.staleEffectAmount) state.amount--;
+            handlers.get('AdvancedStartEffectUsed')?.(options.effectEvent ?? {player:0,effectType:args.ID});
+          }
+          if (type === 'PLACE') {
+            if (!options.staleEffectAmount) state.amount--;
+            state.placed = true;
+            handlers.get('AdvancedStartEffectUsed')?.({player:0,effectType:args.ID});
+          }
           if (type === 'CAPITAL') state.capital = args.City;
           if (type === 'COMPLETE') state.completed = true;}},
     },
     document: {querySelectorAll: selector => {
+      if (selector === '#loading-curtain') return options.curtain ? [{}] : [];
+      if (selector === 'tutorial-callout[itemid="welcome_intro"]') return options.welcome ? [{}] : [];
       if (selector === '#age-transition-screen') return state.panel && oldAge() ? [panel] : [];
       if (selector === 'screen-dedication-selection') return state.panel && !oldAge() ? [panel] : [];
       return [];
     }},
+    engine: {on:(name,fn)=>handlers.set(name,fn),off:(name,fn)=>{if(handlers.get(name)===fn)handlers.delete(name);}},
   });
   const button = {isConnected: true, textContent: 'LOC_ADVANCED_START_VIEW_MAP', getClientRects: () => [{}],
     getAttribute: name => name === 'data-activatable' ? 'true' : null, hasAttribute: () => false,
@@ -122,6 +132,18 @@ test('opening activates only the exact pending native civilization notification'
   assert.equal(f.act('open').status, 'submitted');
   assert.deepEqual(f.calls, [['open', {owner: 0, id: 7, type: 9}]]);
   assert.equal(f.read().chooserOpen, true);
+});
+
+test('native View Map can retain its localization key in textContent', () => {
+  const f=fixture({localized:true,state:{panel:true}});
+  assert.equal(f.act('view_map').status,'submitted');
+  assert.deepEqual(f.calls,[['view_map']]);
+});
+
+test('the post-Begin startup curtain prevents premature chooser activation', () => {
+  const f=fixture({curtain:true});
+  assert.equal(f.act('open').status,'rejected');
+  assert.deepEqual(f.calls,[]);
 });
 
 test('one Memento assignment preserves every other slot, never toggles or automatically swaps', () => {
@@ -166,6 +188,71 @@ test('Dedication effects are one native request and require a closed UI to preve
   assert.deepEqual(open.calls, []);
   assert.equal(open.act('view_map').status, 'submitted');
   assert.equal(open.read().dedicationPanelOpen, false);
+});
+
+test('the in-game welcome popup blocks effect/capital/completion submissions until acknowledged', () => {
+  const f=fixture({welcome:true,state:{pending:false}});
+  assert.equal(f.act('effect',{effect_id:'EFFECT_A'}).status,'rejected');
+  assert.equal(f.act('capital',{city_id:11}).status,'rejected');
+  assert.equal(f.act('complete_deck',{confirm:true,accept_unused_points:true}).status,'rejected');
+  assert.deepEqual(f.calls,[]);
+});
+
+test('a native effect receipt verifies consumption even while the getter remains one operation behind', () => {
+  const f=fixture({staleEffectAmount:true,state:{pending:false}});
+  assert.equal(f.act('effect',{effect_id:'EFFECT_A'}).status,'submitted');
+  const after=f.read();
+  assert.equal(f.state.amount,1,'native cache still stale');
+  assert.equal(after.effects[0].amount,0);
+  assert.equal(after.effectObservations[0].source,'native_event');
+  assert.equal(after.effectObservations[0].reportedAmount,1);
+  assert.equal(after.completeDeckAllowed,true);
+  assert.equal(f.act('effect',{effect_id:'EFFECT_A',workflow_token:after.workflowToken}).status,'rejected');
+  assert.equal(f.calls.length,1,'event does not authorize another use');
+  assert.equal(f.act('complete_deck',{workflow_token:after.workflowToken,confirm:true,accept_unused_points:true}).status,'submitted');
+  const completed=f.read();
+  assert.equal(completed.transitionCompleted,true);
+  assert.equal(completed.effects[0].amount,0,'final read retains exact event evidence instead of reviving a stale pending amount');
+  assert.equal(completed.effectObservations[0].source,'native_event');
+});
+
+test('submission alone never proves effect consumption and an outstanding request cannot be repeated', () => {
+  const f=fixture({ignoreEffect:true,state:{pending:false}});
+  f.act('effect',{effect_id:'EFFECT_A'});
+  const after=f.read();
+  assert.equal(after.effects[0].amount,1);
+  assert.equal(after.effects[0].availableNow,false);
+  assert.equal(after.completeDeckAllowed,false);
+  assert.equal(f.act('effect',{effect_id:'EFFECT_A',workflow_token:after.workflowToken}).status,'rejected');
+});
+
+test('effect receipts cannot follow a different turn or native card instance', () => {
+  const f=fixture({staleEffectAmount:true,state:{pending:false}});
+  f.act('effect',{effect_id:'EFFECT_A'});
+  f.state.turn++;
+  assert.equal(f.read().effects[0].amount,1);
+  f.state.turn--;
+  f.state.cardInstance=2;
+  assert.equal(f.read().effects[0].amount,1);
+});
+
+test('unrelated players or effect events never prove consumption', () => {
+  for(const effectEvent of [{player:1,effectType:'EFFECT_A'},{player:0,effectType:'OTHER'}]) {
+    const f=fixture({staleEffectAmount:true,effectEvent,state:{pending:false}});
+    f.act('effect',{effect_id:'EFFECT_A'});
+    assert.equal(f.read().effects[0].amount,1);
+    assert.equal(f.read().effects[0].availableNow,false);
+  }
+});
+
+test('a placement event can resolve a stale amount but still requires the exact new owned settlement', () => {
+  const f=fixture({placement:true,staleEffectAmount:true,state:{pending:false}});
+  const r=f.act('place_effect',{effect_id:'EFFECT_A',x:4,y:5});
+  assert.equal(r.status,'submitted');
+  f.context.queryArguments=r.verificationArguments;
+  const after=vm.runInContext(source('transition_workflow_state.js'),f.context);
+  assert.equal(after.effects[0].amount,0);
+  assert.equal(after.placementApplied,true);
 });
 
 test('capital selection checks native owned candidates and never swaps settlement names', () => {
@@ -349,6 +436,27 @@ test('progress changing during validation rejects before the boundary submission
   const f = fixture(options);
   assert.equal(f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_PRUSSIA'}).status, 'rejected');
   assert.deepEqual(f.calls, []);
+});
+
+test('T125 ready units block the boundary even when moved units evade the UI remaining-moves check', () => {
+  const f = fixture({ageOver: false, currentProgress: 140, maximumProgress: 140,
+    canStartAny: true, readyUnit: true, unitBlocker: false, state: {pending: false, acknowledged: true}});
+  assert.equal(f.before.ageBoundary.blocker, 0);
+  assert.equal(f.before.ageBoundary.remainingMovesBlocker, false);
+  assert.equal(f.before.advanceReady, false);
+  assert.equal(f.before.ageBoundary.unitOrdersPending, true);
+  assert.equal(f.before.nextAction, 'get_civ7_turn_context');
+  assert.equal(f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_PRUSSIA'}).status, 'rejected');
+  assert.deepEqual(f.calls, []);
+});
+
+test('unknown unit-order readiness fails closed at the Age boundary', () => {
+  for (const canStartAny of [null, undefined]) {
+    const f = fixture({canStartAny, state: {pending: false, acknowledged: true}});
+    assert.equal(f.before.advanceReady, false);
+    assert.equal(f.act('advance', {confirm: true, expected_civilization: 'CIVILIZATION_PRUSSIA'}).status, 'rejected');
+    assert.deepEqual(f.calls, []);
+  }
 });
 
 test('a confirmation receipt cannot follow changed origin context or override the captured civilization', () => {

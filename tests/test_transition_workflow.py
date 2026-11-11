@@ -55,7 +55,8 @@ class TransitionWorkflowTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_loading_query_never_initializes_gameplay_helpers_or_profile_metadata(self):
         self.assertTrue(callable(getattr(queries, 'transition_workflow', None)))
-        for state in ({'phase': 'loading'}, {'phase': 'awaiting_begin', 'loadingToken': 'ready'}):
+        for state in ({'phase': 'loading'}, {'phase': 'awaiting_begin', 'loadingToken': 'ready'},
+                      {'phase': 'awaiting_welcome', 'loadingToken': 'welcome'}):
             with patch('civ7.queries.run_transition_loading_script', new_callable=AsyncMock, return_value=state), \
                     patch('civ7.queries.run_transition_started_script', new_callable=AsyncMock) as run:
                 self.assertEqual(await queries.transition_workflow(), state)
@@ -158,6 +159,48 @@ class TransitionWorkflowTests(unittest.IsolatedAsyncioTestCase):
             ({'loading_token': 'loading-token', 'operation': 'begin'},), ({'operation': 'observe'},),
         ])
         gameplay.assert_not_awaited()
+
+    async def test_loading_begin_can_reveal_the_separate_welcome_begin_without_resubmitting(self):
+        before = {'turn': 1, 'age': 99, 'playerId': 0, 'previousAgeCount': 2,
+                  'ageType': 'AGE_MODERN', 'civilization': 'CIVILIZATION_PRUSSIA', 'phase': 'awaiting_begin'}
+        after = {**before, 'phase': 'awaiting_welcome', 'beginStage': 'welcome', 'loadingToken': 'welcome-token'}
+        with patch('civ7.actions.run_transition_loading_script', new_callable=AsyncMock, side_effect=[
+            {'status': 'submitted', 'before': before}, after,
+        ]) as run:
+            result = await actions.begin_transition_age('loading-token')
+        self.assertEqual(result['status'], 'verified_applied')
+        self.assertTrue(result['requiresBegin'])
+        self.assertEqual(result['nextAction'], 'begin_civ7_transition_age')
+        self.assertFalse(result['transitionCompleted'])
+        self.assertEqual(run.await_count, 2)
+
+    async def test_observed_age_loading_returns_submitted_not_a_timeout_or_false_arrival(self):
+        before = {'turn': 125, 'age': 1, 'playerId': 0, 'previousAgeCount': 1,
+                  'ageType': 'AGE_EXPLORATION', 'nextAge': 'AGE_MODERN', 'nextCivilization': 'CIVILIZATION_PRUSSIA'}
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value={'status': 'submitted', 'before': before}) as submit, \
+                patch('civ7.actions.run_transition_loading_script', new_callable=AsyncMock, return_value={'phase': 'loading'}) as observe, \
+                patch('civ7.actions._TRANSITION_TIMEOUT', 0.02), patch('civ7.actions._VERIFICATION_INTERVAL', 0.005):
+            result = await actions.advance_age_transition('token', 125, True)
+        self.assertEqual(result['status'], 'submitted')
+        self.assertTrue(result['loadingObserved'])
+        self.assertFalse(result['transitionCompleted'])
+        self.assertEqual(result['nextAction'], 'get_civ7_transition_workflow')
+        self.assertEqual(submit.await_count, 1)
+        self.assertEqual(observe.await_count, 1)
+
+    async def test_boundary_reactivation_with_new_unit_blockers_is_blocked_not_unknown_and_never_retried(self):
+        before = {'turn': 125, 'age': 1, 'playerId': 0, 'previousAgeCount': 1,
+                  'ageType': 'AGE_EXPLORATION', 'nextAge': 'AGE_MODERN', 'nextCivilization': 'CIVILIZATION_PRUSSIA'}
+        after = {**before, 'phase': 'started', 'choicePending': False, 'choicesAcknowledged': True,
+                 'active': True, 'sent': False, 'hasBlocker': True, 'unitOrdersPending': True}
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value={'status': 'submitted', 'before': before}) as submit, \
+                patch('civ7.actions.run_transition_loading_script', new_callable=AsyncMock, return_value=after), \
+                patch('civ7.actions._TRANSITION_TIMEOUT', 0.02), patch('civ7.actions._VERIFICATION_INTERVAL', 0.005):
+            result = await actions.advance_age_transition('token', 125, True)
+        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(result['nextAction'], 'get_civ7_turn_context')
+        self.assertFalse(result['transitionCompleted'])
+        self.assertEqual(submit.await_count, 1)
 
     async def test_all_non_boundary_wrappers_keep_fixed_modes_and_verify_once(self):
         before = {'turn': 1, 'age': 99, 'playerId': 0}

@@ -73,6 +73,8 @@
   if (type !== undefined && Game.PlayerOperations.canStart(before.playerId, type, args, false)?.Success !== true) return reject("Native operation is blocked");
   const latest = transitionWorkflow.snapshot();
   if (latest.workflowToken !== token || control && transitionWorkflow.viewMapControl() !== control) return reject("Transition choices, eligibility or UI changed during validation");
+  if (["effect", "place_effect"].includes(operation) && !transitionWorkflow.observeEffectSubmission(before, a.effect_id))
+    return reject("Context-bound native effect observation unavailable");
   if (operation === "confirm_choices") {
     // Keep this in the current UI runtime so a lost transport response does not lose the target.
     // Record before submission; a later native acknowledgement, not this record, proves acceptance.
@@ -89,5 +91,5 @@
   else Game.PlayerOperations.sendRequest(before.playerId, type, args);
   return {status: "submitted", before: operation === "advance" ? {...before, nextCivilization: expectedCivilization} : before,
     ...(expected ? {expected} : {}), ...(verificationArguments ? {verificationArguments} : {}),
-    verificationScope: "One explicitly requested transition step only. No profile writes, name swaps, implicit Memento swaps, card auto-fill, force-completion, extra turns or automatic retries. Applied effect requires observed native amount decrement; it is not a complete reward/carry-over forecast"};
+    verificationScope: "One explicitly requested transition step only. No profile writes, name swaps, implicit Memento swaps, card auto-fill, force-completion, extra turns or automatic retries. Effect consumption requires a native amount decrement or exact context-bound AdvancedStartEffectUsed event; effectObservations distinguishes a stale getter from event evidence. This is not a complete reward/carry-over forecast"};
 })()

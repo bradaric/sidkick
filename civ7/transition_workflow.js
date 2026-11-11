@@ -63,6 +63,7 @@
   function snapshot() {
     try {
       if (UI.isInGame() !== true || UI.getGameLoadingState() !== UIGameLoadingState.GameStarted ||
+          document.querySelectorAll("#loading-curtain").length > 0 ||
           !Number.isInteger(UIGameLoadingState.GameStarted) || Configuration.getGame().isAnyMultiplayer !== false ||
           Configuration.getUser().isAutoEndTurn !== false || (typeof Autoplay !== "undefined" && Autoplay.isActive !== false))
         return {phase: "unavailable", workflowToken: null};
@@ -74,7 +75,8 @@
       const notices = pending(playerId, "NOTIFICATION_AGE_TRANSITION");
       const previousAgeCount = Configuration.getGame().previousAgeCount;
       if (!Number.isSafeInteger(previousAgeCount) || previousAgeCount < 0) throw Error("Unknown Age progression history");
-      const dedicationActive = Number.isSafeInteger(previousAgeCount) && previousAgeCount > 0 && notices?.length === 1 && deck?.selectionOpen === true;
+      const welcomePending = document.querySelectorAll('tutorial-callout[itemid="welcome_intro"]').length > 0;
+      const dedicationActive = !welcomePending && Number.isSafeInteger(previousAgeCount) && previousAgeCount > 0 && notices?.length === 1 && deck?.selectionOpen === true;
       const chooserPanels = panels("#age-transition-screen");
       // The open Dedication model automatically applies more effects on AdvancedStartEffectUsed.
       // Do not submit one-effect operations while that model is mounted, even if hidden.
@@ -144,21 +146,45 @@
       }
       const finishAllowed = choicePending && selection.choices.filter(c => c.id === selection.selected && c.selectionPermission === true).length === 1 &&
         profile.loadoutValid && allowed(playerId, PlayerOperationTypes.SET_AGE_TRANSITION_DATA, {Finished: true});
+      const instances = (deck?.selected ?? []).map(card => ({id: card.id, instanceId: card.instanceId}));
+      const receipts = globalThis.__sidkickTransitionEffects;
+      // Retain consumption evidence after this exact native deck closes and its notice clears.
+      const effectNotification = dedicationActive ? notices[0]
+        : deck?.selectionComplete === true && notices?.length === 0 && !choicePending && !choicesAcknowledged ? receipts?.notification : null;
+      const effectContext = effectNotification && instances.every(card => Number.isSafeInteger(card.instanceId))
+        ? JSON.stringify({turn: Game.turn, age: Game.age, playerId, previousAgeCount, instances, notification: effectNotification}) : null;
+      const effectObservations = effects.map(effect => {
+        const reportedAmount = effect.amount;
+        const receipt = effectContext && receipts?.context === effectContext ? receipts.effects[effect.id] : null;
+        let source = "native_getter";
+        if (receipt && reportedAmount !== receipt.expected) {
+          if (reportedAmount !== receipt.before) {effectsKnown = false; effect.availableNow = false; source = "inconsistent";}
+          else if (receipt.applied === true) {effect.amount = receipt.expected; source = "native_event";}
+          else {effect.availableNow = false; source = "awaiting_native_evidence";}
+        }
+        if (effect.amount === 0) effect.availableNow = false;
+        return {id: effect.id, reportedAmount, source};
+      });
       const completeDeckAllowed = dedicationActive && !dedicationModelMounted && effectsKnown && effects.every(e => e.amount === 0) &&
         Number.isSafeInteger(capitalId) && allowed(playerId, PlayerOperationTypes.ADVANCED_START_MARK_COMPLETED, {});
       const blocker = Game.Notifications.getEndTurnBlockingType(playerId);
       const readyId = UI.Player.getFirstReadyUnit();
       const unit = readyId?.owner === playerId && typeof Units !== "undefined" ? Units.get(readyId) : null;
       const identified = unit?.id?.owner === playerId && unit.id.id === readyId?.id && unit.id.type === readyId?.type;
-      const movement = remainingMoves(Game.UnitOperations.canStartAny(playerId), readyId == null ? "none" : identified ? "identified" : "unverified", unit);
+      const canStartAny = Game.UnitOperations.canStartAny(playerId);
+      const movement = remainingMoves(canStartAny, readyId == null ? "none" : identified ? "identified" : "unverified", unit);
+      // At the T125 boundary the engine reactivated the turn for two moved Missionaries,
+      // despite blocker=NONE and the native UI's remaining-moves check being false.
+      // Require explicit orders for every native ready unit before this one-shot submission.
+      const unitOrdersPending = typeof canStartAny === "boolean" ? canStartAny && readyId != null : null;
       const boundarySource = nativeAgeOver === true ? "native_age_over"
         : choicesAcknowledged && nativeAgeOver === false && progressComplete === true ? "acknowledged_progress_complete" : null;
       const advanceReady = !choicePending && chooserPanels.length === 0 && boundarySource !== null && Game.AgeProgressManager.isExtendedGame === false &&
         Game.AgeProgressManager.isFinalAge === false && typeof selection?.nextAge === "string" && Number.isInteger(blocker) &&
         Number.isInteger(EndTurnBlockingTypes.NONE) && blocker === EndTurnBlockingTypes.NONE &&
-        movement.remainingMovesBlocker === false;
+        movement.remainingMovesBlocker === false && unitOrdersPending === false;
       const advanceAllowed = advanceReady && !requiresExpectedCivilization;
-      const transitionCompleted = previousAgeCount > 0 && !choicePending && !choicesAcknowledged && notices?.length === 0 &&
+      const transitionCompleted = !welcomePending && previousAgeCount > 0 && !choicePending && !choicesAcknowledged && notices?.length === 0 &&
         deck?.selectionComplete === true && Game.AgeProgressManager.isAgeOver === false;
       const state = {turn: Game.turn, age: Game.age, playerId, ageType: GameInfo.Ages.lookup(Game.age)?.AgeType ?? null,
         previousAgeCount, civilization: choicePending ? selection.selected : GameInfo.Civilizations.lookup(player.civilizationType)?.CivilizationType ?? null,
@@ -167,18 +193,19 @@
         recoveryCivilizations: requiresExpectedCivilization ? selection.choices.filter(choice => choice.unlocked === true &&
           choice.setupReason === GameSetupDomainValueInvalidReason.Valid).map(choice => choice.id) : [], chooserOpen: chooserPanels.length === 1,
         choiceNotification,
-        dedicationPanelOpen: dedicationModelMounted,
+        dedicationPanelOpen: dedicationModelMounted, welcomePending,
         dedicationActive, dedicationNotification: notices?.length === 1 ? notices[0] : null,
         mementos: profile, mementoSelections: profile.slots.map(slot => ({parameter: slot.parameter, selected: slot.selected})),
         selectedCardIds: deck?.selectedCardIds ?? null, totalLegacyPoints: deck?.totalLegacyPoints ?? null,
-        effectsKnown, effects, capitalId, capitals, ownedSettlements, finishAllowed, completeDeckAllowed, advanceReady, advanceAllowed, transitionCompleted,
+        effectsKnown, effects, effectContext, effectObservations, capitalId, capitals, ownedSettlements, finishAllowed, completeDeckAllowed, advanceReady, advanceAllowed, transitionCompleted,
         ageBoundary: {nativeAgeOver: nativeAgeOver ?? null,
           currentProgress: Number.isFinite(currentProgress) ? currentProgress : null,
           maximumProgress: Number.isFinite(maximumProgress) ? maximumProgress : null, progressComplete, boundarySource,
           extendedGame: Game.AgeProgressManager.isExtendedGame ?? null, finalAge: Game.AgeProgressManager.isFinalAge ?? null,
-          blocker, remainingMovesBlocker: movement.remainingMovesBlocker},
+          blocker, remainingMovesBlocker: movement.remainingMovesBlocker, unitOrdersPending},
         selectionComplete: deck?.selectionComplete ?? null,
         nextAction: choicesAcknowledged && chooserPanels.length === 1 ? "view_civ7_transition_map"
+          : choicesAcknowledged && unitOrdersPending === true ? "get_civ7_turn_context"
           : choicesAcknowledged && advanceReady ? "advance_civ7_age_transition" : null,
         phase: choicePending ? "choices" : choicesAcknowledged ? "choices_acknowledged" : dedicationActive ? "dedications" : advanceAllowed ? "boundary_ready" : transitionCompleted ? "complete" : "unavailable"};
       return {...state, workflowToken: JSON.stringify(state)};
@@ -188,7 +215,8 @@
     try {
       const roots = [...panels("#age-transition-screen"), ...panels("screen-dedication-selection")];
       if (roots.length !== 1) return null;
-      const labels = ["LOC_UI_AGE_TRANSITION_VIEW_MAP", "LOC_ADVANCED_START_VIEW_MAP"].map(key => Locale.compose(key).replace(/\s+/g, " ").trim());
+      const labels = ["LOC_UI_AGE_TRANSITION_VIEW_MAP", "LOC_ADVANCED_START_VIEW_MAP"]
+        .flatMap(key => [key, Locale.compose(key).replace(/\s+/g, " ").trim()]);
       const controls = [...roots[0].querySelectorAll('[role="button"][data-activatable="true"]')].filter(button =>
         visible(button) && labels.includes(button.textContent.replace(/\s+/g, " ").trim()) &&
         !button.hasAttribute("disabled") && button.getAttribute("aria-disabled") !== "true" && !button.classList.contains("disabled"));
@@ -199,5 +227,22 @@
       return button;
     } catch { return null; }
   }
-  return {snapshot, viewMapControl};
+  function observeEffectSubmission(before, effectId) {
+    if (!before.effectContext || typeof engine.on !== "function" || typeof engine.off !== "function") return false;
+    if (globalThis.__sidkickTransitionEffects?.context !== before.effectContext)
+      globalThis.__sidkickTransitionEffects = {context: before.effectContext, notification: before.dedicationNotification, effects: {}};
+    const effects = globalThis.__sidkickTransitionEffects.effects;
+    const amount = before.effects.find(effect => effect.id === effectId).amount;
+    const receipt = {before: amount, expected: amount - 1, applied: false};
+    const listener = data => {
+      if (data?.player === before.playerId && data.effectType === effectId) {
+        receipt.applied = true;
+        engine.off("AdvancedStartEffectUsed", listener);
+      }
+    };
+    engine.on("AdvancedStartEffectUsed", listener);
+    effects[effectId] = receipt;
+    return true;
+  }
+  return {snapshot, viewMapControl, observeEffectSubmission};
 })()
