@@ -14,13 +14,14 @@ function run({ bypass = false, closed = true, full = false, missingProgress = fa
     domain: { possibleValues: [{ value: 'M', name: 'Memento', invalidReason: 0 }] } };
   const futureSlot = { ...currentSlot, ID: 'AgeTransitionPlayerMementoMajorSlot', value: { value: 'NONE', name: 'None' } };
   const helper = fs.readFileSync(path.join(__dirname, '../civ7/dedication_deck.js'), 'utf8');
-  const data = vm.runInNewContext(`((dedicationDeck) => { return ${fs.readFileSync(script, 'utf8')}\n})(${helper})`, {
+  const selectionHelper = fs.readFileSync(path.join(__dirname, '../civ7/transition_civilization.js'), 'utf8');
+  const data = vm.runInNewContext(`((dedicationDeck, transitionCivilization) => { return ${fs.readFileSync(script, 'utf8')}\n})(${helper}, ${selectionHelper})`, {
     UI: { isInGame: () => true, getGameLoadingState: () => 8 }, UIGameLoadingState: {GameStarted: 8},
     GameContext: { localPlayerID: 0, hasSentTurnComplete: () => false }, Locale: { compose: (text, ...args) => [text, ...args].join('|') },
     Players: { get: id => { assert.equal(id, 0); return {
       Treasury: { goldBalance: 12000 }, DiplomacyTreasury: { diplomacyBalance: 1500 }, isTurnActive: true,
       Cities: { getCities: () => [{ name: 'Capital', isCapital: true }, { name: 'City', isTown: false }] },
-      AdvancedStart: { getPlacementComplete: () => closed, getDeckSize: () => 3,
+      AdvancedStart: { getPlacementComplete: () => closed, getDeckSize: () => full ? 3 : 1,
         getCards: () => Array.from({ length: full ? 3 : 1 }, () => ({ info: {...card, id: 'CARD_ALREADY_SELECTED'} })), getAvailableCards: () => [card],
         getLegacyPoints: () => [{ category: 1, value: 2 }] },
     }; } },
@@ -81,7 +82,9 @@ test('next-Age civilizations combine the transition selector with native local u
   assert.equal(locked.unlocked, false, 'a valid selector entry is not itself an unlock');
   assert.equal(locked.eligibleByChecks, false);
   assert.equal(unlocked.eligibleByChecks, true);
-  assert.equal(unlocked.selectionPermission, null);
+  assert.equal(unlocked.selectionPermission, false, 'planning eligibility alone cannot authorize selection');
+  assert.equal(data.civilizations.selectionOpen, false);
+  assert.equal(data.civilizations.selectionToken, null);
   assert.equal(locked.unlockPaths[0].requirements[0].current, 1);
   assert.equal(locked.unlockPaths[0].requirements[0].total, 3);
   assert.equal(locked.unlockPaths[0].requirements[0].met, false);
@@ -100,12 +103,12 @@ test('Dedication costs and limits belong to the current deck, not a fabricated f
   const data = run();
   assert.equal(data.dedications.deckAge, 'AGE_EXPLORATION');
   assert.equal(data.dedications.nextAgeChoices, null);
-  assert.equal(data.dedications.deckSize, 3);
+  assert.equal(data.dedications.deckSize, 1);
   assert.equal(data.dedications.choices[0].costs[0].amount, 2);
   assert.equal(data.dedications.choices[0].individualLimit, 1);
   assert.equal(data.dedications.choices[0].operationAllowed, true);
   assert.equal(data.dedications.choices[0].availableNow, false, 'completed decks cannot be changed despite permissive operation checks');
-  assert.equal(run({ closed: false, full: true }).dedications.choices[0].availableNow, false);
+  assert.equal(run({ closed: false, full: true }).dedications.choices[0].availableNow, true, 'selected count is not capacity');
   assert.equal(run({ closed: false }).dedications.choices[0].availableNow, true);
   assert.ok(!JSON.stringify(data).includes('999'), 'raw effect metadata is not exposed');
 });

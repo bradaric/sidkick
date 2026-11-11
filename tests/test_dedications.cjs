@@ -12,7 +12,7 @@ function run(options = {}) {
   const cards = [card('CARD_A'), card('CARD_B')];
   if ('cost' in options) cards[0].cost[0].value = options.cost;
   if ('category' in options) cards[0].cost[0].category = options.category;
-  const state = {selected: [cards[1]], points: 3, closed: false, size: 3, ...options.state};
+  const state = {selected: [cards[1]], points: 3, closed: false, ...options.state};
   let checks = 0;
   const submissions = [];
   const context = vm.createContext({
@@ -29,7 +29,7 @@ function run(options = {}) {
       AdvancedStart: options.missingAdvanced ? null : {
         getCards: () => state.selected.map(info => ({info})),
         getAvailableCards: () => cards,
-        getDeckSize: () => state.size,
+        getDeckSize: () => 'size' in state ? state.size : state.selected.length,
         getPlacementComplete: () => state.closed,
         getLegacyPoints: () => [{category: 1, value: state.points}],
       },
@@ -62,27 +62,38 @@ function run(options = {}) {
   return JSON.parse(JSON.stringify({before, result, after, submissions}));
 }
 
-test('Dedication readout distinguishes real open capacity, full unconfirmed and completed decks', () => {
+test('Dedication getDeckSize is a selected-card count, never invented capacity', () => {
   const open = run({readOnly: true});
-  assert.equal(open.before.deckSize, 3);
-  assert.equal(open.before.openSlotCount, 2);
+  assert.equal(open.before.deckSize, 1);
+  assert.equal(open.before.openSlotCount, null);
   assert.equal(open.before.selectionOpen, true);
   assert.equal(open.before.phase, 'selecting');
   assert.equal(open.before.choices[0].availableNow, true);
   assert.ok(open.before.deckToken);
   assert.deepEqual(open.submissions, []);
-  const full = run({readOnly: true, state: {size: 1}}).before;
-  assert.equal(full.openSlotCount, 0);
+  const full = run({readOnly: true, allowed: false}).before;
+  assert.equal(full.openSlotCount, null);
   assert.equal(full.phase, 'full_unconfirmed');
   assert.equal(full.choices[0].availableNow, false);
   const closed = run({readOnly: true, state: {closed: true}}).before;
   assert.equal(closed.phase, 'completed');
   assert.equal(closed.selectionOpen, false);
-  assert.equal(closed.openSlotCount, 0, 'unused capacity does not reopen a completed selection');
+  assert.equal(closed.openSlotCount, 0, 'a completed selection has no open additions');
   const unknownBalance = run({readOnly: true, state: {points: null}}).before;
   assert.equal(unknownBalance.choices[0].availableNow, false);
   assert.equal(unknownBalance.selected[0].removeAllowed, false);
   assert.equal(run({readOnly: true, state: {points: 0}}).before.choices[0].availableNow, false);
+});
+
+test('Modern T1 empty native deck with three points permits an eligible Dedication and verifies size growth', () => {
+  const {before, result, after, submissions} = run({state: {selected: [], points: 3}});
+  assert.equal(before.deckSize, 0);
+  assert.equal(before.choices[0].availableNow, true);
+  assert.equal(result.status, 'submitted');
+  assert.equal(submissions.length, 1);
+  assert.equal(after.deckSize, 1);
+  assert.equal(after.totalLegacyPoints, 2);
+  for (const [key, expected] of Object.entries(result.expected)) assert.deepEqual(after[key], expected);
 });
 
 test('adding one exact offered card submits once and verifies deck and legacy-point debit, not effects', () => {
@@ -103,9 +114,9 @@ test('removing one selected card uses the native ID without an implicit replacem
   for (const [key, expected] of Object.entries(result.expected)) assert.deepEqual(after[key], expected);
 });
 
-test('completed, full, unknown and unavailable selection states reject despite permissive native checks', () => {
+test('completed, inconsistent, unknown and unavailable selection states reject despite permissive native checks', () => {
   for (const options of [
-    {state: {closed: true}}, {state: {closed: null}}, {state: {size: 1}}, {state: {size: null}},
+    {state: {closed: true}}, {state: {closed: null}}, {state: {size: 3}}, {state: {size: null}},
     {missingAdvanced: true}, {inactive: true}, {sent: true}, {loading: true}, {multiplayer: true}, {autoplay: true},
   ]) {
     const data = run(options);
@@ -154,19 +165,20 @@ test('last-moment balance, cost, completion and deck-content races reject before
   }
 });
 
-test('the core snapshot uses native slot counts and does not call completed capacity an open slot', () => {
+test('the core snapshot labels native selected count without inventing slots', () => {
   for (const closed of [false, true, null]) {
     const player = {Techs: {getResearching: () => null}, Culture: {getResearching: () => null},
-      Cities: {getCities: () => []}, AdvancedStart: {getDeckSize: () => 5,
+      Cities: {getCities: () => []}, AdvancedStart: {getDeckSize: () => 1,
         getPlacementComplete: () => closed, getCards: () => [{info: {id: 'CARD_A'}}], getAvailableCards: () => []}};
     const data = vm.runInNewContext(source('player.js'), {
       UI: {isInGame: () => true}, GameContext: {localPlayerID: 0}, Players: {get: () => player},
       Locale: {compose: value => value}, GameInfo: {Leaders: {lookup: () => ({})}, Ages: {lookup: () => ({})}},
       Game: {turn: 1, age: 42},
     });
-    assert.equal(data.dedications.slotCount, 5);
+    assert.equal(data.dedications.deckSize, 1);
+    assert.equal(data.dedications.slotCount, null);
     assert.equal(data.dedications.selectionComplete, closed);
     assert.equal(data.dedications.selectionPending, closed === false);
-    assert.equal(data.dedications.openSlotCount, closed === false ? 4 : closed === true ? 0 : null);
+    assert.equal(data.dedications.openSlotCount, closed === true ? 0 : null);
   }
 });

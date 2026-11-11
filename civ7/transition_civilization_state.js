@@ -1,0 +1,1 @@
+(() => transitionCivilization.snapshot() ?? {status: "unavailable"})()

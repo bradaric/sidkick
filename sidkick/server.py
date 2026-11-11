@@ -11,6 +11,17 @@ from civ7.actions import (
     save_game,
     load_game,
     edit_dedication,
+    select_transition_civilization,
+    open_transition,
+    view_transition_map,
+    select_transition_memento,
+    confirm_transition_choices,
+    advance_age_transition,
+    begin_transition_age,
+    apply_dedication_effect,
+    place_dedication_effect,
+    select_transition_capital,
+    complete_dedications,
     attack_unit,
     army_ranged_attack,
     army_melee_attack,
@@ -130,6 +141,7 @@ from civ7.queries import (
     civilopedia,
     peace_city_offer,
     age_transition,
+    transition_workflow,
     archaeology,
     available_decisions,
     building_placements,
@@ -356,6 +368,96 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         structured_output=True,
     )(research_and_government)
     if enable_writes:
+        for name, title, description, fn in (
+            ("open_civ7_transition", "Open the pending Civ VII transition chooser",
+             "Activate only the exact pending CHOOSE_CIVILIZATION notification and verify the chooser opens. "
+             "No choice confirmation, turn or Age advance. Native chooser may read online Memento metadata; no profile writes.", open_transition),
+            ("view_civ7_transition_map", "Return from Civ VII transition choices to the map",
+             "Activate only the unique unobstructed native View Map control on the transition/Dedication screen. "
+             "Verifies screen closure without confirming choices. Close Dedication UI before individual effect/capital/completion actions "
+             "to prevent the native screen's effect-event auto-cascades.", view_transition_map),
+            ("select_civ7_transition_memento", "Select one Civ VII transition Memento",
+             "Set one exact AgeTransitionPlayerMemento slot to a profile-unlocked, domain-valid Memento ID or NONE. "
+             "Reads profile Memento and slot metadata; missing/locked data rejects. Verifies every slot selection. "
+             "Never toggle, clear another slot, implicitly swap duplicates or mark Mementos seen. To move one, explicitly clear its old slot first.", select_transition_memento),
+            ("confirm_civ7_transition_choices", "Confirm Civ VII civilization and Memento choices",
+             "IRREVERSIBLE CAMPAIGN STEP: requires confirm=true and the exact valid civilization/Memento loadout. "
+             "Capture the expected civilization/Memento loadout before submitting SET_AGE_TRANSITION_DATA Finished once. "
+             "The native choice notification may remain NON-BLOCKING: this is acknowledgement, not a pending selection or completed Age loading. "
+             "If requiresChooserClose=true, use view_civ7_transition_map with a fresh workflow token; never re-confirm to close the screen. "
+             "Refresh workflow: a separately approved advance_civ7_age_transition may still be needed. May initiate reload/carry-over effects.", confirm_transition_choices),
+            ("advance_civ7_age_transition", "Advance an unblocked Civ VII Age boundary",
+             "IRREVERSIBLE AGE BOUNDARY: confirm=true and either native isAgeOver=true, or acknowledged choices with "
+             "native isAgeOver=false and known current progression >= positive maximum (the native action-panel transition criterion). "
+             "Non-final/non-extended Age, no blockers and known unit readiness remain required; this fallback never permits an ordinary turn. "
+             "ageBoundary.unitOrdersPending must be false: even moved ready units can reactivate the boundary turn despite no UI blocker. "
+             "Use get_civ7_turn_context and explicitly order those units first; this tool never skips them automatically. "
+             "If native readiness only reveals blockers after submission, unchanged-origin turn reactivation returns blocked "
+             "and nextAction=get_civ7_turn_context instead of UNKNOWN. Resolve tasks before a fresh request; no automatic retry. "
+             "Close the chooser first with view_civ7_transition_map. Send turn complete ONCE only at this boundary; never an ordinary extra turn. "
+             "For acknowledged choices, retain the captured expected loadout rather than the reset setup selector. If "
+             "requiresExpectedCivilization=true (pre-fix/missing receipt), explicitly provide expected_civilization from the previously "
+             "selected loadout; it must be in recoveryCivilizations and is an arrival expectation, not proof of native stored choices. "
+             "When advanceReady=true and requiresExpectedCivilization=true, supply that expectation even though advanceAllowed=false "
+             "without it. Follow workflow.nextAction; do not try the closed civilization selector again. "
+             "Never re-submit Finished or reapply staged selections as recovery. Observe either the next civilization-choice phase "
+             "or exact next-Age/civilization/previousAgeCount+1 arrival. Observed loading returns submitted/loadingObserved, not a false arrival or timeout; "
+             "refresh workflow, never resubmit. Does not auto-Begin. Carry-over can regress settlements/cap balances.", advance_age_transition),
+            ("begin_civ7_transition_age", "Begin a ready newly loaded Civ VII Age",
+             "Use exact fresh loading_token from get_civ7_transition_workflow.loadingToken. Only a previously transitioned single-player Age "
+             "in native WaitingForUIReady with the transition screen's visible enabled unobstructed Continue control, OR "
+             "GameStarted Modern/Exploration T1 with the exact welcome_intro Age welcome Begin popup. These are separate calls with fresh tokens: "
+             "phase awaiting_begin/beginStage loading uses notifyUIReady; awaiting_welcome/beginStage welcome acknowledges only that native button. "
+             "Never the ordinary save-load Begin screen, store-review prompt, generic loading bypass or auto-end-turn. "
+             "Verifies GameStarted, not completion of pending Dedications. The only transition write allowed outside GameStarted.", begin_transition_age),
+            ("apply_civ7_dedication_effect", "Apply one pending Civ VII Dedication effect",
+             "Apply exactly one unique selected non-placement effect_id after reviewing its card effect description with get_civ7_age_transition. "
+             "Requires pending new-Age Dedications and CLOSED Dedication UI. Native check immediately before submission; "
+             "verify one consumption via native amount decrement or exact context-bound AdvancedStartEffectUsed event, with selected cards preserved. "
+             "effectObservations labels native_event when the getter remains stale; submission alone is not evidence and pending requests cannot repeat. "
+             "Acknowledge the Age welcome before effects/capital/completion. For settlement placement effects use place_civ7_dedication_effect. "
+             "Not a full numerical reward forecast; no force-completion or bundled effect loop.", apply_dedication_effect),
+            ("place_civ7_dedication_effect", "Place one Civ VII Dedication settlement effect",
+             "Create one settlement from an exact selected placement effect_id at explicit revealed coordinates x,y. "
+             "Requires pending new-Age Dedications and CLOSED Dedication UI; native ADVANCED_START_PLACE_SETTLEMENT check "
+             "on that exact plot immediately before one submission. Verifies effect consumption (getter decrement or exact native event), exactly one new owned "
+             "settlement at that plot, preservation of existing owned settlements and selected cards. No hidden-map inspection "
+             "or implicit target selection. Not a generic founding/spawn/debug tool.", place_dedication_effect),
+            ("select_civ7_transition_capital", "Select an eligible Civ VII transition capital",
+             "Select one exact owned city_id from workflow.capitals with native eligibility during pending new-Age Dedications. "
+             "Requires CLOSED Dedication UI. Uses Swap=false: no settlement-name swaps/renaming. Verifies capital identity and selected cards, "
+             "not all yield/settlement cascades. No deck confirmation or turn.", select_transition_capital),
+            ("complete_civ7_dedications", "Finalize resolved Civ VII transition Dedications",
+             "IRREVERSIBLE DECK CONFIRMATION: confirm=true, all native remaining effect amounts resolved, known capital, "
+             "CLOSED Dedication UI, native completion permission; explicitly accept_unused_points=true if points remain. "
+             "Marks deck complete once and verifies placementComplete plus clearance of the transition choice. "
+             "Never auto-fill cards, discard pending/placement effects, choose a capital implicitly or advance another turn.", complete_dedications),
+        ):
+            server.tool(
+                name=name, title=title,
+                description=(description + (" Refresh get_civ7_transition_workflow first and supply its workflowToken as "
+                    "workflow_token plus expected_turn. Requires active single-player GameStarted with auto-end-turn disabled."
+                    if name != "begin_civ7_transition_age" else "") +
+                    " Unknown/cancelled outcomes are never automatically retried; inspect current state. Live validation is scenario-specific; "
+                    "settlement-placement effects and unused-point confirmation remain fixture-tested."),
+                annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+                structured_output=True,
+            )(fn)
+        server.tool(
+            name="select_civ7_transition_civilization", title="Select a pending Civ VII next-Age civilization",
+            description=(
+                "CHANGE PENDING TRANSITION SELECTION ONLY: read get_civ7_age_transition.civilizations first; "
+                "requires selectionOpen, exact civilization ID with selectionPermission=true, fresh selectionToken "
+                "as selection_token and expected_turn. Requires an active GameStarted single-player turn, a unique "
+                "blocking CHOOSE_CIVILIZATION notification and an editable transition-specific selector. Rechecks "
+                "native domain validity and alternative unlock paths before setting AgeTransitionPlayerCivilization "
+                "once; verifies the pending value in unchanged turn/Age/player/notification context. Never finalizes "
+                "the transition, navigates screens, selects Mementos/Dedications/capital or advances Age/turn. "
+                "Unknown/cancelled outcomes must be inspected, never automatically retried. Live T125 Maya-to-Prussia selection verified."
+            ),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(select_transition_civilization)
         server.tool(
             name="save_civ7_game", title="Create a new local Civ VII save",
             description=("WRITE LOCAL SAVE: create one new named single-player game-state save using save_name "
@@ -387,7 +489,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="edit_civ7_dedication", title="Edit one Civ VII Dedication selection",
             description=(
                 "Add or remove one exact native card in an open current Dedication deck. Read "
-                "get_civ7_age_transition.dedications first for selectionOpen, openSlotCount, "
+                "get_civ7_age_transition.dedications first for selectionOpen, availableNow, "
                 "phase, exact card ID, current costs and deckToken. Requires that fresh token, "
                 "an explicit maximum total legacy-point cost and expected turn. Honors native "
                 "eligibility and limits; rejects completed/unknown decks. Verifies selected-card "
@@ -2380,11 +2482,12 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII age-transition planning data",
         description=(
             "Read next-Age civilization candidates from the transition-specific selector, "
-            "native local unlock requirements/progress and current/transition Memento setup "
+            "native local unlock requirements/progress, civilization selectionOpen/selectionPermission "
+            "and a fresh selectionToken for opt-in select_civ7_transition_civilization; current/transition Memento setup "
             "candidates. Dedications include native deckSize/openSlotCount, selectionOpen, "
             "selecting/full_unconfirmed/completed/unknown phase, current costs/limits, add/remove "
-            "eligibility and a fresh deckToken for edit_civ7_dedication. This is deck capacity, "
-            "not a focused/numbered UI slot. Closed decks are not pending choices; "
+            "eligibility and a fresh deckToken for edit_civ7_dedication. deckSize is the SELECTED-CARD COUNT, not capacity; "
+            "openSlotCount and slotAvailable are unknown while open. Native ADD checks, points and limits gate additions. Closed decks are not pending choices; "
             "current cards are not presented as next-Age choices. Profile Memento unlock/equip "
             "permission and unavailable future cards remain unknown. Carry-over caps are labelled "
             "source-inspected estimates, not a verified final-state simulation. Never selects "
@@ -2393,6 +2496,34 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         annotations=read_only,
         structured_output=True,
     )(age_transition)
+    server.tool(
+        name="get_civ7_transition_workflow", title="Inspect Civ VII transition execution phases",
+        description=(
+            "Explicit read-only transition workflow: choices, choices_acknowledged, boundary_ready, loading, awaiting_begin, awaiting_welcome, dedications, complete or unavailable. "
+            "Refresh before each separate transition action; workflowToken binds current phase/loadout/deck/effects/capital/permissions. "
+            "During civilization choices INTENTIONALLY reads Online.Metaprogression Memento and slot metadata to check locks; "
+            "unlike get_civ7_age_transition, this is not profile-free. Never marks items seen or writes/equips profile data. "
+            "mementos.loadoutValid/choices selectionPermission gate equipping and confirmation. Unknown data fails closed. "
+            "A retained non-blocking civilization notification means choices_acknowledged; never re-confirm or reselect. "
+            "confirmedLoadout is a context-bound pre-submission expectation, NOT migration proof; stagedCivilization may have reset to the old civ. "
+            "Close an acknowledged chooser with view_civ7_transition_map before advancement. Without a captured loadout, "
+            "nextCivilization stays unknown and requiresExpectedCivilization requests an explicit eligible expected_civilization on advance. "
+            "ageBoundary exposes native flags, progression current/maximum/progressComplete, boundarySource and native/unit blockers. "
+            "Acknowledged progression-complete choices may advance even with nativeAgeOver=false; nextAction names the exact next step. "
+            "advanceReady=true is native eligibility; advanceAllowed may remain false only because an explicit recovery expectation is missing. "
+            "effects are selected cards' remaining consumptions, not predicted reward totals. effectObservations retains native reportedAmount "
+            "and labels native_event when an exact context-bound effect-use event resolves a stale getter. Submission alone proves nothing. Resolve placement effects "
+            "separately with place_civ7_dedication_effect at an explicit revealed native-legal plot. "
+            "dedicationPanelOpen must be false for individual effects/capital/completion to avoid native UI auto-cascades; "
+            "use view_civ7_transition_map if needed. Existing edit_civ7_dedication edits card selections. "
+            "Loading observer returns loadingToken for transition loading Continue or the separate T1 Age welcome Begin. Call "
+            "begin_civ7_transition_age separately for each fresh token; no auto-Begin or Age/turn advancement. Startup curtain remains loading. "
+            "Started/choices-confirmed is not full completion; only resolved native deck and cleared transition notifications count. "
+            "Default broad snapshots do not query this profile-aware workflow."
+        ),
+        annotations=read_only,
+        structured_output=True,
+    )(transition_workflow)
     server.tool(
         name="get_civ7_explored_map",
         title="Get Civ VII explored map",

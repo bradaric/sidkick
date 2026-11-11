@@ -16,7 +16,7 @@
   if (matches.length !== 1) return reject("One exact offered or uniquely selected native card ID is required");
   const card = matches[0], quote = dedicationDeck.total(card.costs);
   if (adding ? card.availableNow !== true : card.removeAllowed !== true)
-    return reject("Native card/slot/limit eligibility is blocked", card.failureReasons);
+    return reject("Native card/limit eligibility is blocked", card.failureReasons);
   if (quote === null || (adding && (quote > cap || quote > before.totalLegacyPoints)))
     return reject("Card legacy-point cost is unknown, unsupported, unaffordable or over cap");
   const type = adding ? "ADD" : "REMOVE", args = {Type: type, ID: cardId};
@@ -30,7 +30,7 @@
   else selectedCardIds.splice(selectedCardIds.indexOf(cardId), 1);
   selectedCardIds.sort();
   const expected = {selectedCardIds, totalLegacyPoints: before.totalLegacyPoints + (adding ? -quote : quote),
-    selectionComplete: false, deckSize: before.deckSize};
+    selectionComplete: false, deckSize: before.deckSize + (adding ? 1 : -1)};
   Game.PlayerOperations.sendRequest(playerId, PlayerOperationTypes.ADVANCED_START_MODIFY_DECK, args);
   return {status: "submitted", before, expected, quotedLegacyPointCost: adding ? quote : 0,
     verificationScope: "One native card add/remove only; exact selected-card multiset and total legacy-point debit/refund, not category allocation or applied effects. No replacement, capital change, effect use, deck finalization or turn advancement"};

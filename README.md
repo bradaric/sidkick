@@ -112,6 +112,10 @@ Write mode additionally exposes:
   native `Overwrite=false` is always enforced. Verified success requires normal
   serializer success plus the exact new file's turn/Age metadata and unchanged
   current context; a native accepted request alone is not proof of saving.
+  Completion options are matched by save-category bits, not the entire options
+  value: a captured successful manual save reported `options=65` (`NORMAL=1`
+  plus a non-category flag `64`). Quick, auto, previous and directory categories
+  cannot verify a manual save. The 15-second bound and exact-file checks remain.
 - `load_civ7_game(save_token, confirm_discard_unsaved_progress=true, expected_turn=null)`:
   **discards unsaved progress** and replaces the current session. The user must
   approve that exact load; the boolean flag is not conversational authorization.
@@ -2535,13 +2539,167 @@ Crisis stages are enumerated using the engine's stage count for crisis index `0`
 
 ### Age-transition planning
 
-`get_civ7_age_transition` reads the configured next Age and **`AgeTransitionPlayerCivilization`**, not the normal civilization setup selector. Candidate `setupValid` is combined with local `Game.Unlocks` progress to report `unlocked` and `eligibleByChecks`. Each unlock path includes requirement descriptions, native states, current/total progress and gameplay-versus-leader/history flags. Links are not assumed to be AND prerequisites, and a selector-valid civilization is not assumed to be unlocked. The configured unlock-bypass flag is explicit; missing unlock data stays unknown. `selectionPermission` is `null`: these planning checks are not an equip/select operation.
+`get_civ7_age_transition` reads the configured next Age and **`AgeTransitionPlayerCivilization`**, not the normal civilization setup selector. Candidate `setupValid` is combined with local `Game.Unlocks` progress to report `unlocked` and `eligibleByChecks`. Each unlock path includes requirement descriptions, native states, current/total progress and gameplay-versus-leader/history flags. Links are not assumed to be AND prerequisites, and a selector-valid civilization is not assumed to be unlocked. The configured unlock-bypass flag is explicit; missing unlock data stays unknown. Planning eligibility alone does not authorize selection: `civilizations.selectionOpen`, per-choice `selectionPermission` and a fresh `selectionToken` additionally require a unique blocking local `NOTIFICATION_CHOOSE_CIVILIZATION`, an editable valid transition parameter and a fully started active single-player turn. Missing phase evidence fails closed; `selectionPermission: false` does not itself mean the civilization is locked.
+
+Opt-in `select_civ7_transition_civilization` accepts an exact `civilization` ID, that `selection_token`, and `expected_turn`. It rechecks the phase, domain validity and alternative native unlock paths immediately before setting **only** `AgeTransitionPlayerCivilization` once, then verifies the pending selection in unchanged turn/Age/player/next-Age/notification context. An already-selected civilization makes no write. Unknown or cancelled outcomes must be inspected, never automatically retried. This action does **not** navigate to the next screen, finalize the transition, select Mementos/Dedications/a capital, start a game or advance an Age/turn. It never sets the ordinary `PlayerCivilization` parameter. Selection and rejection paths are covered by offline fixtures; positive live execution remains unvalidated, and no game action was issued during implementation.
 
 `dedications` describes the **current engine deck**, including native deck size, point balances, costs, individual/group limits, selected cards and read-only ADD checks. A completed or full deck cannot report an addition as available merely because the native check succeeds. `deckAge` is explicit and `nextAgeChoices` remains `null`; old Exploration cards must not be presented as Modern choices. Card effect metadata and AI lists are not exposed.
 
 `mementos.currentSlots` and `transitionSlots` keep current and prospective loadouts distinct. Entries come from the filtered local setup parameters, with effect descriptions and domain-validity reasons. Online profile metadata is never requested; profile unlock status and equip permission remain `null` rather than being inferred from list membership. The finish-operation check is read-only and is not a general selection-phase flag.
 
 `carryOverRules` provides **source-inspected estimates**, not a final-state simulation. For the installed post-load script's ORIGINAL and KEEP_MORE settings, the next Exploration/Modern gold and Influence cap estimates use the native game-speed adjustment. `currentGoldAboveCap` and `currentInfluenceAboveCap` compare today's balances with those estimates, not predicted losses. The script's non-capital-city regression precedes retention cards; final city/town status, retained units, dynamic card effects and other transition outcomes are not predicted. Unknown modes/next Ages return unknown caps. No transition is performed to verify these estimates. Transition planning data is also included as `ageTransition` in snapshots/exports.
+
+### Age-transition execution workflow
+
+`get_civ7_transition_workflow` is a separate, explicit read for execution. Unlike the
+profile-free planning query and broad snapshots, it intentionally reads native
+Memento/slot profile metadata **while civilization selection is pending**. It never
+instantiates the Memento UI model or marks items seen. Missing metadata, unknown
+locks or invalid transition parameters cannot authorize equipping or confirmation.
+
+All actions remain opt-in via the existing write-enabled stdio server. Refresh the
+workflow after every step: its `workflowToken` binds current choices, profile
+eligibility, deck, effects, owned settlements, capital and permissions. Actions take
+that value as `workflow_token` plus `expected_turn`; the loading action instead
+takes `loading_token`. Native active single-player readiness, auto-end-turn disabled
+and action-specific pending-phase checks are required. No action automatically
+chooses a loadout, fills a deck, retries an uncertain request or takes extra turns.
+
+| Phase/action | Scope and verification |
+| --- | --- |
+| `open_civ7_transition` | Activate the exact pending civilization notification; verify the chooser opens. |
+| `select_civ7_transition_civilization` | Existing transition-only civilization selector; use its planning-query selection token. |
+| `select_civ7_transition_memento` | One exact transition slot and eligible Memento ID or `NONE`; verify every slot. No toggles, implicit duplicate swaps or profile writes. Clear an old slot explicitly before moving a Memento. |
+| `confirm_civ7_transition_choices` | With `confirm=true`, send only native `Finished`. Verify choice clearance or exact next-Age arrival; confirmation alone is **not** completed loading. |
+| `advance_civ7_age_transition` | With `confirm=true`, submit turn completion once **only** at a non-final/non-extended, unblocked Age boundary with known unit readiness: native `isAgeOver=true`, or acknowledged choices with `isAgeOver=false` and known current progression at/above a positive maximum. Observe the civilization-choice phase or exact next-Age/civilization/progression-count arrival. Ordinary end-turn safeguards are unchanged. |
+| `begin_civ7_transition_age` | One fresh `loadingToken` for either transition loading **Continue** (`awaiting_begin`) or the separate in-game Age welcome **Begin** (`awaiting_welcome`). Refresh and call separately if both appear. Exact visible, enabled, unobstructed native controls only; never ordinary save-load Begin, unrelated tutorials or store-review prompts. |
+| `edit_civ7_dedication` | Existing current-deck card add/remove, with its deck token and point cap; no effects or finalization. |
+| `view_civ7_transition_map` | Activate the exact native View Map control; verify chooser/Dedication screen closure without confirming. Close the Dedication screen before individual effect/capital/completion actions: its effect-event listener otherwise submits further effects automatically. |
+| `apply_civ7_dedication_effect` | One selected, unique non-placement effect; verify one consumption via native amount decrement or exact context-bound `AdvancedStartEffectUsed`, preserving selected cards. `effectObservations` distinguishes stale native amounts from event evidence. Submission alone never proves consumption or authorizes a retry. |
+| `place_civ7_dedication_effect` | One selected settlement-placement effect at explicit revealed native-legal coordinates; verify effect consumption, one new owned settlement at the target and preservation of existing settlements/cards. No hidden-map queries or manufactured effects. |
+| `select_civ7_transition_capital` | One exact native owned candidate during pending Dedications; verify capital identity. `Swap=false`: no settlement-name swaps/renaming. |
+| `complete_civ7_dedications` | With `confirm=true`, require resolved effects, known capital and native completion permission. Remaining legacy points additionally require `accept_unused_points=true`. Verify the completed deck and cleared transition notification; never force-complete/discard effects. |
+
+There are **two distinct confirmations**: civilization/Mementos before loading,
+then new-Age Dedications/capital afterward. Follow the reported phase; do not
+assume `Finished` necessarily loads immediately or that loading resolves the deck.
+After `Finished`, the civilization notification can **remain present but become
+non-blocking**. This is `choices_acknowledged`, not another pending selection.
+Confirmation readback accepts that native acknowledgement without resubmission.
+If the chooser is still open, `requiresChooserClose`/`nextAction` direct the caller
+to the separate `view_civ7_transition_map` action. Advancement requires it closed;
+confirmation itself still sends only `Finished`.
+
+The action captures the expected civilization and Memento selections in the current
+UI runtime **before submission**, bound to origin turn/Age/player/progression,
+notification and owned-settlement identities. The read-only workflow exposes this
+as `confirmedLoadout` only after acknowledgement. This is an **arrival expectation**,
+not proof of migrated content. Native setup selectors can reset to the old civ
+after acknowledgement; `stagedCivilization` reports that draft separately and must
+not overwrite the captured target or cause another confirmation.
+
+For pre-fix confirmations or a missing/context-mismatched receipt,
+`nextCivilization` remains unknown and `requiresExpectedCivilization` is true.
+After inspecting the acknowledged state and closing the chooser, a separately
+approved `advance_civ7_age_transition` can take explicit `expected_civilization`
+from the previously selected loadout. It must be an eligible next-Age entry in
+`recoveryCivilizations`; it cannot override a captured target. This supplies only
+the civilization to verify on arrival—it neither proves/repairs native stored
+choices nor reconstructs missing Memento evidence. No reset selector value is
+silently trusted and no `Finished`/selection request is retried.
+`ageBoundary` reports the native flags, current/maximum progression,
+`progressComplete`, `boundarySource` and native/unit blockers. The native action
+panel offers transition when progression reaches the maximum; its `isAgeOver`
+flag can still be false (observed at Exploration T125, 140/140). For **acknowledged
+choices only**, known completed progression therefore supplies the boundary gate
+even with that flag false. Incomplete/unknown progression, unknown flags,
+ordinary turns, open chooser, multiplayer, final/extended Ages and other blockers
+do not gain permission. `ageBoundary.unitOrdersPending` additionally checks for
+native ready units even when they have moved and the UI remaining-moves check is
+false: the T125 engine reactivated the turn until two Missionaries received
+explicit orders. `nextAction: get_civ7_turn_context` directs that inspection;
+the boundary action never automatically skips units. Other `nextAction` values
+report View Map or boundary advancement.
+If the native engine only reveals blockers **after** accepting turn completion,
+the action reports `blocked` with `nextAction: get_civ7_turn_context` when the
+unchanged origin turn is reactivated. Resolve those tasks explicitly before a
+fresh boundary request; a known blocked request is not an unknown arrival or
+permission to retry automatically.
+`advanceReady=true` means native readiness; if `requiresExpectedCivilization=true`,
+provide the explicit recovery expectation even though `advanceAllowed=false`
+without it. Do not reselect or repeat Finished. The old Age's already-completed
+deck is never treated as completion of an acknowledged upcoming transition.
+
+`transitionCompleted` becomes true only for a started, resolved transition, not
+merely an accepted request, Continue-ready screen or in-game welcome. Cross-Age
+actions observe for up to 60 seconds without resubmission; observed loading returns
+`submitted`, `loadingObserved: true`, `transitionCompleted: false` and directs a
+fresh workflow read instead of waiting out a long reload and calling it UNKNOWN.
+Exact arrival Age/civilization/progression still needs separate verification.
+The general gameplay loading gate is not relaxed. The fixed loading script
+acknowledges loading Continue only in `WaitingForUIReady`, and the exact
+`welcome_intro` Begin only in a started Exploration/Modern T1 with prior Ages.
+Welcome acknowledgement is separate from loading and from Dedication completion.
+`GameStarted` with the startup curtain still mounted remains `loading`; the
+chooser must not be activated before native interface startup finishes.
+Effect/capital/completion writes are blocked while the welcome remains mounted.
+Unknown/cancelled outcomes require fresh inspection before any next action.
+
+Native effect getters can remain one use behind even after the exact
+`AdvancedStartEffectUsed` event. The action installs its listener **before** sending
+one effect. A receipt is bound to turn, Age, player, previous-Age count, native
+card-instance identities and Dedication notification; it cannot follow a reloaded
+or replaced deck. `effects[].amount` uses that confirmed consumption when the
+reported amount is stale; `effectObservations[].reportedAmount/source` retain the
+raw getter and explicitly label `native_event`. Pending submissions without
+getter/event evidence cannot be repeated. Completion still requires every effect
+resolved and native completion permission. An effect-use event does not prove the
+full numerical reward/yield forecast.
+
+Finalization can reload the campaign, cap balances, regress settlements and apply
+irreversible card/capital effects. Descriptions and carry-over estimates are not
+complete reward/yield forecasts. Source/fixture tests are supplemented by explicit
+single-player playground validation from the preserved T125 checkpoint; that
+authorization does not extend to ordinary users' games or online play.
+
+Live validation (2026-11-11): a clean replay of **Catherine - Maya-Maya - T125**
+through the production Python action handlers reached **Modern T1 / Prussia**,
+with `phase: complete`, `transitionCompleted: true` and all five effect
+consumptions resolved. It verified:
+
+- Opening the chooser; selecting Prussia; clearing/restoring each Memento slot
+  (Eagle Banner and Antikythera Mechanism); one Finished; separate View Map.
+- A known boundary reactivation reported `blocked`, not UNKNOWN. Two explicit
+  Missionary skips resolved it; a fresh boundary request observed loading.
+- Separate loading Continue and in-game welcome Begin acknowledgements.
+- Three Dedications: On the Revolutions of the Celestial Spheres, Wonders of the
+  Renaissance World and You Bei Wu Huan. Scientific-card remove/refund/re-add,
+  every native effect-use event and final completion were verified separately.
+- Capital selection to Bàakʼ and back to the original capital location
+  (Divodurum, 19,9), with `Swap=false` and no subsequent Modern turn advanced.
+- Separate Modern-start pickers also verified Elective Republic, Steam Engine,
+  Natural History, three science traditions (Tzolk'in I, Milpa I and Alchemy),
+  and policy-review acknowledgement. Ordinary production, resource assignments
+  and unit orders remain first-turn gameplay tasks, not transition finalization.
+- The original checkpoint's save timestamp and game GUID were unchanged.
+  A separate **Sidkick Age Transition Modern Verified** save is listed as Modern
+  T1; its save wrapper timed out awaiting serializer confirmation, so it was
+  inspected rather than retried. Loading that separate result save was not tested.
+
+No debug-created eligibility, forced Age progression, auto-fill, force-completion
+or manual transition clicks were needed in the clean replay. The ordinary Begin
+after loading the test checkpoint was test setup, not a generic production Begin
+bypass. Settlement-placement effects, unused-point confirmation and alternate
+campaign/Age variants remain fixture-tested rather than live-certified.
+Regression verification: **377 Python / 713 Node tests pass**. Reload Sidkick to
+load the updated Python handlers and tool descriptions in other sessions.
+
+Native references: `notification-train/panel-notification-train.js` and
+`notification-handlers.js`; `ui-next/screens/age-transition/age-transition-screen.js`
+and `age-transition-load-screen.js`; `core/ui-next/screens/create-game/memento-select-model.js`;
+`ui-next/screens/load-screen/load-screen-bootstrap.js` and `load-screen-model.js`;
+`ui-next/screens/legacies/dedications-model.js` and `legacies-support.js`;
+`ui/advanced-start/model-advanced-start.js`; `ui/action/panel-action.js`.
 
 ### Civilopedia reference lookup
 
@@ -2590,10 +2748,14 @@ opened, search index rebuilt, profile contacted or game action/turn issued.
 
 `get_civ7_age_transition.dedications` reports native `deckSize`, `openSlotCount`,
 `selectionOpen`, `phase` (`selecting`, `full_unconfirmed`, `completed`, or `unknown`),
-legacy-point balances, add/remove eligibility and a fresh `deckToken`. A completed
-deck reports zero open slots even if some capacity was unused. Counts describe
-native deck capacity, not a focused or numbered UI slot. The core snapshot also
-uses native slot counts instead of assuming three.
+legacy-point balances, add/remove eligibility and a fresh `deckToken`.
+**`getDeckSize()` is the selected-card count, not capacity**: live Modern T1
+reported 0 for an empty deck, then 1 after adding a card. `openSlotCount` and
+`slotAvailable` are therefore unknown while open (closed decks retain zero open
+slots). Add eligibility follows native ADD permission, known costs/balances and
+limits, not a fabricated capacity. `full_unconfirmed` means no currently eligible
+additions, not that a numbered UI slot is full. The core snapshot exposes
+`deckSize` separately and no longer labels it `slotCount` capacity.
 
 Opt-in `edit_civ7_dedication` accepts one exact `card_id`, `operation: "add"` or
 `"remove"`, the current `deck_token`, `max_legacy_point_cost`, and `expected_turn`.
@@ -2611,9 +2773,9 @@ successful selection. It does not unlock a completed deck or advance turns/Ages.
 
 Verification: **264 Python /474 Node tests pass**; all **24 default tools** passed
 fresh real stdio calls, and opt-in stdio advertises **129 tools /105 actions**.
-Live Exploration T1 reads confirmed the existing completed 3/3 deck has zero open
-slots. Positive add/remove execution remains fixture-tested: the live deck was
-not reopened, edited or finalized, and no game actions or turns were issued.
+Those original Exploration T1 reads inspected a completed three-card deck only;
+they did not establish capacity. The later authorized T125-to-Modern test exposed
+and corrected that interpretation and verified native card additions/debits.
 
 ### Modern factories and rail evidence
 
