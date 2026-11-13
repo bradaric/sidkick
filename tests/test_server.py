@@ -37,6 +37,7 @@ class ServerTests(unittest.TestCase):
             {
                 "get_civ7_player_snapshot",
                 "get_civ7_saved_games",
+                "get_civ7_loading_state",
                 "get_civ7_civilopedia",
                 "get_civ7_empire",
                 "get_civ7_available_decisions",

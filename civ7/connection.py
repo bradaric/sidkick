@@ -39,6 +39,11 @@ async def run_transition_loading_script(arguments: dict[str, Any]) -> dict[str, 
     return await _run_script("transition_loading.js", arguments, require_started=False)
 
 
+async def run_game_loading_script(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Fixed ordinary loading observer/Begin only; gameplay readiness remains unchanged."""
+    return await _run_script("game_loading.js", arguments, require_started=False)
+
+
 async def _run_script(
     script_name: str, arguments: dict[str, Any] | None, *, require_started: bool,
 ) -> dict[str, Any]:

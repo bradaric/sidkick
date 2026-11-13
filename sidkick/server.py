@@ -10,6 +10,7 @@ from mcp.types import Icon, ToolAnnotations
 from civ7.actions import (
     save_game,
     load_game,
+    begin_loaded_game,
     edit_dedication,
     select_transition_civilization,
     open_transition,
@@ -138,6 +139,7 @@ from civ7.actions import (
 from civ7.player import snapshot
 from civ7.queries import (
     saved_games,
+    loading_state,
     civilopedia,
     peace_city_offer,
     age_transition,
@@ -207,6 +209,18 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "Civilopedia content is unknown, not proof that there is no requirement."
         ),
     )
+    server.tool(
+        name="get_civ7_loading_state", title="Inspect ordinary Civ VII loading readiness",
+        description=("Read-only loading observer, including before GameStarted. Returns phase, current local turn/Age/player/civilization "
+                     "when available, and a loadingToken only for the visible enabled unobstructed ordinary loading-screen Begin. "
+                     "Use begin_civ7_loaded_game with that exact fresh token to finish an authorized load. "
+                     "No token for multiplayer, auto-end-turn/autoplay, incomplete loading or Age transitions; "
+                     "transitions use get_civ7_transition_workflow. GameStarted behind the startup curtain remains loading. "
+                     "loadCompleted means the observed game is started, not proof that a particular requested save was loaded. "
+                     "Never loads, presses Begin, dismisses popups or advances a turn."),
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+        structured_output=True,
+    )(loading_state)
     server.tool(
         name="get_civ7_saved_games", title="List local Civ VII single-player saves",
         description=("Read local single-player game-state save metadata, including manual, quick and auto saves, "
@@ -480,11 +494,25 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "revision and required-content checks; rejects transitional loading, cloud/multiplayer, ambiguous/stale "
                          "files, missing/unowned mods and transition/configuration saves. Fixed native loadGame with no server, "
                          "no sync/deletion/overwrite or auto-Begin. Submits once: status=submitted means native acceptance only, "
-                         "loadCompleted=false, not verified completion. Wait for loading/Begin and refresh gameplay evidence. "
+                         "loadCompleted=false, not verified completion. Inspect get_civ7_loading_state; when ready, "
+                         "use its fresh loadingToken with begin_civ7_loaded_game, then refresh gameplay evidence. "
                          "Timeout/disconnection/cancellation may follow a successful load; never retry automatically."),
             annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
             structured_output=True,
         )(load_game)
+        server.tool(
+            name="begin_civ7_loaded_game", title="Begin a ready ordinary Civ VII loaded game",
+            description=("Finish an authorized local single-player load using the exact fresh loading_token from "
+                         "get_civ7_loading_state.loadingToken. Requires native WaitingForUIReady and the unique visible, enabled, "
+                         "unobstructed ordinary loading-screen Begin control, with auto-end-turn/autoplay disabled. "
+                         "Calls native notifyUIReady once, consumes the screen token before submission, then verifies the same "
+                         "turn/Age/player/civilization reaches GameStarted with the startup curtain gone. "
+                         "No load/reload, Age transition, welcome/store prompt dismissal, generic loading bypass or turn advance. "
+                         "Authorization to load includes finishing its ordinary Begin; otherwise obtain permission to enter this game. "
+                         "Unknown/cancelled outcomes require fresh get_civ7_loading_state; never automatically retry."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False),
+            structured_output=True,
+        )(begin_loaded_game)
         server.tool(
             name="edit_civ7_dedication", title="Edit one Civ VII Dedication selection",
             description=(

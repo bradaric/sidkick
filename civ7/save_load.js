@@ -120,7 +120,8 @@
     const accepted = Network.loadGame(selected.params, ServerType.SERVER_TYPE_NONE);
     return {status: accepted === true ? "submitted" : accepted === false ? "rejected" : "unknown",
       loadCompleted: false, requiresFreshState: true, save: selected.public,
-      reason: "Native load acceptance is not completed loading. Wait for loading/Begin, refresh state and never retry automatically"};
+      nextAction: "get_civ7_loading_state",
+      reason: "Native load acceptance is not completed loading. Inspect get_civ7_loading_state, use its fresh token with begin_civ7_loaded_game when ready, then refresh gameplay state. Never retry the load automatically"};
   }
   if (typeof a.save_name !== "string" || !/^[A-Za-z0-9][A-Za-z0-9 _-]{0,79}$/.test(a.save_name) || a.save_name.trim() !== a.save_name ||
       /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(a.save_name) || !requestId(a.request_id) || typeof current.ageType !== "string") return reject("Safe new save name and verified current Age required");

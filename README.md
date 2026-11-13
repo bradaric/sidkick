@@ -125,14 +125,28 @@ Write mode additionally exposes:
   fixed loader supports the menu without relaxing any gameplay loading guard.
 
 The load result `status=submitted, loadCompleted=false` means native acceptance,
-**not completed loading**. Wait for loading/Begin, finish Begin manually if needed,
-then refresh gameplay evidence before acting. These tools never press Begin,
+**not completed loading**. Inspect `get_civ7_loading_state()` until ready; pass its
+fresh `loadingToken` to the opt-in `begin_civ7_loaded_game(loading_token)` to finish
+the authorized load. This separate action acknowledges only the visible, enabled,
+unobstructed ordinary Begin in native WaitingForUIReady, with auto-end-turn/autoplay
+disabled. It consumes the screen token before one native `UI.notifyUIReady()` call
+and verifies the same turn/Age/player/civilization reaches GameStarted with the
+startup curtain gone. It does not load again, advance a turn, dismiss an Age welcome
+or handle Age-transition Continue (use the transition workflow for those).
+Refresh gameplay evidence before acting; started readiness is not proof of a
+particular requested save's identity. Save/load themselves never press Begin,
 delete saves, overwrite, sync to cloud or automatically retry a timeout,
 disconnect or cancellation. The operation may already have happened: inspect
 current state before any further explicitly authorized action.
 
-Save browsing is live-read-verified; save/load writes and menu behavior are
-fixture-tested only. No live save or load was executed for this implementation.
+Save browsing and ordinary loading readiness are live-read-verified; the latter
+recognized a ready Modern T11 Prussia ordinary Begin and issued its token without
+pressing it. The native transition flag was `0` (not boolean `false`); both known
+no-transition values are accepted, while unknown values fail closed.
+Save/load writes, menu behavior and ordinary Begin execution are fixture-tested
+only. Earlier development restores used
+the native Begin callback directly; it was not exposed as an ordinary-load MCP
+action. No live save, load or Begin was executed for this implementation.
 
 #### Single ordinary-policy toggle
 

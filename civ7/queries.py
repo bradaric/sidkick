@@ -8,12 +8,18 @@ from pydantic import StrictInt, StrictStr
 
 from civ7.connection import run_script
 from civ7.connection import run_transition_loading_script
+from civ7.connection import run_game_loading_script
 from civ7.connection import run_started_script as run_transition_started_script
 from civ7.save_games import read_save_inventory
 from civ7.svg_preview import publish_preview
 
 
 _preview_lock = asyncio.Lock()
+
+
+async def loading_state() -> dict[str, Any]:
+    """Observe ordinary loading readiness without acknowledging Begin."""
+    return await run_game_loading_script({"operation": "observe"})
 
 
 async def saved_games(limit: StrictInt = 50, offset: StrictInt = 0) -> dict[str, Any]:

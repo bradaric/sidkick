@@ -133,6 +133,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
         enabled = {tool.name: tool for tool in create_server(enable_writes=True)._tool_manager.list_tools()}
         self.assertEqual(set(enabled) - set(normal), {
             "save_civ7_game", "load_civ7_game",
+            "begin_civ7_loaded_game",
             "acknowledge_civ7_espionage_report", "pay_civ7_call_to_arms",
             "acknowledge_civ7_town_focus_reminder",
             "close_civ7_triumph_popup",

@@ -12,6 +12,7 @@ from pydantic import StrictBool, StrictFloat, StrictInt, StrictStr
 from civ7.connection import run_started_script as run_script
 from civ7.connection import run_load_game_script
 from civ7.connection import run_transition_loading_script
+from civ7.connection import run_game_loading_script
 from civ7.save_games import read_save_inventory
 
 
@@ -22,6 +23,7 @@ _VERIFICATION_INTERVAL = 0.1
 _TURN_VERIFICATION_TIMEOUT = 60.0
 _COMBAT_VERIFICATION_TIMEOUT = 15.0
 _TRANSITION_TIMEOUT = 60.0
+_LOAD_BEGIN_TIMEOUT = 15.0
 
 
 async def save_game(save_name: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
@@ -80,6 +82,40 @@ async def load_game(
         except Exception as exc:
             return {"status": "unknown", "loadCompleted": False, "error": f"{type(exc).__name__}: {exc}",
                     "reason": "Load may already be underway; inspect loading state and never retry automatically"}
+
+
+async def begin_loaded_game(loading_token: StrictStr) -> dict[str, Any]:
+    """Acknowledge ordinary loading Begin once, then verify the same started game."""
+    if not isinstance(loading_token, str) or not loading_token or len(loading_token) > 250000:
+        raise ValueError("Exact current ordinary-load Begin token required")
+    async with _action_lock:
+        result: dict[str, Any] = {"status": "unknown"}
+        after = None
+        try:
+            result = await run_game_loading_script({"operation": "begin", "loading_token": loading_token})
+            if result.get("status") == "rejected":
+                return result
+            if result.get("status") != "submitted":
+                raise ValueError("Unexpected ordinary-load Begin submission response")
+            before = result["before"]
+            fields = ("turn", "age", "playerId", "previousAgeCount", "ageType", "civilization")
+            if (any(type(before.get(key)) is not int for key in fields[:4])
+                    or any(not isinstance(before.get(key), str) for key in fields[4:])):
+                raise ValueError("Missing loaded-game context")
+            async with asyncio.timeout(_LOAD_BEGIN_TIMEOUT):
+                while True:
+                    after = await run_game_loading_script({"operation": "observe"})
+                    if after.get("phase") not in {"loading", "unavailable"}:
+                        if any(after.get(key) != before[key] for key in fields):
+                            raise ValueError("Loaded-game context changed; do not retry")
+                        if after.get("phase") == "started" and after.get("loadCompleted") is True:
+                            return {**result, "status": "verified_applied", "after": after, "loadCompleted": True,
+                                    "requiresFreshState": True, "nextAction": "get_civ7_turn_context"}
+                    await asyncio.sleep(_VERIFICATION_INTERVAL)
+        except Exception as exc:
+            return {**result, "status": "unknown", "loadCompleted": False, "after": after,
+                    "error": f"{type(exc).__name__}: {exc}", "nextAction": "get_civ7_loading_state",
+                    "reason": "Begin may already be applied; inspect loading state, never retry automatically"}
 
 
 async def select_transition_civilization(
