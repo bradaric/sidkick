@@ -7,6 +7,16 @@ from sidkick.server import create_server
 
 
 class AsciiMapTests(unittest.IsolatedAsyncioTestCase):
+    async def test_tool_descriptions_route_peaceful_foreign_explorer_checks_to_map(self):
+        tools = {tool.name: tool for tool in create_server()._tool_manager.list_tools()}
+        for name in ('get_civ7_visible_threats', 'get_civ7_archaeology'):
+            with self.subTest(tool=name):
+                self.assertIn('get_civ7_ascii_map', tools[name].description)
+                self.assertIn('peaceful foreign', tools[name].description)
+        description = tools['get_civ7_ascii_map'].description
+        for detail in ('peaceful foreign', 'Explorers', 'units[]', 'unitType', 'coverage.units'):
+            self.assertIn(detail, description)
+
     async def test_default_tool_is_read_only_with_a_single_bounded_query(self):
         for enabled in (False, True):
             tool = next(tool for tool in create_server(enable_writes=enabled)._tool_manager.list_tools()

@@ -2243,6 +2243,8 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "permission and blockers apply only at the current position, not after moving to "
             "candidate sites. Fogged observations may be stale. No hidden ruin totals, artifact "
             "rewards, compatibility or projected Tourism are inferred. No actions or UI selection. "
+            "For visible peaceful foreign Explorers near a site, use get_civ7_ascii_map centered "
+            "on that site and inspect units[]; this query lists owned Explorers only. "
             "This map-scanning query is separate from snapshots; outside Modern it is not applicable."
         ),
         annotations=read_only,
@@ -2479,7 +2481,9 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII visible threats",
         description=(
             "Get enemy units belonging to met players only when those units are on tiles "
-            "currently visible to the local player."
+            "currently visible to the local player. Excludes peaceful foreign units, including "
+            "Explorers and other civilians; an empty result does not rule them out. "
+            "Use get_civ7_ascii_map centered on the area of interest and inspect units[] for those units."
         ),
         annotations=read_only,
         structured_output=True,
@@ -2582,6 +2586,11 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "hidden/unknown visibility has ??? at the center and no terrain/entity inspection. "
             "City centres and individually visible on-map units are overlaid/listed only on currently "
             "visible tiles and only for the local player or met owners. No hidden/unmet entity details. "
+            "Includes peaceful foreign civilians such as Explorers, unlike get_civ7_visible_threats. "
+            "To check foreign Explorers near a ruin, center on its coordinates and inspect units[] "
+            "(ownerId, instanceId, unitType, x, y, marker); u means met foreign nonwar unit. "
+            "Read the full list even when a city marker covers a unit. Check coverage.units and "
+            "viewport bounds/visibility; omitted units do not establish absence outside that evidence. "
             "tiles[].ownership reports ours/foreign/unowned/unknown with local/met owner player ID and "
             "civilization on visible tiles only; fogged, hidden, unmet or unavailable ownership is unknown. "
             "Tile ownership is separate from occupants and does not alter the ASCII drawing. "

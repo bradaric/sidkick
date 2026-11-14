@@ -22,6 +22,7 @@ Use the current [tool contracts](../../README.md) and live output. These notes e
 | Can a religious unit spread now? | `get_civ7_religion.religiousUnits` | Owned current non-target readiness and charge quotes; packed units excluded from deployed checks; no arbitrary-target or conversion forecast |
 | Archaeology readiness/countdown? | `get_civ7_archaeology`, then turn context/Great Works for rewards | Read excavation `failureReasons` even when unavailable: a native completion quote can indicate a running dig; no exported active-order or structured countdown fields |
 | Explorer/unit position? | `get_civ7_units`, then `get_civ7_movement_and_founding` | Numeric `instanceId`; movement; revealed position/path; movement alone does not establish excavation activity |
+| Foreign Explorers or other peaceful civilians nearby? | `get_civ7_ascii_map` centered on the site | Inspect `units[]` by `ownerId`, `unitType` and coordinates, plus `coverage.units`, viewport bounds and visibility; threats exclude peaceful units |
 | Commander packing, air bases or reinforcements? | `get_civ7_military_logistics`, optionally with owned `unit_id` | Native capacities, membership and targeted readiness; no inferred free slots or guaranteed travel times |
 | Which foreign settlements are visible? | `get_civ7_known_world.visibleForeignSettlements` | Currently visible centres of met owners only; identify each by `(ownerId, cityId)`, not city ID alone |
 | War feasibility? | Units, diplomacy, visible threats, targeted combat | Visibility/legal action, not inferred damage or unseen forces |
@@ -121,6 +122,12 @@ Native descriptions are not converted-population forecasts or arbitrary-target e
 ## Visible foreign settlements
 
 `get_civ7_known_world.visibleForeignSettlements` supplies basic metadata only for met foreign owners whose settlement centres are currently visible. City IDs can repeat across owners: use `(ownerId, cityId)` together. A visible outlying district does not reveal a fogged centre's metadata. This is not a complete remembered settlement inventory and exposes no private yields, queues, religion or garrisons. Missing discovery support is unknown, not an empty world. The same bounded summary is included in snapshots/exports.
+
+## Visible peaceful foreign units
+
+For rival Explorers near a ruin, query `get_civ7_ascii_map` centered on the ruin's native coordinates with a bounded viewport covering the nearby area. Inspect `units[]`, not just the drawing: a city marker can cover a listed unit. Entries identify `ownerId`, `instanceId`, `unitType`, `x`, `y` and `marker`; `u` is a met foreign nonwar unit, not necessarily a civilian. Use `unitType` to identify Explorers.
+
+The map includes individually visible peaceful foreign units on currently visible tiles belonging to met owners. `get_civ7_visible_threats` deliberately excludes peaceful units, and `get_civ7_archaeology` lists owned Explorers only. Do not claim the tools cannot inspect peaceful foreign civilians or use an empty threat result to rule them out. Check `coverage.units`, viewport bounds and tile visibility; missing APIs, fog, invisible units, unmet owners and areas outside the viewport remain unknown. Report “no visible foreign Explorers observed in this viewport,” not “no rival Explorers nearby.” Visible presence does not reveal orders or predict who will excavate first.
 
 ## Known traps from this campaign
 
