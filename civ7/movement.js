@@ -40,6 +40,13 @@
     (modifier & UnitOperationMoveModifiers.ATTACK) === 0;
   const checkMove = location => nonattack ? Game.UnitOperations.canStart(unit.id, UnitOperationTypes.MOVE_TO,
     {X: location.x, Y: location.y, Modifiers: modifier}, false) : null;
+  const impassableReason = "Destination is impassable; choose a passable adjacent tile instead";
+  const impassable = location => {
+    if (GameplayMap.getRevealedState(id, location.x, location.y) !== RevealedStates.VISIBLE ||
+        typeof GameplayMap.isImpassable !== "function") return null;
+    const value = GameplayMap.isImpassable(location.x, location.y);
+    return typeof value === "boolean" ? value : null;
+  };
   const options = [];
   if (deployed && unit.Movement?.movementMovesRemaining > 0) {
     const attackPlots = new Set(Units.getReachableTargets(unit.id) ?? []);
@@ -49,13 +56,16 @@
       const location = locationForPlot(plot);
       if (!revealed(location) || attackPlots.has(plot)) continue;
       const result = checkMove(location);
+      const blocked = impassable(location) === true;
       options.push({location: {x: location.x, y: location.y}, ownership: tileOwnership(location),
-        availableNow: result ? Boolean(result.Success) : null, failureReasons: reasons(result)});
+        availableNow: blocked ? false : result ? Boolean(result.Success) : null,
+        failureReasons: [...reasons(result), ...(blocked ? [impassableReason] : [])]});
     }
   }
   let target = null;
   if (destination) {
     const result = deployed ? checkMove(destination) : null;
+    const destinationImpassable = impassable(destination);
     const path = deployed ? Units.getPathTo(unit.id, destination) : null;
     // A partial path would still leak the shape of an unexplored route. Withhold it all.
     const safePath = path?.plots && path.plots.every(plot => revealed(locationForPlot(plot)));
@@ -63,9 +73,11 @@
       location: {x: destination.x, y: destination.y},
       ownership: tileOwnership(destination),
       visibility: !revealed(destination) ? "unexplored" : GameplayMap.getRevealedState(id, destination.x, destination.y) === RevealedStates.VISIBLE ? "visible" : "fogged",
-      moveAllowed: result ? Boolean(result.Success) : null,
+      nativeMoveAllowed: result ? Boolean(result.Success) : null,
+      impassable: destinationImpassable,
+      moveAllowed: destinationImpassable === true ? false : result ? Boolean(result.Success) : null,
       requiresConfirmation: result ? result.RequiresConfirmation === true : null,
-      failureReasons: reasons(result),
+      failureReasons: [...reasons(result), ...(destinationImpassable === true ? [impassableReason] : [])],
       path: safePath ? path.plots.map((plot, index) => ({location: locationForPlot(plot),
         ownership: tileOwnership(locationForPlot(plot)), turnLabel: path.turns?.[index] ?? null})) : null,
       pathNote: "Native turn labels, not inferred turns remaining; unavailable/unrevealed paths and raw obstacles are withheld"

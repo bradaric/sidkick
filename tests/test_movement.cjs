@@ -5,7 +5,8 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 
 function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = false, zoc = false, railAllowed = true, moves = 2,
-  fogged = false, owner = 1, met = true, missingOwner = false, throwOwner = false, adjacentPlots = [3] } = {}) {
+  fogged = false, owner = 1, met = true, missingOwner = false, throwOwner = false, adjacentPlots = [3],
+  impassable = false, missingImpassable = false, emptyPath = false } = {}) {
   const script = path.join(__dirname, '../civ7/movement.js');
   assert.ok(fs.existsSync(script), 'bundled movement query exists');
   const nativeCalls = [];
@@ -25,12 +26,17 @@ function run({ args = { unit_id: 7, x: 1, y: 0 }, hiddenPath = false, packed = f
     Units: {
       getReachableMovement: () => { assert.equal(packed, false); return [0, 1, 2, 3]; },
       getReachableTargets: () => [2],
-      getPathTo: (id, dest) => { assert.equal(packed, false); nativeCalls.push(dest.x); return { plots: hiddenPath ? [0, 3, 1] : [0, 1], turns: [1, 1, 2], obstacles: [{ x: 999 }] }; },
+      getPathTo: (id, dest) => { assert.equal(packed, false); nativeCalls.push(dest.x); return { plots: emptyPath ? [] : hiddenPath ? [0, 3, 1] : [0, 1], turns: [1, 1, 2], obstacles: [{ x: 999 }] }; },
     },
     GameplayMap: {
       getGridWidth: () => 4, getGridHeight: () => 1,
       getLocationFromIndex: i => ({ x: i, y: 0 }), getIndexFromLocation: p => p.x,
       getRevealedState: (id, x) => x === 3 ? 0 : fogged && x === 1 ? 2 : 1,
+      ...(!missingImpassable ? {isImpassable: (x, y) => {
+        assert.notEqual(x, 3, 'hidden impassability must not be read');
+        assert.ok(!fogged || x !== 1, 'fogged impassability must not be read');
+        return x === 1 ? impassable : false;
+      }} : {}),
       ...(!missingOwner ? {getOwner: x => {
         ownerReads.push(x);
         assert.notEqual(x, 3, 'hidden ownership must not be read');
@@ -86,6 +92,29 @@ test('fog destinations get native move permission without hidden site inspection
   assert.equal(data.destination.visibility, 'unexplored');
   assert.throws(() => run({ args: { unit_id: 99 } }), /owned unit/i);
   assert.throws(() => run({ args: { unit_id: 7, x: 1 } }), /together/i);
+});
+
+test('Uluru regression: impassable target with native permission and an empty path is clearly unavailable', () => {
+  const {data} = run({impassable: true, emptyPath: true});
+  assert.equal(data.destination.nativeMoveAllowed, true);
+  assert.equal(data.destination.impassable, true);
+  assert.equal(data.destination.moveAllowed, false);
+  assert.match(data.destination.failureReasons.join(' '), /impassable.*adjacent/i);
+  const option = data.movement.options.find(o => o.location.x === 1);
+  assert.equal(option.availableNow, false);
+  assert.match(option.failureReasons.join(' '), /impassable/i);
+});
+
+test('passable/unknown/fog destinations preserve native permission without requiring a path', () => {
+  for (const [options, expectedImpassable] of [[{}, false], [{emptyPath: true}, false],
+    [{missingImpassable: true}, null], [{impassable: null}, null],
+    [{fogged: true, impassable: true}, null], [{args: {unit_id: 7, x: 3, y: 0}, impassable: true}, null]]) {
+    const target = run(options).data.destination;
+    assert.equal(target.moveAllowed, true);
+    assert.equal(target.nativeMoveAllowed, true);
+    assert.deepEqual(target.failureReasons, []);
+    assert.equal(target.impassable, expectedImpassable);
+  }
 });
 
 test('paths through hidden tiles are withheld in full, not returned with gaps or hidden obstacles', () => {

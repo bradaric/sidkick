@@ -31,6 +31,11 @@
       location: {x: unit.location.x, y: unit.location.y}, movesRemaining: unit.Movement?.movementMovesRemaining ?? null,
       queueSize: unit.operationQueueSize ?? null, moveOperation: UnitOperationTypes.MOVE_TO};
     if (before.location.x === x && before.location.y === y) return {status: "already_active", before};
+    // canStart(MOVE_TO) can allow Uluru despite no route. Only inspect a visible destination;
+    // missing path/terrain evidence must not block ordinary fog-capable movement.
+    if (GameplayMap.getRevealedState(playerId, x, y) === RevealedStates.VISIBLE &&
+        typeof GameplayMap.isImpassable === "function" && GameplayMap.isImpassable(x, y) === true)
+      return refuse("Destination is impassable; choose a passable adjacent tile instead");
     const args = {X: x, Y: y, Modifiers: modifier};
     if (typeof player.Diplomacy?.willMoveStartWar !== "function") return refuse("Native war-check API is unavailable");
     const war = player.Diplomacy.willMoveStartWar(unit.id, destination);

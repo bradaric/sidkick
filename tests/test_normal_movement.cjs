@@ -21,6 +21,10 @@ function run(options = {}, script = 'move_unit.js') {
     GameInfo: {Units: {lookup: () => ({Domain: options.domain ?? 'DOMAIN_LAND', UnitType: options.unitType})}},
     GameplayMap: {getGridWidth: () => 80, getGridHeight: () => 50,
       getRevealedState: () => options.visibility ?? -1,
+      ...(!options.missingImpassable ? {isImpassable: () => {
+        assert.equal(options.visibility, 2, 'impassability is never inspected in fog or unexplored tiles');
+        return Object.hasOwn(options, 'impassable') ? options.impassable : false;
+      }} : {}),
       isWater: forbidden, getOwner: forbidden, getTerrainType: forbidden},
     MapUnits: {getUnits: forbidden}, MapCities: {getDistrict: forbidden},
     Units: {getPathTo: forbidden, getReachableMovement: forbidden, getReachableTargets: forbidden},
@@ -59,6 +63,21 @@ test('native orders can replace an existing queue and queue movement with no mov
     assert.equal(run(options).data.status, 'submitted');
   }
   assert.equal(run({warUnknown: true}).data.status, 'submitted', 'like native UI, only an explicit war indication blocks movement');
+});
+
+test('visible impassable destinations reject before submission even when native move permission allows them', () => {
+  const {data, calls} = run({visibility: 2, impassable: true, unitType: 'UNIT_EXPLORER'});
+  assert.equal(data.status, 'rejected');
+  assert.equal(data.rejectionSource, 'sidkick');
+  assert.match(data.reason, /impassable.*adjacent/i);
+  assert.equal(calls.some(call => call.kind === 'send'), false);
+});
+
+test('missing impassability evidence or an empty path never becomes a blanket normal-movement gate', () => {
+  for (const options of [{visibility: 2, missingImpassable: true}, {visibility: 2, impassable: null},
+    {visibility: 0, impassable: true}, {visibility: -1, impassable: true}]) {
+    assert.equal(run(options).data.status, 'submitted');
+  }
 });
 
 test('ordinary movement has no river/embarkation terrain gate for civilian or combat unit roles', () => {

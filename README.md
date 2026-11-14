@@ -2334,12 +2334,20 @@ adding `ATTACK` or calling the UI's broader attack/war helper.
 Fogged/unexplored destinations, multistep/queued continuation, native shore
 crossings and native-permitted peaceful access are allowed. An explicit new
 destination may replace an existing movement order; zero remaining movement
-does not by itself block queuing. No full-path visibility, empty-tile, terrain,
-packing-army scan or predicted danger-free-route proof is required.
+does not by itself block queuing. No full-path visibility, empty-tile, general
+terrain, packing-army scan or predicted danger-free-route proof is required.
 
 The default still checks native permission, confirmation/war requirements,
 visible combat targets, unit ownership/type, valid map coordinates and current
-turn/Age context. It does not call the UI helper that can attack, swap or declare
+turn/Age context. A **currently visible** destination explicitly marked impassable
+by `GameplayMap.isImpassable` is rejected before submission with a clear explanation
+to choose a passable adjacent tile. This covers Uluru: native MOVE_TO permission
+can succeed even though the destination is impassable and no path exists.
+The movement reader preserves that raw permission as `destination.nativeMoveAllowed`,
+reports nullable `destination.impassable`, and marks effective `moveAllowed`/option
+availability false with the same reason. No impassability is read in fog/hidden tiles;
+missing evidence or an empty path alone never blocks ordinary movement.
+It does not call the UI helper that can attack, swap or declare
 war, inspect hidden occupants/terrain, or advance turns. Civ7 may stop short,
 reveal danger, apply attrition or continue its queued order when the user advances
 later turns. Unknown territory is **not** promised safe for a Settler.

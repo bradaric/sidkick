@@ -13,6 +13,15 @@ ARGS = {'unit_id': 7, 'x': 20, 'y': 20, 'expected_turn': 1, 'mode': 'normal'}
 
 
 class NormalMovementTests(unittest.IsolatedAsyncioTestCase):
+    async def test_impassable_rejection_is_returned_without_verification_or_retry(self):
+        rejected = {'status': 'rejected', 'rejectionSource': 'sidkick',
+                    'reason': 'Destination is impassable; choose a passable adjacent tile instead'}
+        with patch('civ7.actions.run_script', new_callable=AsyncMock, return_value=rejected) as run:
+            result = await actions.move_unit(1638420, 16, 15, 14)
+        self.assertEqual(result, rejected)
+        run.assert_awaited_once_with('move_unit.js', {
+            'unit_id': 1638420, 'x': 16, 'y': 15, 'expected_turn': 14, 'mode': 'normal'})
+
     async def test_unobserved_submission_times_out_without_another_move_request(self):
         submitted = {'status': 'submitted', 'before': BEFORE}
         after = {**BEFORE, 'present': True, 'operation': None}
