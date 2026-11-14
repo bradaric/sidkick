@@ -35,12 +35,16 @@
   function clear() {
     if (GameplayMap.getRevealedState(playerId, location.x, location.y) !== RevealedStates.VISIBLE) return false;
     const cityId = MapCities.getCity(location.x, location.y);
-    const neutralRuin = kind === "excavate" && (!cityId || cityId.owner < 0) &&
+    const owner = GameplayMap.getOwner(location.x, location.y);
+    const ruin = kind === "excavate" &&
       (MapConstructibles.getHiddenFilteredConstructibles(location.x, location.y) ?? []).some(id => {
         const c = Constructibles.getByComponentID(id);
         return c && GameInfo.Constructibles.lookup(c.type)?.ConstructibleType === "IMPROVEMENT_RUINS";
       });
-    if (![-1, playerId].includes(GameplayMap.getOwner(location.x, location.y)) && !neutralRuin && !(foreignSpread&&foreignTarget())) return false;
+    const neutralRuin = ruin && (!cityId || cityId.owner < 0);
+    const foreignRuin = ruin && Number.isInteger(owner) && owner >= 0 && owner !== playerId &&
+      player.Diplomacy.hasMet(owner) === true && player.Diplomacy.isAtWarWith?.(owner) === false;
+    if (![-1, playerId].includes(owner) && !neutralRuin && !foreignRuin && !(foreignSpread&&foreignTarget())) return false;
     const ids = MapUnits.getUnits(location.x, location.y);
     if (!Array.isArray(ids) || ids.some(id => id.owner !== playerId && !(foreignSpread && id.owner === queryArguments.target_player)) || !ids.some(id => same(id, unit.id))) return false;
     for (const c of owned.filter(u => u.isCommanderUnit)) {
@@ -65,6 +69,7 @@
       kind === "research" && (![continent, research].every(v => Number.isInteger(v) && v >= 0)) ||
       kind === "resettle" && (![city.population, city.pendingPopulation].every(v => Number.isInteger(v) && v >= 0))) return reject("Owned settlement/research/population baseline is unknown");
   const before = {turn: Game.turn, age: Game.age, playerId, unitId, unitType: unit.type, componentType: unit.id.type, location,
+    excavationOwner: kind === "excavate" ? GameplayMap.getOwner(location.x, location.y) : null,
     moves: unit.Movement.movementMovesRemaining,embarked:unit.isEmbarked,destination, cityIds, research, population: city?.population ?? null, pendingPopulation: city?.pendingPopulation ?? null,
     sourceCity: kind === "treat_sick" ? cityIds.find(id => same(id, city.id)) : null, unrest: kind === "treat_sick" ? city.Happiness.hasUnrest : null};
   if(adjacent){const picker=api.canStart(unit.id,operation,{},false);if(picker?.Success!==true||!Array.isArray(picker.Plots)||!picker.Plots.includes(GameplayMap.getIndexFromLocation(destination)))return reject("Exact adjacent founding plot not offered natively",picker?.FailureReasons??[]);}
@@ -79,6 +84,7 @@
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId || player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false || unit.id.owner !== playerId || unit.id.type !== before.componentType || unit.type !== before.unitType ||
       unit.isOnMap !== true || unit.isDead === true || unit.isEmbarked !== before.embarked || unit.operationQueueSize !== 0 || unit.location.x !== location.x || unit.location.y !== location.y || unit.Movement.movementMovesRemaining !== before.moves || !clear() || !foreignTarget()||!adjacentTarget()||
       JSON.stringify(player.Cities.getCities().filter(c => c.id.owner === playerId).map(c => ({owner:c.id.owner,id:c.id.id,type:c.id.type})).sort((a,b)=>a.id-b.id)) !== JSON.stringify(cityIds) ||
+      kind === "excavate" && GameplayMap.getOwner(location.x, location.y) !== before.excavationOwner ||
       kind === "treat_sick" && (!same(MapCities.getCity(location.x, location.y), before.sourceCity) || GameplayMap.getOwner(location.x, location.y) !== playerId || city.Happiness?.hasUnrest !== before.unrest) ||
       kind === "research" && player.Culture.getNumAgesResearched(continent) !== research || kind === "resettle" && (city.population !== before.population || city.pendingPopulation !== before.pendingPopulation)) return reject("Civilian unit, settlement, research or turn changed during validation");
   api.sendRequest(unit.id, operation, args);

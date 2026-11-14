@@ -10,9 +10,10 @@ function run(o = {}, script = 'local_civilian_action.js') {
   const unit = {id: {owner: 0, id: 10, type: 26}, type: 100, isOnMap: true, isEmbarked: Boolean(o.embarked), isCommanderUnit: false,
     operationQueueSize: o.queued ? 1 : o.applied && ['excavate','research'].includes(kind) ? 1 : 0, getOperationType: () => o.applied ? 500 : -1,
     location, Movement: {movementMovesRemaining: 2}};
-  const city = {id: o.cityIdentity ?? {owner: foreignSpread?1:0, id: 7, type: 1},owner:foreignSpread?1:0, location: kind==='found_adjacent'?{x:4,y:3}:location, population: o.applied ? 6 : 5, pendingPopulation: 0,
+  const foreignCity = foreignSpread || o.foreign;
+  const city = {id: o.cityIdentity ?? {owner: foreignCity?1:0, id: 7, type: 1},owner:foreignCity?1:0, location: kind==='found_adjacent'?{x:4,y:3}:location, population: o.applied ? 6 : 5, pendingPopulation: 0,
     Happiness: {hasUnrest: Object.hasOwn(o,'unrest') ? o.unrest : !o.applied}};
-  if(foreignSpread)Object.defineProperty(city,'population',{get(){throw Error('Foreign population must not be read');}});
+  if(foreignCity)Object.defineProperty(city,'population',{get(){throw Error('Foreign population must not be read');}});
   const def = {UnitType: kind==='treat_sick'?'UNIT_PHYSICIAN':'UNIT_TEST', FoundCity: founding, ExtractsArtifacts: ['excavate','research'].includes(kind), SpreadCharges: ['spread','foreign_spread'].includes(kind) ? 3 : 0};
   const ctx = {queryArguments: {kind, unit_id: 10, expected_turn: 62, ability: null, unit_type: 100, component_type: 26,
       operation, operation_hash: 500, command: ['great_person','resettle','treat_sick'].includes(kind), args: {X: location.x, Y: location.y, UnitAbilityType: -1}, location,
@@ -20,19 +21,23 @@ function run(o = {}, script = 'local_civilian_action.js') {
        source_city: {owner:0,id:7,type:1}, before_unrest: true,
        ...(kind==='found_adjacent'?{x:4,y:3,location:{x:4,y:3}}:{}),...(foreignSpread?{target_player:1,target_city_id:7}:{}),...o.args},
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => Boolean(o.sent)},
-    Players: {get: () => ({isTurnActive: !o.inactive,Diplomacy:{hasMet:()=>!o.unmet}, Units: {getUnits: () => o.lost || o.applied && (founding||kind==='great_person') ? [] : [unit]},
-      Cities: {getCities: () => founding&&!o.applied||foreignSpread ? [] : [city]}, Culture: {getNumAgesResearched: () => o.applied ? 1 : 0},
+    Players: {get: () => ({isTurnActive: !o.inactive,Diplomacy:{hasMet:()=>!(o.unmet || o.unmetAfterCheck && calls.some(c=>c.kind==='check')),
+      isAtWarWith:()=>Object.hasOwn(o,'atWar') ? o.atWar : Boolean(o.warAfterCheck && calls.some(c=>c.kind==='check'))}, Units: {getUnits: () => o.lost || o.applied && (founding||kind==='great_person') ? [] : [unit]},
+      Cities: {getCities: () => founding&&!o.applied||foreignCity ? [] : [city]}, Culture: {getNumAgesResearched: () => o.applied ? 1 : 0},
       Armies: {getUnitReinforcementCommanderId: () => o.reinforcing ? 30 : -1}})},
     GameInfo: {Units: {lookup: () => o.wrongRole ? {} : def}, Constructibles: {lookup: () => ({ConstructibleType:'IMPROVEMENT_RUINS'})}, UnitOperations: {lookup: () => ({$hash: 500})}, UnitCommands: {lookup: () => ({$hash: 500})}, UnitAbilities: {lookup: () => null}},
     GameplayMap: {getGridWidth: () => 10, getGridHeight: () => 10, getRevealedState: () => o.hidden ? 0 : 2, getIndexFromLocation:l=>l.x+l.y*10,
-      getPlotDistance:()=>o.distant?2:1,isWater:()=>Boolean(o.waterTarget),getOwner: () => o.neutralRuin ? 63 : founding ? -1 : o.foreign||foreignSpread ? 1 : 0, getContinentType: () => 1}, RevealedStates: {VISIBLE: 2},
+      getPlotDistance:()=>o.distant?2:1,isWater:()=>Boolean(o.waterTarget),getOwner: () => o.ownerAfterCheck !== undefined && calls.some(c=>c.kind==='check') ? o.ownerAfterCheck : o.neutralRuin ? 63 : founding ? -1 : foreignCity ? 1 : 0, getContinentType: () => 1}, RevealedStates: {VISIBLE: 2},
     MapCities: {getCity: () => founding || o.neutralRuin || o.noCity ? null : o.cityChanged && calls.some(c=>c.kind==='check') ? {...city.id,id:8} : city.id},Cities:{get:()=>city}, MapUnits: {getUnits: x => {
       if (kind==='found_adjacent'&&x===4) return [];
       if (o.unknownStack) return null;
       const owners = calls.some(c=>c.kind==='check') ? o.stackAfterCheck ?? o.stackOwners ?? [] : o.stackOwners ?? [];
       return [...(o.missingSource ? [] : [unit.id]), ...owners.map((owner,i)=>({owner,id:20+i,type:26}))];
     }},
-    MapConstructibles: {getHiddenFilteredConstructibles: () => o.neutralRuin ? [{owner:63,id:99,type:2}] : []}, Constructibles: {getByComponentID: () => ({type:400})},
+    MapConstructibles: {getHiddenFilteredConstructibles: () => {
+      assert.ok(!o.hidden, 'never inspect ruins on hidden tiles');
+      return (o.neutralRuin || o.ruin) && !(o.ruinGoneAfterCheck && calls.some(c=>c.kind==='check')) ? [{owner:o.neutralRuin?63:1,id:99,type:2}] : [];
+    }}, Constructibles: {getByComponentID: () => ({type:400})},
     Game: {turn: 62, age: 42}};
   const api = {canStart: (id, op, args, exclusion) => {calls.push({kind: 'check', id, op, args, exclusion}); if (o.changed) ctx.Game.turn++;
      if (o.unrestChanged) city.Happiness.hasUnrest = false;
@@ -139,4 +144,29 @@ test('civilian activities reject stale/foreign/queued/reinforcing/hidden and nat
 test('excavation accepts a visible UI-filtered ruin outside any settlement even with native neutral-owner sentinel',()=>{
   assert.equal(run({kind:'excavate',neutralRuin:true}).data.status,'submitted');
   assert.equal(run({kind:'research',neutralRuin:true}).data.status,'rejected');
+});
+test('excavation accepts a visible ruin in met peaceful foreign territory with exactly one native request',()=>{
+  const {data,calls}=run({kind:'excavate',foreign:true,ruin:true});
+  assert.equal(data.status,'submitted');
+  assert.deepEqual(calls.filter(c=>c.kind==='send'),[{kind:'send',id:{owner:0,id:10,type:26},op:OPS.excavate,args:{X:3,Y:3,UnitAbilityType:-1}}]);
+  assert.equal(data.verificationArguments.kind,'excavate');
+  assert.equal(run({kind:'excavate',foreign:true,ruin:true,applied:true},'local_civilian_state.js').data.activityObserved,true);
+});
+test('foreign excavation retains ruin, peaceful met owner, native, readiness and revalidation guards',()=>{
+  for(const o of [{ruin:false},{unmet:true},{atWar:true},{atWar:null},{atWar:undefined},
+    {warAfterCheck:true},{unmetAfterCheck:true},{ruinGoneAfterCheck:true},{ownerAfterCheck:2},
+    {stackOwners:[1]},{stackAfterCheck:[1]},{unknownStack:true},{missingSource:true},
+    {hidden:true},{blocked:true},{confirm:true},{queued:true},{reinforcing:true},
+    {embarked:true},{wrongRole:true},{inactive:true},{sent:true},{changed:true},{args:{expected_turn:61}}]){
+    const r=run({kind:'excavate',foreign:true,ruin:true,...o});
+    assert.equal(r.data.status,'rejected',JSON.stringify(o));
+    assert.equal(r.calls.filter(c=>c.kind==='send').length,0,JSON.stringify(o));
+  }
+});
+test('foreign ruin exception does not enable other local civilian activities',()=>{
+  for(const kind of ['research','spread','great_person','resettle','treat_sick']){
+    const r=run({kind,foreign:true,ruin:true});
+    assert.equal(r.data.status,'rejected',kind);
+    assert.equal(r.calls.filter(c=>c.kind==='send').length,0,kind);
+  }
 });

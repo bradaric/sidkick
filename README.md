@@ -1579,6 +1579,11 @@ remain unavailable. **211 Python / 385 Node pass; tools23/86 (63 actions).**
 `perform_civ7_local_civilian_action` exposes only fixed found/excavate/research/
 spread/great_person/resettle/treat_sick intents at a proven current tile, with role, visibility,
 owner, queue, packing/reinforcement, linked ability and native permission guards.
+Excavation additionally permits visible UI-filtered ruins in met peaceful foreign
+territory, including settlement-assigned tiles. Foreign stacks remain rejected;
+native permission must allow the dig without confirmation, and ownership, peace
+and ruin evidence are rechecked before submission. Other civilian activity scopes
+are unchanged. This foreign-territory path is fixture-tested, not live-verified.
 Founding verifies one new exact settlement plus consumed Settler and preserved old
 settlements. Archaeology can verify a queued exact operation, not completed reward;
 spread/Great Person consumption is not full effect accounting. Current-tile
