@@ -2,18 +2,20 @@
 
 Compiled **2026-11-05**, from the Catherine / Maya / Maya / Russia campaign discussed in this session. Ruleset: **Test of Time**. The installed game version, full mod list, difficulty and campaign settings were not archived here.
 
+Expanded **2026-11-16** with [Game 01 strategy and checkpoints](game-01-strategy.md): the conceded Russia attempt, the player-reported Exploration-age replay into Prussia, and its screenshot-confirmed **Science Victory**. T95 is the last verified numerical checkpoint; the final victory turn is not shown in the screenshot. Replay version: **1.5.1 (1327230)**. Older topic pages retain historical uncertainties; the case study identifies later observations without turning every old proposal into a tested result.
+
 **The main lesson: evaluate safety at the next victory multiplier, not just the current target.** A strong science economy is not a winning strategy if a rival can finish before its investments pay off.
 
 ## Start here next time
 
-1. Read [the postmortem](campaign-postmortem.md) and [victory deadlines](victories-and-deadlines.md).
+1. Read [Game 01 strategy and checkpoints](game-01-strategy.md) and [victory deadlines](victories-and-deadlines.md); consult [the original Russia postmortem](campaign-postmortem.md) for the first attempt's failure timeline.
 2. Follow [the coaching skill](SKILL.md), then use [the replay playbook](replay-playbook.md). Project startup instructions direct the AI to read the skill for gameplay questions; outside this project, load it explicitly.
 3. Refresh the actual loaded save. **Nothing in this directory is current game state.**
 4. Before committing to long builds, inspect native countdowns and the campaign-specific dominance schedule.
 
 Suggested opening prompt:
 
-> Read docs/civ7-kb/SKILL.md and follow its referenced guidance. We are replaying the Modern T1 save, not continuing the conceded T56 run. Refresh the loaded save, identify the next dominance deadline, and advise on peaceful science versus earlier containment. Do not reuse old queues or assume the same outcome.
+> Read docs/civ7-kb/SKILL.md and its Game 01 strategy/checkpoint guide. This is a new game or replay, not the historical Russia or Prussia state. Refresh the loaded save, inspect every enabled victory and the next dominance threshold, and build a balanced survival and preferred-victory plan. Do not reuse old queues or assume the same outcome.
 
 ## Automatic project guidance
 
@@ -29,6 +31,7 @@ References: [OpenCode V2 instructions](https://opencode.ai/v2/docs/instructions)
 | Document | Use it for |
 |---|---|
 | [SKILL.md](SKILL.md) | Portable AI coaching instructions, selected by project guidance for gameplay; load only relevant reference pages |
+| [Game 01 strategy and checkpoints](game-01-strategy.md) | Both campaign attempts, early warning gates, balanced GDP/Tourism defense, limited war and the Science finish; start here for future games |
 | [Campaign postmortem](campaign-postmortem.md) | What happened, dated score checkpoints, preferences and mistakes |
 | [Victories and deadlines](victories-and-deadlines.md) | Ratios, countdowns, defensive Tourism arithmetic and emergency triage |
 | [Modern science](modern-science.md) | Innovation versus science; technology/project prerequisites |
