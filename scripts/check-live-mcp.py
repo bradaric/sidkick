@@ -25,6 +25,12 @@ async def main() -> None:
             tools = await session.list_tools()
             for tool in tools.tools:
                 arguments = {}
+                if tool.name == "get_civ7_peace_negotiation":
+                    diplomacy = await session.call_tool("get_civ7_diplomacy", {})
+                    peers = (diplomacy.structured_content or {}).get("majorPlayers", [])
+                    if diplomacy.is_error or not peers:
+                        raise RuntimeError("A met major is required for targeted peace negotiation evidence")
+                    arguments = {"target_player_id": peers[0]["playerId"]}
                 if tool.name == "get_civ7_peace_city_offer":
                     decisions = await session.call_tool("get_civ7_available_decisions", {})
                     diplomacy = await session.call_tool("get_civ7_diplomacy", {})

@@ -167,6 +167,7 @@ class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
             SimpleNamespace(name="get_civ7_combat_options"),
             SimpleNamespace(name="get_civ7_empire"),
             SimpleNamespace(name="get_civ7_peace_city_offer"),
+            SimpleNamespace(name="get_civ7_peace_negotiation"),
         ])
 
         async def call_tool(name, arguments):
@@ -178,6 +179,8 @@ class LiveCheckTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(arguments, {"unit_id": 7, "x": 1, "y": 2})
             if name == "get_civ7_peace_city_offer":
                 self.assertEqual(arguments, {"target_player_id":3,"city_owner":0,"city_id":10,"x":1,"y":2})
+            if name == "get_civ7_peace_negotiation":
+                self.assertEqual(arguments, {"target_player_id": 3})
             return SimpleNamespace(is_error=False, structured_content={
                 "settlements": [{"name": "City","cityOwner":0,"cityId":10,"location":{"x":1,"y":2}}], "units": [{"instanceId": 7, "location": {"x": 1, "y": 2}}],"majorPlayers":[{"playerId":3}],
             })

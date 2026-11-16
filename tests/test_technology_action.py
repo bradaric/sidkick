@@ -209,6 +209,7 @@ class WriteRegistrationTests(unittest.IsolatedAsyncioTestCase):
             "assault_civ7_city",
             "resolve_civ7_city_capture",
             "manage_civ7_white_peace_deal",
+            "manage_civ7_peace_deal", "search_civ7_peace_deals",
             "levy_civ7_city_state_unit",
             "plunder_civ7_trade_route",
             "choose_civ7_extended_narrative",

@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
-from civ7 import actions, connection, queries
+from civ7 import actions, connection, queries, peace_negotiation
 from sidkick.server import create_server
 
 
@@ -59,10 +59,12 @@ console.log(JSON.stringify({result:JSON.parse(raw.replace(/^SIDKICK_RESULT:/,'')
         self.assertTrue(callable(getattr(connection, "run_started_script", None)))
         self.assertIs(actions.run_script, connection.run_started_script)
         self.assertIs(queries.run_script, connection.run_script)
+        self.assertIs(peace_negotiation.run_script, connection.run_script)
+        self.assertIs(peace_negotiation.run_started_script, connection.run_started_script)
         writers = [t for t in create_server(enable_writes=True)._tool_manager.list_tools()
                    if t.annotations.read_only_hint is False]
         self.assertTrue(writers)
-        self.assertEqual({t.fn.__module__ for t in writers}, {actions.__name__})
+        self.assertEqual({t.fn.__module__ for t in writers}, {actions.__name__, peace_negotiation.__name__})
 
     async def test_loading_or_unknown_readiness_rejects_before_helper_and_native_submission(self):
         for context in (

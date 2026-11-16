@@ -52,6 +52,9 @@ async def _run_script(
         raise ValueError("Civ VII queries must be bundled JavaScript files")
 
     script = script_path.read_text(encoding="utf-8")
+    if script_name in {"peace_negotiation_action.js", "peace_negotiation_state.js"}:
+        helper = (ROOT / "peace_negotiation.js").read_text(encoding="utf-8")
+        script = f"((peaceNegotiation) => {{ return {script}\n}})({helper})"
     # Bind this dependent helper innermost so the outer fixed preludes are in its lexical scope.
     if script_name in {"transition_workflow_state.js", "transition_workflow_action.js"}:
         helper = (ROOT / "transition_workflow.js").read_text(encoding="utf-8")

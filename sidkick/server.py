@@ -137,6 +137,7 @@ from civ7.actions import (
     unpack_commander,
 )
 from civ7.player import snapshot
+from civ7.peace_negotiation import read_negotiation, manage_deal, search_deals
 from civ7.queries import (
     saved_games,
     loading_state,
@@ -921,6 +922,43 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
                          "full cascade accounting. One native write,15-second readback; never retry unknown."),
             annotations=ToolAnnotations(readOnlyHint=False,destructiveHint=True,idempotentHint=False,openWorldHint=False),structured_output=True,
         )(peace_deal_action)
+        server.tool(
+            name="manage_civ7_peace_deal", title="Edit, inspect or submit exact Civ VII peace terms",
+            description=("CHANGE GAME STATE: prepare/add/remove/inspect/propose/accept/reject, or explicit restore "
+                         "of original searchRecovery terms after an interrupted search (never a submission). "
+                         "Get a fresh get_civ7_peace_negotiation deal_token and expected_turn; add requires an exact "
+                         "offered item_token, remove an existing item_id. Supports Gold, Influence and multiple "
+                         "owned/currently visible city OFFER/CEDE_OCCUPIED terms. One lump per currency across "
+                         "both sides. Gross local currency costs require explicit caps (default zero). Never clears "
+                         "unknown terms or concedes the last owned settlement. INSPECT sends a native AI preview "
+                         "request, NOT a proposal or acceptance. Incoming offers may already be outgoing drafts; "
+                         "the native peace panel identifies converted incoming responses/counteroffers. Propose "
+                         "uses ADJUSTED for that case; accept/reject require proven incoming context and edited "
+                         "incoming terms must be proposed, not accepted. Edits and "
+                         "inspection never submit peace. Submission can transfer cities/spend/end war; obtain "
+                         "separate user authorization. Readback checks exact terms/currency/owned-city ledger, "
+                         "or actual peace and agreed own currency/city transfers. Preview is not guaranteed final "
+                         "acceptance. Avoid concurrent UI negotiation: native responses have no caller request ID. "
+                         "No turns, retries or rollback; inspect current terms/searchRecovery after unknown."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False), structured_output=True,
+        )(manage_deal)
+        server.tool(
+            name="search_civ7_peace_deals", title="Inspect combinations of native Civ VII peace terms",
+            description=("CHANGE DRAFT / SEND NATIVE INSPECT, NEVER PROPOSE OR ACCEPT: supply a fresh outgoing "
+                         "deal_token, expected_turn and up to 32 exact currently available candidate_item_tokens "
+                         "from get_civ7_peace_negotiation. Enumerates none/one lump per currency and independent "
+                         "city choices. Spending caps default zero and must permit restoring existing terms. "
+                         "Inspects at most limit=1–32 combinations (default 16) starting at offset; reports exact "
+                         "coverage, rejected previews, accepted terms and a non-dominated frontier for this batch. "
+                         "Gold, Influence and named city gains/losses remain separate dimensions, not arbitrary "
+                         "city-count scores. Restore original terms before returning, with fresh IDs/token; does "
+                         "not restore an old acceptance preview. Native-hidden/unsupported terms block searching. "
+                         "Available city choices remain visibility-filtered, so this is not all foreign cities. "
+                         "On unknown/cancellation stop without further writes; read searchRecovery and never "
+                         "retry automatically. Requires authorization to edit/inspect, single-player and no "
+                         "concurrent UI actions. Never chooses or submits a final deal automatically."),
+            annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False), structured_output=True,
+        )(search_deals)
         server.tool(
             name="assault_civ7_city",title="Explicitly assault or occupy Civ VII settlement centre",
             description=("CHANGE GAME STATE: adjacent land combat unit_id against exact met wartime "
@@ -2455,11 +2493,29 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "peace-deal item accounting is unsupported; only supported white/economic working-draft "
             "tokens and native negotiation quotes are exposed. Use targeted peace-city reader "
             "for a known currently visible city, no foreign city enumeration. Never changes "
-            "or sends deals."
+            "or sends deals. For an open peace negotiation use get_civ7_peace_negotiation: it reads "
+            "actual you-give/you-receive terms, multiple city concessions and outgoing drafts converted "
+            "from incoming offers. pendingDeal=false does not prove no offer is open. Native acceptance "
+            "previews require the separately authorized manage_civ7_peace_deal inspect action."
         ),
         annotations=read_only,
         structured_output=True,
     )(diplomacy)
+    server.tool(
+        name="get_civ7_peace_negotiation", title="Read actual Civ VII peace terms and native offers",
+        description=("Read exact working peace terms for one met major target_player_id. Default direction "
+                     "outgoing is also where the native UI puts incoming offers for response; pendingDeal=false "
+                     "is not evidence of no open negotiation. Includes youGive/youReceive, offered Gold/Influence "
+                     "lumps and multiple owned/currently visible city OFFER/CEDE_OCCUPIED choices, exact fresh "
+                     "dealToken/itemTokens, native validity, termsComplete/offersComplete and responseMode. "
+                     "Unknown or hidden selected terms disable the entire deal token, never silently discard "
+                     "a concession. No foreign city inventory/private yields or unmet identities. acceptance is "
+                     "null unless a recent native INSPECT response matches this unchanged draft/context; this "
+                     "read never requests inspection or changes/submits a deal. searchRecovery retains original "
+                     "terms after an interrupted combination search. For writes use manage_civ7_peace_deal; "
+                     "search_civ7_peace_deals explores explicitly supplied candidate combinations without submitting."),
+        annotations=read_only, structured_output=True,
+    )(read_negotiation)
     server.tool(
         name="get_civ7_peace_city_offer",title="Read exact visible Civ VII peace-city offer",
         description=("Read native peace OFFER terms only for exact known target_player_id and "

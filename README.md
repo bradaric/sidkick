@@ -104,6 +104,78 @@ technology and all active policy/tradition/crisis groups were unchanged. The
 actions share submission serialization and bounded verification, but have
 separate native scripts, selectors and readback fields.
 
+#### Peace negotiation and combination search
+
+`get_civ7_peace_negotiation(target_player_id, direction="outgoing")` reads the
+actual working draft as `youGive` / `youReceive`, including multiple settlement
+terms, and returns native offered terms with `itemToken`, `available`, a fresh
+whole-draft `dealToken`, and completeness flags. **Incoming offers are converted
+to outgoing working drafts by the native diplomacy UI**; `pendingDeal=false`
+does not mean there is no open negotiation. Use `direction="incoming"` only for
+an offer still in that native direction. Open the peace screen in-game if no
+working draft exists; the reader never initializes or clears it.
+
+The two new writers remain stdio/write-mode only:
+
+- `manage_civ7_peace_deal(target_player_id, operation, deal_token, expected_turn,
+  direction="outgoing", item_token=null, item_id=null, max_gold_cost=0,
+  max_influence_cost=0)` supports separate `prepare`, `add`, `remove`, `inspect`,
+  `propose`, `accept`, `reject`, and explicit interrupted-search `restore`.
+  Prepare only initializes an empty draft. Add selects one exact native offer;
+  remove selects an existing concession ID. One Gold and one Influence lump are
+  allowed across both sides, matching the native UI. City terms retain
+  owner-qualified identity and distinguish transfer from ceding occupation.
+  Gross local currency obligations must fit the supplied caps and balances.
+  Acceptance/rejection requires proven incoming context; a counteroffer uses
+  native `ADJUSTED`, and edited incoming terms cannot be silently accepted.
+- `search_civ7_peace_deals(target_player_id, deal_token, candidate_item_tokens,
+  expected_turn, max_gold_cost=0, max_influence_cost=0, offset=0, limit=16)`
+  explores combinations of up to 32 explicitly selected available tokens, at
+  most 1–32 combinations per call. Each currency has none/one choice; cities
+  are independent choices. It sends native **INSPECT only**, never proposes,
+  accepts, rejects, ends a turn or chooses a final deal. Results include exact
+  coverage, cap/last-owned-settlement exclusions, accepted/rejected previews, `nextOffset` and the
+  non-dominated accepted `frontier` for this batch. Gold, Influence and each
+  named city remain separate dimensions—there is no invented exchange rate or
+  interchangeable city-count score. Reuse the same candidate order and fresh
+  returned draft token for subsequent offsets; combine batch results before
+  claiming an overall best deal.
+
+Use the returned tool summaries while exploring. Tool edits can leave the open
+native panel's displayed terms/item IDs stale; do not mix tool actions with
+clicks on those old controls. No automatic panel refresh/closure is attempted:
+the native new-deal population path clears its working draft.
+
+Native INSPECT is asynchronous and **not a read-only getter**. The ordinary
+reader returns `acceptance=null` unless a recent inspection matches the unchanged
+draft and context. A preview is not actual peace or guaranteed future acceptance.
+Avoid simultaneous UI edits/inspections: native response events identify the
+counterpart/action but do not echo a caller request ID.
+
+Search normally restores the original **terms**, not native item IDs, an old
+token or an old acceptance banner. On timeout, disconnect or cancellation it
+must not race a possibly late native action with further writes. Read
+`searchRecovery` for the original items, then explicitly authorize `restore` with
+the current token/caps. Recovery is retained in game-context memory, not a save
+file. No automatic retry or unconditional rollback is provided.
+
+Unknown/unsupported or hidden selected terms disable the whole draft token.
+Foreign city metadata is limited to currently visible centres of the met
+counterpart; owned cities remain available. `offersComplete=false` means the
+offered search space is partial, not that withheld cities are unavailable.
+Submission readback checks actual bilateral peace, agreed own currency deltas,
+the exact settlement recipients and preservation of unrelated owned cities;
+buildings, works, units and global diplomatic cascades are not fully inventoried.
+
+**Verification, 2026-11-16:** native source-backed fixture tests cover negotiation,
+inspection, search/restoration, counteroffers and final transfer guards. A live
+read-only check found Modern T69 with no met-major war; the new reader returned
+an empty, non-peace outgoing draft and visibility-filtered offers. No live draft was edited,
+INSPECT/proposal/response sent, save loaded or war manufactured; positive live
+negotiation/search/submission verification remains outstanding. Reconnect the
+Sidkick MCP connection to load the new tools; existing client settings are not
+changed automatically.
+
 #### Local single-player save/load
 
 `get_civ7_saved_games(limit=50, offset=0)` lists local manual, quick and auto
