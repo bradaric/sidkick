@@ -197,6 +197,78 @@ test('append readback needs exactly the original queue followed by the requested
   assert.equal(read([...QUEUE, appended]).calls.length, 0);
 });
 
+// Native queue shape: the active constructible may acquire its instance after submission.
+const pendingWonder = {orderType: 2, kind: -1504597204, type: -418713090, modifiers: 0,
+  location: {x: 11, y: 6}, instance: {owner: -1, id: -1, type: 0},
+  constructibleType: -418713090, projectType: -1, unitType: -1};
+const startedWonder = {...pendingWonder, instance: {owner: 0, id: 15466532, type: 2}};
+const wonderAsset = {id: startedWonder.instance, type: pendingWonder.type,
+  location: pendingWonder.location, complete: false, damaged: false};
+const labTail = {type: 301, location: {x: 24, y: 4}};
+
+test('append readback accepts a pending head acquiring its exact owned construction instance', () => {
+  for (const kind of ['building', 'unit', 'project']) {
+    const tail = kind === 'building' ? labTail : {type: kind === 'unit' ? 201 : 401};
+    const baseline = [pendingWonder, ...QUEUE];
+    const {data, calls} = run({kind, queue: [startedWonder, ...QUEUE, tail],
+      buildings: [wonderAsset], args: {baseline_queue: baseline}}, 'city_construction_state.js');
+    assert.equal(data.queueAppendObserved, true, kind);
+    assert.equal(calls.length, 0, 'readback cannot submit another action');
+    assert.deepEqual(baseline, [pendingWonder, ...QUEUE], 'captured baseline stays unchanged');
+    assert.deepEqual(data.queue[0].instance, startedWonder.instance, 'retain actual observed instance');
+  }
+});
+
+test('pending-head initialization requires a matching owned unfinished constructible', () => {
+  for (const asset of [null, {...wonderAsset, id: {...wonderAsset.id, owner: 1}},
+    {...wonderAsset, id: {...wonderAsset.id, type: 3}}, {...wonderAsset, type: 999},
+    {...wonderAsset, location: {x: 12, y: 6}}, {...wonderAsset, complete: true},
+    {...wonderAsset, complete: undefined}]) {
+    const {data} = run({kind: 'building', queue: [startedWonder, labTail],
+      buildings: asset ? [asset] : [], args: {baseline_queue: [pendingWonder]}}, 'city_construction_state.js');
+    assert.equal(data.queueAppendObserved, false, JSON.stringify(asset));
+  }
+  for (const instance of [{owner: 1, id: 10, type: 2}, {owner: 0, id: -1, type: 2},
+    {owner: 0, id: 10.5, type: 2}, {owner: 0, id: 10, type: 0},
+    {owner: 0, id: 10, type: 2.5}, {...startedWonder.instance, extra: true}]) {
+    const {data} = run({kind: 'building', queue: [{...startedWonder, instance}, labTail],
+      buildings: [{...wonderAsset, id: instance}], args: {baseline_queue: [pendingWonder]}}, 'city_construction_state.js');
+    assert.equal(data.queueAppendObserved, false, JSON.stringify(instance));
+  }
+});
+
+test('pending-head initialization cannot hide any other queue change or assigned-ID replacement', () => {
+  const read = (queue, baseline = [pendingWonder, ...QUEUE]) => run({kind: 'building', queue,
+    buildings: [wonderAsset], args: {baseline_queue: baseline}}, 'city_construction_state.js').data.queueAppendObserved;
+  for (const queue of [[startedWonder, labTail], [startedWonder, ...QUEUE, labTail, labTail],
+    [...QUEUE, startedWonder, labTail], [startedWonder, {...QUEUE[0], modifiers: 1}, labTail],
+    [startedWonder, ...QUEUE, {...labTail, type: 999}],
+    [startedWonder, ...QUEUE, {...labTail, location: {x: 23, y: 4}}]]) {
+    assert.equal(read(queue), false, JSON.stringify(queue));
+  }
+  for (const change of [{type: 999}, {kind: 999}, {orderType: 1}, {modifiers: 1},
+    {location: {x: 12, y: 6}}, {constructibleType: 999}, {extra: true}]) {
+    assert.equal(read([{...startedWonder, ...change}, ...QUEUE, labTail]), false, JSON.stringify(change));
+  }
+  for (const instance of [{owner: 0, id: 99, type: 2}, {owner: -1, id: 99, type: 0},
+    {owner: -1, id: -1, type: 2}, null]) {
+    assert.equal(read([startedWonder, ...QUEUE, labTail], [{...pendingWonder, instance}, ...QUEUE]), false);
+  }
+  assert.equal(read([...QUEUE, startedWonder, labTail], [...QUEUE, pendingWonder]), false,
+    'only the active head can acquire an instance');
+  assert.equal(read([pendingWonder, ...QUEUE, labTail],
+    [startedWonder, ...QUEUE]), false, 'an assigned instance cannot disappear');
+  assert.equal(read([{...startedWonder, constructibleType: -1}, ...QUEUE, labTail],
+    [{...pendingWonder, constructibleType: -1}, ...QUEUE]), false, 'only constructible orders can acquire construction instances');
+});
+
+test('purchase readback does not relax queue identity for pending-head initialization', () => {
+  const fresh = {...UNIT, id: {...UNIT.id, id: 12}};
+  const {data} = run({mode: 'purchase', queue: [startedWonder], buildings: [wonderAsset],
+    units: [UNIT, fresh], args: {baseline_queue: [pendingWonder]}}, 'city_construction_state.js');
+  assert.equal(data.purchaseObserved, false);
+});
+
 test('unit readback requires one new owned matching ID, not Gold loss or foreign/old/wrong units', () => {
   const fresh = {...UNIT, id: {...UNIT.id, id: 12}};
   const read = units => run({mode: 'purchase', units}, 'city_construction_state.js');

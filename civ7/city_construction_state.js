@@ -23,7 +23,24 @@
   if (mode === "append") {
     const last = queue[baselineQueue.length];
     const samePrefix = queue.length === baselineQueue.length + 1 &&
-      JSON.stringify(queue.slice(0, baselineQueue.length)) === JSON.stringify(baselineQueue);
+      baselineQueue.every((previous, index) => {
+        const current = queue[index];
+        if (JSON.stringify(current) === JSON.stringify(previous)) return true;
+        // Starting the active constructible can replace its pending instance sentinel.
+        // Keep every other field exact, and never permit replacement of an assigned ID.
+        if (index !== 0 || previous.instance?.owner !== -1 || previous.instance.id !== -1 || previous.instance.type !== 0 ||
+            !Number.isInteger(previous.type) || previous.constructibleType !== previous.type ||
+            !Number.isInteger(previous.location?.x) || previous.location.x < 0 ||
+            !Number.isInteger(previous.location?.y) || previous.location.y < 0 ||
+            JSON.stringify({...current, instance: previous.instance}) !== JSON.stringify(previous)) return false;
+        const id = current.instance;
+        if (id?.owner !== playerId || !Number.isInteger(id.id) || id.id < 0 || !Number.isInteger(id.type) || id.type <= 0 ||
+            JSON.stringify({...id, owner: -1, id: -1, type: 0}) !== JSON.stringify(previous.instance)) return false;
+        const constructible = Constructibles.getByComponentID(id);
+        return constructible?.id?.owner === playerId && constructible.id.id === id.id && constructible.id.type === id.type &&
+          constructible.type === previous.type && constructible.complete === false &&
+          constructible.location?.x === previous.location.x && constructible.location?.y === previous.location.y;
+      });
     return {...state, queueAppendObserved: samePrefix && last?.type === def.$hash &&
       (!isBuilding || (last.location?.x === x && last.location?.y === y))};
   }
