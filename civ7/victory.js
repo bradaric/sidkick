@@ -246,6 +246,39 @@
     };
   }
 
+  function militarySettlementSummary(playerId, scoring) {
+    const tracker = typeof VictoryTrackerTypes === "undefined" ? null : VictoryTrackerTypes.VICTORY_TRACKER_SETTLEMENT;
+    if (scoring == null || tracker == null) return null;
+    const canResolve = typeof Cities !== "undefined" && typeof Cities.get === "function";
+    const settlements = [];
+    const seen = new Set();
+    let unresolvedEntryCount = 0;
+    for (const score of scoring) {
+      // Military ledgers also contain non-settlement awards (e.g. Triumphs).
+      if (score.trackerType !== tracker) continue;
+      if (!Number.isInteger(score.id) || score.id < 0) { unresolvedEntryCount++; continue; }
+      if (seen.has(score.id)) continue;
+      seen.add(score.id);
+      // Same city component lookup used by the Military victory screen; no map visibility gate.
+      // UI's imported ComponentID.make simply returns {owner, type, id}; it is not a tuner global.
+      const city = canResolve ? Cities.get({owner: playerId, type: 1, id: score.id}) : null;
+      if (!city || city.owner !== playerId) { unresolvedEntryCount++; continue; }
+      settlements.push({cityId: score.id, name: name(score.name),
+        town: typeof city.isTown === "boolean" ? city.isTown : null,
+        capital: typeof city.isCapital === "boolean" ? city.isCapital : null});
+    }
+    const classified = unresolvedEntryCount === 0 && settlements.every(city => city.town != null);
+    return {
+      settlements,
+      settlementCount: unresolvedEntryCount === 0 ? settlements.length : null,
+      cityCount: classified ? settlements.filter(city => !city.town).length : null,
+      townCount: classified ? settlements.filter(city => city.town).length : null,
+      unresolvedEntryCount,
+      complete: classified && settlements.every(city => city.capital != null),
+      scope: "Military victory settlement ledger for a local/met major, including fogged settlements shown by the screen. Deduplicated by settlement ID, not scoring-entry count or name; capitals are included in cityCount. Counts cover this ledger, not an independently verified full empire census. Missing references/classifications leave totals unknown; no locations or private settlement details are read"
+    };
+  }
+
   const players = [];
   for (const playerId of Players.getAliveIds()) {
     const isLocal = playerId === localId;
@@ -302,6 +335,8 @@
               complete: Number.isFinite(prereq.current) && Number.isFinite(prereq.total) ? prereq.current >= prereq.total : null
             })) : null
           } : null,
+          settlementSummary: known.hasMet && definition.VictoryClassType === "VICTORY_CLASS_MILITARY"
+            ? militarySettlementSummary(known.id, scoring) : null,
           scoring: known.hasMet ? (scoring ?? []).map(score => ({
             name: name(score.name),
             points: score.points,

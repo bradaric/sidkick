@@ -8,12 +8,26 @@ function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unkno
   tourism = false, researchDepth = 1, traditionActive = false, nativeArguments = false,
   unmetPoints = 72, unmetCountdown = {isDominant: true, turns: 1}, missingDiplomacy = false,
   completedVictories = [], victoryClass = 'VICTORY_CLASS_CULTURE',
+  militaryScoring, militaryCities = {}, missingCityResolver = false, missingSettlementTracker = false,
   targetPoints = 999, scoringArguments = [{ ScoringId: 'WONDERS', Key: 'REQUIRED_CONSTRUCTIBLE', ValueAsText: 'WONDER', ValueAsInt: null }] } = {}) {
   const type = { $hash: 50, VictoryType: 'CULTURE', Name: 'Culture', CountdownDuration: 5,
     ScoringType: fixed ? 'COUNTDOWN_VICTORY_SCORING_TYPE_FIXED_SCORE' : 'COUNTDOWN_VICTORY_SCORING_TYPE_DOMINATION', FinalAge: 1 };
   const data = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../civ7/victory.js'), 'utf8'), {
     UI: { isInGame: () => true }, GameContext: { localPlayerID: 0 }, Locale: { compose: s => s },
     Configuration: { getGame: () => ({ campaignStartAgeType: startAge, previousAgeCount: previousAges }) },
+    VictoryTrackerTypes: missingSettlementTracker ? {} : {VICTORY_TRACKER_SETTLEMENT: 7},
+    // ComponentID is an imported UI utility, not a global in the tuner context.
+    Cities: missingCityResolver ? undefined : {get: component => {
+      assert.equal(victoryClass, 'VICTORY_CLASS_MILITARY');
+      assert.equal(component.type, 1);
+      assert.notEqual(component.owner, 2);
+      const city = militaryCities[component.id];
+      return city == null ? null : Object.setPrototypeOf({owner: city.owner ?? component.owner,
+        get name() { throw Error('Use the public ledger name'); },
+        get location() { throw Error('Fogged locations must not be read'); },
+        get population() { throw Error('Private settlement metadata must not be read'); },
+        get Production() { throw Error('Foreign production must not be read'); }}, city);
+    }},
     Players: { getAliveIds: () => [0, 1, 2, 3, 4], get: id => {
       if (id === 4) return null;
       if (id === 3) return {isMajor: false};
@@ -37,7 +51,8 @@ function run({ percent = 10, previousAges = 2, startAge = 'AGE_ANTIQUITY', unkno
           getPointsForVictoryType: () => id === 0 ? 100 : 250,
           getVictoryCountdownStatus: () => unknown ? { prereqs: [{ description: 'Requirement' }] }
             : { isDominant: id === 1, turns: id === 1 ? 3 : 0, prereqs: [{description: 'Requirement', current: 1, total: 1}] },
-          getScoringForVictoryType: () => id === 0 ? [] : [{name: 'Known scoring', points: 250, turn: 88, age: 1, trackerType: 7}],
+          getScoringForVictoryType: () => id === 0 ? [] : militaryScoring === undefined
+            ? [{name: 'Known scoring', points: 250, turn: 88, age: 1, trackerType: 7}] : militaryScoring,
         },
       };
     } },
@@ -162,6 +177,88 @@ test('Culture victory points are labelled Tourism, not Culture yield or a per-tu
   assert.equal(victory.pointsLabel, 'Tourism');
   assert.equal(victory.progress[0].points, 100);
   assert.equal(run({victoryClass: 'VICTORY_CLASS_SCIENCE'}).victoryConditions[0].pointsLabel, 'Victory points');
+});
+
+const settlementScore = (id, name, trackerType = 7) => ({id, name, trackerType, points: 4, turn: 88, age: 1});
+const military = options => run({victoryClass: 'VICTORY_CLASS_MILITARY', ...options}).victoryConditions[0];
+
+test('Military breakdown counts named Cities and Towns once per settlement, including the capital', () => {
+  const summary = military({militaryScoring: [
+    settlementScore(10, 'Kampala'), settlementScore(10, 'Kampala'),
+    settlementScore(11, 'Per-Atum'), settlementScore(12, 'Nekhen'),
+    ...Array.from({length: 9}, (_, i) => settlementScore(20 + i, `Town ${i}`)),
+    settlementScore(99, 'Triumph', 8),
+  ], militaryCities: {
+    10: {isTown: false, isCapital: true}, 11: {isTown: false, isCapital: false},
+    12: {isTown: false, isCapital: false},
+    ...Object.fromEntries(Array.from({length: 9}, (_, i) => [20 + i, {isTown: true, isCapital: false}])),
+    99: {get isTown() { throw Error('Non-settlement awards must not be resolved'); }},
+  }}).progress[1].settlementSummary;
+  assert.ok(summary, 'Military settlement classification is exported');
+  assert.equal(summary.cityCount, 3);
+  assert.equal(summary.townCount, 9);
+  assert.equal(summary.settlementCount, 12);
+  assert.equal(summary.complete, true);
+  assert.equal(summary.unresolvedEntryCount, 0);
+  assert.deepEqual(summary.settlements.slice(0, 3), [
+    {cityId: 10, name: 'Kampala', town: false, capital: true},
+    {cityId: 11, name: 'Per-Atum', town: false, capital: false},
+    {cityId: 12, name: 'Nekhen', town: false, capital: false},
+  ]);
+  assert.match(summary.scope, /Military.*ledger/);
+});
+
+test('Military settlement deduplication uses IDs, not potentially identical names', () => {
+  const summary = military({militaryScoring: [settlementScore(10, 'Same'), settlementScore(11, 'Same')],
+    militaryCities: {10: {isTown: false, isCapital: true}, 11: {isTown: true, isCapital: false}},
+  }).progress[1].settlementSummary;
+  assert.equal(summary?.settlementCount, 2);
+  assert.equal(summary.cityCount, 1);
+  assert.equal(summary.townCount, 1);
+});
+
+test('unresolved Military settlement references prevent false totals and never inspect another owner', () => {
+  const summary = military({militaryScoring: [
+    settlementScore(10, 'Known'), settlementScore(11, 'Missing'), settlementScore(11, 'Missing'),
+    settlementScore(12, 'Other owner'), settlementScore(-1, 'Invalid'),
+  ], militaryCities: {10: {isTown: false, isCapital: true},
+    12: {owner: 2, get isTown() { throw Error('Wrong-owner classification must not be read'); }}},
+  }).progress[1].settlementSummary;
+  assert.ok(summary);
+  assert.equal(summary.complete, false);
+  assert.equal(summary.unresolvedEntryCount, 3);
+  assert.equal(summary.settlements.length, 1);
+  assert.equal(summary.cityCount, null);
+  assert.equal(summary.townCount, null);
+  assert.equal(summary.settlementCount, null);
+});
+
+test('missing Military classification stays unknown; missing interfaces and history do not fabricate zeroes', () => {
+  const summary = military({militaryScoring: [settlementScore(10, 'Unclassified')], militaryCities: {10: {}}})
+    .progress[1].settlementSummary;
+  assert.ok(summary);
+  assert.equal(summary.complete, false);
+  assert.equal(summary.settlementCount, 1);
+  assert.equal(summary.cityCount, null);
+  assert.equal(summary.townCount, null);
+  assert.equal(summary.settlements[0].town, null);
+  assert.equal(summary.settlements[0].capital, null);
+  assert.equal(military({militaryScoring: null}).progress[1].settlementSummary, null);
+  assert.equal(military({missingSettlementTracker: true}).progress[1].settlementSummary, null);
+  const unavailable = military({militaryScoring: [settlementScore(10, 'Missing')], missingCityResolver: true})
+    .progress[1].settlementSummary;
+  assert.equal(unavailable.complete, false);
+  assert.equal(unavailable.cityCount, null);
+});
+
+test('Military summaries preserve genuine empty ledgers and withhold unmet and non-Military detail', () => {
+  const victory = military({militaryScoring: []});
+  assert.equal(victory.progress[1].settlementSummary?.cityCount, 0);
+  assert.equal(victory.progress[1].settlementSummary.townCount, 0);
+  assert.equal(victory.progress[1].settlementSummary.complete, true);
+  assert.equal(victory.progress[2].settlementSummary, null);
+  assert.equal(run().victoryConditions[0].progress[1].settlementSummary, null);
+  assert.equal(military({missingDiplomacy: true}).progress[1].settlementSummary, null);
 });
 
 test('unknown countdown/prerequisite values remain null rather than invented zeroes or false completion', () => {

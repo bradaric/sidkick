@@ -20,6 +20,9 @@ class ServerTests(unittest.TestCase):
                 self.assertIn("anonymous unmet major players", tool.description)
                 self.assertIn("scoring history", tool.description)
                 self.assertIn("Culture pointsLabel is Tourism", tool.description)
+                self.assertIn("settlementSummary", tool.description)
+                self.assertIn("Cities and Towns", tool.description)
+                self.assertIn("fogged", tool.description)
                 self.assertNotIn("met major players only", tool.description)
                 self.assertTrue(tool.annotations.read_only_hint)
 
