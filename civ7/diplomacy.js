@@ -372,9 +372,26 @@
     });
   }
 
+  // Same native getter used by the game's alliance warning; no event history is needed.
+  // Build from the filtered roster so neither identities nor war checks expose unmet players.
+  for (const major of majorPlayers) {
+    major.warOpponents = [];
+    major.warOpponentsComplete = true;
+    const foreignDiplomacy = Players.get(major.playerId)?.Diplomacy;
+    for (const {playerId, civilization, leader} of majorPlayers) {
+      if (playerId === major.playerId) continue;
+      try {
+        const atWar = foreignDiplomacy?.isAtWarWith?.(playerId);
+        if (atWar === true) major.warOpponents.push({playerId, civilization, leader});
+        else if (atWar !== false) major.warOpponentsComplete = false;
+      } catch { major.warOpponentsComplete = false; }
+    }
+  }
+
   return {
     turn: Game.turn,
     scope: "Local player and met major counterparts; secondary choices are visibility-filtered",
+    warScope: "atWar and allied describe relations with the local player only. warOpponents lists current wars with other living met major leaders, independent of alliances or notifications; the local player is covered by atWar instead. warOpponentsComplete applies only within this met-major scope; false means some checks were unavailable, not confirmed peace. Unmet players, minors and independents are excluded, including their war counts. No declaration history, aggressor or third-party project details are inferred",
     netInfluencePerTurn: player.Stats.getNetYield(YieldTypes.YIELD_DIPLOMACY),
     dealCount: (Game.DiplomacyDeals.getDealIds(localId) ?? []).length,
     callToArms: callToArms(),

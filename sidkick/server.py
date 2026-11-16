@@ -2418,7 +2418,12 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
         title="Get Civ VII diplomacy",
         description=(
             "Get relationships, modifiers, deal counts, ongoing projects, and available "
-            "diplomatic actions involving met major counterparts. Includes public term "
+            "diplomatic actions involving met major counterparts. atWar/allied are relations with "
+            "the local player only. Each leader's warOpponents lists named current opponents among "
+            "other living met majors, including nonallies and wars without notifications. "
+            "warOpponentsComplete is scoped to those met majors; false means unavailable checks, "
+            "not confirmed peace. Unmet players/minors and their war counts are omitted. "
+            "No aggressor or declaration history is inferred. Includes public term "
             "definitions, native duration quotes, active stages and native event progress/"
             "completion timing, not guaranteed agreement expiry dates. Pending visible incoming "
             "projects include responseOptions with native descriptions, Influence quotes, selectability "
@@ -2426,7 +2431,7 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             "callToArms separately lists active ally-war notifications and their native join-war, "
             "stay-neutral (breaking the alliance) and, when offered, paid-neutrality responseOptions, "
             "with Influence quotes, exact read-only operation checks and both-allies handling. "
-            "Only notification-linked public wars between met majors are inspected; unrelated third-party "
+            "callToArms inspects only notification-linked public war events between met majors; unrelated third-party "
             "events remain withheld. null means notification APIs are unavailable; entries with unavailable "
             "details retain null responseOptions. Paid neutrality can include a fresh paymentToken and "
             "responseTool=pay_civ7_call_to_arms for explicitly authorized capped payment; joining war and "

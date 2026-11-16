@@ -12,6 +12,15 @@ Civilization VII is the first adapter.
 
 The game adapter connects only to `127.0.0.1:4318`. It reads the local player's empire, decisions, settlements, research and government, religion, resources and trade, units, diplomacy, visible threats, turn context, Test of Time victory progress, and known world. Map queries discard hidden tiles, diplomacy and known-world queries discard unmet players, and threat queries scan only tiles visible this turn. Victory queries include public scoreboard totals/countdowns for anonymous unmet majors, without identities or detailed history. By default it does not poll between tool calls or change game state. An explicit stdio-only write mode adds the typed gameplay actions described below.
 
+`get_civ7_diplomacy` keeps `majorPlayers[].atWar` and `allied` relative to the
+local player. Each leader's `warOpponents` separately names current opponents
+among **other living met majors**, whether allied or not and without requiring
+a notification. `warOpponentsComplete` applies only to that filtered roster;
+false means some native checks were unavailable, not confirmed peace. Unmet
+players, minors, independents and their war counts remain excluded. War state
+comes from the same `Diplomacy.isAtWarWith` getter used by the native alliance
+warning, not from possibly stale declaration events or inferred aggressors.
+
 ## OpenCode: no start/stop wrapper needed
 
 With Sidkick configured as a **local stdio MCP server**, OpenCode launches the Python process when the MCP connection opens, reuses it for tool calls, and stops it when disconnected. This is per connection, not per question. After reboot, open OpenCode in the Sidkick repository and check `/mcps` for the connected Sidkick server. Civ VII must have a save loaded when you request game data.
