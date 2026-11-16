@@ -2120,12 +2120,13 @@ def create_server(*, enable_writes: bool = False) -> MCPServer:
             name="buy_civ7_attribute_node",
             title="Buy Civ VII leader attribute node",
             description=(
-                "CHANGE GAME STATE: buy one first, nonrepeatable leader-attribute node using its "
+                "CHANGE GAME STATE: buy one leader-attribute node, including one repeatable purchase, using its "
                 "exact attributes.branches[].nodes[].id and fresh expected_turn from "
                 "get_civ7_research_and_government. Requires local applicability, milestone/node "
                 "eligibility, points and native purchase permission. Can irreversibly spend branch "
-                "and/or wildcard points. No repeat purchases or point grants. Submits once and "
-                "verifies the node unlock for up to two seconds; before/after balances are observations, "
+                "and/or wildcard points. Exactly one purchase per call; no point grants or bulk spending. "
+                "Submits once and verifies the unlock depth or repeat counter increase for up to two "
+                "seconds; before/after balances are observations, "
                 "not a fabricated price quote. Requires the user's exact-action instruction; never "
                 "retry unknown/cancelled calls."
             ),

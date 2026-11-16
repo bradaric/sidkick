@@ -19,6 +19,7 @@
   const state = Game.ProgressionTrees.getNode(playerId, type);
   if (!Number.isInteger(state?.depthUnlocked) || state.depthUnlocked < 0) throw Error("Attribute state is unavailable");
   return {turn: Game.turn, age: Game.age, playerId, node, depthUnlocked: state.depthUnlocked,
+    repeatedDepth: state.repeatedDepth ?? null,
     branch: branch.AttributeType, branchPoints: player.Identity.getAvailableAttributePoints(branch.AttributeType),
     wildcardPoints: player.Identity.getWildcardPoints()};
 })()

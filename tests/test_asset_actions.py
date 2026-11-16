@@ -41,6 +41,34 @@ class ResourceActionTests(unittest.IsolatedAsyncioTestCase):
 
 
 class AttributeActionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_repeat_purchase_waits_for_exact_counter_change_without_resubmission(self):
+        before = {"turn": 58, "age": 42, "playerId": 0, "node": "NODE_ATTRIBUTE_A",
+                  "depthUnlocked": 0, "repeatedDepth": 2}
+        expected = {"node": "NODE_ATTRIBUTE_A", "repeatedDepth": 3}
+        submitted = {"status": "submitted", "before": before, "expected": expected}
+        with patch("civ7.actions.run_script", new_callable=AsyncMock,
+                   side_effect=[submitted, before, {**before, **expected}]) as run:
+            result = await actions.buy_attribute_node("NODE_ATTRIBUTE_A", 58)
+        self.assertEqual(result["status"], "verified_applied")
+        self.assertEqual(result["after"]["depthUnlocked"], 0)
+        self.assertEqual([call.args[0] for call in run.await_args_list],
+                         ["buy_attribute_node.js", "attribute_node_state.js", "attribute_node_state.js"])
+
+    async def test_unchanged_repeat_counter_is_unknown_not_success_or_a_retry(self):
+        before = {"turn": 58, "age": 42, "playerId": 0, "node": "NODE_ATTRIBUTE_A",
+                  "depthUnlocked": 0, "repeatedDepth": 2}
+        submitted = {"status": "submitted", "before": before,
+                     "expected": {"node": "NODE_ATTRIBUTE_A", "repeatedDepth": 3}}
+
+        async def observe(script, arguments):
+            return submitted if script == "buy_attribute_node.js" else {**before, "depthUnlocked": 1}
+
+        with patch("civ7.actions.run_script", new_callable=AsyncMock, side_effect=observe) as run, \
+                patch("civ7.actions._VERIFICATION_TIMEOUT", 0.01):
+            result = await actions.buy_attribute_node("NODE_ATTRIBUTE_A", 58)
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(sum(call.args[0] == "buy_attribute_node.js" for call in run.await_args_list), 1)
+
     async def test_attribute_purchase_uses_targeted_readback_and_exact_unlock(self):
         self.assertTrue(callable(getattr(actions, "buy_attribute_node", None)))
         before = {"turn": 58, "age": 42, "playerId": 0, "node": "NODE_ATTRIBUTE_A", "depthUnlocked": 0}

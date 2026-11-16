@@ -406,7 +406,7 @@ async def swap_resources(first_resource_instance: StrictInt, first_off_map: Stri
 
 
 async def buy_attribute_node(node: StrictStr, expected_turn: StrictInt) -> dict[str, Any]:
-    """Buy a first nonrepeatable leader perk using native point eligibility."""
+    """Buy one leader perk or one repeat using native point eligibility."""
     if not isinstance(node, str) or not node.strip():
         raise ValueError("An exact attribute node ID is required")
     if type(expected_turn) is not int or expected_turn < 0:

@@ -200,13 +200,16 @@ positive case.
   source/destination damage and native eligibility. Archived works omit
   `SourceCity`; occupied-slot swaps and archiving are unsupported. Yield changes
   are not predicted.
-- `buy_civ7_attribute_node(node, expected_turn)` buys a first nonrepeatable leader
-  perk by its exact node ID from the local attribute branch. It honors local
-  applicability, legend locks, node state, available branch/wildcard funding and
-  the native purchase check. This can permanently spend points. Repeat purchases
-  are explicitly unsupported; no points are granted or unlocks manufactured.
-  Readback verifies the node's depth against its captured pre-submit depth and
-  reports the observed balances without inventing an exact price quote.
+- `buy_civ7_attribute_node(node, expected_turn)` buys one leader perk, including
+  one repeatable purchase, by its exact node ID from the local attribute branch.
+  It honors local applicability, legend locks, node state, available branch/wildcard
+  funding and the native purchase check. This can permanently spend points. Each call submits
+  exactly one purchase; no points are granted or unlocks manufactured.
+  Readback verifies one additional `repeatedDepth` for repeatable nodes, or one
+  additional unlock depth for ordinary nodes, against captured pre-submit counters.
+  Already-purchased ordinary nodes remain no-ops. Observed balances are reported
+  without inventing an exact price quote. Repeatable purchases are fixture-tested;
+  positive live execution has not been verified.
 
 These actions use the same single-submission, bounded read-only verifier and
 return the same rejected/no-op/verified/unknown outcomes. Asset readback is

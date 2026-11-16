@@ -21,18 +21,20 @@
   }
   if (matches.length !== 1) return reject("No unique applicable local attribute node matches this ID");
   const {branch, definition, type} = matches[0];
-  if (definition.Repeatable) return reject("Repeatable attribute purchases are not supported in this increment");
+  const repeatable = Boolean(definition.Repeatable);
   const state = Game.ProgressionTrees.getNode(playerId, type);
   if (!Number.isInteger(state?.depthUnlocked) || state.depthUnlocked < 0) return reject("Attribute node state is unavailable");
+  if (repeatable && (!Number.isInteger(state.repeatedDepth) || state.repeatedDepth < 0)) return reject("Attribute repeat counter is unavailable");
   const branchPoints = player.Identity.getAvailableAttributePoints(branch.AttributeType);
   const wildcardPoints = player.Identity.getWildcardPoints();
   const before = {turn: Game.turn, age: Game.age, playerId, node, depthUnlocked: state.depthUnlocked,
+    repeatedDepth: state.repeatedDepth ?? null,
     branch: branch.AttributeType, branchPoints, wildcardPoints};
-  if (state.depthUnlocked > 0) return {status: "already_active", node, before};
+  if (!repeatable && state.depthUnlocked > 0) return {status: "already_active", node, before};
   if (Game.ProgressionTrees.hasLegendUnlocked(playerId, type)?.isLocked !== false) return reject("Leader milestone is locked or unverified");
   const nodeState = Game.ProgressionTrees.getNodeState(playerId, type);
-  if ([ProgressionTreeNodeState.NODE_STATE_INVALID, ProgressionTreeNodeState.NODE_STATE_CLOSED,
-       ProgressionTreeNodeState.NODE_STATE_FULLY_UNLOCKED].includes(nodeState)) return reject("Attribute node is not open for purchase");
+  if ([ProgressionTreeNodeState.NODE_STATE_INVALID, ProgressionTreeNodeState.NODE_STATE_CLOSED].includes(nodeState) ||
+      (!repeatable && nodeState === ProgressionTreeNodeState.NODE_STATE_FULLY_UNLOCKED)) return reject("Attribute node is not open for purchase");
   if (!Number.isInteger(branchPoints) || branchPoints < 0 || !Number.isInteger(wildcardPoints) || wildcardPoints < 0) return reject("Attribute point balances are unavailable");
   if (branchPoints + wildcardPoints === 0) return reject("No attribute or wildcard points are available");
   const args = {ProgressionTreeNodeType: type};
@@ -42,5 +44,7 @@
   if (Game.turn !== before.turn || Game.age !== before.age || GameContext.localPlayerID !== playerId ||
       player.isTurnActive !== true || GameContext.hasSentTurnComplete() !== false) return reject("Game context changed during validation");
   Game.PlayerOperations.sendRequest(playerId, operation, args);
-  return {status: "submitted", node, before, expected: {node, depthUnlocked: before.depthUnlocked + 1}};
+  return {status: "submitted", node, before, expected: repeatable
+    ? {node, repeatedDepth: before.repeatedDepth + 1}
+    : {node, depthUnlocked: before.depthUnlocked + 1}};
 })()

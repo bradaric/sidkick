@@ -6,7 +6,7 @@ const {test} = require('node:test');
 
 function run(options = {}, script = 'buy_attribute_node.js') {
   const calls = [];
-  const state = {depthUnlocked: options.purchased ? 1 : 0};
+  const state = {depthUnlocked: options.purchased ? 1 : 0, repeatedDepth: 0, ...options.state};
   const context = {
     queryArguments: {node: 'NODE_ATTRIBUTE_A', expected_turn: 58, ...options.arguments},
     UI: {isInGame: () => true}, GameContext: {localPlayerID: 0, hasSentTurnComplete: () => false},
@@ -22,7 +22,7 @@ function run(options = {}, script = 'buy_attribute_node.js') {
       getTreeStructure: type => {assert.equal(type, 'TREE_A'); return [{nodeType: 101}];},
       canEverUnlock: () => ({isLocked: options.inapplicable ?? false}),
       hasLegendUnlocked: () => ({isLocked: options.legendLocked ?? false}),
-      getNodeState: () => options.closed ? 1 : 2,
+      getNodeState: () => options.closed ? 1 : options.fullyUnlocked ? 5 : 2,
       getNode: () => state,
     }, PlayerOperations: {
       canStart: (id, operation, args, exclusion) => {
@@ -32,7 +32,10 @@ function run(options = {}, script = 'buy_attribute_node.js') {
       },
       sendRequest: (id, operation, args) => {
         calls.push({kind: 'send', id, operation, args});
-        if (options.immediate) state.depthUnlocked++;
+        if (options.immediate) {
+          if (options.repeatable) state.repeatedDepth++;
+          else state.depthUnlocked++;
+        }
       },
     }},
   };
@@ -64,9 +67,9 @@ test('an immediately applied purchase still verifies against the captured pre-su
   assert.equal(data.expected.depthUnlocked, 1);
 });
 
-test('no points, locked/inapplicable nodes, repeatables and invalid selectors never spend points', () => {
+test('no points, locked/inapplicable nodes and invalid selectors never spend points', () => {
   for (const options of [{points: 0}, {inapplicable: true}, {legendLocked: true}, {closed: true},
-    {repeatable: true}, {arguments: {node: 'UNKNOWN'}}, {arguments: {node: 101}},
+    {fullyUnlocked: true}, {arguments: {node: 'UNKNOWN'}}, {arguments: {node: 101}},
     {arguments: {expected_turn: true}}, {arguments: {expected_turn: 57}}]) {
     const {data, calls} = run(options);
     assert.equal(data.status, 'rejected', JSON.stringify(options));
@@ -80,6 +83,43 @@ test('already purchased ordinary perks are no-ops', () => {
   assert.equal(calls.length, 0);
 });
 
+test('repeatable perks submit exactly one purchase and expect one additional repeat', () => {
+  for (const options of [{}, {state: {repeatedDepth: 3}}, {fullyUnlocked: true}, {purchased: true},
+    {points: 0, wildcards: 1}]) {
+    const {data, calls} = run({repeatable: true, ...options});
+    assert.equal(data.status, 'submitted', JSON.stringify(options));
+    assert.deepEqual(data.expected, {node: 'NODE_ATTRIBUTE_A', repeatedDepth: (options.state?.repeatedDepth ?? 0) + 1});
+    assert.equal(data.before.repeatedDepth, options.state?.repeatedDepth ?? 0);
+    assert.deepEqual(calls.map(call => call.kind), ['check', 'send']);
+    assert.deepEqual(calls[1].args, {ProgressionTreeNodeType: 101});
+  }
+});
+
+test('repeatable purchases retain funding, applicability, milestone, state and native guards', () => {
+  for (const options of [{points: 0}, {inapplicable: true}, {legendLocked: true}, {closed: true},
+    {allowed: false}, {changed: true}]) {
+    const {data, calls} = run({repeatable: true, ...options});
+    assert.equal(data.status, 'rejected', JSON.stringify(options));
+    assert.ok(!calls.some(call => call.kind === 'send'));
+  }
+});
+
+test('repeatable purchases require an observed nonnegative integer repeat counter', () => {
+  for (const repeatedDepth of [undefined, null, -1, 1.5, '1', true]) {
+    const {data, calls} = run({repeatable: true, state: {repeatedDepth}});
+    assert.equal(data.status, 'rejected');
+    assert.match(data.reason, /repeat.*unavailable/i);
+    assert.equal(calls.length, 0);
+  }
+});
+
+test('an immediately applied repeat verifies against the captured pre-submit counter', () => {
+  const {data} = run({repeatable: true, immediate: true, state: {repeatedDepth: 2}});
+  assert.equal(data.status, 'submitted');
+  assert.equal(data.before.repeatedDepth, 2);
+  assert.deepEqual(data.expected, {node: 'NODE_ATTRIBUTE_A', repeatedDepth: 3});
+});
+
 test('native attribute rejection and changed context do not submit', () => {
   for (const options of [{allowed: false}, {changed: true}]) {
     const {data, calls} = run(options);
@@ -91,6 +131,13 @@ test('native attribute rejection and changed context do not submit', () => {
 test('attribute readback is targeted and retains observed branch and wildcard balances', () => {
   const {data, calls} = run({}, 'attribute_node_state.js');
   assert.deepEqual(data, {turn: 58, age: 42, playerId: 0, node: 'NODE_ATTRIBUTE_A',
-    depthUnlocked: 0, branch: 'ATTRIBUTE_A', branchPoints: 1, wildcardPoints: 0});
+    depthUnlocked: 0, repeatedDepth: 0, branch: 'ATTRIBUTE_A', branchPoints: 1, wildcardPoints: 0});
+  assert.equal(calls.length, 0);
+});
+
+test('attribute readback exposes completed repeats even when unlock depth is zero', () => {
+  const {data, calls} = run({repeatable: true, state: {repeatedDepth: 4}}, 'attribute_node_state.js');
+  assert.equal(data.depthUnlocked, 0);
+  assert.equal(data.repeatedDepth, 4);
   assert.equal(calls.length, 0);
 });
