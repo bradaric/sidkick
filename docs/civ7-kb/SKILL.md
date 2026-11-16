@@ -13,7 +13,7 @@ The campaign owner prefers concise, practical recommendations, a science focus, 
 
 ## Read in layers
 
-1. At a fresh session or replay, read [the postmortem](campaign-postmortem.md), [victory deadlines](victories-and-deadlines.md) and [the replay playbook](replay-playbook.md).
+1. At a fresh session or replay, read [Game 01 strategy and checkpoints](game-01-strategy.md) and [victory deadlines](victories-and-deadlines.md). The strategy guide compares the conceded Maya/Maya/Russia attempt with the Exploration-age replay into Prussia; its campaign states are historical. Consult [the original postmortem](campaign-postmortem.md) and [the earlier replay proposals](replay-playbook.md) for their detailed evidence and limits.
 2. For live-query interpretation, consult [Sidkick evidence](sidkick-evidence.md).
 3. Load only the relevant domain page for the current choice: [science](modern-science.md), [Tourism](archaeology-and-tourism.md), [infrastructure](infrastructure-and-placements.md), [policies](civics-and-policies.md), or [towns/resources](towns-resources-city-states.md).
 4. Before repeating disputed mechanics, check [open questions and corrections](open-questions-and-corrections.md) and [sources](sources-and-evidence.md).
