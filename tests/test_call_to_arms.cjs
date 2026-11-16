@@ -210,6 +210,40 @@ test('payment readback needs prompt clearance and the exact debit with Gold, all
   }
 });
 
+test('payment readback accepts resolved captured notifications without a target only when the queue clears', () => {
+  const submitted = run({args: paymentArgs()}, 'pay_call_to_arms.js').data;
+  const after = {noNext: true, influence: 260, args: submitted.verificationArguments};
+  for (const Target of [null, undefined, {}]) {
+    for (const resolved of [{Expired: true}, {Dismissed: true}, {BlocksTurnAdvancement: false}]) {
+      const notification = {Target, ...resolved};
+      assert.equal(run({...after, notification}, 'call_to_arms_payment_state.js').data.callToArmsPaymentApplied, true);
+      assert.equal(run({...after, notification, noNext: false}, 'call_to_arms_payment_state.js').data.callToArmsPaymentApplied, false);
+    }
+    assert.equal(run({...after, notification: {Target}}, 'call_to_arms_payment_state.js').data.callToArmsPaymentApplied, false);
+  }
+  for (const change of [{influence: 259}, {gold: 999}, {allied: []}, {localWarWith: 5},
+    {notification: {Target: {id: 40}, Expired: true}}, {notification: {Type: 43, Expired: true}}]) {
+    const options = {...after, notification: {Target: null, Expired: true}, ...change};
+    assert.equal(run(options, 'call_to_arms_payment_state.js').data.callToArmsPaymentApplied, false);
+  }
+});
+
+test('payment readback exposes notification clearance separately from the pending queue', () => {
+  const submitted = run({args: paymentArgs()}, 'pay_call_to_arms.js').data;
+  const after = {influence: 260, args: submitted.verificationArguments};
+  for (const [options, notificationCleared, nextCallToArms, promptCleared] of [
+    [{}, false, 39, false],
+    [{noNotices: true}, true, 39, false],
+    [{noNext: true}, false, -1, false],
+    [{noNotices: true, noNext: true}, true, -1, true],
+  ]) {
+    const data = run({...after, ...options}, 'call_to_arms_payment_state.js').data;
+    assert.equal(data.notificationCleared, notificationCleared);
+    assert.equal(data.nextCallToArms, nextCallToArms);
+    assert.equal(data.promptCleared, promptCleared);
+  }
+});
+
 test('a genuine zero-cost payment still needs a native request and resolved pending prompt', () => {
   const free = run({cost: 0}).data.callToArms[0].responseOptions.find(option => option.response === 'pay_influence');
   const {data, payments} = run({cost: 0, args: paymentArgs({payment_token: free.paymentToken, max_influence_cost: 0})}, 'pay_call_to_arms.js');

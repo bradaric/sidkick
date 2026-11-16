@@ -15,7 +15,8 @@
   if (matches.length === 1) {
     const type = Game.Notifications.getType(matches[0]), n = Game.Notifications.find(matches[0]);
     noticeCleared = Boolean(n && n.Type === type && Game.Notifications.getTypeName(type) === "NOTIFICATION_DIPLOMATIC_ALLY_AT_WAR" &&
-      n.Target?.id === eventId && (n.Dismissed === true || n.Expired === true || n.BlocksTurnAdvancement === false));
+      // Submission permits a missing target via the pending queue; keep the same captured-notification binding here.
+      (n.Target?.id ?? eventId) === eventId && (n.Dismissed === true || n.Expired === true || n.BlocksTurnAdvancement === false));
   }
   const next = Game.Diplomacy.getNextCallToArms(playerId), event = Game.Diplomacy.getDiplomaticEventData(eventId);
   const promptCleared = noticeCleared && Number.isInteger(next) && next >= -1 && next !== eventId;
@@ -29,6 +30,7 @@
   const singlePlayer = typeof Configuration !== "undefined" && Configuration.getGame().isAnyMultiplayer === false;
   const currentGold = player.Treasury?.goldBalance, currentInfluence = player.DiplomacyTreasury?.diplomacyBalance;
   return {turn: Game.turn, age: Game.age, playerId, warEventId: eventId, promptCleared, warPreserved, alliancePreserved,
+    notificationCleared: noticeCleared, nextCallToArms: next,
     gold: currentGold, influence: currentInfluence,
     callToArmsPaymentApplied: gameStarted && singlePlayer && promptCleared && warPreserved && alliancePreserved && currentGold === gold && currentInfluence === influence};
 })()
