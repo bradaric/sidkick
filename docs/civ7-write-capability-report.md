@@ -1,5 +1,12 @@
 # Can Sidkick play Civilization VII through an API?
 
+> **Historical investigation (2026-11-05, before write support).** The present
+> stdio server can expose 129 opt-in actions alongside 31 readers. The findings
+> below describe baseline `e7821b9`, not today's implementation or live guarantees.
+> Use [current actions](actions.md), [coverage](civ7-coverage-audit.md) and the
+> [catalog](reference/action-tools.md) for current behavior. Original source
+> references and verification observations are retained for provenance.
+
 Investigation date: 2026-11-05. Repository baseline: `e7821b9`.
 Installed Steam app: `1295660`, build `25516395`.
 
@@ -7,7 +14,7 @@ Installed Steam app: `1295660`, build `25516395`.
 
 **Yes, there is a credible technical route to API-driven gameplay.** The installed game's own UI submits gameplay requests through JavaScript interfaces accessible over the same FireTuner connection Sidkick already uses. This is substantially more promising than automating mouse clicks.
 
-**No, Sidkick cannot play the game today.** Its 23 MCP tools are read-only. No gameplay action was executed during this investigation, so successful writes, reliable turn automation and an unattended full campaign remain unproven.
+**At that baseline, Sidkick could not play the game.** Its 23 MCP tools were read-only. No gameplay action was executed during this investigation; later implementation and native tests are separate evidence. Reliable unattended full-campaign play is still not established.
 
 The distinction is:
 

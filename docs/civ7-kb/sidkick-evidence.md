@@ -1,6 +1,6 @@
 # Sidkick: evidence collection and uncertainty
 
-Use the current [tool contracts](../../README.md) and live output. These notes explain how to interpret evidence; they do not extend the tools' capabilities.
+Use the current [read-tool reference](../reference/read-tools.md), [action guide](../actions.md) and live output. These notes explain how to interpret evidence; they do not extend the tools' capabilities. Software capability statements were reconciled on 2026-11-17; campaign observations keep their original turn/version limits.
 
 ## Use focused queries
 
@@ -18,7 +18,7 @@ Use the current [tool contracts](../../README.md) and live output. These notes e
 | City-state choice/incorporation? | `get_civ7_city_states` + empire | Pending bonus, selected effect, count-based requirements, Influence and settlement reserve |
 | Diplomatic terms, timing or secondary choices? | `get_civ7_diplomacy` | Native progress/stage/response evidence; partial checked choices, not guaranteed expiry dates or complete costs |
 | A reward/disaster/blocked turn? | `get_civ7_turn_context` | Pending events and rewards; notifications; damage inventory; movement/path from UI as needed |
-| Which Great Works do we own or can relocate? | `get_civ7_great_works`, then the same tool with `great_work_index` | Owned displayed/archive inventory and stable instance indices; capacity/damage; native plus picker eligibility; no marginal yields, swaps or archive actions |
+| Which Great Works do we own or can relocate? | `get_civ7_great_works`, then the same tool with `great_work_index` | Owned displayed/archive inventory and stable instance indices; capacity/damage; native plus picker eligibility; no marginal yield forecast or atomic occupied-slot swap; archive/move writers are separate |
 | Can a religious unit spread now? | `get_civ7_religion.religiousUnits` | Owned current non-target readiness and charge quotes; packed units excluded from deployed checks; no arbitrary-target or conversion forecast |
 | Archaeology readiness/countdown? | `get_civ7_archaeology`, then turn context/Great Works for rewards | Read excavation `failureReasons` even when unavailable: a native completion quote can indicate a running dig; no exported active-order or structured countdown fields |
 | Explorer/unit position? | `get_civ7_units`, then `get_civ7_movement_and_founding` | Numeric `instanceId`; movement; revealed position/path; movement alone does not establish excavation activity |
@@ -48,7 +48,7 @@ If the user requests a local export, `civ7/.venv/bin/python civ7/player.py --out
 Read the loaded campaign's victory output:
 
 - `dominanceSchedule`: campaign/previous-Age-matched rule tiers and current/next threshold.
-- `victoryAlerts`: active met-rival countdowns and upcoming easing.
+- `victoryAlerts`: active local/met/anonymous-unmet countdowns and upcoming easing.
 - `scoringRules`: public conditional scoring definitions/arguments, **not** a guarantee each source is locally active.
 - Native target preservation and nulls for unknown countdown data.
 
@@ -84,7 +84,7 @@ Use this context before attributing a yield, slot bonus or unique item to the cu
 2. Select an owned `instanceIndex` from that response and pass it as `great_work_index` to the same tool. Do not use a work type ID, building component ID, unit `instanceId` or an invented numeric index.
 3. Inspect `selectedWork` and `destinations`. `operationAllowed` is native permission; `pickerEligible` also requires empty capacity, an undamaged destination, an undamaged displayed source (or an archived source), and a different destination. Use `availableNow` for the combined result and inspect failure reasons/flags when blocked.
 
-`currentGreatWorkYields` are **current whole-building totals across its works**, not the selected work's contribution. Comparing two buildings' totals does not simulate moving a work. `netYieldChange` remains null. Occupied-slot swaps and archive actions are unsupported; reading archived inventory is not an archive-action check. Foreign, ambiguous and invalid indices are rejected.
+`currentGreatWorkYields` are **current whole-building totals across its works**, not the selected work's contribution. Comparing two buildings' totals does not simulate moving a work. `netYieldChange` remains null. Atomic occupied-slot swaps are unsupported; separate opt-in archive/move stages can perform an explicitly authorized non-atomic exchange. Reading archived inventory is not an archive-action check or authorization. Foreign, ambiguous and invalid indices are rejected.
 
 `cityWorkTypeYieldQuote` describes the current city/work type, not the selected instance's destination-building benefit. Do not add quotes to building totals or subtract source/destination quotes into relocation gains; equal quotes do not prove zero impact. Missing quotes remain unknown; zero and negative quotes are valid observations. Eligibility and capacity remain separate from the quote.
 
@@ -104,7 +104,9 @@ Native descriptions are not converted-population forecasts or arbitrary-target e
 - `City` choices include `settlement: {ownerId, cityId, location}` and distinguish owned from visible foreign settlements. City IDs can repeat across owners: use the owner/ID pair and matching offered-plot evidence, not the numeric ID alone. Fogged/hidden foreign centres, unrelated owners and ambiguous choices are excluded; no private foreign systems are exposed.
 - Read native blockers rather than inferring war or alliance prerequisites from an action's name.
 - Do not add primary and secondary influence quotes into a guessed total. A missing total cost remains unknown.
-- Hidden/espionage events are not attributed to a leader. Enacted peace-deal item terms and working-deal negotiation are unsupported. A successful read-only check is not permission to perform an action.
+- Unrevealed hidden/espionage events are not attributed to a leader. Revealed reports and incoming sanctions have narrow readers/handlers; do not generalize to hidden activity. Enacted peace-deal item terms remain unverified. [Working-draft peace negotiation](../peace-negotiation.md) is supported by a separate reader and opt-in edit/inspect/search/submission tools. Native INSPECT changes state and is not an innocent read. A successful read-only check is not permission to perform an action.
+- `majorPlayers[].warOpponents` lists other living met-major opponents independently of our alliances; `atWar`/`allied` remain relative to us. The completeness flag covers only that filtered roster, not hidden wars.
+- Military victory `settlementSummary` can name/classify local/met settlements from the public ledger even under fog. This is distinct from the visible-centre world inventory, excludes private settlement systems/locations, and is not an independently verified full census.
 
 ## Unit state
 

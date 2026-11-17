@@ -6,13 +6,16 @@ Optional integration work, not a blocker for local Sidkick/OpenCode game queries
 Sidkick already runs on Linux; this item concerns the separate ChatGPT tunnel
 bridge, not Linux support generally or specifically a ChatGPT desktop app.
 
-### Current evidence
+### Recorded evidence
 
 - Linux bridge wrapper tests use a fake tunnel client; the official-client
   end-to-end start/status/stop lifecycle remains unverified.
 - The official full Linux client was absent at the configured path,
   `tools/tunnel-client/bin/tunnel-client`, when last checked.
 - OpenCode uses its own direct stdio connection and does not need this tunnel.
+- Documentation reconciliation on 2026-11-17 did not install a client, inspect
+  credentials, connect a tunnel or rerun real lifecycle checks. The integration
+  remains unverified; missing-at-last-check is not a fresh installation inventory.
 
 ### Pending checks
 
@@ -35,5 +38,5 @@ or runtime operation before executing it. This checklist is not authorization
 to perform those actions. Nothing was installed, configured or started to create
 this TODO.
 
-See [Linux ChatGPT setup](../README.md#linux) and the
+See [Linux ChatGPT setup](chatgpt.md#linux) and the
 [coverage audit](civ7-coverage-audit.md) for existing setup and verification limits.

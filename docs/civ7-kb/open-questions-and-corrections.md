@@ -62,11 +62,11 @@ The campaign used Catherine, Eagle Banner and Antikythera Mechanism; artifact sc
 
 ### 6. Remaining space-race route and project identities
 
-**Known:** native 100 Innovation/undamaged Launch Pad requirement; several base/Mastery/building/project prerequisites. **Unknown:** complete fastest research path, later repeatable project identity/requirements, final costs and finish date. Old-style project descriptions can coexist with ToT score rules. **Next evidence:** current technology and `modernProjects` inventory, native BUILD permissions and installed activation requirements.
+**Known:** native 100 Innovation/undamaged Launch Pad requirement; several base/Mastery/building/project prerequisites. The [later Prussia replay](game-01-strategy.md#5-work-backward-from-the-complete-science-finish) identified **Crewed Space Flight Preparation** (+15 Innovation, repeatable), Rocketry's +5 and Aerodynamics II's +5, and reached exact 100 at T91 with one Preparation. **Still unknown:** a universally fastest path, complete requirements/costs across rulesets, and the screenshot's exact final victory turn. Old-style project descriptions can coexist with ToT score rules. **Next evidence:** current technology and `modernProjects` inventory, native BUILD permissions and installed activation requirements.
 
 ### 7. Exact replay settings and inherited state
 
-The T1 save was not reopened while making this KB. Difficulty, game version/mod list, transition option labels, full initial scores/resources and all point allocations need fresh verification. Do not infer new RNG, rival build order or a fixed T56 outcome merely because the save name is familiar.
+The original Russia T1 baseline was not reopened while making the Nov 5 KB. The later [Game 01 case study](game-01-strategy.md) records an Exploration replay into Prussia, version **1.5.1 (1327230)**, later native checkpoints and screenshot-confirmed Science Victory. That does not reconstruct every original setting, initial score or allocation. Difficulty/full mod list and any new loaded campaign still need fresh verification. Do not infer new RNG, rival build order or a fixed T56 outcome merely because a save name is familiar.
 
 ## Lower-priority questions worth retaining
 

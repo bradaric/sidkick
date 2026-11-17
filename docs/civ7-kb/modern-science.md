@@ -2,6 +2,8 @@
 
 Evidence: **OBSERVED campaign unlock descriptions/availability**, **OFFICIAL S1/S2**. Costs and turns below are examples from the conceded run, not permanent prices. Refresh the loaded technology tree and native project availability.
 
+**Later evidence (2026-11-16):** the [Prussia replay](game-01-strategy.md#5-work-backward-from-the-complete-science-finish) reached 100 Innovation at T91 and a screenshot-confirmed Science Victory after the last numerical T95 checkpoint. It identified **Crewed Space Flight Preparation** as the repeatable +15 Innovation project; Rocketry awarded +5 and Aerodynamics II +5 in that replay. These later observations supersede the older project's unresolved identity below, not every historical prerequisite or price. The final victory turn is not visible in the screenshot.
+
 ## Work backward from the finish
 
 The scientific finish observed here was **100 Innovation + an undamaged Launch Pad + the five-turn countdown**. Another player's Innovation does not raise that target. A large science yield only helps research; it is not itself progress on every requirement.
@@ -52,7 +54,7 @@ These were reported by live loaded definitions and native checks during this cam
 | Break The Sound Barrier (`PROJECT_BREAK_SOUND_BARRIER`) | Aerodynamics II | Aerodrome | +5 Innovation, +1 air-unit strength; once per civilization |
 | Launch Satellite (`PROJECT_LAUNCH_SATELLITE`) | Rocketry, depth 1 in the observed definition | Launch Pad | +5 Innovation, map reveal; once per civilization |
 
-The historical project query also returned **Crewed Space Flight** (`PROJECT_LAUNCH_ROCKET`) with an old-style "win a Scientific Victory" description and Legacy Path requirement. **Do not substitute that description for the native ToT victory conditions.** The official guide mentions a later repeatable Innovation project, but its exact loaded prerequisites and applicable project identity were not established in this run.
+The historical project query also returned **Crewed Space Flight** (`PROJECT_LAUNCH_ROCKET`) with an old-style "win a Scientific Victory" description and Legacy Path requirement. **Do not substitute that description for the native ToT victory conditions.** That run did not establish the repeatable project's identity. The later Prussia replay identified **Crewed Space Flight Preparation** (+15 Innovation, repeatable) and used one completion in its exact-100 route. Refresh current native BUILD requirements; the display-name observation does not by itself establish an interchangeable internal type ID or universal cost.
 
 Actual available-project BUILD checks are stronger than assumptions about a familiar real-world tech chain. A project absent from a compact decisions list may be blocked; use the victory tool's broader `modernProjects` evidence to inspect why.
 

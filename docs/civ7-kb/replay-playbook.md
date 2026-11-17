@@ -1,6 +1,6 @@
 # Replay playbook: science with a credible survival plan
 
-**INFERRED, untested strategy proposal.** No replay was performed to validate a winning order. The user proposed returning to Modern T1 and being more aggressive; that is not permission to load a save, change settings, declare war or abandon science automatically.
+**INFERRED, original Nov 5 strategy proposal.** This exact Modern T1 rescue order was not tested. A later Exploration replay into Prussia did reach a screenshot-confirmed Science Victory; use [Game 01 strategy and checkpoints](game-01-strategy.md) for those observations, not this proposal as its transcript. Neither record authorizes loading saves, changing settings, declaring war or abandoning science automatically.
 
 ## Choose the kind of retry deliberately
 
@@ -16,7 +16,7 @@ A peaceful Modern win is **not guaranteed**. Culture is not proved universally s
 2. Read native victory scores, targets, countdowns and **campaign-specific current/next schedule tiers**. Check all victory types, not only Hatshepsut's culture.
 3. Check owned perk descriptions, government/celebration choices, mementos, Dedications, pending events and damage. Do not assume last run's selections are already made in this save.
 4. Identify reachable **revealed** Natural Wonders, retained University buildings and legal Museum/Explorer options. Read `get_civ7_great_works` for displayed/archive inventory and actual capacity/damage; pass an owned instance index for a specific relocation check, not a yield forecast. No map cheats or hidden-site assumptions.
-5. Preserve a distinct save if the user wants to compare approaches; saving/loading remains the user's action.
+5. Preserve a distinct save if the user wants to compare approaches. Typed save/load tools now exist, but require their own explicit authorization; a planning request is not permission to save or discard progress by loading.
 
 Historical T1 clues: Hatshepsut approximately 300 Tourism, Rizal 101, target 404. Our score was later inferred as 87 from the observed T17 gains, not re-read at T1. **Refresh it.** At a frozen leader score of 300, a conservative 2x defensive floor is 151. If our refreshed score is 87, that means +64, **before** allowing for her growth. The old late-chat recollection of 105 at T1 would underestimate the required gain.
 

@@ -32,7 +32,7 @@ Do not treat a successful HTTP response containing a browser challenge as a succ
 
 These files were read while compiling the KB; links refer to the repository, not bundled copies:
 
-- [README](../../README.md): data contract, focused tools and coverage limits.
+- [Documentation index](../README.md), [read-tool reference](../reference/read-tools.md) and [action guide](../actions.md): current contracts, focused tools and coverage limits. The root README is intentionally just the entry point.
 - [Coverage audit](../civ7-coverage-audit.md): what is source/fixture/live verified, and historical gaps.
 - [Victory query](../../civ7/victory.js): native targets, campaign-matched schedules, current/next tier, alert semantics, public scoring definitions and Modern project requirements.
 - [Victory planning fixtures](../../tests/test_victory_planning.cjs): multiplier conversion, missing values, alerts and native-target preservation.
@@ -48,7 +48,7 @@ Repository contracts and synthetic tests describe tool behavior; they are not li
 
 The postmortem and domain pages manually summarize the user's reports, screenshots and Sidkick responses in this conversation. Raw JSON/transcript/save files are **not** bundled. Some earlier turns come from the conversation checkpoint rather than fresh reads. Records are non-atomic and may reflect multiple within-turn decisions.
 
-Turn labels are Modern-local unless explicitly stated. A timestamp here is provenance, not a freshness guarantee. The final observed state was T56 with a rival countdown; the user chose to concede. No final defeat screen, replayed outcome or controlled alternative strategy was observed.
+Turn labels are Modern-local unless explicitly stated. A timestamp here is provenance, not a freshness guarantee. The original Russia attempt's final observed state was T56 with a rival countdown; the user chose to concede, and no final defeat screen was seen. The later [Game 01 case study](game-01-strategy.md) records the Exploration replay into Prussia, native checkpoints through T95 and a screenshot-confirmed Science Victory. Its final victory turn is not shown; it is not a controlled test of every earlier proposal.
 
 For a new factual entry, record:
 
