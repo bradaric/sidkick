@@ -80,7 +80,7 @@ For each case, provide the stated evidence as historical fixture data, not a liv
 
 **Prompt:** "The Great Work inventory gives instanceIndex 7 in the archive. The destination's operationAllowed is true but free is zero and availableNow is false. Its currentGreatWorkYields says 12 culture; does moving the work add 12? The snapshot has no relocation matrix."
 
-**Expected:** use the focused `get_civ7_great_works(great_work_index=7)` check, not a type ID or a fabricated snapshot matrix. A full destination is unavailable despite native permission; occupied-slot swaps are unsupported. Twelve culture is the destination's current whole-building total, not this work's contribution or a relocation gain; `netYieldChange` remains unknown. Reading the archive does not authorize archiving/moving a work.
+**Expected:** use the focused `get_civ7_great_works(great_work_index=7)` check, not a type ID or a fabricated snapshot matrix. A full destination is unavailable despite native permission; atomic occupied-slot swaps are unsupported. Separate authorized archive/move stages can perform a non-atomic exchange, not bypass the full-slot guard. Twelve culture is the destination's current whole-building total, not this work's contribution or a relocation gain; `netYieldChange` remains unknown. Reading the archive does not authorize archiving/moving a work.
 
 ## 14. Current persona and conditional ability evidence
 

@@ -32,7 +32,7 @@ Treat the **loaded schedule** as the boundary authority; avoid ambiguity about s
 
 ## Defensive arithmetic
 
-Let `L` be the leader's current Tourism, `R` the runner-up's score and `m` the applicable multiplier. `m * R` is a useful **scenario calculation**, not a replacement for the engine's native `targetPoints`. The tool omits unmet players, and exact rounding/tie rules should be verified in the UI.
+Let `L` be the leader's current Tourism, `R` the runner-up's score and `m` the applicable multiplier. `m * R` is a useful **scenario calculation**, not a replacement for the engine's native `targetPoints`. The public scoreboard includes anonymous unmet-major totals/countdowns but withholds their identities and detailed history/prerequisites. Do not reconstruct a global target from met rivals alone; exact rounding/tie rules should be verified in the UI.
 
 For an integer runner-up score **strictly above** the leader's scaled qualification boundary, a conservative target is:
 
@@ -65,7 +65,7 @@ This is why an extra five-point artifact can help at one tier yet not solve the 
 
 At session start, after several user-advanced turns, near an Age-progress boundary, after a large scoring event, and before a long build:
 
-1. Read native targets/countdowns for **all enabled victory types and met rivals**.
+1. Read native targets/countdowns for **all enabled victory types and public rivals**, including anonymous unmet majors; identity/history restrictions remain.
 2. Read the applicable current/next tier; stress-test today's scores at the next lower multiplier.
 3. Identify the required defensive points and a margin for rival scoring bursts.
 4. List only scoring actions whose unlock, construction, travel and display steps can plausibly finish before qualification/countdown completion.
